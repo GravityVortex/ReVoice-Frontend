@@ -1,0 +1,137 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+node_modules/
+jspm_packages/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Package manager files
+.npm
+.yarn-integrity
+.pnpm-debug.log*
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+.turbo
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Development and debug files
+debug/
+.test/
+data*
+*debug*
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment variables
+.env*
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Cache directories
+.cache
+.parcel-cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.eslintcache
+.stylelintcache
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Node.js
+.node_repl_history
+
+# Build artifacts
+*.tgz
+*.tar.gz
+
+# Storybook
+.storybook-out
+storybook-static
+
+# Temporary folders
+tmp/
+temp/
+
+# Framework specific
+.nuxt
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Project specific files
+.open-next
+.wrangler
+wrangler.toml
+src/shared/types/cloudflare.d.ts
+src/config/db/migrations
+drizzle/
+
+# SQL and source files
+*.sql
+.source
+
+# Chat and AI related
+.chats/
+*.chat
+
+# Misc
+*.pem
