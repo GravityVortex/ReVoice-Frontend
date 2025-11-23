@@ -25,7 +25,7 @@ export default async function DocsContentPage(props: {
   return (
     <DocsPage
       toc={mdxData.toc}
-      full={page.data.full}
+      full={mdxData.full}
       tableOfContent={{
         style: 'clerk',
       }}
