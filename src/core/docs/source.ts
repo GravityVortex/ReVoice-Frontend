@@ -4,7 +4,6 @@ import { docs, pages, posts } from '@/.source';
 import type { I18nConfig } from 'fumadocs-core/i18n';
 import { loader } from 'fumadocs-core/source';
 import { icons } from 'lucide-react';
-import type { Source } from 'fumadocs-core/source';
 
 // Helper function to ensure toFumadocsSource returns correct structure
 function ensureSource(collection: any): any {

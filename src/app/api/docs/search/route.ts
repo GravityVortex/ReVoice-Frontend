@@ -5,8 +5,6 @@ import { createFromSource } from 'fumadocs-core/search/server';
 import { loader } from 'fumadocs-core/source';
 import { icons } from 'lucide-react';
 
-import { source as originalSource } from '@/core/docs/source';
-
 // Helper function to ensure toFumadocsSource returns correct structure
 function ensureSource(collection: any): any {
   const result = collection.toFumadocsSource();
