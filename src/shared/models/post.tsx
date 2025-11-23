@@ -211,8 +211,17 @@ export async function getLocalPost({
   }
 
   // Load the MDX content - fumadocs-mdx v11 requires calling load()
-  const mdxData = await (localPost.data as any).load();
-  const MDXContent = mdxData.body;
+  // Check if load() method exists, otherwise use data directly
+  let mdxData: any;
+  let MDXContent: any;
+  
+  if (typeof (localPost.data as any).load === 'function') {
+    mdxData = await (localPost.data as any).load();
+    MDXContent = mdxData.body;
+  } else {
+    mdxData = localPost.data;
+    MDXContent = (localPost.data as any).body;
+  }
   const body = (
     <MDXContent
       components={getMDXComponents({
@@ -261,8 +270,17 @@ export async function getLocalPage({
   }
 
   // Load the MDX content - fumadocs-mdx v11 requires calling load()
-  const mdxData = await (localPage.data as any).load();
-  const MDXContent = mdxData.body;
+  // Check if load() method exists, otherwise use data directly
+  let mdxData: any;
+  let MDXContent: any;
+  
+  if (typeof (localPage.data as any).load === 'function') {
+    mdxData = await (localPage.data as any).load();
+    MDXContent = mdxData.body;
+  } else {
+    mdxData = localPage.data;
+    MDXContent = (localPage.data as any).body;
+  }
   const body = (
     <MDXContent
       components={getMDXComponents({

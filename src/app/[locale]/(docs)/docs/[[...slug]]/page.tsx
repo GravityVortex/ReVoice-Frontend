@@ -19,8 +19,19 @@ export default async function DocsContentPage(props: {
   if (!page) notFound();
 
   // Load the MDX content - fumadocs-mdx v11 requires calling load()
-  const mdxData = await (page.data as any).load();
-  const MDXContent = mdxData.body;
+  // Check if load() method exists, otherwise use data directly
+  let mdxData: any;
+  let MDXContent: any;
+  
+  if (typeof (page.data as any).load === 'function') {
+    // If load() exists, call it
+    mdxData = await (page.data as any).load();
+    MDXContent = mdxData.body;
+  } else {
+    // Otherwise, use page.data directly (it might already be loaded)
+    mdxData = page.data;
+    MDXContent = (page.data as any).body;
+  }
 
   return (
     <DocsPage
