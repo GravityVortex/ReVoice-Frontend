@@ -41,7 +41,6 @@ yarn-error.log*
 lerna-debug.log*
 
 # Environment variables
-.env*
 .env
 .env.local
 .env.development
