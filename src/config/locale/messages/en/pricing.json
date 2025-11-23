@@ -137,10 +137,10 @@
           "i18n support"
         ],
         "interval": "month",
-        "amount": 8900,
+        "amount": 2900,
         "currency": "USD",
-        "price": "$89",
-        "original_price": "$99",
+        "price": "$29",
+        "original_price": "$49",
         "unit": "/ month",
         "is_featured": false,
         "tip": "Pay monthly. Build unlimited projects!",
@@ -149,7 +149,7 @@
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "starter-monthly",
+        "product_id": "prod_TNz3WUCRLsqg6l",
         "product_name": "ShipAny Boilerplate Starter Monthly",
         "credits": 100,
         "valid_days": 30,

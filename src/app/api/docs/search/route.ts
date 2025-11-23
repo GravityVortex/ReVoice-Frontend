@@ -7,6 +7,22 @@ import { icons } from 'lucide-react';
 
 import { source as originalSource } from '@/core/docs/source';
 
+// Helper function to ensure toFumadocsSource returns correct structure
+function ensureSource(collection: any): any {
+  const result = collection.toFumadocsSource();
+  
+  // In fumadocs-mdx v11, files is a function that returns the array
+  // We need to convert it to an actual array for fumadocs-core v15
+  if (typeof result.files === 'function') {
+    return {
+      ...result,
+      files: result.files(),
+    };
+  }
+  
+  return result;
+}
+
 // Create a modified i18n config that maps 'zh' to 'en' for Orama
 const searchI18n: I18nConfig = {
   defaultLanguage: 'en',
@@ -16,7 +32,8 @@ const searchI18n: I18nConfig = {
 // Create a separate source instance for search with only English language
 const searchSource = loader({
   baseUrl: '/docs',
-  source: docs.toFumadocsSource(),
+  // source: docs.toFumadocsSource(),
+  source: ensureSource(docs),
   i18n: searchI18n,
   icon(icon) {
     if (!icon) {

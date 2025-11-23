@@ -4,6 +4,23 @@ import { docs, pages, posts } from '@/.source';
 import type { I18nConfig } from 'fumadocs-core/i18n';
 import { loader } from 'fumadocs-core/source';
 import { icons } from 'lucide-react';
+import type { Source } from 'fumadocs-core/source';
+
+// Helper function to ensure toFumadocsSource returns correct structure
+function ensureSource(collection: any): any {
+  const result = collection.toFumadocsSource();
+  
+  // In fumadocs-mdx v11, files is a function that returns the array
+  // We need to convert it to an actual array for fumadocs-core v15
+  if (typeof result.files === 'function') {
+    return {
+      ...result,
+      files: result.files(),
+    };
+  }
+  
+  return result;
+}
 
 export const i18n: I18nConfig = {
   defaultLanguage: 'en',
@@ -21,7 +38,7 @@ const iconHelper = (icon: string | undefined) => {
 // Docs source
 export const docsSource = loader({
   baseUrl: '/docs',
-  source: docs.toFumadocsSource(),
+  source: ensureSource(docs),
   i18n,
   icon: iconHelper,
 });
@@ -29,7 +46,7 @@ export const docsSource = loader({
 // Pages source (using root path)
 export const pagesSource = loader({
   baseUrl: '/',
-  source: pages.toFumadocsSource(),
+  source: ensureSource(pages),
   i18n,
   icon: iconHelper,
 });
@@ -37,7 +54,7 @@ export const pagesSource = loader({
 // Posts source
 export const postsSource = loader({
   baseUrl: '/blog',
-  source: posts.toFumadocsSource(),
+  source: ensureSource(posts),
   i18n,
   icon: iconHelper,
 });
