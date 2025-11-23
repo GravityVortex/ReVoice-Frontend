@@ -210,7 +210,9 @@ export async function getLocalPost({
     return null;
   }
 
-  const MDXContent = localPost.data.body;
+  // Load the MDX content - fumadocs-mdx v11 requires calling load()
+  const mdxData = await (localPost.data as any).load();
+  const MDXContent = mdxData.body;
   const body = (
     <MDXContent
       components={getMDXComponents({
@@ -229,7 +231,7 @@ export async function getLocalPost({
     description: localPost.data.description || '',
     content: '',
     body: body,
-    toc: localPost.data.toc, // Use fumadocs auto-generated TOC
+    toc: mdxData.toc, // Use fumadocs auto-generated TOC
     created_at: frontmatter.created_at
       ? getPostDate({
           created_at: frontmatter.created_at,
@@ -258,7 +260,9 @@ export async function getLocalPage({
     return null;
   }
 
-  const MDXContent = localPage.data.body;
+  // Load the MDX content - fumadocs-mdx v11 requires calling load()
+  const mdxData = await (localPage.data as any).load();
+  const MDXContent = mdxData.body;
   const body = (
     <MDXContent
       components={getMDXComponents({
@@ -277,7 +281,7 @@ export async function getLocalPage({
     description: localPage.data.description || '',
     content: '',
     body: body,
-    toc: localPage.data.toc, // Use fumadocs auto-generated TOC
+    toc: mdxData.toc, // Use fumadocs auto-generated TOC
     created_at: frontmatter.created_at
       ? getPostDate({
           created_at: frontmatter.created_at,

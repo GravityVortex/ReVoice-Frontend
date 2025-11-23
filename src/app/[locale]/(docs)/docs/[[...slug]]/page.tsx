@@ -18,11 +18,13 @@ export default async function DocsContentPage(props: {
 
   if (!page) notFound();
 
-  const MDXContent = page.data.body;
+  // Load the MDX content - fumadocs-mdx v11 requires calling load()
+  const mdxData = await (page.data as any).load();
+  const MDXContent = mdxData.body;
 
   return (
     <DocsPage
-      toc={page.data.toc}
+      toc={mdxData.toc}
       full={page.data.full}
       tableOfContent={{
         style: 'clerk',
