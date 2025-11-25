@@ -21,6 +21,8 @@
     "email_sign_in": "使用邮箱登录",
     "google_sign_in_title": "使用 Google 登录",
     "github_sign_in_title": "使用 GitHub 登录",
+    "guest_sign_in_title": "访客试用",
+    "guest_sign_in_description": "无需注册，有效期7天",
     "close_title": "关闭",
     "cancel_title": "取消",
     "sign_out_title": "登出",

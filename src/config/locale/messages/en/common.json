@@ -21,6 +21,8 @@
     "email_sign_in": "Sign in with Email",
     "google_sign_in_title": "Sign in with Google",
     "github_sign_in_title": "Sign in with GitHub",
+    "guest_sign_in_title": "Try as Guest",
+    "guest_sign_in_description": "No registration required, valid for 7 days",
     "close_title": "Close",
     "cancel_title": "Cancel",
     "sign_out_title": "Sign Out",

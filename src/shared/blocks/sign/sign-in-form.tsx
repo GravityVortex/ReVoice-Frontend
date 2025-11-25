@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, UserRound } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
@@ -14,6 +14,10 @@ import { Label } from '@/shared/components/ui/label';
 import { useAppContext } from '@/shared/contexts/app';
 
 import { SocialProviders } from './social-providers';
+// 客户端工具
+import { generateFingerprint, getBrowserMetadata } from '@/shared/lib/fingerprint';
+// 服务端工具
+import { generateGuestId, generateGuestEmail, generateGuestPassword } from '@/shared/models/guest-user';
 
 export function SignInForm({
   callbackUrl = '/',
@@ -24,8 +28,8 @@ export function SignInForm({
 }) {
   const t = useTranslations('common.sign');
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  let [email, setEmail] = useState('');
+  let [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { configs } = useAppContext();
@@ -85,12 +89,92 @@ export function SignInForm({
       setLoading(false);
     }
   };
+  // 法二：调用better-auth的登录
+  const handleGuestLogin2 = async () => {
+    const fingerprint = await generateFingerprint();
+    const guestId = generateGuestId(fingerprint);
+    email = generateGuestEmail(guestId);
+    password = generateGuestPassword(guestId);
+    // const name = `Guest_${guestId.substring(0, 6)}`;
+    console.log('Guest login--->', { email, password });
+    
+    // setEmail(email);
+    // setPassword(password);
+    handleSignIn();
+  
+  };
+  // 法一：调用自己后台接口处理
+  const handleGuestLogin = async () => {
+    if (loading) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Generate device fingerprint
+      const fingerprint = await generateFingerprint();
+      const metadata = getBrowserMetadata();
+
+      // Call guest login API to get/create guest credentials
+      const response = await fetch('/api/auth/guest-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fingerprint,
+          metadata,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Guest login failed');
+      }
+
+      const result = await response.json();
+      
+      if (result.code !== 0) {
+        throw new Error(result.message || 'Guest login failed');
+      }
+
+      const { email, password } = result.data;
+
+      // Use standard better-auth signIn.email
+      await signIn.email(
+        {
+          email,
+          password,
+          callbackURL: callbackUrl,
+        },
+        {
+          onRequest: (ctx) => {
+            setLoading(true);
+          },
+          onResponse: (ctx) => {
+            setLoading(false);
+          },
+          onSuccess: (ctx) => {
+            toast.success('Guest login successful!');
+          },
+          onError: (e: any) => {
+            toast.error(e?.error?.message || 'Guest login failed');
+            setLoading(false);
+          },
+        }
+      );
+    } catch (e: any) {
+      toast.error(e.message || 'Guest login failed');
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={`w-full md:max-w-md ${className}`}>
       <div className="grid gap-4">
         {isEmailAuthEnabled && (
           <>
+            {/* 油箱输入框 */}
             <div className="grid gap-2">
               <Label htmlFor="email">{t('email_title')}</Label>
               <Input
@@ -112,7 +196,7 @@ export function SignInForm({
                 Forgot your password?
               </Link>
             </div> */}
-
+            {/* 密码输入框 */}
               <Input
                 id="password"
                 type="password"
@@ -155,6 +239,20 @@ export function SignInForm({
           loading={loading}
           setLoading={setLoading}
         />
+
+        {/* Guest Login Button */}
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          disabled={loading}
+          onClick={handleGuestLogin}
+        >
+          <UserRound className="h-4 w-4" />
+          <div className="flex flex-col items-start">
+            <span className="text-sm font-medium">{t('guest_sign_in_title')}</span>
+            <span className="text-xs text-muted-foreground">{t('guest_sign_in_description')}</span>
+          </div>
+        </Button>
       </div>
       {isEmailAuthEnabled && (
         <div className="flex w-full justify-center border-t py-4">
