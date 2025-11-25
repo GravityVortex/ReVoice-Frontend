@@ -18,6 +18,7 @@ import { SocialProviders } from './social-providers';
 import { generateFingerprint, getBrowserMetadata } from '@/shared/lib/fingerprint';
 // 服务端工具
 import { generateGuestId, generateGuestEmail, generateGuestPassword } from '@/shared/models/guest-user';
+import { cacheGet, cacheSet } from '@/shared/lib/cache';
 
 export function SignInForm({
   callbackUrl = '/',
@@ -76,7 +77,7 @@ export function SignInForm({
           onResponse: (ctx) => {
             setLoading(false);
           },
-          onSuccess: (ctx) => {},
+          onSuccess: (ctx) => { },
           onError: (e: any) => {
             toast.error(e?.error?.message || 'sign in failed');
             setLoading(false);
@@ -97,54 +98,67 @@ export function SignInForm({
     password = generateGuestPassword(guestId);
     // const name = `Guest_${guestId.substring(0, 6)}`;
     console.log('Guest login--->', { email, password });
-    
+
     // setEmail(email);
     // setPassword(password);
     handleSignIn();
-  
+
   };
   // 法一：调用自己后台接口处理
   const handleGuestLogin = async () => {
     if (loading) {
       return;
     }
-
     try {
       setLoading(true);
-      
-      // Generate device fingerprint
-      const fingerprint = await generateFingerprint();
-      const metadata = getBrowserMetadata();
+      let guestEmail = cacheGet('guest_email');
+      let guestPassword = cacheGet('guest_password');
+    console.log('Guest login--1--->', { guestEmail, guestPassword });
 
-      // Call guest login API to get/create guest credentials
-      const response = await fetch('/api/auth/guest-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fingerprint,
-          metadata,
-        }),
-      });
+      if (!guestEmail || !guestPassword) {
 
-      if (!response.ok) {
-        throw new Error('Guest login failed');
+        // Generate device fingerprint
+        const fingerprint = await generateFingerprint();
+        const metadata = getBrowserMetadata();
+
+        // Call guest login API to get/create guest credentials
+        const response = await fetch('/api/auth/guest-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fingerprint,
+            metadata,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Guest login failed');
+        }
+
+        const result = await response.json();
+
+        if (result.code !== 0) {
+          throw new Error(result.message || 'Guest login failed');
+        }
+
+        const { email, password } = result.data;
+        guestEmail = email;
+        guestPassword = password;
+        cacheSet('guest_email', email);
+        cacheSet('guest_password', password);
       }
 
-      const result = await response.json();
-      
-      if (result.code !== 0) {
-        throw new Error(result.message || 'Guest login failed');
+      if (!guestEmail || !guestPassword) {
+        throw new Error('Failed to obtain guest credentials');
       }
-
-      const { email, password } = result.data;
 
       // Use standard better-auth signIn.email
       await signIn.email(
         {
-          email,
-          password,
+          email: guestEmail,
+          password: guestPassword,
           callbackURL: callbackUrl,
         },
         {
@@ -196,7 +210,7 @@ export function SignInForm({
                 Forgot your password?
               </Link>
             </div> */}
-            {/* 密码输入框 */}
+              {/* 密码输入框 */}
               <Input
                 id="password"
                 type="password"
