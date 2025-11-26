@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { Button } from "@/shared/components/ui/button";
-import { Pagination } from "@/shared/components/ui/pagination";
+import { Pagination } from "@/shared/components/ui/pagination-client";
 // import { Pagination } from "@/shared/types/blocks/pagination";
 
 export default function VideoConvertPage() {

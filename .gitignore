@@ -134,3 +134,10 @@ drizzle/
 
 # Misc
 *.pem
+
+# 其他
+.env.development_xuww
+.env.development_suncong
+.gitignore
+*.md
+src/config/style/theme-my.css
