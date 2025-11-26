@@ -1,16 +1,16 @@
 {
-  "title": "活动",
+  "title": "视频转换",
   "nav": {
     "items": [
       {
-        "title": "AI 任务",
-        "url": "/activity/ai-tasks",
-        "icon": "RiTaskLine"
+        "title": "我的视频",
+        "url": "/video_convert/myVideoList",
+        "icon": "User"
       },
       {
-        "title": "AI 对话",
-        "url": "/activity/chats",
-        "icon": "RiChat2Line"
+        "title": "转换记录",
+        "url": "/video_convert/convertList",
+        "icon": "CreditCard"
       }
     ]
   },

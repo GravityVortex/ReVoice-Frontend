@@ -17,10 +17,11 @@ export default async function SettingsLayout({
   const nav = t.raw('nav');
 
   const topNav = t.raw('top_nav');
+  // const topNav = 'xxx';
 
   return (
     <ConsoleLayout
-      title={title}
+      // title={title}
       nav={nav}
       topNav={topNav}
       className="py-16 md:py-20"

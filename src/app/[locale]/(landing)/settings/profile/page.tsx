@@ -1,3 +1,4 @@
+// 个人资料页面
 import { getTranslations } from 'next-intl/server';
 
 import { Empty } from '@/shared/blocks/common';

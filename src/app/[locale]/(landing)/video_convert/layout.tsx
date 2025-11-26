@@ -3,12 +3,12 @@ import { getTranslations } from 'next-intl/server';
 
 import { ConsoleLayout } from '@/shared/blocks/console/layout';
 
-export default async function ActivityLayout({
+export default async function VideoConvertLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const t = await getTranslations('activity.sidebar');
+  const t = await getTranslations('video_convert.sidebar');
 
   // settings title
   const title = t('title');
@@ -17,6 +17,7 @@ export default async function ActivityLayout({
   const nav = t.raw('nav');
 
   const topNav = t.raw('top_nav');
+  // const topNav = 'xxx';
 
   return (
     <ConsoleLayout

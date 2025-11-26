@@ -47,4 +47,5 @@ export const localeMessagesPaths = [
   'activity/sidebar',
   'activity/ai-tasks',
   'activity/chats',
+  'video_convert/sidebar',
 ];

@@ -1,33 +1,33 @@
 {
-  "title": "活动",
+  "title": "Video Convert",
   "nav": {
     "items": [
       {
-        "title": "AI 任务",
-        "url": "/activity/ai-tasks",
-        "icon": "RiTaskLine"
+        "title": "My Videos",
+        "url": "/video_convert/myVideoList",
+        "icon": "User"
       },
       {
-        "title": "AI 对话",
-        "url": "/activity/chats",
-        "icon": "RiChat2Line"
+        "title": "History",
+        "url": "/video_convert/convertList",
+        "icon": "CreditCard"
       }
     ]
   },
   "top_nav": {
     "items": [
       {
-        "title": "活动",
+        "title": "Activity",
         "url": "/activity",
         "icon": "Activity"
       },
       {
-        "title": "设置",
+        "title": "Settings",
         "url": "/settings",
         "icon": "Settings"
       },
       {
-        "title": "视频转换",
+        "title": "Video Convert",
         "url": "/video_convert",
         "icon": "Video"
       }

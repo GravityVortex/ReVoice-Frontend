@@ -40,6 +40,11 @@
         "title": "设置",
         "url": "/settings",
         "icon": "Settings"
+      },
+      {
+        "title": "视频转换",
+        "url": "/video_convert",
+        "icon": "Video"
       }
     ]
   }

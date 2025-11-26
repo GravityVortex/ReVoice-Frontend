@@ -55,7 +55,8 @@ export function ConsoleLayout({
         </div>
       )}
 
-      {/* Page Header */}
+      {/* 显示头部标题 */}
+      {title && (
       <div className="border-border border-b">
         <div className="container">
           <div className="py-8">
@@ -63,6 +64,7 @@ export function ConsoleLayout({
           </div>
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="container">

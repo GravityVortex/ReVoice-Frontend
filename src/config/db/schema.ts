@@ -4,6 +4,7 @@ import {
   integer,
   pgTable,
   text,
+  varchar,
   timestamp,
 } from 'drizzle-orm/pg-core';
 
@@ -539,3 +540,24 @@ export const chatMessage = pgTable(
     index('idx_chat_message_user_id').on(table.userId, table.status),
   ]
 );
+
+// 视频转换表
+export const video_convert = pgTable("video_convert", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  uuid: varchar({ length: 255 }).notNull().unique(),
+  user_uuid: varchar({ length: 255 }),
+  title: varchar({ length: 255 }),
+  duration: varchar({ length: 50 }),
+  description: text(),
+  content: text(),
+  created_at: timestamp({ withTimezone: true }),
+  updated_at: timestamp({ withTimezone: true }),
+  status: varchar({ length: 50 }),
+  cover_url: varchar({ length: 255 }),
+  source_vdo_url: varchar({ length: 255 }),
+  result_vdo_url: varchar({ length: 255 }),
+  result_vdo_preview_url: varchar({ length: 255 }),
+  author_name: varchar({ length: 255 }),
+  author_avatar_url: varchar({ length: 255 }),
+  locale: varchar({ length: 50 }),
+});
