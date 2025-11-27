@@ -268,10 +268,10 @@ export function Header({ header }: { header: HeaderType }) {
           <div className="container">
             <div className="relative flex flex-wrap items-center justify-between lg:py-5">
               <div className="flex justify-between gap-8 max-lg:h-14 max-lg:w-full max-lg:border-b">
-                {/* Brand Logo */}
+                {/* 系统logo */}
                 {header.brand && <BrandLogo brand={header.brand} />}
 
-                {/* Desktop Navigation Menu */}
+                {/* 首行导航栏 */}
                 {isLarge && <NavMenu />}
                 {/* Hamburger menu button for mobile navigation */}
                 <button

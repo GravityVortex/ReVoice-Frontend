@@ -89,6 +89,11 @@ export function VideoList({
   const handlePlayVideo = (item: VideoListItem) => {
     onVideoPlay?.(item);
   };
+  // 点击标题跳转详情页
+  const handleTitleClick = (item: VideoListItem) => {
+    console.log("[VideoList] 点击标题，跳转到项目详情页，ID:", item.id);
+    router.push(`/${locale}/video_convert/project_detail/${item.id}`);
+  };
 
   return (
     <div className={cn("grid gap-6", colsClass, className)}>
@@ -98,6 +103,7 @@ export function VideoList({
           item={it}
           onEdit={() => handleEdit(it)}
           onPlay={() => handlePlayVideo(it)}
+          onTitleClick={() => handleTitleClick(it)}
         />
       ))}
     </div>
@@ -109,10 +115,12 @@ function VideoCard({
   item,
   onEdit,
   onPlay,
+  onTitleClick,
 }: {
   item: VideoListItem;
   onEdit: () => void;
   onPlay: () => void;
+  onTitleClick: () => void;
 }) {
   const { title, cover, status, duration, convertedAt } = item;
   const colors = statusColors[status];
@@ -184,13 +192,24 @@ function VideoCard({
           </div>
         </div>
 
-
+        {/* 右上角编辑按钮 */}
+          <button
+            type="button"
+            aria-label="edit"
+            onClick={onEdit}
+            className="absolute right-[3px] bottom-[3px] inline-flex size-8 items-center justify-center border bg-background/80 text-foreground/70 backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
+          >
+            <Edit className="size-4" />
+          </button>
       </div>
 
       {/* 信息区域 */}
-      <CardContent className="space-y-3 pt-4 pb-4 pl-3 pr-3 mt-[-20px]">
-        {/* 视频名称 */}
-        <div className="line-clamp-2 text-base font-semibold leading-snug">
+      <CardContent onClick={onTitleClick} className="space-y-3 pt-4 pb-4 pl-3 pr-3 mt-[-20px]">
+        {/* 视频名称 - 可点击 */}
+        <div
+          className="line-clamp-2 text-base font-semibold leading-snug cursor-pointer hover:text-primary transition-colors"
+          // onClick={onTitleClick}
+        >
           {title}
         </div>
 
@@ -212,15 +231,7 @@ function VideoCard({
             </div>
           )}
 
-          {/* 右上角编辑按钮 */}
-          <button
-            type="button"
-            aria-label="edit"
-            onClick={onEdit}
-            className="absolute right-[-5px] bottom-[-5px] inline-flex size-8 items-center justify-center border bg-background/80 text-foreground/70 backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
-          >
-            <Edit className="size-4" />
-          </button>
+          
         </div>
 
 

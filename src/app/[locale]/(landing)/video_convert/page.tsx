@@ -7,5 +7,5 @@ export default async function VideoConvertPage({
 }) {
   const { locale } = await params;
   console.log('VideoConvertPage-->', locale);
-  // redirect({ href: '/video_convert', locale });
+  redirect({ href: '/video_convert/myVideoList', locale });
 }

@@ -14,7 +14,7 @@ export default async function VideoConvertLayout({
   const title = t('title');
 
   // settings nav
-  const nav = t.raw('nav');
+  // const nav = t.raw('nav');
 
   const topNav = t.raw('top_nav');
   // const topNav = 'xxx';
@@ -22,9 +22,9 @@ export default async function VideoConvertLayout({
   return (
     <ConsoleLayout
       // title={title}
-      nav={nav}
+      // nav={nav}
       topNav={topNav}
-      className="py-16 md:py-20"
+      className="pt-16 md:pt-20"
     >
       {children}
     </ConsoleLayout>

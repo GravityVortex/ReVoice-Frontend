@@ -17,11 +17,6 @@
   "top_nav": {
     "items": [
       {
-        "title": "活动",
-        "url": "/activity",
-        "icon": "Activity"
-      },
-      {
         "title": "设置",
         "url": "/settings",
         "icon": "Settings"

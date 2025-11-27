@@ -166,10 +166,10 @@ export default function VideoConvertPage() {
   ];
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-0">
       <div className="mb-8 flex justify-between">
         <h1 className="text-3xl font-bold">我的视频转换</h1>
-        <Button className="mask-add" onClick={goAddClick}>上传</Button>
+        <Button className="mask-add color-" onClick={goAddClick}>上传</Button>
       </div>
 
       {/* 加载状态 */}

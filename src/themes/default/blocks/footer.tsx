@@ -1,3 +1,4 @@
+// 网页底部链接组件
 import { Link } from '@/core/i18n/navigation';
 import {
   BrandLogo,
@@ -17,11 +18,13 @@ export function Footer({ footer }: { footer: FooterType }) {
       className={`py-8 sm:py-8 ${footer.className || ''} overflow-x-hidden`}
       // overflow-x-hidden防止-footer-撑出水平滚动条
     >
-      <div className="container space-y-8 overflow-x-hidden">
-        <div className="grid min-w-0 gap-12 md:grid-cols-5">
+      <div className="container space-y-4 overflow-x-hidden">
+        {false && (
+          <div className="grid min-w-0 gap-12 md:grid-cols-5 ">
           <div className="min-w-0 space-y-4 break-words md:col-span-2 md:space-y-6">
+            {/* logo图片 */}
             {footer.brand ? <BrandLogo brand={footer.brand} /> : null}
-
+            {/* logo图片下描述 */}
             {footer.brand?.description ? (
               <p
                 className="text-muted-foreground text-sm text-balance break-words"
@@ -52,22 +55,25 @@ export function Footer({ footer }: { footer: FooterType }) {
               </div>
             ))}
           </div>
-        </div>
+        </div>)}
 
-        <div className="flex min-w-0 flex-wrap items-center gap-4 sm:gap-8">
-          {footer.show_built_with !== false ? <BuiltWith /> : null}
-          <div className="min-w-0 flex-1" />
-          {footer.show_theme !== false ? <ThemeToggler type="toggle" /> : null}
+        <div  className="flex min-w-0 flex-wrap items-center gap-4 sm:gap-8">
+          {/* {footer.show_built_with !== false ? <BuiltWith /> : null} */}
+          {/* <div className="min-w-0 flex-1" /> */}
+          {/* {footer.show_theme !== false ? <ThemeToggler type="toggle" /> : null}
           {footer.show_locale !== false ? (
             <LocaleSelector type="button" />
-          ) : null}
+          ) : null} */}
         </div>
 
+        {/* 分隔虚线 */}
         <div
           aria-hidden
           className="h-px min-w-0 [background-image:linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] bg-[length:6px_1px] bg-repeat-x opacity-25"
         />
         <div className="flex min-w-0 flex-wrap justify-between gap-8">
+
+          {/* 版权 */}
           {footer.copyright ? (
             <p
               className="text-muted-foreground text-sm text-balance break-words"
@@ -79,6 +85,7 @@ export function Footer({ footer }: { footer: FooterType }) {
 
           <div className="min-w-0 flex-1"></div>
 
+          {/* 隐私政策 */}
           {footer.agreement ? (
             <div className="flex min-w-0 flex-wrap items-center gap-4">
               {footer.agreement?.items.map((item: NavItem, index: number) => (
@@ -94,6 +101,7 @@ export function Footer({ footer }: { footer: FooterType }) {
             </div>
           ) : null}
 
+          {/* 社交 */}
           {footer.social ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {footer.social?.items.map((item: NavItem, index) => (
@@ -110,6 +118,14 @@ export function Footer({ footer }: { footer: FooterType }) {
               ))}
             </div>
           ) : null}
+
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {footer.show_theme !== false ? <ThemeToggler type="toggle" /> : null}
+            {footer.show_locale !== false ? (
+              <LocaleSelector type="button" />
+            ) : null}
+          </div>
+
         </div>
       </div>
     </footer>

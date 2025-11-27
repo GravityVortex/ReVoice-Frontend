@@ -29,7 +29,7 @@ export function ConsoleLayout({
 
   return (
     <div className={`bg-background min-h-screen ${className}`}>
-      {/* Top Navigation */}
+      {/* 顶部tab */}
       {topNav && (
         <div className="border-border border-b">
           <div className="container">
@@ -69,8 +69,8 @@ export function ConsoleLayout({
       {/* Main Content */}
       <div className="container">
         <div className="flex gap-8 py-8">
-          {/* Left Sidebar */}
-          <div className="w-64 flex-shrink-0">
+          {/* 左侧菜单*/}
+          {filteredItems && (<div className="w-64 flex-shrink-0">
             {/* Search Box */}
             {/* <div className="relative mb-6">
               <SmartIcon
@@ -106,7 +106,7 @@ export function ConsoleLayout({
                 </Link>
               ))}
             </nav>
-          </div>
+          </div>)}
 
           {/* Right Content Area */}
           <div className="min-w-0 flex-1">{children}</div>

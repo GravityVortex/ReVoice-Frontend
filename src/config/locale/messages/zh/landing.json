@@ -2,10 +2,10 @@
   "header": {
     "id": "header",
     "brand": {
-      "title": "ShipAny Two",
+      "title": "这声",
       "logo": {
         "src": "/logo.png",
-        "alt": "ShipAny Two"
+        "alt": "这声"
       },
       "url": "/"
     },
@@ -68,6 +68,11 @@
       "show_credits": true,
       "show_sign_out": true,
       "items": [
+        {
+          "title": "视频",
+          "url": "/video_convert/myVideoList",
+          "icon": "Video"
+        },
         {
           "title": "账单",
           "url": "/settings/billing",
@@ -476,12 +481,13 @@
   },
   "footer": {
     "id": "footer",
+    "className": "py-18",
     "brand": {
-      "title": "ShipAny Two",
+      "title": "这声",
       "description": "ShipAny 是专为 AI SaaS 创业项目打造的 NextJS 模板。丰富模板与组件，极速交付你的产品。",
       "logo": {
         "src": "/logo.png",
-        "alt": "ShipAny Two"
+        "alt": "这声"
       },
       "url": "/"
     },

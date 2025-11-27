@@ -20,9 +20,9 @@ export function Copyright({ brand }: { brand: BrandType }) {
         target={brand?.target || ''}
         className="text-primary hover:text-primary/80 cursor-pointer"
       >
-        {brand?.title || envConfigs.app_name}
+        【{brand?.title || envConfigs.app_name}】
       </a>
-      , All rights reserved
+      , 版权所有
     </div>
   );
 }

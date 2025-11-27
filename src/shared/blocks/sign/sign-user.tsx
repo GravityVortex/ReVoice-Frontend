@@ -58,6 +58,7 @@ export function SignUser({
               variant="ghost"
               className="relative h-10 w-10 rounded-full p-0"
             >
+              {/* 登录后的头像 */}
               <Avatar>
                 <AvatarImage src={user.image || ''} alt={user.name || ''} />
                 <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
