@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -24,17 +24,16 @@ import {
   ChevronDown,
   Video,
   Settings,
-  FileText,
   Share2,
+  ListOrdered,
   Trash2,
   Home,
   Play,
   Edit,
   Download,
 } from "lucide-react";
-import { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
-import { fa } from "zod/v4/locales";
+import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 
 // 视频详情数据类型
 interface VideoDetail {
@@ -60,7 +59,7 @@ interface VideoDetail {
 // 侧边栏菜单项
 const menuItems = [
   { icon: Video, label: "转换视频列表", id: "list" },
-  { icon: Video, label: "转换视频进度", id: "progress" },
+  { icon: ListOrdered, label: "转换视频进度", id: "progress" },
   { icon: Settings, label: "新建语种转换", id: "create" },
   // { icon: FileText, label: "详细信息", id: "details" },
   { icon: Share2, label: "基本信息编辑", id: "edit" },
@@ -68,9 +67,7 @@ const menuItems = [
   { icon: Trash2, label: "删除", id: "delete" },
 ];
 // 测试用视频列表数据
-let sonVideoList: any = [
-
-];
+let sonVideoList: any = [];
 
 // 状态映射
 const statusMap: Record<string, { label: string; color: string }> = {
@@ -84,7 +81,8 @@ export default function ProjectDetailPage() {
   const id = params.id as string;
   const locale = (params.locale as string) || "zh";
 
-  const [activeMenu, setActiveMenu] = useState("preview");
+  const [activeMenu, setActiveMenu] = useState("list");
+  const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   // const [isExpanded, setIsExpanded] = useState(false);
   const [videoDetail, setVideoDetail] = useState<VideoDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +92,7 @@ export default function ProjectDetailPage() {
   const [playVideoTitle, setPlayVideoTitle] = useState<string>("");
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+  const [converId, setConvertId] = useState<string>(id);
 
   // const expandedMap: Record<string, boolean> = {
   //   // "id_row_0": true,
@@ -111,11 +110,14 @@ export default function ProjectDetailPage() {
     setPlayVideo("");
   };
   const handlMenuClick = (item: any) => {
-    setActiveMenu(item.id);
     console.log("[ProjectDetailPage] 点击菜单:", item.label);
     switch (item.id) {
+      case "list":
+        setActiveMenu("list");
+        break;
       case "progress":
-        // handlePlayVideo(videoDetail?.source_vdo_url || "", videoDetail?.title || "");
+        // 打开进度弹框
+        setIsProgressDialogOpen(true);
         break;
       case "create":
         onDevelopClick();
@@ -142,7 +144,7 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     // 隐藏 body 滚动条
     document.body.style.overflow = 'hidden';
-    
+
     return () => {
       // 组件卸载时恢复滚动
       document.body.style.overflow = '';
@@ -177,8 +179,8 @@ export default function ProjectDetailPage() {
         // 初始化测试用子视频列表数据
         sonVideoList = [];
         // 初始化可折叠状态
-        sonVideoList.push({id:0});
-        sonVideoList.push({id:1});
+        sonVideoList.push({ id: 0 });
+        sonVideoList.push({ id: 1 });
         // 创建新对象来触发状态更新
         setExpandedMap({
           "id_row_0": true,
@@ -420,12 +422,13 @@ export default function ProjectDetailPage() {
 
         {/* 右侧内容区域 */}
         <main className="flex-1 overflow-auto p-6">
+          {/* 转换视频列表页面 */}
           {sonVideoList.map((video: any, index: number) => (
             <div key={index}>
               {/* 可折叠卡片 isExpanded*/}
-              <Collapsible 
-                id={`row_id_${index}`} 
-                open={expandedMap[`id_row_${index}`]} 
+              <Collapsible
+                id={`row_id_${index}`}
+                open={expandedMap[`id_row_${index}`]}
                 onOpenChange={() => {
                   const key = `id_row_${index}`;
                   // 创建新对象来触发状态更新
@@ -530,9 +533,14 @@ export default function ProjectDetailPage() {
                                 <Share2 className="size-4" />
                                 分享
                               </Button>
-                              <Button variant="outline" size="sm">
-                                <Edit className="size-4" />
-                                编辑
+                              <Button variant="outline" size="sm" onClick={(e) => {
+                                e.stopPropagation();
+                                // setConvertId(videoDetail?.id.toString() || "");
+                                setConvertId("convert_" + index);
+                                setIsProgressDialogOpen(true);
+                              }}>
+                                <ListOrdered className="size-4" />
+                                进度
                               </Button>
                               <Button variant="destructive" size="sm">
                                 <Trash2 className="size-4" />
@@ -546,7 +554,7 @@ export default function ProjectDetailPage() {
 
                     {/* 展开时显示的详细信息 */}
                     <CollapsibleContent className="overflow-hidden transition-all data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-                    {/* <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"> */}
+                      {/* <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"> */}
                       <div className="border-t pt-4 mt-4 space-y-4">
                         <h4 className="font-semibold text-sm text-muted-foreground">
                           详细信息
@@ -674,6 +682,13 @@ export default function ProjectDetailPage() {
           title={playVideoTitle}
         />
       )}
+
+      {/* 转换进度弹框 */}
+      <ConversionProgressModal
+        isOpen={isProgressDialogOpen}
+        onClose={() => setIsProgressDialogOpen(false)}
+        convertId={converId}
+      />
     </div>
   );
 }

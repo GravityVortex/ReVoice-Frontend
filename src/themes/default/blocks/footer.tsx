@@ -23,14 +23,14 @@ export function Footer({ footer }: { footer: FooterType }) {
           <div className="grid min-w-0 gap-12 md:grid-cols-5 ">
           <div className="min-w-0 space-y-4 break-words md:col-span-2 md:space-y-6">
             {/* logo图片 */}
-            {footer.brand ? <BrandLogo brand={footer.brand} /> : null}
+            {footer.brand && <BrandLogo brand={footer.brand!} />}
             {/* logo图片下描述 */}
-            {footer.brand?.description ? (
+            {footer.brand?.description && (
               <p
                 className="text-muted-foreground text-sm text-balance break-words"
-                dangerouslySetInnerHTML={{ __html: footer.brand.description }}
+                dangerouslySetInnerHTML={{ __html: footer.brand!.description! }}
               />
-            ) : null}
+            )}
           </div>
 
           <div className="col-span-3 grid min-w-0 gap-6 sm:grid-cols-3">
