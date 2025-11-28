@@ -1,3 +1,4 @@
+// 控制台布局组件
 'use client';
 
 import { ReactNode, useState } from 'react';

@@ -481,7 +481,6 @@
   },
   "footer": {
     "id": "footer",
-    "className": "py-18",
     "brand": {
       "title": "这声",
       "description": "ShipAny 是专为 AI SaaS 创业项目打造的 NextJS 模板。丰富模板与组件，极速交付你的产品。",
