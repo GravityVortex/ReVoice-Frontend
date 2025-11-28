@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/shared/lib/utils';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
@@ -27,17 +28,22 @@ interface ProgressLog {
 
 interface ConversionProgressModalProps {
     isOpen: boolean;
+    activeTabIdx: string;
     onClose: () => void;
     convertId: string;
 }
 
 export function ConversionProgressModal({
     isOpen,
+    activeTabIdx,
     onClose,
     convertId,
 }: ConversionProgressModalProps) {
-    const [activeTab, setActiveTab] = useState('overview');
+    console.log('ConversionProgressModal activeTabIdx--->', activeTabIdx);
+    const [activeTab, setActiveTab] = useState(activeTabIdx === '1' ? 'logs' : 'overview');
     const [loading, setLoading] = useState(false);
+    // 记住状态变更之前的值，不是响应式，不会随着组件的更新而更新。
+    const prevConvertIdRef = useRef<string | null>(null);
     const [progressData, setProgressData] = useState<{
         progress: number;
         completed: number;
@@ -55,18 +61,35 @@ export function ConversionProgressModal({
         };
     } | null>(null);
 
-    // 模拟请求获取转换进度数据
+    // 根据 activeTabIdx 切换 tab
+    // useEffect: 进行副作用执行，例如在组件加载或者在组件更新的时候执行一些函数
+    useEffect(() => {
+        if (activeTabIdx === '1') {
+            setActiveTab('logs');
+        } else if (activeTabIdx === '0') {
+            setActiveTab('overview');
+        }
+    }, [activeTabIdx]);
+
+    // 模拟请求获取转换进度数据 - 只在 convertId 变化时请求
     useEffect(() => {
         if (isOpen && convertId) {
+            // 检查 convertId 是否与上次相同
+            if (prevConvertIdRef.current === convertId) {
+                console.warn('convertId 未变化，跳过接口请求--->', convertId);
+                return;
+            }
+            
+            // 更新 prevConvertId
+            prevConvertIdRef.current = convertId;
             fetchConversionProgress();
         }
     }, [isOpen, convertId]);
 
+    // 模拟 API 请求函数
     const fetchConversionProgress = async () => {
         setLoading(true);
-
-        console.log('转换进度 convertId--->', convertId);
-
+        console.warn('模拟接口请求convertId--->', convertId);
         // 模拟 API 请求延迟
         await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -173,6 +196,10 @@ export function ConversionProgressModal({
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
                         <DialogTitle>转换进度【{progressData?.taskInfo?.name}】转换{progressData?.taskInfo?.targetLanguage}</DialogTitle>
+                        {/* 省略则警告：Warning: Missing Description or aria-describedby={undefined} for {DialogContent} */}
+                        <DialogDescription className="sr-only">
+                            查看视频转换的详细进度信息和日志
+                        </DialogDescription>
                         <TabsList className="mt-5 grid w-2/3 grid-cols-2 mx-auto">
                             <TabsTrigger value="overview">转换概览</TabsTrigger>
                             <TabsTrigger value="logs">进度日志</TabsTrigger>
