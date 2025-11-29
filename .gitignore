@@ -145,4 +145,8 @@ src/config/style/theme-my.css
 
 finger_chrome.txt
 finger_safari.txt
-/src/app/[locale]/(landing)/video_convert/project_detail/[id]/page-bak.tsx
+**/*.tsx.bak
+
+
+
+
