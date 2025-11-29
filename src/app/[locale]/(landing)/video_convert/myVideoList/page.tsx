@@ -161,6 +161,7 @@ export default function VideoConvertPage() {
       status: "success",
       duration: "5:23",
       convertedAt: "2025-11-15 14:30",
+      videoSize: 52300000,
     },
   ];
   

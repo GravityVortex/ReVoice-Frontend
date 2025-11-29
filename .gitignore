@@ -139,9 +139,11 @@ drizzle/
 .env.development_xuww
 .env.development_suncong
 .gitignore
-content/docs/*.md
+
 src/config/style/theme-my.css
 
+content/docs/*.md
+_mydocs/*.md
 
 finger_chrome.txt
 finger_safari.txt

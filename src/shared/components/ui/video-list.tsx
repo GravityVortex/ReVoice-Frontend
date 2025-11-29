@@ -16,6 +16,7 @@ export interface VideoListItem {
   duration?: string; // 视频时长，例如："5:23"
   convertedAt?: string; // 转换时间，例如："2024-01-15 14:30"
   createdAt?: string; // 创建时间
+  videoSize: number; // 视频大小，单位B
 }
 
 export interface VideoListProps {
