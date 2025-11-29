@@ -11,17 +11,30 @@ import {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { fingerprint } = body;
+    const { visitorId, fingerprint, metadata } = body;
 
-    if (!fingerprint) {
-      return respErr('fingerprint is required');
+    // 优先使用 visitorId，向后兼容 fingerprint
+    const deviceId = visitorId || fingerprint;
+
+    if (!deviceId) {
+      return respErr('visitorId or fingerprint is required');
     }
 
-    const guestId = generateGuestId(fingerprint);
+    const guestId = generateGuestId(deviceId);
     const email = generateGuestEmail(guestId);
     const password = generateGuestPassword(guestId);
     const name = `Guest_${guestId.substring(0, 6)}`;
-    console.log('Guest login--->', { email, password, name });
+    
+    console.log('Guest login--->', { 
+      visitorId: deviceId, 
+      email, 
+      password, 
+      name,
+      metadata: metadata ? {
+        userAgent: metadata.userAgent,
+        language: metadata.language,
+      } : null
+    });
 
     const auth = await getAuth();
     

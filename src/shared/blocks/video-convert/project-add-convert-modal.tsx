@@ -57,6 +57,7 @@ interface VideoUploadData {
     videoUrl: string;
     videoKey: string;
     videoSize: number;
+    videoDuration: number;
     thumbnailUrl?: string;
 }
 
@@ -74,6 +75,8 @@ interface ProjectAddConvertModalProps {
 }
 
 const STORAGE_KEY = 'project_add_convert_form_cache';
+const MAX_SIZE = 300 * 1024 * 1024; // 300MB
+
 
 export function ProjectAddConvertModal({
     isOpen,
@@ -86,7 +89,7 @@ export function ProjectAddConvertModal({
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // 视频时长数据（分钟）
-    const [videoDuration, setVideoDuration] = useState(0);
+    // const [videoDuration, setVideoDuration] = useState(0);
     // 视频上传状态
     const [uploading, setUploading] = useState(false);
 
@@ -98,12 +101,13 @@ export function ProjectAddConvertModal({
             videoUrl: '',
             videoKey: '',
             videoSize: 0,
+            videoDuration: 0,
             thumbnailUrl: '',
         },
-        targetLanguage: '',
-        resolution: '480p',
-        watermark: 'none',
-        remark: '',
+        targetLanguage: '',// 目标语言
+        resolution: '480p',// 分辨率
+        watermark: 'none',// 水印
+        remark: '',// 转换备注
     });
 
 
@@ -116,13 +120,13 @@ export function ProjectAddConvertModal({
                     const parsedData = JSON.parse(cached);
                     setFormData(parsedData);
                     // 如果有缓存的视频时长，恢复它
-                    if (parsedData.videoUpload?.videoUrl) {
-                        // 从缓存的视频时长中恢复
-                        const cachedDuration = localStorage.getItem(`${STORAGE_KEY}_duration`);
-                        if (cachedDuration) {
-                            setVideoDuration(parseFloat(cachedDuration));
-                        }
-                    }
+                    // if (parsedData.videoUpload?.videoUrl) {
+                    //     // 从缓存的视频时长中恢复
+                    //     const cachedDuration = localStorage.getItem(`${STORAGE_KEY}_duration`);
+                    //     if (cachedDuration) {
+                    //         setVideoDuration(parseFloat(cachedDuration));
+                    //     }
+                    // }
                     console.log('从缓存加载表单数据:', parsedData);
                 } catch (e) {
                     console.error('解析缓存数据失败:', e);
@@ -135,19 +139,19 @@ export function ProjectAddConvertModal({
     const calculateCredits = () => {
         const resolutionCredits = RESOLUTIONS.find(r => r.value === formData.resolution)?.credits || 0;
         const watermarkCredits = WATERMARK_OPTIONS.find(w => w.value === formData.watermark)?.credits || 0;
-        const durationCredits = videoDuration * 2; // 1分钟2积分
+        const durationCredits = formData.videoUpload.videoDuration * 2; // 1分钟2积分
         return resolutionCredits + watermarkCredits + durationCredits;
     };
 
     // 获取时长积分
     const getDurationCredits = () => {
-        return videoDuration * 2;
+        return formData.videoUpload.videoDuration * 2;
     };
 
     // 保存到本地缓存
     const saveToCache = () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-        localStorage.setItem(`${STORAGE_KEY}_duration`, videoDuration.toString());
+        // localStorage.setItem(`${STORAGE_KEY}_duration`, videoDuration.toString());
         console.log('表单数据已缓存');
     };
 
@@ -158,20 +162,51 @@ export function ProjectAddConvertModal({
         console.log('缓存已清除');
     };
 
+    const resetFormData = () => {
+        setFormData({
+            videoUpload: {
+                title: '',
+                content: '',
+                videoUrl: '',
+                videoKey: '',
+                videoSize: 0,
+                videoDuration: 0,
+                thumbnailUrl: '',
+            },
+            targetLanguage: '',
+            resolution: '480p',
+            watermark: 'none',
+            remark: '',
+        });
+    };
+
     // 处理视频文件选择
     const handleVideoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
+        if (!file) {
+            resetVideoData(false);
+            return;
+        }
 
         // 验证文件类型
         if (!file.type.startsWith('video/')) {
             toast.error('请选择视频文件');
+            resetVideoData(false);
+            return;
+        }
+
+        // 类型与后缀双重判断
+        const isMp4 = file.type === "video/mp4" || file.name.toLowerCase().endsWith(".mp4");
+        if (!isMp4) {
+            toast.error("仅支持 .mp4 文件");
+            resetVideoData(false);
             return;
         }
 
         // 验证文件大小（500MB）
         const maxSize = 500 * 1024 * 1024;
         if (file.size > maxSize) {
+            resetVideoData(false);
             toast.error('视频文件不能超过 500MB');
             return;
         }
@@ -188,11 +223,13 @@ export function ProjectAddConvertModal({
             });
 
             if (!response.ok) {
+                resetVideoData(false);
                 throw new Error('上传失败');
             }
 
             const result = await response.json();
             if (result.code !== 0) {
+                resetVideoData(false);
                 throw new Error(result.message || '上传失败');
             }
 
@@ -206,13 +243,27 @@ export function ProjectAddConvertModal({
             video.src = videoUrl;
 
             video.onloadedmetadata = () => {
-                const durationInMinutes = Math.ceil(video.duration / 60);
-                setVideoDuration(durationInMinutes);
-                URL.revokeObjectURL(video.src);
-                console.log('视频时长（分钟）:', durationInMinutes);
+                // const durationInMinutes = Math.ceil(video.duration / 60);
+                // setVideoDuration(durationInMinutes);
+                // URL.revokeObjectURL(video.src);
+                // console.log('视频时长（分钟）:', durationInMinutes);
+
+                window.URL.revokeObjectURL(video.src);
+                const videoDuration = video.duration;// 单位秒
+                // 保留1位小数
+                const formattedDuration = Math.round(videoDuration * 10) / 10;
+                // 更新表单项
+                setFormData(prev => ({
+                    ...prev,
+                    videoUpload: {
+                        ...prev.videoUpload,
+                        videoDuration: formattedDuration,
+                    },
+                }));
+                console.log('视频时长--->', formattedDuration, '秒');
             };
 
-            // 尝试截取封面（可选功能）
+            // 尝试截取封面（可能失败）
             video.currentTime = 1; // 截取第1秒的画面
             video.onseeked = () => {
                 try {
@@ -236,6 +287,7 @@ export function ProjectAddConvertModal({
                 }
             };
 
+            // 更新表单项
             setFormData(prev => ({
                 ...prev,
                 videoUpload: {
@@ -245,7 +297,6 @@ export function ProjectAddConvertModal({
                     videoSize,
                 },
             }));
-
             toast.success('视频上传成功');
         } catch (error: any) {
             console.error('视频上传失败:', error);
@@ -258,8 +309,13 @@ export function ProjectAddConvertModal({
         }
     };
 
+
+    const resetVideoDataClick = (e: any, showTip = true) => {
+        resetVideoData(showTip);
+    };
+
     // 删除视频
-    const handleDeleteVideo = () => {
+    const resetVideoData = (showTip = true) => {
         setFormData(prev => ({
             ...prev,
             videoUpload: {
@@ -268,14 +324,12 @@ export function ProjectAddConvertModal({
                 videoUrl: '',
                 videoKey: '',
                 videoSize: 0,
+                videoDuration: 0,
                 thumbnailUrl: '',
             },
         }));
-        setVideoDuration(0);
-        toast.success('视频已删除');
+        showTip && toast.success('视频已删除');
     };
-
-
 
     // 处理取消
     const handleCancel = () => {
@@ -319,48 +373,68 @@ export function ProjectAddConvertModal({
 
     // 处理提交
     const handleSubmit = async () => {
-        
+
         setSubmitting(true);
+
+        const payload = {
+            // userId: user?.id || '',
+            targetLanguage: formData.targetLanguage,
+            resolution: formData.resolution,
+            watermark: formData.watermark,
+            remark: formData.remark,
+            credits: calculateCredits(),
+        };
+
+        const fd = new FormData();
+        fd.append("prefix", "video-convert"); // 可选：自定义存储前缀
+        fd.append("user_uuid", user?.id || "");
+        fd.append("title", formData.videoUpload.title);
+        // fd.append("description", description);
+        fd.append("content", formData.videoUpload.content); // 可以添加更多内容字段
+        fd.append("source_vdo_url", formData.videoUpload.videoUrl); // 视频R2地址
+        fd.append("videoSize", "" + formData.videoUpload.videoSize); // 视频大小
+        fd.append("duration", "" + formData.videoUpload.videoDuration);
         try {
-            const payload = {
-                userId: user?.id || '',
-                targetLanguage: formData.targetLanguage,
-                resolution: formData.resolution,
-                watermark: formData.watermark,
-                remark: formData.remark,
-                credits: calculateCredits(),
-            };
+            //const res = await fetch("/api/demo/upload-file", {
+            const res = await fetch("/api/video-convert/add-withvideourl", {
+                method: "POST",
+                body: fd,
+            });
+            const data = await res.json();
+            console.log('backJO--->', data);
+            if (data?.code === 0) {
+                // 成功后清除缓存
+                clearCache();
+
+                // 重置表单
+                resetFormData();
+                setCurrentStep(1);
+
+                alert('转换任务已创建！');
+                onClose();
+            } else {
+                console.error('提交失败:', data);
+            }
+        } catch (e) {
+            console.error('提交失败--->', e);
+
+        } finally {
+            setSubmitting(false);
+
+        }
+
+
+        try {
+
 
             console.log('提交转换任务:', payload);
 
             // 模拟 API 请求
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            // 成功后清除缓存
-            clearCache();
 
-            // 重置表单
-            setFormData({
-                videoUpload: {
-                    title: '',
-                    content: '',
-                    videoUrl: '',
-                    videoKey: '',
-                    videoSize: 0,
-                    thumbnailUrl: '',
-                },
-                targetLanguage: '',
-                resolution: '480p',
-                watermark: 'none',
-                remark: '',
-            });
-            setVideoDuration(0);
-            setCurrentStep(1);
-
-            alert('转换任务已创建！');
-            onClose();
         } catch (error) {
-            console.error('提交失败:', error);
+
             alert('提交失败，请重试');
         } finally {
             setSubmitting(false);
@@ -494,8 +568,9 @@ export function ProjectAddConvertModal({
                                         onChange={handleVideoSelect}
                                         className="hidden"
                                     />
-                                    
+
                                     {!formData.videoUpload.videoUrl ? (
+                                        // onChange={onFileChange}
                                         <button
                                             type="button"
                                             onClick={() => videoInputRef.current?.click()}
@@ -523,13 +598,13 @@ export function ProjectAddConvertModal({
                                                 size="icon"
                                                 variant="destructive"
                                                 className="absolute top-2 right-2"
-                                                onClick={handleDeleteVideo}
+                                                onClick={resetVideoDataClick}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                             <div className="mt-2 text-sm text-muted-foreground">
                                                 文件大小: {(formData.videoUpload.videoSize / 1024 / 1024).toFixed(2)} MB
-                                                {videoDuration > 0 && ` | 时长: ${videoDuration} 分钟`}
+                                                {formData.videoUpload.videoDuration > 0 && ` | 时长: ${formData.videoUpload.videoDuration} 分钟`}
                                             </div>
                                         </div>
                                     )}
@@ -581,7 +656,7 @@ export function ProjectAddConvertModal({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground">
-                                            {videoDuration > 0 ? `${videoDuration} 分钟` : '加载中...'}
+                                            {formData.videoUpload.videoDuration > 0 ? `${formData.videoUpload.videoDuration} 分钟` : '加载中...'}
                                         </span>
                                         {/* <ChevronRight className="w-5 h-5 text-muted-foreground" /> */}
                                     </div>
@@ -676,7 +751,7 @@ export function ProjectAddConvertModal({
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-sm text-muted-foreground">视频时长</p>
-                                            <p className="font-semibold">{videoDuration} 分钟</p>
+                                            <p className="font-semibold">{formData.videoUpload.videoDuration} 分钟</p>
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-sm text-muted-foreground">目标语言</p>

@@ -139,5 +139,10 @@ drizzle/
 .env.development_xuww
 .env.development_suncong
 .gitignore
-*.md
+content/docs/*.md
 src/config/style/theme-my.css
+
+
+finger_chrome.txt
+finger_safari.txt
+/src/app/[locale]/(landing)/video_convert/project_detail/[id]/page-bak.tsx

@@ -15,7 +15,7 @@ import { useAppContext } from '@/shared/contexts/app';
 
 import { SocialProviders } from './social-providers';
 // 客户端工具
-import { generateFingerprint, getBrowserMetadata } from '@/shared/lib/fingerprint';
+import { generateFingerprint, generateVisitorId, getVisitorInfo } from '@/shared/lib/fingerprint';
 // 服务端工具
 import { generateGuestId, generateGuestEmail, generateGuestPassword } from '@/shared/models/guest-user';
 import { cacheGet, cacheSet } from '@/shared/lib/cache';
@@ -104,6 +104,7 @@ export function SignInForm({
     handleSignIn();
 
   };
+  // 访客登录 - 使用稳定的跨浏览器访客 ID
   // 法一：调用自己后台接口处理
   const handleGuestLogin = async () => {
     if (loading) {
@@ -113,23 +114,27 @@ export function SignInForm({
       setLoading(true);
       let guestEmail = cacheGet('guest_email');
       let guestPassword = cacheGet('guest_password');
-    console.log('Guest login--1--->', { guestEmail, guestPassword });
+      console.log('Guest login--1--->', { guestEmail, guestPassword });
 
       if (!guestEmail || !guestPassword) {
+        // 生成稳定的访客 ID（基于硬件指纹，跨浏览器一致）
+        const visitorId = await generateVisitorId();
+        const visitorInfo = await getVisitorInfo();
+        
+        console.log('Generated visitor ID (hardware-based):', visitorId);
+        console.log('Visitor components:', visitorInfo.metadata);
 
-        // Generate device fingerprint
-        const fingerprint = await generateFingerprint();
-        const metadata = getBrowserMetadata();
-
-        // Call guest login API to get/create guest credentials
+        // 调用访客登录 API 获取/创建访客凭证
+        // 硬件指纹在同一台电脑的不同浏览器上是一致的
         const response = await fetch('/api/auth/guest-login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            fingerprint,
-            metadata,
+            visitorId: visitorId,
+            fingerprint: visitorId, // 向后兼容
+            metadata: visitorInfo.metadata,
           }),
         });
 
@@ -154,7 +159,7 @@ export function SignInForm({
         throw new Error('Failed to obtain guest credentials');
       }
 
-      // Use standard better-auth signIn.email
+      // 使用标准 better-auth 登录
       await signIn.email(
         {
           email: guestEmail,
