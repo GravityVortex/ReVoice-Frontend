@@ -9,10 +9,11 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || '1');
     const limit = parseInt(searchParams.get("limit") || '20');
+    const userId = searchParams.get("userId") || '';
 
     // 获取视频列表和总数
-    const videoList = await getVideoConvertList(page, limit);
-    const totalCount = await getVideoConvertTotal();
+    const videoList = await getVideoConvertList(userId, page, limit);
+    const totalCount = await getVideoConvertTotal(userId);
     
     // 计算分页信息
     const totalPages = Math.ceil((totalCount || 0) / limit);

@@ -1,7 +1,7 @@
 import { video_convert } from "@/config/db/schema";
 import { db } from "@/core/db";
 import { getUserByUserIds } from "./user";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, count } from "drizzle-orm";
 
 /**
  * 插入视频转换记录
@@ -68,6 +68,7 @@ export async function deleteVideoConvert(id: number): Promise<void> {
  * @returns 
  */
 export async function getVideoConvertList(
+  userId: string,
   page: number = 1,
   limit: number = 50
 ): Promise<(typeof video_convert.$inferSelect)[] | undefined> {
@@ -76,6 +77,7 @@ export async function getVideoConvertList(
   const data = await db()
     .select()
     .from(video_convert)
+    .where(userId.length == 0 ? undefined : eq(video_convert.user_uuid, userId))
     .orderBy(desc(video_convert.created_at))
     .limit(limit)
     .offset(offset);
@@ -97,10 +99,16 @@ export async function getVideoConvertList(
 
 /**
  * 获取视频转换总数
- * @returns 
+ * @param userId 用户UUID
+ * @returns 总条数
  */
-export async function getVideoConvertTotal(): Promise<number | undefined> {
-  const total = await db().$count(video_convert);
+export async function getVideoConvertTotal(
+  userId: string, 
+): Promise<number> {
+  const [result] = await db()
+    .select({ count: count() })
+    .from(video_convert)
+    .where(userId.length == 0 ? undefined : eq(video_convert.user_uuid, userId));
 
-  return total;
+  return result?.count || 0;
 }

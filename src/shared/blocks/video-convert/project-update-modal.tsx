@@ -70,7 +70,7 @@ export function ProjectUpdateModal({
                 title: projectItem.title || "",
                 // description: projectItem.description || "",
                 content: projectItem.content || "",
-                cover_url: projectItem.cover || "",
+                cover_url: projectItem.cover || projectItem.cover_url || "",
                 // source_vdo_url: projectItem.source_vdo_url || "",
                 // result_vdo_url: projectItem.result_vdo_url || "",
                 // duration: projectItem.duration || "",
@@ -153,6 +153,7 @@ export function ProjectUpdateModal({
                                         imageClassName="w-full"
                                         aspectRatio="16/9"
                                         onChange={(items: ImageUploaderValue[]) => {
+                                            console.log("封面上传结果 items--->", items);
                                             const uploadedUrl = items.find(
                                                 (item) => item.status === 'uploaded' && item.url
                                             )?.url;

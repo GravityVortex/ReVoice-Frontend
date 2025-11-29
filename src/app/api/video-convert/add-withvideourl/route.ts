@@ -11,9 +11,6 @@ export async function POST(req: Request) {
   try {
     const form = await req.formData();
 
-    // basic validation for mp4
-    // const res = {};
-    // console.log("upload-file success--->", res);
     const user_uuid = (form.get("user_uuid") as string) || '';
     const title = (form.get("title") as string) || '';
     const description = (form.get("description") as string) || '';
@@ -37,7 +34,6 @@ export async function POST(req: Request) {
 
     // 将视频转换记录添加到返回结果中
     return respData({
-      ...res,
       videoConvert
     });
   } catch (e) {

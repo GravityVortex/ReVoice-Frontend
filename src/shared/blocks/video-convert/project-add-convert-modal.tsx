@@ -87,7 +87,9 @@ export function ProjectAddConvertModal({
     const { user } = useAppContext();
     const videoInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    console.log("当前用户--->", user);
 
+    
     // 视频时长数据（分钟）
     // const [videoDuration, setVideoDuration] = useState(0);
     // 视频上传状态

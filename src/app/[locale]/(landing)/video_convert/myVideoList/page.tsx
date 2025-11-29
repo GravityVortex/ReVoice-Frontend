@@ -9,12 +9,15 @@ import { Pagination } from "@/shared/components/ui/pagination-client";
 import { ProjectAddConvertModal } from "@/shared/blocks/video-convert/project-add-convert-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
+import { useAppContext } from "@/shared/contexts/app";
+
 // import { Pagination } from "@/shared/types/blocks/pagination";
 
 export default function VideoConvertPage() {
   const params = useParams();
   const locale = (params?.locale as string) || "zh";
   const router = useRouter();
+  const { user } = useAppContext();
   
   const [selectedVideo, setSelectedVideo] = useState<VideoListItem | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
@@ -89,8 +92,11 @@ export default function VideoConvertPage() {
     try {
       setLoading(true);
       setError("");
-      
-      const url = `/api/video-convert/getlist?page=${page}&limit=${pageSize}`
+      console.log("当前用户--->", user);
+      // const user_id = user?.id || "";
+      // 暂时查询所有数据
+      const user_id = "";
+      const url = `/api/video-convert/getlist?userId=${user_id}&page=${page}&limit=${pageSize}`
       const response = await fetch(url, {
         method: "GET",
       });

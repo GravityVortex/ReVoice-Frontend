@@ -33,10 +33,12 @@ import {
   Edit,
   Plus,
   Download,
+  Edit2,
 } from "lucide-react";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal";
+import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 
 // 视频详情数据类型
 interface VideoDetail {
@@ -61,11 +63,11 @@ interface VideoDetail {
 
 // 侧边栏菜单项
 const menuItems = [
-  { icon: Video, label: "转换视频列表", id: "list" },
-  { icon: ListOrdered, label: "转换视频进度", id: "progress" },
+  // { icon: Video, label: "转换视频列表", id: "list" },
   { icon: Settings, label: "新建语种转换", id: "create" },
-  // { icon: FileText, label: "详细信息", id: "details" },
   { icon: Share2, label: "修改基本信息", id: "edit" },
+  { icon: ListOrdered, label: "转换视频进度", id: "progress" },
+  // { icon: FileText, label: "详细信息", id: "details" },
   // { icon: Share2, label: "基本信息编辑", id: "edit1" },
   // { icon: Share2, label: "基本信息编辑", id: "edit2" },
   // { icon: Share2, label: "基本信息编辑", id: "edit3" },
@@ -104,10 +106,29 @@ export default function ProjectDetailPage() {
   // 新建转换弹框状态
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [projectSourceId, setProjectSourceId] = useState<string>(id);
+  // 修改弹框
+  const [projectItem, setProjectItem] = useState<Record<string, any>>({});
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // const expandedMap: Record<string, boolean> = {
-  //   // "id_row_0": true,
-  // };
+  const onSonItemEditClick = (id: string) => {
+    console.log("编辑视频转换，onSonItemEditClick--->", id);
+
+  };
+
+  // 修改项目后更新列表数据
+  const onItemUpdateEvent = (changeItem: Record<string, any>) => {
+    console.log("VideoConvertPage 接收到的 onItemUpdateEvent changeItem--->", changeItem);
+    setVideoDetail((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        title: changeItem.title,
+        cover_url: changeItem.cover,
+        content: changeItem.content,
+      };
+    });
+    
+  };
 
   const handlePlayVideo = (url: string, title: string) => {
     setPlayVideo(url);
@@ -137,7 +158,8 @@ export default function ProjectDetailPage() {
         setIsAddDialogOpen(true);
         break;
       case "edit":
-        onDevelopClick();
+        setProjectItem({...videoDetail});
+        setIsEditDialogOpen(true);
         break;
       case "share":
         onDevelopClick();
@@ -187,7 +209,7 @@ export default function ProjectDetailPage() {
           return;
         }
 
-        console.log("[ProjectDetailPage] 获取视频详情成功:", data.data);
+        console.log("[ProjectDetailPage] 获取视频详情成功--->", data.data);
         setVideoDetail(data.data);
 
         // 初始化测试用子视频列表数据
@@ -553,10 +575,10 @@ export default function ProjectDetailPage() {
                               </Button>
                               <Button variant="outline" size="sm" onClick={(e) => {
                                 e.stopPropagation();
-                                onDevelopClick();
+                                onSonItemEditClick("convert_" + index);
                               }}>
-                                <Share2 className="size-4" />
-                                分享
+                                <Edit2 className="size-4" />
+                                编辑
                               </Button>
                               <Button variant="outline" size="sm" onClick={(e) => {
                                 e.stopPropagation();
@@ -607,13 +629,13 @@ export default function ProjectDetailPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">源视频语言</p>
-                            <p className="font-medium">中文</p>
-                          </div>
-                          <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">目标视频语言</p>
                             <p className="font-medium">英语</p>
                             {/* <p className={cn("text-sm font-medium", statusInfo.color)}>{statusInfo.label}</p> */}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">转换耗时</p>
+                            <p className="font-medium">4分21秒</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">目标视频大小</p>
@@ -630,14 +652,6 @@ export default function ProjectDetailPage() {
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">转换结束时间</p>
                             <p className="font-medium">{formatDate(videoDetail?.updated_at || "")}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">转换耗时</p>
-                            <p className="font-medium">4分21秒</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">处理引擎</p>
-                            <p className="font-medium">AI Engine v2.0</p>
                           </div>
                         </div>
 
@@ -776,6 +790,14 @@ export default function ProjectDetailPage() {
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
         projectSourceId={projectSourceId}
+      />
+
+      {/* 修改视频转换弹框 */}
+      <ProjectUpdateModal
+        projectItem={projectItem}
+        isOpen={isEditDialogOpen}
+        onUpdateEvent={onItemUpdateEvent}
+        onClose={() => setIsEditDialogOpen(false)}
       />
     </div>
   );

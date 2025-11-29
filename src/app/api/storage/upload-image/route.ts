@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       console.log('[API] Upload success:', result.url);
 
       uploadResults.push({
+        status: 'uploaded',
         url: result.url,
         key: result.key,
         filename: file.name,
