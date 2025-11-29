@@ -88,7 +88,6 @@ export default function ProjectDetailPage() {
   const locale = (params.locale as string) || "zh";
 
   const [activeMenu, setActiveMenu] = useState("list");
-  const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   // const [isExpanded, setIsExpanded] = useState(false);
   const [videoDetail, setVideoDetail] = useState<VideoDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,8 +97,11 @@ export default function ProjectDetailPage() {
   const [playVideoTitle, setPlayVideoTitle] = useState<string>("");
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
-  const [converId, setConvertId] = useState<string>(id);
+  // 转换进度弹框状态
+  const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
+  const [convertId, setConvertId] = useState<string>(id);
   const [activeTabIdx, setActiveTabIdx] = useState<string>("0");
+  // 新建转换弹框状态
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [projectSourceId, setProjectSourceId] = useState<string>(id);
 
@@ -122,7 +124,7 @@ export default function ProjectDetailPage() {
     console.log("[ProjectDetailPage] 点击菜单:", item.label);
     switch (item.id) {
       case "list":
-        setActiveMenu("list");
+        // setActiveMenu("list");
         break;
       case "progress":
         // 切换到进度条页面
@@ -764,7 +766,7 @@ export default function ProjectDetailPage() {
       <ConversionProgressModal
         isOpen={isProgressDialogOpen}
         onClose={() => setIsProgressDialogOpen(false)}
-        convertId={converId}
+        convertId={convertId}
         activeTabIdx={activeTabIdx}
       />
 

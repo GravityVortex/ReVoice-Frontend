@@ -6,6 +6,9 @@ import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination-client";
+import { ProjectAddConvertModal } from "@/shared/blocks/video-convert/project-add-convert-modal";
+import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
+import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 // import { Pagination } from "@/shared/types/blocks/pagination";
 
 export default function VideoConvertPage() {
@@ -22,19 +25,64 @@ export default function VideoConvertPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize] = useState(6);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  // 转换进度弹框状态
+  const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
+  const [convertId, setConvertId] = useState<string>("");
+  const [activeTabIdx, setActiveTabIdx] = useState<string>("1");
+  // 修改弹框
+  // const [projectSourceId, setProjectSourceId] = useState<string>("");
+  const [projectItem, setProjectItem] = useState<Record<string, any>>({});
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
 
   const handlePlayVideo = (item: VideoListItem) => {
     setSelectedVideo(item);
     setIsPlayerOpen(true);
   };
+  
+  const handleEditClick = (item: VideoListItem, index: number) => {
+    console.log("编辑视频转换，handleEditClick--->" + index, item);
+    // router.push(`/${locale}/video_convert/update?id=${item.id}`);
+    // setProjectItem(videoList[index]);
+    setProjectItem(item);
+    setIsEditDialogOpen(true);
+  };
+  // 进入项目详情页
+  const handleItemClick = (item: VideoListItem) => {
+    console.log("[VideoConvertPage] 点击标题，跳转到项目详情页，ID:", item.id);
+    router.push(`/${locale}/video_convert/project_detail/${item.id}`);
+  };
+
+  // 查看转换进度
+  const onStatusClick = (item: VideoListItem) => {
+    console.log("查看转换进度，onStatusClick--->", item);
+    setActiveTabIdx("1");
+    setConvertId(item.id);
+    setIsProgressDialogOpen(true);
+  };
   const goAddClick = () => {
     router.push(`/${locale}/video_convert/add`);
   };
+  const goAdd2Click = () => {
+    setIsAddDialogOpen(true)
+  }
 
   const handleClosePlayer = () => {
     setIsPlayerOpen(false);
     setSelectedVideo(null);
   };
+
+  // 修改项目后更新列表数据
+  const onItemUpdateEvent = (changeItem: Record<string, any>) => {
+    console.log("VideoConvertPage 接收到的 onItemUpdateEvent changeItem--->", changeItem);
+    // 更新视频列表中的对应项
+    setVideoList((prevList) =>
+      prevList.map((item) =>
+        item.id === changeItem.id ? { ...item, ...changeItem } : item
+      )
+    );
+  }
 
   // 获取视频列表数据
   const doGetVideoListFromNet = async (page: number = currentPage) => {
@@ -61,6 +109,8 @@ export default function VideoConvertPage() {
           status: item.status === "created" ? "processing" : item.status,
           duration: item.duration || "0:00",
           convertedAt: new Date(item.created_at).toLocaleString("zh-CN"),
+          content: item.content || "",
+          videoSize: item.videoSize || 3400000,// 视频大小，单位B
         }));
         
         setVideoList(convertedList);
@@ -108,68 +158,14 @@ export default function VideoConvertPage() {
     },
   ];
   
-  const items: VideoListItem[] = [
-    {
-      id: "1",
-      title: "产品介绍视频 - 2024新品发布会",
-      cover: "https://picsum.photos/seed/1/640/360",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      status: "success",
-      duration: "5:23",
-      convertedAt: "2024-01-15 14:30",
-    },
-    {
-      id: "2",
-      title: "教程视频 - 如何使用AI工具",
-      cover: "https://picsum.photos/seed/2/640/360",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      status: "processing",
-      duration: "8:45",
-      convertedAt: "2024-01-16 09:15",
-    },
-    {
-      id: "3",
-      title: "客户案例分享 - 成功故事",
-      cover: "https://picsum.photos/seed/3/640/360",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      status: "success",
-      duration: "3:12",
-      convertedAt: "2024-01-14 16:20",
-    },
-    {
-      id: "4",
-      title: "技术讲解 - 深度学习基础",
-      cover: "https://picsum.photos/seed/4/640/360",
-      videoUrl: "",
-      status: "failed",
-      duration: "12:30",
-      convertedAt: "2024-01-13 11:45",
-    },
-    {
-      id: "5",
-      title: "营销活动视频 - 双十一特惠",
-      cover: "https://picsum.photos/seed/5/640/360",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-      status: "success",
-      duration: "2:45",
-      convertedAt: "2024-01-12 10:00",
-    },
-    {
-      id: "6",
-      title: "品牌宣传片 - 企业文化展示",
-      cover: "https://picsum.photos/seed/6/640/360",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-      status: "processing",
-      duration: "6:18",
-      convertedAt: "2024-01-17 08:30",
-    },
-  ];
+ 
 
   return (
     <div className="container mx-auto py-0">
       <div className="mb-8 flex justify-between">
         <h1 className="text-3xl font-bold">我的视频转换</h1>
-        <Button className="mask-add color-" onClick={goAddClick}>上传</Button>
+        {/* <Button className="mask-add color-" onClick={goAddClick}>上传</Button> */}
+        <Button className="mask-add color-" onClick={goAdd2Click}>上传</Button>
       </div>
 
       {/* 加载状态 */}
@@ -193,7 +189,10 @@ export default function VideoConvertPage() {
             items={videoList.length > 0 ? videoList : itemListDefault}
             cols={3}
             locale={locale}
+            onEditClick={handleEditClick}
+            onItemClick={handleItemClick}
             onVideoPlay={handlePlayVideo}
+            onStatusClick={onStatusClick}
           />
           
           {/* 分页组件 - 只在有真实数据时显示 */}
@@ -219,6 +218,28 @@ export default function VideoConvertPage() {
           title={selectedVideo.title}
         />
       )}
+
+      {/* 转换进度弹框 */}
+      <ConversionProgressModal
+        isOpen={isProgressDialogOpen}
+        onClose={() => setIsProgressDialogOpen(false)}
+        convertId={convertId}
+        activeTabIdx={activeTabIdx}
+      />
+
+      {/* 添加视频转换弹框 */}
+      <ProjectAddConvertModal
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+      />
+
+      {/* 修改视频转换弹框 */}
+      <ProjectUpdateModal
+        projectItem={projectItem}
+        isOpen={isEditDialogOpen}
+        onUpdateEvent={onItemUpdateEvent}
+        onClose={() => setIsEditDialogOpen(false)}
+      />
     </div>
   );
 }

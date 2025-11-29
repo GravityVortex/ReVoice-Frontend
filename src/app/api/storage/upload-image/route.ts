@@ -31,7 +31,8 @@ export async function POST(req: Request) {
 
       // Generate unique key
       const ext = file.name.split('.').pop();
-      const key = `uploads/${Date.now()}-${uuidv4()}.${ext}`;
+      // const key = `uploads/${Date.now()}-${uuidv4()}.${ext}`;
+      const key = `images/${Date.now()}-${uuidv4()}.${ext}`;
 
       // Convert file to buffer
       const arrayBuffer = await file.arrayBuffer();

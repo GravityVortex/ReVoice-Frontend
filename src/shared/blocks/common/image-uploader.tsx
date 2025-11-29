@@ -27,6 +27,8 @@ interface ImageUploaderProps {
   className?: string;
   defaultPreviews?: string[];
   onChange?: (items: ImageUploaderValue[]) => void;
+  imageClassName?: string; // 自定义图片容器的 className
+  aspectRatio?: string; // 宽高比，例如 "16/9"
 }
 
 interface UploadItem extends ImageUploaderValue {
@@ -72,6 +74,8 @@ export function ImageUploader({
   className,
   defaultPreviews,
   onChange,
+  imageClassName,
+  aspectRatio,
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isInitializedRef = useRef(false);
@@ -304,13 +308,22 @@ export function ImageUploader({
         {items.map((item) => (
           <div
             key={item.id}
-            className="group border-border bg-muted/50 hover:border-border hover:bg-muted relative overflow-hidden rounded-xl border p-1 shadow-sm transition"
+            className={cn(
+              "group border-border bg-muted/50 hover:border-border hover:bg-muted relative overflow-hidden rounded-xl border p-1 shadow-sm transition",
+              imageClassName
+            )}
           >
-            <div className="relative overflow-hidden rounded-lg">
+            <div 
+              className="relative overflow-hidden rounded-lg"
+              style={aspectRatio ? { aspectRatio } : undefined}
+            >
               <img
                 src={item.preview}
                 alt="Reference"
-                className="h-32 w-32 rounded-lg object-cover"
+                className={cn(
+                  "rounded-lg object-cover",
+                  imageClassName ? "w-full h-full" : "h-32 w-32"
+                )}
               />
               {item.size && (
                 <span className="bg-background text-muted-foreground absolute bottom-2 left-2 rounded-md px-2 py-1 text-[10px] font-medium">
@@ -340,11 +353,20 @@ export function ImageUploader({
         ))}
 
         {items.length < maxCount && (
-          <div className="group border-border bg-muted/50 hover:border-border hover:bg-muted relative overflow-hidden rounded-xl border border-dashed p-1 shadow-sm transition">
-            <div className="relative overflow-hidden rounded-lg">
+          <div className={cn(
+            "group border-border bg-muted/50 hover:border-border hover:bg-muted relative overflow-hidden rounded-xl border border-dashed p-1 shadow-sm transition",
+            imageClassName
+          )}>
+            <div 
+              className="relative overflow-hidden rounded-lg"
+              style={aspectRatio ? { aspectRatio } : undefined}
+            >
               <button
                 type="button"
-                className="flex h-32 w-32 flex-col items-center justify-center gap-2"
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2",
+                  imageClassName ? "w-full h-full" : "h-32 w-32"
+                )}
                 onClick={openFilePicker}
               >
                 <div className="border-border flex h-10 w-10 items-center justify-center rounded-full border border-dashed">

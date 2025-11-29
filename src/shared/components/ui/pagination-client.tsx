@@ -19,11 +19,11 @@ export function Pagination({
   showInfo = true,
   totalCount = 0,
 }: PaginationProps) {
-  console.log("totalPages", totalPages);
-  console.log("currentPage", currentPage);
-  console.log("onPageChange", onPageChange);
-  console.log("showInfo", showInfo);
-  console.log("totalCount", totalCount);
+  // console.log("totalPages", totalPages);
+  // console.log("currentPage", currentPage);
+  // console.log("onPageChange", onPageChange);
+  // console.log("showInfo", showInfo);
+  // console.log("totalCount", totalCount);
   // 生成页码数组
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];

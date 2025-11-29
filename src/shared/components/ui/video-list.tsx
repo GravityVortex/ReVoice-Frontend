@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo } from "react";
-import { Play, Edit, Clock, Calendar } from "lucide-react";
+import { Play, Edit, Clock, Calendar, Video } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,10 @@ export interface VideoListProps {
   items: VideoListItem[];
   className?: string;
   cols?: 1 | 2 | 3 | 4 | 5 | 6; // 每行列数，默认 3
-  onVideoPlay?: (item: VideoListItem) => void;
+  onVideoPlay?: (item: VideoListItem, index: number) => void;
+  onEditClick?: (item: VideoListItem, index: number) => void;
+  onItemClick?: (item: VideoListItem, index: number) => void;
+  onStatusClick?: (item: VideoListItem, index: number) => void;
   locale?: string; // 用于路由国际化
 }
 
@@ -52,11 +55,15 @@ const statusText: Record<VideoConversionStatus, string> = {
   failed: "转换失败",
 };
 
+// -------------------------------VideoList---start----分隔符---------------------------
 export function VideoList({
   items,
   className,
   cols = 3,
   onVideoPlay,
+  onEditClick,
+  onItemClick,
+  onStatusClick,
   locale = "zh",
 }: VideoListProps) {
   const router = useRouter();
@@ -82,47 +89,59 @@ export function VideoList({
   }, [cols]);
 
   // 跳转编辑页面
-  const handleEdit = (item: VideoListItem) => {
-    router.push(`/${locale}/video_convert/update?id=${item.id}`);
+  const handleEdit = (item: VideoListItem, index: number) => {
+    // router.push(`/${locale}/video_convert/update?id=${item.id}`);
+    onEditClick?.(item, index);
   };
   // 播放视频
-  const handlePlayVideo = (item: VideoListItem) => {
-    onVideoPlay?.(item);
+  const handlePlayVideo = (item: VideoListItem, index: number) => {
+    onVideoPlay?.(item, index);
   };
+
   // 点击标题跳转详情页
-  const handleTitleClick = (item: VideoListItem) => {
+  const handleItemClick = (item: VideoListItem, index: number) => {
     console.log("[VideoList] 点击标题，跳转到项目详情页，ID:", item.id);
-    router.push(`/${locale}/video_convert/project_detail/${item.id}`);
+    onItemClick?.(item, index);
+    // router.push(`/${locale}/video_convert/project_detail/${item.id}`);
+  };
+  // 状态点击
+  const handleStatusClick = (item: VideoListItem, index: number) => {
+    onStatusClick?.(item, index);
   };
 
   return (
     <div className={cn("grid gap-6", colsClass, className)}>
-      {items.map((it) => (
+      {items.map((it, index) => (
         <VideoCard
           key={it.id}
           item={it}
-          onEdit={() => handleEdit(it)}
-          onPlay={() => handlePlayVideo(it)}
-          onTitleClick={() => handleTitleClick(it)}
+          onEdit={() => handleEdit(it, index)}
+          onPlay={() => handlePlayVideo(it, index)}
+          onCardContentClick={() => handleItemClick(it, index)}
+          onStatusClick={() => handleStatusClick(it, index)}
         />
       ))}
     </div>
   );
 }
+// -------------------------------VideoList---end----分隔符---------------------------
 
+// -------------------------------VideoCard---start----分隔符---------------------------
 // 卡片组件
 function VideoCard({
   item,
   onEdit,
   onPlay,
-  onTitleClick,
+  onCardContentClick,
+  onStatusClick,
 }: {
   item: VideoListItem;
   onEdit: () => void;
   onPlay: () => void;
-  onTitleClick: () => void;
+  onCardContentClick: () => void;
+  onStatusClick: () => void;
 }) {
-  const { title, cover, status, duration, convertedAt } = item;
+  const { title, cover, status, duration, convertedAt, videoSize } = item;
   const colors = statusColors[status];
 
   return (
@@ -164,7 +183,9 @@ function VideoCard({
         )}
 
         {/* 右上角状态三角形 */}
-        <div className="absolute right-0 top-0 overflow-hidden">
+        <div className="absolute right-0 top-0 overflow-hidden"
+          onClick={onStatusClick}
+        >
           {/* 直角三角形 - 两个直角边与封面上右边重叠 */}
           <div
             className={cn(
@@ -193,22 +214,22 @@ function VideoCard({
         </div>
 
         {/* 右上角编辑按钮 */}
-          <button
-            type="button"
-            aria-label="edit"
-            onClick={onEdit}
-            className="absolute right-[3px] bottom-[3px] inline-flex size-8 items-center justify-center border bg-background/80 text-foreground/70 backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
-          >
-            <Edit className="size-4" />
-          </button>
+        <button
+          type="button"
+          aria-label="edit"
+          onClick={onEdit}
+          className="absolute right-[3px] bottom-[3px] inline-flex size-8 items-center justify-center border bg-background/80 text-foreground/70 backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
+        >
+          <Edit className="size-4" />
+        </button>
       </div>
 
       {/* 信息区域 */}
-      <CardContent onClick={onTitleClick} className="space-y-3 pt-4 pb-4 pl-3 pr-3 mt-[-20px]">
+      <CardContent onClick={onCardContentClick} className="space-y-3 pt-4 pb-4 pl-3 pr-3 mt-[-20px]">
         {/* 视频名称 - 可点击 */}
         <div
           className="line-clamp-2 text-base font-semibold leading-snug cursor-pointer hover:text-primary transition-colors"
-          // onClick={onTitleClick}
+        // onClick={onCardContentClick}
         >
           {title}
         </div>
@@ -217,9 +238,15 @@ function VideoCard({
         <div className="relative flex flex-col gap-2 text-sm text-muted-foreground">
           {/* 时长 */}
           {duration && (
+            <div className="flex flex-row justify-between items-center gap-1">
             <div className="flex items-center gap-1.5">
               <Clock className="size-4" />
               <span>视频时长: {duration} 秒</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Video className="size-4" />
+              <span>视频大小: {(videoSize / 1024 / 1024).toFixed(2)} MB</span>
+            </div>
             </div>
           )}
 
@@ -231,7 +258,7 @@ function VideoCard({
             </div>
           )}
 
-          
+
         </div>
 
 

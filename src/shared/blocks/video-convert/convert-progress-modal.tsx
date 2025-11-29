@@ -69,7 +69,7 @@ export function ConversionProgressModal({
         } else if (activeTabIdx === '0') {
             setActiveTab('overview');
         }
-    }, [activeTabIdx]);
+    }, [activeTabIdx, convertId]);
 
     // 模拟请求获取转换进度数据 - 只在 convertId 变化时请求
     useEffect(() => {
