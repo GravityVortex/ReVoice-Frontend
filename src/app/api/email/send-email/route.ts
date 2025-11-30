@@ -9,9 +9,11 @@ export async function POST(req: Request) {
     const emailService = await getEmailService();
 
     const result = await emailService.sendEmail({
+      from: 'onboarding@resend.dev',
       to: emails,
       subject: subject,
-      react: VerificationCode({ code: '123455' }),
+      html: '<p>Congrats on sending your <strong>first email</strong>!</p>',
+      // react: VerificationCode({ code: '123455' }),
     });
 
     console.log('send email result', result);
