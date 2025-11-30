@@ -1,11 +1,11 @@
-// lib/encryption-simple.js - 简化修复版本
-const crypto = require('crypto');
+// lib/encryption-simple.ts - 简化修复版本
+import crypto from 'crypto';
 
 const SECRET = 'secret_zhesheng_!@#$%Bsjaldffads';
 
 class EncryptionUtilSimple {
 
-    static generateRandomKey(length) {
+    static generateRandomKey(length: number): string {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let result = '';
         for (let i = 0; i < length; i++) {
@@ -14,14 +14,14 @@ class EncryptionUtilSimple {
         return result;
     }
 
-    static generateMD5(data) {
+    static generateMD5(data: string): string {
         return crypto.createHash('md5').update(data).digest('hex');
     }
 
     /**
      * 创建固定32字节密钥
      */
-    static createKey(secret, randomKey) {
+    static createKey(secret: string, randomKey: string): Buffer {
         const combined = secret + randomKey;
         // 使用SHA256创建固定32字节密钥
         return crypto.createHash('sha256').update(combined).digest();
@@ -30,7 +30,7 @@ class EncryptionUtilSimple {
     /**
      * 简化的加密方法
      */
-    static encrypt(text, key) {
+    static encrypt(text: string, key: Buffer): string {
         try {
 
             // 确保密钥是Buffer且长度为32字节
@@ -55,7 +55,7 @@ class EncryptionUtilSimple {
             let encrypted = cipher.update(text, 'utf8', 'base64');
             encrypted += cipher.final('base64');
             return encrypted;
-        } catch (error) {
+        } catch (error: any) {
             throw new Error('加密失败: ' + error.message);
         }
     }
@@ -63,18 +63,18 @@ class EncryptionUtilSimple {
     /**
      * 简化的解密方法
      */
-    static decrypt(encryptedText, key) {
+    static decrypt(encryptedText: string, key: Buffer): string {
         try {
             const decipher = crypto.createDecipheriv('aes-256-ecb', key, Buffer.alloc(0));
             let decrypted = decipher.update(encryptedText, 'base64', 'utf8');
             decrypted += decipher.final('utf8');
             return decrypted;
-        } catch (error) {
+        } catch (error: any) {
             throw new Error('解密失败: ' + error.message);
         }
     }
 
-    static encryptRequest(data) {
+    static encryptRequest(data: any): string {
         try {
             data.time = Math.floor(Date.now() / 1000);
             const jsonData = JSON.stringify(data);
@@ -87,13 +87,13 @@ class EncryptionUtilSimple {
             const hash = this.generateMD5(jsonData);
 
             return randomKey + hash + encryptedData;
-        } catch (error) {
+        } catch (error: any) {
             console.error('加密请求错误:', error);
             throw error;
         }
     }
 
-    static decryptRequest(encryptedString) {
+    static decryptRequest(encryptedString: string): any {
         try {
             if (encryptedString.length < 40) {
                 throw new Error('无效的加密字符串');
@@ -125,11 +125,11 @@ class EncryptionUtilSimple {
             }
 
             return data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('解密请求错误:', error);
             throw error;
         }
     }
 }
 
-module.exports = EncryptionUtilSimple;
+export default EncryptionUtilSimple;

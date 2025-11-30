@@ -1,5 +1,5 @@
-// lib/encryption.js - 修复版本
-const crypto = require('crypto');
+// lib/encryption.ts - 修复版本
+import crypto from 'crypto';
 
 const SECRET = 'secret_zhesheng_!@#$%Bsjaldffads'; // 确保这是32字节
 const REQUEST_TIMEOUT = 300;// 单位秒，5分钟失效
@@ -9,7 +9,7 @@ class EncryptionUtil {
     /**
      * 生成随机密钥
      */
-    static generateRandomKey(length) {
+    static generateRandomKey(length: number): string {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let result = '';
         for (let i = 0; i < length; i++) {
@@ -21,14 +21,14 @@ class EncryptionUtil {
     /**
      * 生成MD5哈希
      */
-    static generateMD5(data) {
+    static generateMD5(data: string): string {
         return crypto.createHash('md5').update(data).digest('hex');
     }
 
     /**
      * 生成最终加密密钥 - 修复版本
      */
-    static generateFinalKey(randomKey) {
+    static generateFinalKey(randomKey: string): Buffer {
         const combined = SECRET + randomKey;
         // 使用SHA256哈希确保密钥长度为32字节
         return crypto.createHash('sha256').update(combined).digest();
@@ -37,7 +37,7 @@ class EncryptionUtil {
     /**
      * AES加密 - 修复版本
      */
-    static encrypt(data, key) {
+    static encrypt(data: string, key: Buffer | string): string {
         try {
             // 确保密钥是Buffer且长度为32字节
             let keyBuffer;
@@ -56,7 +56,7 @@ class EncryptionUtil {
             let encrypted = cipher.update(data, 'utf8', 'base64');
             encrypted += cipher.final('base64');
             return encrypted;
-        } catch (error) {
+        } catch (error: any) {
             throw new Error('加密失败: ' + error.message);
         }
     }
@@ -64,7 +64,7 @@ class EncryptionUtil {
     /**
      * AES解密 - 修复版本
      */
-    static decrypt(encryptedData, key) {
+    static decrypt(encryptedData: string, key: Buffer | string): string {
         try {
             // 确保密钥是Buffer且长度为32字节
             let keyBuffer;
@@ -83,7 +83,7 @@ class EncryptionUtil {
             let decrypted = decipher.update(encryptedData, 'base64', 'utf8');
             decrypted += decipher.final('utf8');
             return decrypted;
-        } catch (error) {
+        } catch (error: any) {
             throw new Error('解密失败: ' + error.message);
         }
     }
@@ -91,7 +91,7 @@ class EncryptionUtil {
     /**
      * 加密请求数据
      */
-    static encryptRequest(data) {
+    static encryptRequest(data: any): string {
         try {
             // 添加时间戳
             data.time = Math.floor(Date.now() / 1000);
@@ -108,7 +108,7 @@ class EncryptionUtil {
 
             // 组合三段数据: 随机密钥(8) + 哈希(32) + 密文
             return randomKey + hash + encryptedData;
-        } catch (error) {
+        } catch (error: any) {
             console.error('加密请求失败:', error);
             throw new Error('请求加密失败: ' + error.message);
         }
@@ -117,7 +117,7 @@ class EncryptionUtil {
     /**
      * 解密并验证请求
      */
-    static decryptRequest(encryptedString) {
+    static decryptRequest(encryptedString: string): any {
         try {
             // 解析三段数据
             if (encryptedString.length < 40) {
@@ -155,11 +155,11 @@ class EncryptionUtil {
             }
 
             return data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('解密请求失败:', error);
             throw new Error('请求解密失败: ' + error.message);
         }
     }
 }
 
-module.exports = EncryptionUtil;
+export default EncryptionUtil;
