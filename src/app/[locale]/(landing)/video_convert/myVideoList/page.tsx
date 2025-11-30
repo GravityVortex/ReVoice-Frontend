@@ -92,7 +92,7 @@ export default function VideoConvertPage() {
     try {
       setLoading(true);
       setError("");
-      console.log("当前用户--->", user);
+      // console.log("当前用户--->", user);
       // const user_id = user?.id || "";
       // 暂时查询所有数据
       const user_id = "";
@@ -102,7 +102,7 @@ export default function VideoConvertPage() {
       });
       
       const data = await response.json();
-      console.log("视频列表数据:", data);
+      // console.log("视频列表数据:", data);
       
       if (data?.code === 0) {
         const responseData = data.data;
@@ -172,7 +172,7 @@ export default function VideoConvertPage() {
       <div className="mb-8 flex justify-between">
         <h1 className="text-3xl font-bold">我的视频转换</h1>
         {/* <Button className="mask-add color-" onClick={goAddClick}>上传</Button> */}
-        <Button className="mask-add color-" onClick={goAdd2Click}>上传</Button>
+        <Button className="mask-add text-white" onClick={goAdd2Click}>上传</Button>
       </div>
 
       {/* 加载状态 */}

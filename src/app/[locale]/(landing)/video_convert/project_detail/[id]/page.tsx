@@ -127,7 +127,7 @@ export default function ProjectDetailPage() {
         content: changeItem.content,
       };
     });
-    
+
   };
 
   const handlePlayVideo = (url: string, title: string) => {
@@ -158,7 +158,7 @@ export default function ProjectDetailPage() {
         setIsAddDialogOpen(true);
         break;
       case "edit":
-        setProjectItem({...videoDetail});
+        setProjectItem({ ...videoDetail });
         setIsEditDialogOpen(true);
         break;
       case "share":
@@ -559,7 +559,7 @@ export default function ProjectDetailPage() {
 
                           </div>
                           <div className="space-y-1">
-                            <span className="text-xs px-3 py-1 rounded-full bg-background bg-emerald-800">中文转英文</span>
+                            <span className="text-xs px-3 py-1 rounded-full bg-background text-white bg-emerald-800">中文转英文</span>
                             {/* <span className={cn("ml-10 text-sm font-medium", statusInfo.color)}>{statusInfo.label}</span> */}
                             <span className="ml-10 font-medium">{videoDetail?.duration ? `目标视频时长：${videoDetail.duration} 秒` : "-"}</span>
                             <span className="ml-10 font-medium">转换用时：2分24秒</span>

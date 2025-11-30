@@ -21,6 +21,7 @@ export type User = typeof user.$inferSelect & {
 };
 export type NewUser = typeof user.$inferInsert;
 export type UpdateUser = Partial<Omit<NewUser, 'id' | 'createdAt' | 'email'>>;
+export type UpdateUserWithEmail = Partial<Omit<NewUser, 'id' | 'createdAt'>>; // 允许更新邮箱（用于访客认证）
 
 export async function updateUser(userId: string, updatedUser: UpdateUser) {
   const [result] = await db()
@@ -32,8 +33,30 @@ export async function updateUser(userId: string, updatedUser: UpdateUser) {
   return result;
 }
 
+/**
+ * 更新用户信息（包括邮箱）- 用于访客账号认证
+ */
+export async function updateUserWithEmail(userId: string, updatedUser: UpdateUserWithEmail) {
+  const [result] = await db()
+    .update(user)
+    .set(updatedUser)
+    .where(eq(user.id, userId))
+    .returning();
+
+  return result;
+}
+
 export async function findUserById(userId: string) {
   const [result] = await db().select().from(user).where(eq(user.id, userId));
+
+  return result;
+}
+
+/**
+ * 根据邮箱查找用户
+ */
+export async function findUserByEmail(email: string) {
+  const [result] = await db().select().from(user).where(eq(user.email, email));
 
   return result;
 }

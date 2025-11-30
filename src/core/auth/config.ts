@@ -1,5 +1,6 @@
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { oneTap } from 'better-auth/plugins';
+import bcrypt from 'bcryptjs';
 
 import { db } from '@/core/db';
 import { envConfigs } from '@/config';
@@ -21,6 +22,15 @@ export const authOptions = {
   },
   emailAndPassword: {
     enabled: true,
+    password: {
+      // 使用 bcrypt 进行密码加密，确保与访客认证 API 一致
+      hash: async (password: string) => {
+        return await bcrypt.hash(password, 10);
+      },
+      verify: async ({ hash, password }: { hash: string; password: string }) => {
+        return await bcrypt.compare(password, hash);
+      },
+    },
   },
   logger: {
     verboseLogging: false,
@@ -44,6 +54,15 @@ export async function getAuthOptions() {
       : null,
     emailAndPassword: {
       enabled: configs.email_auth_enabled !== 'false',
+      password: {
+        // 使用 bcrypt 进行密码加密，确保与访客认证 API 一致
+        hash: async (password: string) => {
+          return await bcrypt.hash(password, 10);
+        },
+        verify: async ({ hash, password }: { hash: string; password: string }) => {
+          return await bcrypt.compare(password, hash);
+        },
+      },
     },
     socialProviders: await getSocialProviders(configs),
     plugins:

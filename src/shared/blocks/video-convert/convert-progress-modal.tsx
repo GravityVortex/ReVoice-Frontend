@@ -39,7 +39,7 @@ export function ConversionProgressModal({
     onClose,
     convertId,
 }: ConversionProgressModalProps) {
-    console.log('ConversionProgressModal activeTabIdx--->', activeTabIdx);
+    // console.log('ConversionProgressModal activeTabIdx--->', activeTabIdx);
     const [activeTab, setActiveTab] = useState(activeTabIdx === '1' ? 'logs' : 'overview');
     const [loading, setLoading] = useState(false);
     // 记住状态变更之前的值，不是响应式，不会随着组件的更新而更新。

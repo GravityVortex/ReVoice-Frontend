@@ -4,12 +4,23 @@ import { useEffect, useState } from 'react';
 import { generateVisitorId, getVisitorInfo, getFingerprintAgent } from '@/shared/lib/fingerprint';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Input } from '@/shared/components/ui/input';
 import { toast } from 'sonner';
+import EncryptionUtil from '@/shared/lib/EncryptionUtil'
+import EncryptionUtilSimple from '@/shared/lib/EncryptionUtilSimple'
 
 export default function TestFingerprintPage() {
   const [visitorId, setVisitorId] = useState<string>('');
   const [components, setComponents] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  
+  // 邮箱测试相关状态
+  const [emailTo, setEmailTo] = useState<string>('');
+  const [emailSubject, setEmailSubject] = useState<string>('测试邮件');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+
+
 
   const testFingerprint = async () => {
     setLoading(true);
@@ -39,8 +50,78 @@ export default function TestFingerprintPage() {
     toast.success('localStorage 已清除，请重新测试');
   };
 
+  const sendTestEmail = async () => {
+    if (!emailTo.trim()) {
+      toast.error('请输入收件人邮箱');
+      return;
+    }
+
+    // 简单的邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTo)) {
+      toast.error('请输入有效的邮箱地址');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/email/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          emails: [emailTo],
+          subject: emailSubject || '测试邮件',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('邮件发送成功！');
+        console.log('Email sent:', data);
+      } else {
+        toast.error(`发送失败：${data.error || '未知错误'}`);
+        console.error('Email send failed:', data);
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('发送邮件时出错，请查看控制台');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   useEffect(() => {
     testFingerprint();
+
+    // 请求数据测试
+    const requestDataPre = {
+      code: 200,
+      status: 'success',
+      message: '请求处理成功',
+      data: {
+        key: 121,
+        key2: '中文value测试'
+      },
+    };
+
+    // 加密响应
+    const encryptedRequestData = EncryptionUtil.encryptRequest(requestDataPre);
+    console.log('加密密文--->', encryptedRequestData);
+    // 解密并验证请求
+    const requestData = EncryptionUtil.decryptRequest(encryptedRequestData);
+    console.log('解密明文--->', requestData);
+
+    // 加密响应
+    const encryptedRequestData2 = EncryptionUtilSimple.encryptRequest(requestDataPre);
+    console.log('加密密文--->', encryptedRequestData2);
+    // 解密并验证请求
+    const requestData2 = EncryptionUtilSimple.decryptRequest(encryptedRequestData2);
+    console.log('解密明文--->', requestData);
+
+
   }, []);
 
   return (
@@ -75,6 +156,62 @@ export default function TestFingerprintPage() {
                 >
                   复制 ID
                 </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 邮箱发送测试 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>邮箱发送测试</CardTitle>
+            <CardDescription>
+              测试邮箱服务配置是否正确
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email-to" className="text-sm font-medium">
+                  收件人邮箱
+                </label>
+                <Input
+                  id="email-to"
+                  type="email"
+                  placeholder="example@email.com"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  disabled={sendingEmail}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="email-subject" className="text-sm font-medium">
+                  邮件主题
+                </label>
+                <Input
+                  id="email-subject"
+                  type="text"
+                  placeholder="测试邮件"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  disabled={sendingEmail}
+                />
+              </div>
+
+              <Button 
+                onClick={sendTestEmail} 
+                disabled={sendingEmail || !emailTo.trim()}
+                className="w-full"
+              >
+                {sendingEmail ? '发送中...' : '发送测试邮件'}
+              </Button>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>提示：</strong>邮件将发送一个包含验证码 "123455" 的测试邮件。
+                  请检查收件箱（可能在垃圾邮件中）。
+                </p>
               </div>
             </div>
           </CardContent>

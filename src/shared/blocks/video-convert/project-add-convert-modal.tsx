@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from "@/shared/components/ui/select";
 import { useAppContext } from "@/shared/contexts/app";
-import { Check, ChevronRight, Languages, Clock, Video, Droplet, BookText, Plus, Trash2, Upload } from 'lucide-react';
+import { Check, ChevronRight, Languages, Clock, Video, Droplet, BookText, Plus, Trash2, Upload, Link, BadgeDollarSign, Crown, CircleDollarSign, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 
@@ -87,9 +87,9 @@ export function ProjectAddConvertModal({
     const { user } = useAppContext();
     const videoInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
-    console.log("当前用户--->", user);
+    // console.log("当前用户--->", user);
 
-    
+
     // 视频时长数据（分钟）
     // const [videoDuration, setVideoDuration] = useState(0);
     // 视频上传状态
@@ -141,13 +141,15 @@ export function ProjectAddConvertModal({
     const calculateCredits = () => {
         const resolutionCredits = RESOLUTIONS.find(r => r.value === formData.resolution)?.credits || 0;
         const watermarkCredits = WATERMARK_OPTIONS.find(w => w.value === formData.watermark)?.credits || 0;
-        const durationCredits = formData.videoUpload.videoDuration * 2; // 1分钟2积分
+        const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
+        const durationCredits = durationInMinutes * 2; // 1分钟2积分
         return resolutionCredits + watermarkCredits + durationCredits;
     };
 
     // 获取时长积分
     const getDurationCredits = () => {
-        return formData.videoUpload.videoDuration * 2;
+        const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
+        return durationInMinutes * 2; // 1分钟2积分
     };
 
     // 保存到本地缓存
@@ -606,7 +608,7 @@ export function ProjectAddConvertModal({
                                             </Button>
                                             <div className="mt-2 text-sm text-muted-foreground">
                                                 文件大小: {(formData.videoUpload.videoSize / 1024 / 1024).toFixed(2)} MB
-                                                {formData.videoUpload.videoDuration > 0 && ` | 时长: ${formData.videoUpload.videoDuration} 分钟`}
+                                                {formData.videoUpload.videoDuration > 0 && ` | 时长: ${Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟`}
                                             </div>
                                         </div>
                                     )}
@@ -658,7 +660,7 @@ export function ProjectAddConvertModal({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground">
-                                            {formData.videoUpload.videoDuration > 0 ? `${formData.videoUpload.videoDuration} 分钟` : '加载中...'}
+                                            {formData.videoUpload.videoDuration > 0 ? `${Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟` : '加载中...'}
                                         </span>
                                         {/* <ChevronRight className="w-5 h-5 text-muted-foreground" /> */}
                                     </div>
@@ -744,17 +746,20 @@ export function ProjectAddConvertModal({
                         <Card className="mt-2 pt-2">
                             <CardContent className="pt-0 space-y-6">
                                 <div className="space-y-4">
-                                    <h3 className="mb-0 text-lg font-semibold text-primary">视频转换配置确认</h3>
+                                    {/* <h3 className="mb-0 text-lg font-semibold text-primary">视频转换配置确认</h3> */}
 
                                     <div className="my-0 grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-                                        <div className="space-y-1">
+                                        <div className="col-span-2 space-y-1">
                                             <p className="text-sm text-muted-foreground">视频标题</p>
                                             <p className="font-semibold">{formData.videoUpload.title}</p>
                                         </div>
-                                        <div className="space-y-1">
+                                        <div className="col-span-1 space-y-1">
                                             <p className="text-sm text-muted-foreground">视频时长</p>
-                                            <p className="font-semibold">{formData.videoUpload.videoDuration} 分钟</p>
+                                            <p className="font-semibold">{Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟</p>
                                         </div>
+                                    </div>
+                                    <div className="my-0 grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+
                                         <div className="space-y-1">
                                             <p className="text-sm text-muted-foreground">目标语言</p>
                                             <p className="font-semibold">{getLanguageLabel(formData.targetLanguage)}</p>
@@ -785,25 +790,49 @@ export function ProjectAddConvertModal({
 
                                     {/* 积分消耗 */}
                                     <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-sm text-muted-foreground mb-1">预计消耗积分</p>
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="text-4xl font-bold text-primary">{calculateCredits()}</span>
+                                        <div className="flex gap-6 items-center justify-between">
+
+                                            <div className="text-right flex-1 text-sm text-muted-foreground">
+                                                <p>视频时长: <span className='text-lg text-yellow-600'>{getDurationCredits()} </span>积分</p>
+                                                <p className='mt-1'>清晰度: <span className='text-lg text-yellow-600'>{RESOLUTIONS.find(r => r.value === formData.resolution)?.credits} </span>积分</p>
+                                                <p className='mt-1'>视频水印: <span className='text-lg text-yellow-600'>{WATERMARK_OPTIONS.find(w => w.value === formData.watermark)?.credits}</span> 积分</p>
+                                                <p className='mt-1'>总计消耗: <span className='text-2xl text-red-600'>{calculateCredits()}</span> 积分</p>
+                                            </div>
+                                            <div className='flex-1'>
+                                                {/* <p className="text-sm text-muted-foreground mb-1">剩余积分</p> */}
+                                                <div className="flex items-baseline gap-2 justify-center">
+                                                    <span className="text-lg text-muted-foreground">剩余</span>
+                                                    <span className="text-4xl font-bold text-primary">{user?.credits?.remainingCredits}</span>
+                                                    {/* <span className="text-4xl font-bold text-primary">{calculateCredits()}</span> */}
                                                     <span className="text-lg text-muted-foreground">积分</span>
                                                 </div>
-                                            </div>
-                                            <div className="text-right text-sm text-muted-foreground">
-                                                <p>视频时长: <span className='text-lg text-red-600'>{getDurationCredits()} </span>积分</p>
-                                                <p className='mt-2'>清晰度: <span className='text-lg text-red-600'>{RESOLUTIONS.find(r => r.value === formData.resolution)?.credits} </span>积分</p>
-                                                <p className='mt-2'>视频水印: <span className='text-lg text-red-600'>{WATERMARK_OPTIONS.find(w => w.value === formData.watermark)?.credits}</span> 积分</p>
+                                                <div className="flex justify-center items-baseline gap-2">
+                                                    {!user?.emailVerified && (<a href="/settings/profile" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
+                                                        <MailCheck className="text-sm text-blue-600 hover:underline">
+                                                            认证
+                                                        </MailCheck>
+                                                        认证获得更多积分
+                                                    </a>)}
+                                                    <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
+                                                        <CircleDollarSign className="text-sm text-blue-600 hover:underline">
+                                                            充值积分
+                                                        </CircleDollarSign>
+                                                        按需购买积分使用
+                                                    </a>
+                                                    <a href="/pricing" target="_blank"  className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
+                                                        <Crown className="text-sm text-blue-600 hover:underline">
+                                                            订阅
+                                                        </Crown>
+                                                        订阅享受跟多权益
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-5 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                                            💡 提示：转换任务提交后将在后台处理，预计需要 3-5 分钟完成。
+                                            💡 提示：转换任务提交后将在后台处理，根据视频大小不同预计需要 3-10 分钟完成。
                                         </p>
                                     </div>
                                 </div>
