@@ -33,19 +33,17 @@ export default function TestFingerprintPage() {
 
   // 加解密相关状态
   const [encryptionInput, setEncryptionInput] = useState<string>(JSON.stringify({
-      code: 200,
-      status: 'success',
-      message: '请求处理成功',
-      data: {
-        key: 121,
-        key2: '中文value测试'
-      },
-    }));
+    code: 200,
+    status: 'success',
+    message: '请求处理成功',
+    data: {
+      key: 121,
+      key2: '中文value测试'
+    },
+  }));
   const [encryptedOutput, setEncryptedOutput] = useState<string>('');
   const [decryptedOutput, setDecryptedOutput] = useState<string>('');
   const [encryptionType, setEncryptionType] = useState<'util' | 'simple'>('util');
-
-
 
 
   const testFingerprint = async () => {
@@ -211,7 +209,8 @@ export default function TestFingerprintPage() {
                   测试数据加密和解密功能
                 </CardDescription>
               </div>
-              {expandedCards.encryption ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {expandedCards.encryption ? <ChevronUp className="h-5 w-5" /> :
+                <ChevronDown className="h-5 w-5" />}
             </div>
           </CardHeader>
           {expandedCards.encryption && <CardContent>
@@ -299,7 +298,8 @@ export default function TestFingerprintPage() {
                   测试邮箱服务配置是否正确
                 </CardDescription>
               </div>
-              {expandedCards.email ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {expandedCards.email ? <ChevronUp className="h-5 w-5" /> :
+                <ChevronDown className="h-5 w-5" />}
             </div>
           </CardHeader>
           {expandedCards.email && <CardContent>
@@ -340,7 +340,8 @@ export default function TestFingerprintPage() {
                 {sendingEmail ? '发送中...' : '发送测试邮件'}
               </Button>
 
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div
+                className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
                   <strong>提示：</strong>邮件将发送一个包含验证码 "123455" 的测试邮件。
                   请检查收件箱（可能在垃圾邮件中）。
@@ -363,7 +364,8 @@ export default function TestFingerprintPage() {
                   同一台电脑的不同浏览器应该生成相同的 ID
                 </CardDescription>
               </div>
-              {expandedCards.visitor ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {expandedCards.visitor ? <ChevronUp className="h-5 w-5" /> :
+                <ChevronDown className="h-5 w-5" />}
             </div>
           </CardHeader>
           {expandedCards.visitor && <CardContent>
@@ -404,7 +406,8 @@ export default function TestFingerprintPage() {
                   只使用跨浏览器一致的硬件特征
                 </CardDescription>
               </div>
-              {expandedCards.hardware ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {expandedCards.hardware ? <ChevronUp className="h-5 w-5" /> :
+                <ChevronDown className="h-5 w-5" />}
             </div>
           </CardHeader>
           {expandedCards.hardware && <CardContent>
@@ -461,7 +464,8 @@ export default function TestFingerprintPage() {
               <div>
                 <CardTitle>测试步骤</CardTitle>
               </div>
-              {expandedCards.steps ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {expandedCards.steps ? <ChevronUp className="h-5 w-5" /> :
+                <ChevronDown className="h-5 w-5" />}
             </div>
           </CardHeader>
           {expandedCards.steps && <CardContent>
@@ -493,7 +497,8 @@ export default function TestFingerprintPage() {
                   查看所有可用的浏览器指纹组件
                 </CardDescription>
               </div>
-              {expandedCards.debug ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {expandedCards.debug ? <ChevronUp className="h-5 w-5" /> :
+                <ChevronDown className="h-5 w-5" />}
             </div>
           </CardHeader>
           {expandedCards.debug && <CardContent>
