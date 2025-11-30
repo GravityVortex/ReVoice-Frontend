@@ -39,6 +39,8 @@ import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
+import { useRouter } from "next/navigation";
+
 
 // 视频详情数据类型
 interface VideoDetail {
@@ -88,6 +90,8 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const locale = (params.locale as string) || "zh";
+  const router = useRouter();
+
 
   const [activeMenu, setActiveMenu] = useState("list");
   // const [isExpanded, setIsExpanded] = useState(false);
@@ -110,9 +114,9 @@ export default function ProjectDetailPage() {
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const onSonItemEditClick = (id: string) => {
-    console.log("编辑视频转换，onSonItemEditClick--->", id);
-
+  const onSonItemEditClick = (convertId: string) => {
+    console.log("编辑视频转换，onSonItemEditClick--->", convertId);
+    router.push(`/${locale}/video_convert/video-editor/${id}`);
   };
 
   // 修改项目后更新列表数据
@@ -162,7 +166,8 @@ export default function ProjectDetailPage() {
         setIsEditDialogOpen(true);
         break;
       case "share":
-        onDevelopClick();
+        // onDevelopClick();
+        router.push(`/${locale}/video_convert/video-editor/`);
         break;
       case "delete":
         onDevelopClick();
