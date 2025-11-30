@@ -87,7 +87,9 @@ export default function TestFingerprintPage() {
       const encrypted = encryptionType === 'util'
         ? EncryptionUtil.encryptRequest(data)
         : EncryptionUtilSimple.encryptRequest(data);
+      // 保存加密结果
       setEncryptedOutput(encrypted);
+      // 清空解密结果
       setDecryptedOutput('');
       toast.success('加密成功！');
     } catch (error: any) {
