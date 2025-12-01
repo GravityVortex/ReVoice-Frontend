@@ -1,16 +1,69 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import VideoEditor from '@/shared/components/video-editor';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb';
-import { Home } from 'lucide-react';
+import { Home, Loader2 } from 'lucide-react';
 import Link from "next/link";
 import { useParams } from 'next/navigation';
+import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
+import { AudioListPanel } from '@/shared/components/audio-list-panel';
+
+// 转换对象类型定义
+export interface ConvertObj {
+  convertId: string;
+  video_nosound: string;
+  sound_bg: string;
+  srt_source: string;
+  srt_convert: string;
+  srt_source_arr: string[];
+  srt_convert_arr: string[];
+}
 
 export default function VideoEditorPage() {
   const params = useParams();
-  const projectId = params.id as string;
+  const convertId = params.id as string;
   const locale = (params.locale as string) || "zh";
+  const [playingAudioIndex, setPlayingAudioIndex] = useState<number>(-1);
+  const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
+  const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 获取转换详情
+  useEffect(() => {
+    const fetchConvertDetail = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetch(`/api/video-convert/getConvertDetail?convertId=${convertId}`);
+        
+        if (!response.ok) {
+          throw new Error('获取转换详情失败');
+        }
+        
+        const result = await response.json();
+        
+        if (result.code === '0' && result.convert_obj) {
+          setConvertObj(result.convert_obj);
+          console.log('成功加载转换详情:', result.convert_obj);
+        } else {
+          throw new Error(result.msg || '数据格式错误');
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '加载失败';
+        setError(errorMessage);
+        console.error('获取转换详情失败:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (convertId) {
+      fetchConvertDetail();
+    }
+  }, [convertId]);
 
   const handleExport = (data: any) => {
     console.log('导出数据:', data);
@@ -27,6 +80,30 @@ export default function VideoEditorPage() {
       document.body.style.overflow = '';
     };
   }, []);
+
+  // 加载中状态
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          <p className="text-lg text-muted-foreground">正在加载转换详情...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error || !convertObj) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="max-w-md p-6 bg-destructive/10 border border-destructive rounded-lg">
+          <h2 className="text-xl font-bold text-destructive mb-2">加载失败</h2>
+          <p className="text-destructive">{error || '未能获取转换详情'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
@@ -53,7 +130,7 @@ export default function VideoEditorPage() {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href={`/${locale}/video_convert/project_detail/${projectId}`}>
+                <Link href={`/${locale}/video_convert/project_detail/${convertId}`}>
                   xxxx
                 </Link>
               </BreadcrumbLink>
@@ -65,7 +142,37 @@ export default function VideoEditorPage() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      <VideoEditor onExport={handleExport} />
+
+      {/* 可调整大小的分隔面板 */}
+      <ResizableSplitPanel
+        minLeftWidthPercent={33.33}
+        defaultLeftWidthPercent={60}
+        leftPanel={
+          <div className="h-full flex flex-col relative">
+            <VideoEditor 
+              onExport={handleExport} 
+              convertObj={convertObj}
+              onPlayingSubtitleChange={setPlayingSubtitleIndex}
+            />
+
+            {/* playingAudioIndex >= 0 */}
+            {playingAudioIndex >= 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-20 border-t bg-muted/50 px-4 py-2">
+                <div className="text-sm text-center font-medium text-primary">
+                  正在播放音频列表第 {playingAudioIndex + 1} 项
+                </div>
+              </div>
+            )}
+          </div>
+        }
+        rightPanel={
+          <AudioListPanel 
+            onPlayingIndexChange={setPlayingAudioIndex}
+            convertObj={convertObj}
+            playingSubtitleIndex={playingSubtitleIndex}
+          />
+        }
+      />
     </div>
   );
 }

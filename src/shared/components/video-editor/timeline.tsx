@@ -267,7 +267,9 @@ export function Timeline({
             
             {/* 拖动时的指示箭头 */}
             {isDragging && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-l-transparent border-r-transparent border-t-red-600" />
+              <div className="absolute -bottom-1 top-13 left-1/3 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-l-transparent border-r-transparent border-t-red-600" >
+                12:20
+              </div>
             )}
           </div>
         </div>

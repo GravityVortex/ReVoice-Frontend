@@ -35,6 +35,18 @@ export interface SubtitleTrackItem {
   fontSize?: number;
   color?: string;
   fontFamily?: string;
+  audioUrl?: string; // 字幕对应的音频URL
+}
+
+// 转换对象类型
+export interface ConvertObj {
+  convertId: string;
+  video_nosound: string;
+  sound_bg: string;
+  srt_source: string;
+  srt_convert: string;
+  srt_source_arr: string[];
+  srt_convert_arr: string[];
 }
 
 // 视频编辑器属性
@@ -42,6 +54,8 @@ export interface VideoEditorProps {
   className?: string;
   onExport?: (data: ExportData) => void;
   initialVideo?: string;
+  convertObj?: ConvertObj;
+  onPlayingSubtitleChange?: (index: number) => void; // 字幕播放索引变化回调
 }
 
 // 导出数据接口

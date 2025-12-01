@@ -17,6 +17,7 @@ interface SubtitleTrackProps {
   onDeleteItem: (id: string) => void;
   className?: string;
   hideLabel?: boolean;
+  playingIndex?: number; // 正在播放的字幕索引
 }
 
 export function SubtitleTrack({
@@ -29,7 +30,8 @@ export function SubtitleTrack({
   onUpdateItem,
   onDeleteItem,
   className,
-  hideLabel = false
+  hideLabel = false,
+  playingIndex = -1
 }: SubtitleTrackProps) {
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize-left' | 'resize-right' | null>(null);
@@ -144,31 +146,32 @@ export function SubtitleTrack({
       </div>
 
       {/* 字幕项目 */}
-      {items.map(item => {
+      {items.map((item, index) => {
         const leftPercent = (item.startTime / totalDuration) * 100;
         const widthPercent = (item.duration / totalDuration) * 100;
         const isSelected = selectedItem === item.id;
+        const isPlaying = playingIndex === index;
         
         return (
           <div
             key={item.id}
             className={cn(
-              "absolute top-1 h-14 rounded cursor-pointer border-2 flex items-center px-2 transition-all duration-200 hover:brightness-110",
-              "bg-yellow-600 border-yellow-500",
+              "absolute top-2 h-12 rounded cursor-pointer border-2 flex items-center justify-center px-2 transition-all duration-200 hover:brightness-110",
+              isPlaying ? "bg-red-600 border-red-500 shadow-lg shadow-red-500/50" : "bg-yellow-600 border-yellow-500",
               isSelected ? "border-yellow-400 shadow-lg shadow-yellow-400/30" : "border-transparent",
               dragItem === item.id ? "z-10" : "z-0"
             )}
             style={{
-              left: `${leftPercent}%`,
-              width: `${Math.max(widthPercent, 2)}%`,
-              minWidth: '40px'
+              left: `calc(${leftPercent}% + 1px)`,
+              width: `calc(${widthPercent}% - 1px)`,
+              minWidth: '38px'
             }}
             onMouseDown={(e) => handleMouseDown(e, item.id, 'move')}
             onDoubleClick={() => handleDoubleClick(item.id)}
             title={`${item.text} (${item.startTime.toFixed(1)}s - ${(item.startTime + item.duration).toFixed(1)}s)`}
           >
             {/* 左侧调整手柄 */}
-            <div
+            {/* <div
               className="absolute left-0 top-0 w-2 h-full bg-purple-500/20 cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity"
               onMouseDown={(e) => {
                 e.stopPropagation();
@@ -177,18 +180,17 @@ export function SubtitleTrack({
               title="调整开始时间"
             >
               <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-0.5 h-8 bg-purple-400 rounded-full opacity-80" />
-            </div>
+            </div> */}
 
-            {/* 字幕内容 */}
-            <div className="flex-1 flex items-center justify-between min-w-0">
-              <span className="text-white text-sm font-medium truncate">{item.text}</span>
-              <span className="text-white/70 text-xs ml-2 shrink-0">
+            {/* 只显示时长，隐藏字幕文字 */}
+            <div className="flex items-center justify-center">
+              <span className="text-white/90 text-xs font-medium">
                 {item.duration.toFixed(1)}s
               </span>
             </div>
 
             {/* 右侧调整手柄 */}
-            <div
+            {/* <div
               className="absolute right-0 top-0 w-2 h-full bg-purple-500/20 cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity"
               onMouseDown={(e) => {
                 e.stopPropagation();
@@ -197,7 +199,7 @@ export function SubtitleTrack({
               title="调整持续时间"
             >
               <div className="absolute right-0.5 top-1/2 transform -translate-y-1/2 w-0.5 h-8 bg-purple-400 rounded-full opacity-80" />
-            </div>
+            </div> */}
           </div>
         );
       })}
