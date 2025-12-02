@@ -56,7 +56,7 @@ export default function TestUploadPage() {
         };
         xhr.onerror = () => reject(new Error('Upload failed'));
 
-        xhr.open('POST', '/api/upload/stream');
+        xhr.open('POST', '/api/storage/stream');
         xhr.send(formData);
       });
 
@@ -76,7 +76,7 @@ export default function TestUploadPage() {
     setResult2('');
 
     try {
-      const res = await fetch('/api/upload/presigned-direct', {
+      const res = await fetch('/api/storage/presigned-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file2.name, contentType: file2.type }),

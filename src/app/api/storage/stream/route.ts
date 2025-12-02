@@ -1,3 +1,5 @@
+
+// 前端上传file到后端，后端上传到R2，但有4.5M的限制
 import { NextRequest, NextResponse } from 'next/server';
 import { getStorageService } from '@/shared/services/storage';
 

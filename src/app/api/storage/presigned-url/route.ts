@@ -1,3 +1,4 @@
+// 前端上传file到后端，后端生成presigned url，前端直接上传到R2，绕过4.5M的限制
 import { NextRequest, NextResponse } from 'next/server';
 import { getStorageService } from '@/shared/services/storage';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';

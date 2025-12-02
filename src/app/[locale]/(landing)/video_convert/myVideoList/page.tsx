@@ -76,6 +76,12 @@ export default function VideoConvertPage() {
     setSelectedVideo(null);
   };
 
+  // 刷新页面
+  const onCreateTaskSuccess = () => {
+    // setIsAddDialogOpen(false);
+    doGetVideoListFromNet();
+  };
+
   // 修改项目后更新列表数据
   const onItemUpdateEvent = (changeItem: Record<string, any>) => {
     console.log("VideoConvertPage 接收到的 onItemUpdateEvent changeItem--->", changeItem);
@@ -238,6 +244,7 @@ export default function VideoConvertPage() {
       <ProjectAddConvertModal
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
+        onCreateTaskSuccess={onCreateTaskSuccess}
       />
 
       {/* 修改视频转换弹框 */}

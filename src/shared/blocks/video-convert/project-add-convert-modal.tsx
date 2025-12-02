@@ -72,6 +72,7 @@ interface FormData {
 interface ProjectAddConvertModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onCreateTaskSuccess?: () => void;
 }
 
 const STORAGE_KEY = 'project_add_convert_form_cache';
@@ -81,6 +82,7 @@ const MAX_SIZE = 300 * 1024 * 1024; // 300MB
 export function ProjectAddConvertModal({
     isOpen,
     onClose,
+    onCreateTaskSuccess,
 }: ProjectAddConvertModalProps) {
     const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
@@ -94,6 +96,7 @@ export function ProjectAddConvertModal({
     // const [videoDuration, setVideoDuration] = useState(0);
     // 视频上传状态
     const [uploading, setUploading] = useState(false);
+    const [progress2, setProgress2] = useState(0);
 
     // 表单数据
     const [formData, setFormData] = useState<FormData>({
@@ -106,7 +109,7 @@ export function ProjectAddConvertModal({
             videoDuration: 0,
             thumbnailUrl: '',
         },
-        targetLanguage: '',// 目标语言
+        targetLanguage: 'en-US',// 目标语言
         resolution: '480p',// 分辨率
         watermark: 'none',// 水印
         remark: '',// 转换备注
@@ -177,7 +180,7 @@ export function ProjectAddConvertModal({
                 videoDuration: 0,
                 thumbnailUrl: '',
             },
-            targetLanguage: '',
+            targetLanguage: 'en-US',
             resolution: '480p',
             watermark: 'none',
             remark: '',
@@ -215,31 +218,72 @@ export function ProjectAddConvertModal({
             return;
         }
 
+        setProgress2(0);
         setUploading(true);
         try {
-            // 上传视频
-            const formData = new FormData();
-            formData.append('file', file);
 
-            const response = await fetch('/api/storage/upload-video', {
+            const res = await fetch('/api/storage/presigned-url', {
                 method: 'POST',
-                body: formData,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: file.name, contentType: file.type }),
             });
 
-            if (!response.ok) {
+            if (!res.ok) {
                 resetVideoData(false);
-                throw new Error('上传失败');
+                throw new Error('Failed to get presigned URL');
             }
 
-            const result = await response.json();
-            if (result.code !== 0) {
-                resetVideoData(false);
-                throw new Error(result.message || '上传失败');
-            }
+            // 获取上传签名url
+            const { presignedUrl, key, publicUrl } = await res.json();
 
-            const videoUrl = result.data.url;
-            const videoKey = result.data.key;
-            const videoSize = result.data.size;
+            // 前端直接上传
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    setProgress2(Math.round((e.loaded / e.total) * 100));
+                }
+            });
+
+            await new Promise((resolve, reject) => {
+                xhr.onload = () => {
+                    if (xhr.status === 200) resolve(xhr.response);
+                    else reject(new Error(`Upload failed: ${xhr.status}`));
+                };
+                xhr.onerror = () => reject(new Error('Upload failed'));
+
+                xhr.open('PUT', presignedUrl);
+                xhr.setRequestHeader('Content-Type', file.type);
+                xhr.send(file);
+            });
+
+
+            //setResult2(`上传成功！\n文件 URL: ${publicUrl}\n\n注意：需要在 R2 Bucket 设置 CORS 规则才能正常工作`);
+
+
+
+            // 上传视频
+            // const formData = new FormData();
+            // formData.append('file', file);
+
+            // const response = await fetch('/api/storage/upload-video', {
+            //     method: 'POST',
+            //     body: formData,
+            // });
+
+            // if (!response.ok) {
+            //     resetVideoData(false);
+            //     throw new Error('上传失败');
+            // }
+
+            // const result = await response.json();
+            // if (result.code !== 0) {
+            //     resetVideoData(false);
+            //     throw new Error(result.message || '上传失败');
+            // }
+
+            const videoUrl = publicUrl;
+            const videoKey = key;
+            const videoSize = file.size;
 
             // 创建临时视频元素获取时长
             const video = document.createElement('video');
@@ -413,8 +457,10 @@ export function ProjectAddConvertModal({
                 // 重置表单
                 resetFormData();
                 setCurrentStep(1);
+                // 回调
+                onCreateTaskSuccess?.();
+                toast.success('转换任务已创建！');
 
-                alert('转换任务已创建！');
                 onClose();
             } else {
                 console.error('提交失败:', data);
@@ -582,9 +628,15 @@ export function ProjectAddConvertModal({
                                             className="flex items-center justify-center w-full object-cover aspect-video border-2 border-dashed border-muted-foreground/30 rounded-lg hover:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {uploading ? (
-                                                <div className="text-center">
+                                                <div className="text-center w-full">
                                                     <Upload className="w-6 h-6 mx-auto mb-1 animate-pulse" />
                                                     <span className="text-xs">上传中...</span>
+                                                    <div className='mt-2'>
+                                                        <div className="h-2 rounded-lg w-[80%] mx-auto bg-[#f0f0f0]">
+                                                            <div className="h-2 rounded-lg bg-[#10b981]" style={{ width: `${progress2}%`, transition: 'width 0.3s' }} />
+                                                        </div>
+                                                        <p className='mt-2'>{progress2}%</p>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <Plus className="w-8 h-8 text-muted-foreground" />
@@ -819,7 +871,7 @@ export function ProjectAddConvertModal({
                                                         </CircleDollarSign>
                                                         按需购买积分使用
                                                     </a>
-                                                    <a href="/pricing" target="_blank"  className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
+                                                    <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <Crown className="text-sm text-blue-600 hover:underline">
                                                             订阅
                                                         </Crown>
