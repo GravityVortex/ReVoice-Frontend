@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       videoConvert
     });
   } catch (e) {
-    console.log("upload-file failed:", e);
-    return respErr("upload file failed");
+    console.log("create video convert failed:", e);
+    return respErr(`create video convert failed: ${e}`);
   }
 }

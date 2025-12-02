@@ -464,28 +464,11 @@ export function ProjectAddConvertModal({
                 onClose();
             } else {
                 console.error('提交失败:', data);
+                toast.error(data?.message || '提交失败，稍后再试！');
             }
         } catch (e) {
             console.error('提交失败--->', e);
-
-        } finally {
-            setSubmitting(false);
-
-        }
-
-
-        try {
-
-
-            console.log('提交转换任务:', payload);
-
-            // 模拟 API 请求
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-
-        } catch (error) {
-
-            alert('提交失败，请重试');
+            toast.error('提交失败，稍后再试！');
         } finally {
             setSubmitting(false);
         }
