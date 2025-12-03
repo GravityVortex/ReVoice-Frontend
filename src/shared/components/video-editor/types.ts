@@ -61,7 +61,7 @@ export interface VideoEditorProps {
 // 导出数据接口
 export interface ExportData {
   videoTrack: TrackItem[];
-  audioTrack: TrackItem[];
+  // audioTrack: TrackItem[];
   bgmTrack: TrackItem[];
   subtitleTrack: SubtitleTrackItem[] | null;
   subtitles: SubtitleItem[] | null;

@@ -1,5 +1,6 @@
 "use client";
 
+// 背景音乐、视频轨道共用
 import React, { useState, useEffect, useCallback } from 'react';
 import { Volume2, Plus } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -9,15 +10,14 @@ import { TrackItem } from './types';
 interface TrackProps {
   title: string;
   items: TrackItem[];
-  onAddItem: () => void;
+  onAddItem?: () => void;
   totalDuration: number;
   zoom: number;
   selectedItem?: string;
-  onSelectItem: (id: string) => void;
-  onUpdateItem: (id: string, updates: Partial<TrackItem>) => void;
-  onDeleteItem: (id: string) => void;
+  onSelectItem?: (id: string) => void;
+  onUpdateItem?: (id: string, updates: Partial<TrackItem>) => void;
+  onDeleteItem?: (id: string) => void;
   className?: string;
-  hideLabel?: boolean;
 }
 
 export function Track({
@@ -31,7 +31,6 @@ export function Track({
   onUpdateItem,
   onDeleteItem,
   className,
-  hideLabel = false
 }: TrackProps) {
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'resize-left' | 'resize-right' | null>(null);
@@ -48,87 +47,87 @@ export function Track({
   };
 
   // 处理鼠标按下事件
-  const handleMouseDown = useCallback((e: React.MouseEvent, itemId: string, type: 'move' | 'resize-left' | 'resize-right') => {
-    e.preventDefault();
-    setDragItem(itemId);
-    setDragType(type);
-    
-    const item = items.find(i => i.id === itemId);
-    if (item) {
-      setDragStart({
-        x: e.clientX,
-        startTime: item.startTime,
-        duration: item.duration
-      });
-    }
-    
-    onSelectItem(itemId);
-  }, [items, onSelectItem]);
+  // const handleMouseDown = useCallback((e: React.MouseEvent, itemId: string, type: 'move' | 'resize-left' | 'resize-right') => {
+  //   e.preventDefault();
+  //   setDragItem(itemId);
+  //   setDragType(type);
+
+  //   const item = items.find(i => i.id === itemId);
+  //   if (item) {
+  //     setDragStart({
+  //       x: e.clientX,
+  //       startTime: item.startTime,
+  //       duration: item.duration
+  //     });
+  //   }
+
+  //   onSelectItem(itemId);
+  // }, [items, onSelectItem]);
 
   // 处理鼠标移动事件
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!dragItem || !dragType) return;
-    
-    const deltaX = e.clientX - dragStart.x;
-    // 获取轨道容器的实际宽度来精确计算时间偏移
-    const trackContainer = document.getElementById('unified-scroll-container');
-    const trackWidth = trackContainer ? trackContainer.clientWidth : window.innerWidth * 0.6;
-    const deltaTime = (deltaX / trackWidth) * totalDuration / zoom;
-    
-    switch (dragType) {
-      case 'move': {
-        let newStartTime = Math.max(0, Math.min(dragStart.startTime + deltaTime, totalDuration - dragStart.duration));
-        // 添加网格吸附功能，每0.5秒为一个吸附点，让拖动更精确
-        const snapInterval = 0.5;
-        newStartTime = Math.round(newStartTime / snapInterval) * snapInterval;
-        onUpdateItem(dragItem, { startTime: newStartTime });
-        break;
-      }
-      case 'resize-left': {
-        const newStartTime = Math.max(0, Math.min(dragStart.startTime + deltaTime, dragStart.startTime + dragStart.duration - 0.1));
-        const newDuration = dragStart.duration - (newStartTime - dragStart.startTime);
-        onUpdateItem(dragItem, {
-          startTime: newStartTime,
-          duration: newDuration
-        });
-        break;
-      }
-      case 'resize-right': {
-        const newDuration = Math.max(0.1, dragStart.duration + deltaTime);
-        const maxDuration = totalDuration - dragStart.startTime;
-        onUpdateItem(dragItem, {
-          duration: Math.min(newDuration, maxDuration)
-        });
-        break;
-      }
-    }
-  }, [dragItem, dragType, dragStart, totalDuration, zoom, onUpdateItem]);
+  // const handleMouseMove = useCallback((e: MouseEvent) => {
+  //   if (!dragItem || !dragType) return;
+
+  //   const deltaX = e.clientX - dragStart.x;
+  //   // 获取轨道容器的实际宽度来精确计算时间偏移
+  //   const trackContainer = document.getElementById('unified-scroll-container');
+  //   const trackWidth = trackContainer ? trackContainer.clientWidth : window.innerWidth * 0.6;
+  //   const deltaTime = (deltaX / trackWidth) * totalDuration / zoom;
+
+  //   switch (dragType) {
+  //     case 'move': {
+  //       let newStartTime = Math.max(0, Math.min(dragStart.startTime + deltaTime, totalDuration - dragStart.duration));
+  //       // 添加网格吸附功能，每0.5秒为一个吸附点，让拖动更精确
+  //       const snapInterval = 0.5;
+  //       newStartTime = Math.round(newStartTime / snapInterval) * snapInterval;
+  //       onUpdateItem(dragItem, { startTime: newStartTime });
+  //       break;
+  //     }
+  //     case 'resize-left': {
+  //       const newStartTime = Math.max(0, Math.min(dragStart.startTime + deltaTime, dragStart.startTime + dragStart.duration - 0.1));
+  //       const newDuration = dragStart.duration - (newStartTime - dragStart.startTime);
+  //       onUpdateItem(dragItem, {
+  //         startTime: newStartTime,
+  //         duration: newDuration
+  //       });
+  //       break;
+  //     }
+  //     case 'resize-right': {
+  //       const newDuration = Math.max(0.1, dragStart.duration + deltaTime);
+  //       const maxDuration = totalDuration - dragStart.startTime;
+  //       onUpdateItem(dragItem, {
+  //         duration: Math.min(newDuration, maxDuration)
+  //       });
+  //       break;
+  //     }
+  //   }
+  // }, [dragItem, dragType, dragStart, totalDuration, zoom, onUpdateItem]);
 
   // 处理鼠标释放事件
-  const handleMouseUp = useCallback(() => {
-    setDragItem(null);
-    setDragType(null);
-  }, []);
+  // const handleMouseUp = useCallback(() => {
+  //   setDragItem(null);
+  //   setDragType(null);
+  // }, []);
 
   // 添加全局事件监听器
-  useEffect(() => {
-    if (dragItem) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [dragItem, handleMouseMove, handleMouseUp]);
+  // useEffect(() => {
+  //   if (dragItem) {
+  //     document.addEventListener('mousemove', handleMouseMove);
+  //     document.addEventListener('mouseup', handleMouseUp);
+
+  //     return () => {
+  //       document.removeEventListener('mousemove', handleMouseMove);
+  //       document.removeEventListener('mouseup', handleMouseUp);
+  //     };
+  //   }
+  // }, [dragItem, handleMouseMove, handleMouseUp]);
 
   // 处理双击删除
-  const handleDoubleClick = (itemId: string) => {
-    if (confirm('确定要删除这个项目吗？')) {
-      onDeleteItem(itemId);
-    }
-  };
+  // const handleDoubleClick = (itemId: string) => {
+  //   if (confirm('确定要删除这个项目吗？')) {
+  //     onDeleteItem(itemId);
+  //   }
+  // };
 
   // 渲染轨道项目
   const renderTrackItems = () => (
@@ -150,8 +149,8 @@ export function Track({
         const leftPercent = (item.startTime / totalDuration) * 100;
         const widthPercent = (item.duration / totalDuration) * 100;
         const isSelected = selectedItem === item.id;
-        
-        
+
+
         return (
           <div
             key={item.id}
@@ -164,15 +163,14 @@ export function Track({
             style={{
               left: `${leftPercent}%`,
               width: `${Math.max(widthPercent, 2)}%`,
-              // width: '40px',
               minWidth: '40px'
             }}
-            onMouseDown={(e) => handleMouseDown(e, item.id, 'move')}
-            onDoubleClick={() => handleDoubleClick(item.id)}
-            title={`${item.name} (${item.startTime.toFixed(1)}s - ${(item.startTime + item.duration).toFixed(1)}s)`}
+            // onMouseDown={(e) => handleMouseDown(e, item.id, 'move')}
+            // onDoubleClick={() => handleDoubleClick(item.id)}
+            // title={`${item.name} (${item.startTime.toFixed(1)}s - ${(item.startTime + item.duration).toFixed(1)}s)`}
           >
             {/* 左侧调整手柄 */}
-            <div
+            {/* <div
               className="absolute left-0 top-0 w-2 h-full bg-purple-500/20 cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity"
               onMouseDown={(e) => {
                 e.stopPropagation();
@@ -182,7 +180,7 @@ export function Track({
             >
               <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-0.5 h-8 bg-purple-400 rounded-full opacity-80" />
               <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-0.5 h-6 bg-purple-300 rounded-full opacity-60" />
-            </div>
+            </div> */}
 
             {/* 项目内容 */}
             <div className="flex-1 flex items-center justify-between min-w-0">
@@ -193,7 +191,7 @@ export function Track({
             </div>
 
             {/* 右侧调整手柄 */}
-            <div
+            {/* <div
               className="absolute right-0 top-0 w-2 h-full bg-purple-500/20 cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity"
               onMouseDown={(e) => {
                 e.stopPropagation();
@@ -203,7 +201,7 @@ export function Track({
             >
               <div className="absolute right-1 top-1/2 transform -translate-y-1/2 w-0.5 h-8 bg-purple-400 rounded-full opacity-80" />
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 w-0.5 h-6 bg-purple-300 rounded-full opacity-60" />
-            </div>
+            </div> */}
           </div>
         );
       })}
@@ -211,62 +209,24 @@ export function Track({
       {/* 空轨道提示 */}
       {items.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm pointer-events-none">
-          {hideLabel ? `${title}轨道内容` : `点击 + 添加${title}文件`}
+          {`轨道内容`}
         </div>
       )}
     </>
   );
 
-  if (hideLabel) {
-    // 只显示轨道内容，不显示标签
-    return (
-      <div className={cn("h-16 bg-gray-800 border-b border-gray-700 relative", className)} style={{ zIndex: 1 }}>
-        <div 
-          className="relative h-full bg-gray-850 bg-gray-800" 
-          style={{ 
-            width: `${Math.max(100 * zoom, 100)}%`,
-            minWidth: '100%'
-          }}
-        >
-          {renderTrackItems()}
-        </div>
-      </div>
-    );
-  }
-
+  // 只显示轨道内容，不显示标签
   return (
-    <div className={cn("h-16 bg-gray-800 border-b border-gray-700 flex relative", className)} style={{ zIndex: 1 }}>
-      {/* 轨道标签 */}
-      <div className="w-32 flex items-center justify-between px-3 bg-gray-750 border-r border-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white">{title}</span>
-          {title === '音频' || title === '背景音乐' ? (
-            <Volume2 className="w-3 h-3 text-gray-400" />
-          ) : null}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onAddItem}
-          className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
-          title={`添加${title}`}
-        >
-          <Plus className="w-3 h-3" />
-        </Button>
-      </div>
-      
-      {/* 轨道内容区域 */}
-      <div className="flex-1 relative bg-gray-850" style={{ zIndex: 0 }}>
-        <div 
-          className="relative h-full" 
-          style={{ 
-            width: `${100 * zoom}%`,
-            minWidth: '100%'
-          }}
-        >
-          {renderTrackItems()}
-        </div>
+    <div className={cn("h-16 bg-gray-800 border-b border-gray-700 relative", className)} style={{ zIndex: 1 }}>
+      <div
+        className="relative h-full bg-gray-850 bg-gray-800"
+        style={{
+          width: `${Math.max(100 * zoom, 100)}%`,
+          minWidth: '100%'
+        }}
+      >
+        {renderTrackItems()}
       </div>
     </div>
-  );
+  )
 }

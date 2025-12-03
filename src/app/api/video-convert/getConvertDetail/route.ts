@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         id: 2,
         uuid: '52f66632-690c-475d-8a74-f8965344054e',
         user_uuid: 'd60aec6d-3e35-4be7-a695-036939775695',
-        title: '教程视频 - 如何使用AI工具',
+        title: '教程视频如何使用AI工具',
         duration: '13.7',
         description: '视频教程',
         content: '这是一个视频内容介绍，一堆文字的介绍',
@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       },
       convert_obj: {
         convertId: convertId,
+        type: '中文转英文',
         video_nosound:
           'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/video-no-sound/MrBeast_1_100_000_000_video_nosound.mp4',
         video_nosound_duration: 1015,

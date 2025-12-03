@@ -12,6 +12,7 @@ import { AudioListPanel } from '@/shared/components/audio-list-panel';
 // 转换对象类型定义
 export interface ConvertObj {
   convertId: string;
+  type: string;
   video_nosound: string;
   sound_bg: string;
   srt_source: string;
@@ -29,6 +30,7 @@ export default function VideoEditorPage() {
   const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoSource, setVideoSource] = useState<Record<string, any> | null>(null);
 
   // 获取转换详情
   useEffect(() => {
@@ -45,8 +47,13 @@ export default function VideoEditorPage() {
         
         const result = await response.json();
         
-        if (result.code === '0' && result.convert_obj) {
-          setConvertObj(result.convert_obj);
+        if (result.code === '0') {
+          if (result.video_source) {
+            setVideoSource(result.video_source);
+          }
+          if (result.convert_obj) {
+            setConvertObj(result.convert_obj);
+          }
           console.log('成功加载转换详情:', result.convert_obj);
         } else {
           throw new Error(result.msg || '数据格式错误');
@@ -131,7 +138,8 @@ export default function VideoEditorPage() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href={`/${locale}/video_convert/project_detail/${convertId}`}>
-                  xxxx
+                  {videoSource?.title || '视频详情'}
+                  {convertObj?.type? `【${convertObj.type}】` : ''}
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>

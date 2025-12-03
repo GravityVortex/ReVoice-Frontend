@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download, ZoomIn, ZoomOut, Type, Plus, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download, ZoomIn, ZoomOut, Type, Plus, Eye, EyeOff, Video, FoldHorizontal, FlipVertical } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { cn } from '@/shared/lib/utils';
@@ -10,6 +10,7 @@ import { Track } from './track-new';
 import { SubtitleTrack } from './subtitle-track';
 import { TrackItem, SubtitleTrackItem, VideoEditorProps, ExportData } from './types';
 import { loadSrtViaProxy } from '@/shared/lib/srt-parser';
+import { toast } from 'sonner';
 
 export function VideoEditor({ className, onExport, initialVideo, convertObj, onPlayingSubtitleChange }: VideoEditorProps) {
   // 基础状态
@@ -21,7 +22,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
 
   // 四轨道数据
   const [videoTrack, setVideoTrack] = useState<TrackItem[]>([]);
-  const [audioTrack, setAudioTrack] = useState<TrackItem[]>([]);
+  // const [audioTrack, setAudioTrack] = useState<TrackItem[]>([]);
   const [bgmTrack, setBgmTrack] = useState<TrackItem[]>([]);
   const [subtitleTrack, setSubtitleTrack] = useState<SubtitleTrackItem[]>([]);
 
@@ -40,11 +41,15 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   // 当前播放的字幕索引
   const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
   const [isVideoTextShow, setIsVideoTextShow] = useState(true);
+  // 播放指针可见跟随
+  const [isPointerBarFollow, setIsPointerBarFollow] = useState(true);
 
   // 引用
   const videoRef = useRef<HTMLVideoElement>(null);
   const bgmAudioRef = useRef<HTMLAudioElement>(null);
   const subtitleAudioRef = useRef<HTMLAudioElement>(null);
+  // 缓存当前时间
+  const curTimeRef = useRef<number>(0);
 
   // 时间格式化
   const formatTime = (seconds: number) => {
@@ -174,270 +179,276 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   };
 
   // 添加轨道项目
-  const addTrackItem = (type: 'video' | 'audio' | 'bgm') => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    // 指定支持的视频和音频格式
-    input.accept = type === 'video'
-      ? 'video/mp4,video/webm,video/ogg,video/avi,video/mov,video/wmv'
-      : 'audio/mp3,audio/wav,audio/ogg,audio/aac,audio/m4a';
+  // const addTrackItem = (type: 'video' | 'audio' | 'bgm') => {
+  //   const input = document.createElement('input');
+  //   input.type = 'file';
+  //   // 指定支持的视频和音频格式
+  //   input.accept = type === 'video'
+  //     ? 'video/mp4,video/webm,video/ogg,video/avi,video/mov,video/wmv'
+  //     : 'audio/mp3,audio/wav,audio/ogg,audio/aac,audio/m4a';
 
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        console.log('选择的文件:', file.name, '类型:', file.type, '大小:', file.size);
+  //   input.onchange = (e) => {
+  //     const file = (e.target as HTMLInputElement).files?.[0];
+  //     if (file) {
+  //       console.log('选择的文件:', file.name, '类型:', file.type, '大小:', file.size);
 
-        // 验证文件类型
-        const isValidVideo = type === 'video' && file.type.startsWith('video/');
-        const isValidAudio = (type === 'audio' || type === 'bgm') && file.type.startsWith('audio/');
+  //       // 验证文件类型
+  //       const isValidVideo = type === 'video' && file.type.startsWith('video/');
+  //       const isValidAudio = (type === 'audio' || type === 'bgm') && file.type.startsWith('audio/');
 
-        if (!isValidVideo && !isValidAudio) {
-          alert(`请选择正确的${type === 'video' ? '视频' : '音频'}文件格式`);
-          return;
-        }
+  //       if (!isValidVideo && !isValidAudio) {
+  //         alert(`请选择正确的${type === 'video' ? '视频' : '音频'}文件格式`);
+  //         return;
+  //       }
 
-        const url = URL.createObjectURL(file);
-        console.log('创建的URL:', url);
+  //       const url = URL.createObjectURL(file);
+  //       console.log('创建的URL:', url);
 
-        // 对于音频文件，先立即添加到轨道，然后尝试获取真实时长
-        if (type === 'audio' || type === 'bgm') {
-          // 先获取音频真实时长，然后根据时间轴比例计算宽度插入
-          const mediaElement = document.createElement('audio');
-          mediaElement.src = url;
-          mediaElement.preload = 'metadata';
+  //       // 对于音频文件，先立即添加到轨道，然后尝试获取真实时长
+  //       if (type === 'audio' || type === 'bgm') {
+  //         // 先获取音频真实时长，然后根据时间轴比例计算宽度插入
+  //         const mediaElement = document.createElement('audio');
+  //         mediaElement.src = url;
+  //         mediaElement.preload = 'metadata';
 
-          mediaElement.onloadedmetadata = () => {
-            const realDuration = mediaElement.duration && mediaElement.duration > 0 ? mediaElement.duration : 30;
+  //         mediaElement.onloadedmetadata = () => {
+  //           const realDuration = mediaElement.duration && mediaElement.duration > 0 ? mediaElement.duration : 30;
 
-            const newItem: TrackItem = {
-              id: Date.now().toString(),
-              type,
-              name: file.name,
-              url,
-              startTime: currentTime, // 以红色刻度线为起始点
-              duration: realDuration, // 使用真实音频长度
-              volume: 80
-            };
+  //           const newItem: TrackItem = {
+  //             id: Date.now().toString(),
+  //             type,
+  //             name: file.name,
+  //             url,
+  //             startTime: currentTime, // 以红色刻度线为起始点
+  //             duration: realDuration, // 使用真实音频长度
+  //             volume: 80
+  //           };
 
-            // 计算音频/BGM元素在当前比例尺下的显示宽度
-            const currentZoom = zoom; // 当前比例尺（默认1.0）
-            const elementWidthPercent = (realDuration / maxTrackWidth) * 100;
-            const actualDisplayWidth = elementWidthPercent * currentZoom;
+  //           // 计算音频/BGM元素在当前比例尺下的显示宽度
+  //           const currentZoom = zoom; // 当前比例尺（默认1.0）
+  //           const elementWidthPercent = (realDuration / maxTrackWidth) * 100;
+  //           const actualDisplayWidth = elementWidthPercent * currentZoom;
 
-            console.log(`添加${type}项目 - 比例尺: ${currentZoom}, 时长: ${realDuration}s, 轨道总长: ${maxTrackWidth}s`);
-            console.log(`计算宽度: ${elementWidthPercent.toFixed(2)}% (基础) × ${currentZoom} (比例尺) = ${actualDisplayWidth.toFixed(2)}% (实际显示)`);
-            console.log(`${type}项目详情:`, newItem);
+  //           console.log(`添加${type}项目 - 比例尺: ${currentZoom}, 时长: ${realDuration}s, 轨道总长: ${maxTrackWidth}s`);
+  //           console.log(`计算宽度: ${elementWidthPercent.toFixed(2)}% (基础) × ${currentZoom} (比例尺) = ${actualDisplayWidth.toFixed(2)}% (实际显示)`);
+  //           console.log(`${type}项目详情:`, newItem);
 
-            // 检查是否需要扩展时间轴最大宽度（严格保持zoom比例尺不变）
-            const itemEndTime = newItem.startTime + newItem.duration;
-            if (itemEndTime > maxTrackWidth) {
-              // 扩充时间轴最大宽度到下一个10秒倍数
-              const newMaxWidth = Math.ceil(itemEndTime / 10) * 10;
-              console.log(`${type}超出轨道宽度，扩充时间轴最大宽度: ${maxTrackWidth} -> ${newMaxWidth}`);
-              console.log(`重要：zoom比例尺保持不变 (${zoom})，只扩展显示范围`);
-              // 注意：这里不修改zoom和totalDuration，只让maxTrackWidth自动重新计算
-            }
+  //           // 检查是否需要扩展时间轴最大宽度（严格保持zoom比例尺不变）
+  //           const itemEndTime = newItem.startTime + newItem.duration;
+  //           if (itemEndTime > maxTrackWidth) {
+  //             // 扩充时间轴最大宽度到下一个10秒倍数
+  //             const newMaxWidth = Math.ceil(itemEndTime / 10) * 10;
+  //             console.log(`${type}超出轨道宽度，扩充时间轴最大宽度: ${maxTrackWidth} -> ${newMaxWidth}`);
+  //             console.log(`重要：zoom比例尺保持不变 (${zoom})，只扩展显示范围`);
+  //             // 注意：这里不修改zoom和totalDuration，只让maxTrackWidth自动重新计算
+  //           }
 
-            if (type === 'audio') {
-              setAudioTrack(prev => {
-                const newTrack = [...prev, newItem];
-                console.log('音频轨道更新:', newTrack);
-                return newTrack;
-              });
-            } else if (type === 'bgm') {
-              setBgmTrack(prev => {
-                const newTrack = [...prev, newItem];
-                console.log('背景音乐轨道更新:', newTrack);
-                return newTrack;
-              });
-            }
-          };
+  //           if (type === 'audio') {
+  //             setAudioTrack(prev => {
+  //               const newTrack = [...prev, newItem];
+  //               console.log('音频轨道更新:', newTrack);
+  //               return newTrack;
+  //             });
+  //           } else if (type === 'bgm') {
+  //             setBgmTrack(prev => {
+  //               const newTrack = [...prev, newItem];
+  //               console.log('背景音乐轨道更新:', newTrack);
+  //               return newTrack;
+  //             });
+  //           }
+  //         };
 
-          mediaElement.onerror = () => {
-            console.error(`无法加载${type}文件:`, file.name);
-            // 如果加载失败，使用默认30秒时长
-            const fallbackItem: TrackItem = {
-              id: Date.now().toString(),
-              type,
-              name: file.name,
-              url,
-              startTime: currentTime,
-              duration: 30,
-              volume: 80
-            };
+  //         mediaElement.onerror = () => {
+  //           console.error(`无法加载${type}文件:`, file.name);
+  //           // 如果加载失败，使用默认30秒时长
+  //           const fallbackItem: TrackItem = {
+  //             id: Date.now().toString(),
+  //             type,
+  //             name: file.name,
+  //             url,
+  //             startTime: currentTime,
+  //             duration: 30,
+  //             volume: 80
+  //           };
 
-            if (type === 'audio') {
-              setAudioTrack(prev => [...prev, fallbackItem]);
-            } else if (type === 'bgm') {
-              setBgmTrack(prev => [...prev, fallbackItem]);
-            }
-          };
+  //           if (type === 'audio') {
+  //             setAudioTrack(prev => [...prev, fallbackItem]);
+  //           } else if (type === 'bgm') {
+  //             setBgmTrack(prev => [...prev, fallbackItem]);
+  //           }
+  //         };
 
-          return; // 对于音频文件，直接返回，不执行下面的视频处理逻辑
-        }
+  //         return; // 对于音频文件，直接返回，不执行下面的视频处理逻辑
+  //       }
 
-        // 视频文件处理逻辑
-        const mediaElement = document.createElement('video');
-        mediaElement.src = url;
+  //       // 视频文件处理逻辑
+  //       const mediaElement = document.createElement('video');
+  //       mediaElement.src = url;
 
-        // 视频文件加载处理
-        const handleVideoLoaded = () => {
-          const videoDuration = mediaElement.duration || 10;
-          console.log(`视频文件加载完成:`, file.name, '时长:', videoDuration);
+  //       // 视频文件加载处理
+  //       const handleVideoLoaded = () => {
+  //         const videoDuration = mediaElement.duration || 10;
+  //         console.log(`视频文件加载完成:`, file.name, '时长:', videoDuration);
 
-          const newItem: TrackItem = {
-            id: Date.now().toString(),
-            type: 'video',
-            name: file.name,
-            url,
-            startTime: currentTime, // 以红色刻度线为起始点
-            duration: videoDuration, // 使用真实视频长度
-            volume: 80
-          };
+  //         const newItem: TrackItem = {
+  //           id: Date.now().toString(),
+  //           type: 'video',
+  //           name: file.name,
+  //           url,
+  //           startTime: currentTime, // 以红色刻度线为起始点
+  //           duration: videoDuration, // 使用真实视频长度
+  //           volume: 80
+  //         };
 
-          // 计算视频元素在当前比例尺下的显示宽度
-          const currentZoom = zoom; // 当前比例尺（默认1.0）
-          const elementWidthPercent = (videoDuration / maxTrackWidth) * 100;
-          const actualDisplayWidth = elementWidthPercent * currentZoom;
+  //         // 计算视频元素在当前比例尺下的显示宽度
+  //         const currentZoom = zoom; // 当前比例尺（默认1.0）
+  //         const elementWidthPercent = (videoDuration / maxTrackWidth) * 100;
+  //         const actualDisplayWidth = elementWidthPercent * currentZoom;
 
-          console.log(`添加视频项目 - 比例尺: ${currentZoom}, 视频时长: ${videoDuration}s, 轨道总长: ${maxTrackWidth}s`);
-          console.log(`计算宽度: ${elementWidthPercent.toFixed(2)}% (基础) × ${currentZoom} (比例尺) = ${actualDisplayWidth.toFixed(2)}% (实际显示)`);
-          console.log(`视频项目详情:`, newItem);
+  //         console.log(`添加视频项目 - 比例尺: ${currentZoom}, 视频时长: ${videoDuration}s, 轨道总长: ${maxTrackWidth}s`);
+  //         console.log(`计算宽度: ${elementWidthPercent.toFixed(2)}% (基础) × ${currentZoom} (比例尺) = ${actualDisplayWidth.toFixed(2)}% (实际显示)`);
+  //         console.log(`视频项目详情:`, newItem);
 
-          // 检查是否需要扩充时间轴最大宽度（严格保持zoom比例尺不变）
-          const itemEndTime = newItem.startTime + newItem.duration;
-          if (itemEndTime > maxTrackWidth) {
-            // 扩充时间轴最大宽度到下一个10秒倍数
-            const newMaxWidth = Math.ceil(itemEndTime / 10) * 10;
-            console.log(`视频超出轨道宽度，扩充时间轴最大宽度: ${maxTrackWidth} -> ${newMaxWidth}`);
-            console.log(`重要：zoom比例尺保持不变 (${zoom})，只扩展显示范围`);
-            // 注意：这里不修改zoom和totalDuration，只让maxTrackWidth自动重新计算
-            // 视频元素宽度 = (视频时长 / 轨道总长) × 100% × zoom比例尺
-          }
+  //         // 检查是否需要扩充时间轴最大宽度（严格保持zoom比例尺不变）
+  //         const itemEndTime = newItem.startTime + newItem.duration;
+  //         if (itemEndTime > maxTrackWidth) {
+  //           // 扩充时间轴最大宽度到下一个10秒倍数
+  //           const newMaxWidth = Math.ceil(itemEndTime / 10) * 10;
+  //           console.log(`视频超出轨道宽度，扩充时间轴最大宽度: ${maxTrackWidth} -> ${newMaxWidth}`);
+  //           console.log(`重要：zoom比例尺保持不变 (${zoom})，只扩展显示范围`);
+  //           // 注意：这里不修改zoom和totalDuration，只让maxTrackWidth自动重新计算
+  //           // 视频元素宽度 = (视频时长 / 轨道总长) × 100% × zoom比例尺
+  //         }
 
-          setVideoTrack(prev => {
-            const newTrack = [...prev, newItem];
-            console.log('视频轨道更新:', newTrack);
+  //         setVideoTrack(prev => {
+  //           const newTrack = [...prev, newItem];
+  //           console.log('视频轨道更新:', newTrack);
 
-            // 如果是第一个视频，设置为主视频
-            if (prev.length === 0 && videoRef.current) {
-              console.log('设置主视频:', url);
-              videoRef.current.src = url;
-              // 预加载视频
-              videoRef.current.load();
-            }
+  //           // 如果是第一个视频，设置为主视频
+  //           if (prev.length === 0 && videoRef.current) {
+  //             console.log('设置主视频:', url);
+  //             videoRef.current.src = url;
+  //             // 预加载视频
+  //             videoRef.current.load();
+  //           }
 
-            return newTrack;
-          });
+  //           return newTrack;
+  //         });
 
-          // 清理事件监听器
-          mediaElement.removeEventListener('loadedmetadata', handleVideoLoaded);
-          mediaElement.removeEventListener('canplaythrough', handleVideoLoaded);
-          mediaElement.removeEventListener('loadeddata', handleVideoLoaded);
-        };
+  //         // 清理事件监听器
+  //         mediaElement.removeEventListener('loadedmetadata', handleVideoLoaded);
+  //         mediaElement.removeEventListener('canplaythrough', handleVideoLoaded);
+  //         mediaElement.removeEventListener('loadeddata', handleVideoLoaded);
+  //       };
 
-        const handleMediaError = (error: Event) => {
-          console.error('媒体文件加载失败:', file.name, error);
-          alert(`文件加载失败: ${file.name}`);
-          URL.revokeObjectURL(url);
+  //       const handleMediaError = (error: Event) => {
+  //         console.error('媒体文件加载失败:', file.name, error);
+  //         alert(`文件加载失败: ${file.name}`);
+  //         URL.revokeObjectURL(url);
 
-          // 清理事件监听器
-          mediaElement.removeEventListener('error', handleMediaError);
-        };
+  //         // 清理事件监听器
+  //         mediaElement.removeEventListener('error', handleMediaError);
+  //       };
 
-        // 为视频文件添加事件监听器
-        mediaElement.addEventListener('loadedmetadata', handleVideoLoaded);
-        mediaElement.addEventListener('canplaythrough', handleVideoLoaded);
-        mediaElement.addEventListener('loadeddata', handleVideoLoaded);
-        mediaElement.addEventListener('error', handleMediaError);
+  //       // 为视频文件添加事件监听器
+  //       mediaElement.addEventListener('loadedmetadata', handleVideoLoaded);
+  //       mediaElement.addEventListener('canplaythrough', handleVideoLoaded);
+  //       mediaElement.addEventListener('loadeddata', handleVideoLoaded);
+  //       mediaElement.addEventListener('error', handleMediaError);
 
-        // 强制加载视频
-        mediaElement.load();
-      }
-    };
+  //       // 强制加载视频
+  //       mediaElement.load();
+  //     }
+  //   };
 
-    input.click();
-  };
+  //   input.click();
+  // };
 
   // 更新轨道项目
-  const updateTrackItem = (trackType: 'video' | 'audio' | 'bgm', id: string, updates: Partial<TrackItem>) => {
-    const updateItem = (prev: TrackItem[]) => {
-      return prev.map(item => {
-        if (item.id === id) {
-          const updatedItem = { ...item, ...updates };
+  // const updateTrackItem = (trackType: 'video' | 'audio' | 'bgm', id: string, updates: Partial<TrackItem>) => {
+  //   const updateItem = (prev: TrackItem[]) => {
+  //     return prev.map(item => {
+  //       if (item.id === id) {
+  //         const updatedItem = { ...item, ...updates };
 
-          // 如果更新了位置或时长，检查是否需要扩展时间轴
-          if (updates.startTime !== undefined || updates.duration !== undefined) {
-            const itemEndTime = updatedItem.startTime + updatedItem.duration;
-            expandTimelineIfNeeded(itemEndTime);
-          }
+  //         // 如果更新了位置或时长，检查是否需要扩展时间轴
+  //         if (updates.startTime !== undefined || updates.duration !== undefined) {
+  //           const itemEndTime = updatedItem.startTime + updatedItem.duration;
+  //           expandTimelineIfNeeded(itemEndTime);
+  //         }
 
-          return updatedItem;
-        }
-        return item;
-      });
-    };
+  //         return updatedItem;
+  //       }
+  //       return item;
+  //     });
+  //   };
 
-    switch (trackType) {
-      case 'video':
-        setVideoTrack(updateItem);
-        break;
-      case 'audio':
-        setAudioTrack(updateItem);
-        break;
-      case 'bgm':
-        setBgmTrack(updateItem);
-        break;
-    }
-  };
+  //   switch (trackType) {
+  //     case 'video':
+  //       setVideoTrack(updateItem);
+  //       break;
+  //     case 'audio':
+  //       setAudioTrack(updateItem);
+  //       break;
+  //     case 'bgm':
+  //       setBgmTrack(updateItem);
+  //       break;
+  //   }
+  // };
 
   // 删除轨道项目
-  const deleteTrackItem = (trackType: 'video' | 'audio' | 'bgm', id: string) => {
-    switch (trackType) {
-      case 'video':
-        setVideoTrack(prev => prev.filter(item => item.id !== id));
-        break;
-      case 'audio':
-        setAudioTrack(prev => prev.filter(item => item.id !== id));
-        break;
-      case 'bgm':
-        setBgmTrack(prev => prev.filter(item => item.id !== id));
-        break;
-    }
-  };
+  // const deleteTrackItem = (trackType: 'video' | 'audio' | 'bgm', id: string) => {
+  //   switch (trackType) {
+  //     case 'video':
+  //       setVideoTrack(prev => prev.filter(item => item.id !== id));
+  //       break;
+  //     case 'audio':
+  //       setAudioTrack(prev => prev.filter(item => item.id !== id));
+  //       break;
+  //     case 'bgm':
+  //       setBgmTrack(prev => prev.filter(item => item.id !== id));
+  //       break;
+  //   }
+  // };
 
+  // 视频上的字幕是否显示开关
   const toggleVideoTextClick = () => {
     setIsVideoTextShow(!isVideoTextShow);
   };
+  // 播放指针可见跟随
+  const togglePointerBarFollow = () => {
+    setIsPointerBarFollow(!isPointerBarFollow);
+    !isPointerBarFollow && toast.info('播放指针可见跟随');  
+  };
 
   // 添加字幕
-  const addSubtitle = () => {
-    const newSubtitle: SubtitleTrackItem = {
-      id: Date.now().toString(),
-      type: 'video', // 字幕类型设为video以复用TrackItem接口
-      name: '新字幕',
-      startTime: currentTime, // 使用时间轴红线位置作为起始位置
-      duration: 2, // 默认2秒
-      text: '新字幕',
-      fontSize: 16,
-      color: '#ffffff'
-    };
+  // const addSubtitle = () => {
+  //   const newSubtitle: SubtitleTrackItem = {
+  //     id: Date.now().toString(),
+  //     type: 'video', // 字幕类型设为video以复用TrackItem接口
+  //     name: '新字幕',
+  //     startTime: currentTime, // 使用时间轴红线位置作为起始位置
+  //     duration: 2, // 默认2秒
+  //     text: '新字幕',
+  //     fontSize: 16,
+  //     color: '#ffffff'
+  //   };
 
-    console.log('添加字幕项目:', newSubtitle);
+  //   console.log('添加字幕项目:', newSubtitle);
 
-    setSubtitleTrack(prev => {
-      const newTrack = [...prev, newSubtitle];
-      console.log('字幕轨道更新:', newTrack);
+  //   setSubtitleTrack(prev => {
+  //     const newTrack = [...prev, newSubtitle];
+  //     console.log('字幕轨道更新:', newTrack);
 
-      // 检查是否需要扩展时间轴
-      const itemEndTime = newSubtitle.startTime + newSubtitle.duration;
-      expandTimelineIfNeeded(itemEndTime);
+  //     // 检查是否需要扩展时间轴
+  //     const itemEndTime = newSubtitle.startTime + newSubtitle.duration;
+  //     expandTimelineIfNeeded(itemEndTime);
 
-      return newTrack;
-    });
+  //     return newTrack;
+  //   });
 
-    setSelectedSubtitle(newSubtitle.id);
-  };
+  //   setSelectedSubtitle(newSubtitle.id);
+  // };
 
   // 更新字幕项目
   const updateSubtitleItem = (id: string, updates: Partial<SubtitleTrackItem>) => {
@@ -471,20 +482,21 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   const handleExport = () => {
     const exportData: ExportData = {
       videoTrack,
-      audioTrack,
+      // audioTrack,
       bgmTrack,
       subtitleTrack,
       subtitles: null,
       totalDuration
     };
     onExport?.(exportData);
+    toast.info('开发中，敬请期待！');
   };
 
   // 视频时间更新 - 同时处理字幕音频播放
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const newTime = e.currentTarget.currentTime;
     setCurrentTime(newTime);
-    console.log('video--handleTimeUpdate--->', newTime);
+    // console.log('video--handleTimeUpdate--->', newTime);
 
     // 查找当前时间对应的字幕
     if (isPlaying && subtitleTrack.length > 0 && !isSubtitleMuted) {
@@ -492,6 +504,8 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
         const endTime = subtitle.startTime + subtitle.duration;
         return newTime >= subtitle.startTime && newTime < endTime;
       });
+      // console.log('video--current字幕--->', subtitleTrack[currentSubtitleIndex]);
+
 
       // 如果字幕索引发生变化，播放新的字幕音频
       if (currentSubtitleIndex !== -1 && currentSubtitleIndex !== playingSubtitleIndex) {
@@ -518,19 +532,42 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   // 视频加载完成
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     console.log('video--视频加载完成--->', e.currentTarget.duration);
-    // setTotalDuration(e.currentTarget.duration);
+    setTotalDuration(e.currentTarget.duration);
+    // setTotalDuration(60);
+
+    // 更新视频轨道长度
+    let temp: TrackItem = {
+      ...videoTrack[0],
+      duration: e.currentTarget.duration,
+    }
+    setVideoTrack([temp]);
+
+    // 更新背景音乐轨道长度
+    let temp2: TrackItem = {
+      ...bgmTrack[0],
+      duration: e.currentTarget.duration,
+    }
+    setBgmTrack([temp2]);
   };
 
+  // let lastTime = 0;
+  // console.info('寻找字幕音频索引--lastTime-->', lastTime);
   // 时间轴点击处理
   const handleTimeChange = (newTime: number) => {
     setCurrentTime(newTime);
     console.log('handleTimeChange--->', newTime);
+
     if (videoRef.current) {
       videoRef.current.currentTime = newTime;
     }
+    // if(1===1) return;
 
+    // let cha = Math.abs(newTime - curTimeRef.current);
+    let cha = newTime - curTimeRef.current;
     // TODO 点击时间轴，切换右侧面板联动定位到待播放的字幕
-    if (!isPlaying) {
+    if (!isPlaying && (cha > 1 || cha < -1)) {
+      console.warn('寻找字幕音频索引--cha-->', cha);
+      curTimeRef.current = newTime;
       const currentSubtitleIndex = subtitleTrack.findIndex(subtitle => {
         const endTime = subtitle.startTime + subtitle.duration;
         return newTime >= subtitle.startTime && newTime < endTime;
@@ -678,7 +715,9 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
 
   // 监听字幕播放索引变化，自动滚动到可见区域
   useEffect(() => {
-    debugger
+    // 播放指针可见跟随
+    if (!isPointerBarFollow) return;
+
     if (playingSubtitleIndex === -1 || subtitleTrack.length === 0) return;
 
     const scrollContainer = document.getElementById('unified-scroll-container');
@@ -705,19 +744,24 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
     // 如果元素在可视区域左侧或右侧之外，则滚动
     const padding = 100; // 留一些边距
 
-    // if (elementLeft < scrollLeft + padding) {
-    //   // 元素在左侦外，滚动到左侧
-    //   scrollContainer.scrollTo({
-    //     left: Math.max(0, elementLeft - padding),
-    //     behavior: 'smooth'
-    //   });
-    // } else if (elementRight > scrollRight - padding) {
-    //   // 元素在右侦外，滚动到右侧
-    //   scrollContainer.scrollTo({
-    //     left: elementRight - containerWidth + padding,
-    //     behavior: 'smooth'
-    //   });
-    // }
+    console.log('scrollLeft--->', scrollLeft)
+    console.log('elementLeft--->', elementLeft)
+    console.log('containerWidth--->', containerWidth)
+
+    // TODO 水平拖动时不顺畅，需要优化
+    if (elementLeft < scrollLeft + padding) {
+      // 元素在左侦外，滚动到左侧
+      scrollContainer.scrollTo({
+        left: Math.max(0, elementLeft - padding),
+        behavior: 'smooth'
+      });
+    } else if (elementRight > scrollRight - padding) {
+      // 元素在右侦外，滚动到右侧
+      scrollContainer.scrollTo({
+        left: elementRight - containerWidth + padding,
+        behavior: 'smooth'
+      });
+    }
   }, [playingSubtitleIndex, subtitleTrack, totalDuration]);
 
   // 监听视频轨道变化，确保有视频时能正常播放
@@ -735,16 +779,18 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   const calculateMaxTrackWidth = useCallback(() => {
     const allTracks = [
       ...videoTrack.map(item => item.startTime + item.duration),
-      ...audioTrack.map(item => item.startTime + item.duration),
+      // ...audioTrack.map(item => item.startTime + item.duration),
       ...bgmTrack.map(item => item.startTime + item.duration),
       ...subtitleTrack.map(item => item.startTime + item.duration)
     ];
+    // console.log('allTracks-->', allTracks);
 
     const maxContentTime = allTracks.length > 0 ? Math.max(...allTracks) : totalDuration;
     return Math.max(maxContentTime, totalDuration);
-  }, [videoTrack, audioTrack, bgmTrack, subtitleTrack, totalDuration]);
+  }, [videoTrack, bgmTrack, subtitleTrack, totalDuration]);// audioTrack, 
 
   const maxTrackWidth = calculateMaxTrackWidth();
+  // console.log('maxTrackWidth-->', maxTrackWidth);
 
   // 智能扩展时间轴函数 - 不改变刻度比例，只记录日志
   const expandTimelineIfNeeded = useCallback((itemEndTime: number) => {
@@ -787,12 +833,12 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   useEffect(() => {
     console.log('轨道状态更新:');
     console.log('- 视频轨道:', videoTrack.length, '个项目');
-    console.log('- 音频轨道:', audioTrack.length, '个项目');
+    // console.log('- 音频轨道:', audioTrack.length, '个项目');
     console.log('- 背景音乐轨道:', bgmTrack.length, '个项目');
     console.log('- 字幕轨道:', subtitleTrack.length, '个项目');
     console.log('- 当前时间轴长度:', totalDuration, '秒');
     console.log('- 最大内容宽度:', maxTrackWidth, '秒');
-  }, [videoTrack, audioTrack, bgmTrack, subtitleTrack, totalDuration, maxTrackWidth]);
+  }, [videoTrack, bgmTrack, subtitleTrack, totalDuration, maxTrackWidth]);// audioTrack, 
 
   return (
     <div className={cn("w-full h-screen bg-gray-900 text-white flex flex-col overflow-hidden", className)}>
@@ -829,7 +875,9 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             {subtitleTrack.map(subtitle => {
               const endTime = subtitle.startTime + subtitle.duration;
               if (currentTime >= subtitle.startTime && currentTime <= endTime) {
-                const isEditing = editingSubtitle === subtitle.id;
+                let isEditing = editingSubtitle === subtitle.id;
+                // 锁定，不可编辑字幕
+                isEditing = false;
 
                 return (
                   <div
@@ -847,13 +895,13 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
                       color: subtitle.color || '#ffffff',
                       display: isVideoTextShow ? 'block' : 'none'
                     }}
-                    onClick={() => setSelectedSubtitle(subtitle.id)}
-                    onDoubleClick={() => {
-                      if (!isEditing) {
-                        setEditingSubtitle(subtitle.id);
-                        setEditingText(subtitle.text);
-                      }
-                    }}
+                    // onClick={() => setSelectedSubtitle(subtitle.id)}
+                    // onDoubleClick={() => {
+                    //   if (!isEditing) {
+                    //     setEditingSubtitle(subtitle.id);
+                    //     setEditingText(subtitle.text);
+                    //   }
+                    // }}
                     title="单击选择，双击编辑字幕内容"
                   >
                     {/* 视频中字幕可编辑和展示 */}
@@ -1012,6 +1060,19 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             <Button
               variant="ghost"
               size="sm"
+              onClick={togglePointerBarFollow}
+              className="text-white hover:bg-gray-700"
+              title="播放指针可见"
+            >
+              {isPointerBarFollow ? <FoldHorizontal className="w-4 h-4" /> :
+                <FlipVertical className="w-4 h-4" />
+              }
+
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleExport}
               className="text-white hover:bg-gray-700"
               title="导出项目"
@@ -1036,9 +1097,27 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             <div className="h-16 flex items-center justify-between px-3 bg-gray-750 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-white">字幕</span>
-                <Type className="w-3 h-3 text-gray-400" />
+                {/* <Type className="w-3 h-3 text-gray-400" /> */}
               </div>
               <div className="flex items-center gap-1">
+                {/* 轨道开关，隐藏视频中字幕 */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  // onClick={addSubtitle}
+                  onClick={toggleVideoTextClick}
+                  className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
+                  title="添加字幕"
+                >
+                  {/* <Plus className="w-3 h-3" /> */}
+                  {isVideoTextShow ? (
+                    <Eye className="w-3 h-3" />
+                  ) : (
+                    <EyeOff className="w-3 h-3" />
+                  )}
+                </Button>
+
+                {/* 轨道开关，静音控制 */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1048,23 +1127,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
                 >
                   {isSubtitleMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 </Button>
-                {/* addSubtitle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleVideoTextClick}
-                  className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
-                  title="添加字幕"
-                >
-                  {/* <Plus className="w-3 h-3" /> */}
 
-                  {isVideoTextShow ? (
-                    <Eye className="w-3 h-3" />
-                  ) : (
-                    <EyeOff className="w-3 h-3" />
-                  )}
-
-                </Button>
               </div>
             </div>
 
@@ -1072,7 +1135,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             <div className="h-16 flex items-center justify-between px-3 bg-gray-750 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-white">背景音乐</span>
-                <Volume2 className="w-3 h-3 text-gray-400" />
+                {/* <Volume2 className="w-3 h-3 text-gray-400" /> */}
               </div>
               <div className="flex items-center gap-1">
                 <Button
@@ -1084,7 +1147,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
                 >
                   {isBgmMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 </Button>
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => addTrackItem('bgm')}
@@ -1092,23 +1155,25 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
                   title="添加背景音乐"
                 >
                   <Plus className="w-3 h-3" />
-                </Button>
+                </Button> */}
               </div>
             </div>
 
             {/* 视频轨道标签 */}
             <div className="h-16 flex items-center justify-between px-3 bg-gray-750 border-b border-gray-700">
+
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white">视频</span>
+                <span className="text-sm font-medium text-white">背景视频</span>
               </div>
+
+              {/* title="添加视频" onClick={() => addTrackItem('video')} */}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => addTrackItem('video')}
                 className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
-                title="添加视频"
               >
-                <Plus className="w-3 h-3" />
+                {/* <Plus className="w-3 h-3" /> */}
+                <Video className="w-4 h-4 text-gray-400" />
               </Button>
             </div>
           </div>
@@ -1125,7 +1190,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             <div
               className="flex flex-col"
               style={{
-                width: `${Math.max((maxTrackWidth / totalDuration) * 100 * zoom, 100)}%`,
+                width: `${Math.max((maxTrackWidth / 60) * 100 * zoom, 100)}%`,
                 minWidth: '100%'
               }}
             >
@@ -1136,50 +1201,51 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
                   totalDuration={maxTrackWidth}
                   zoom={zoom}
                   onTimeChange={handleTimeChange}
-                  hideLeftLabel={true}
                 />
               </div>
 
-              {/* 字幕轨道内容 */}
+              {/* 字幕轨道内容 
+                onAddItem={addSubtitle}
+              */}
               <SubtitleTrack
                 items={subtitleTrack}
-                onAddItem={addSubtitle}
                 totalDuration={maxTrackWidth}
                 zoom={zoom}
                 selectedItem={selectedSubtitle || undefined}
-                onSelectItem={setSelectedSubtitle}
-                onUpdateItem={updateSubtitleItem}
-                onDeleteItem={deleteSubtitleItem}
-                hideLabel={true}
+                // onSelectItem={setSelectedSubtitle}
+                // onUpdateItem={updateSubtitleItem}
+                // onDeleteItem={deleteSubtitleItem}
                 playingIndex={playingSubtitleIndex}
               />
 
-              {/* 背景音乐轨道内容 */}
+              {/* 
+                背景音乐轨道内容 
+                onAddItem={() => addTrackItem('bgm')}
+              */}
               <Track
                 title="背景音乐"
                 items={bgmTrack}
-                onAddItem={() => addTrackItem('bgm')}
                 totalDuration={maxTrackWidth}
                 zoom={zoom}
                 selectedItem={selectedItem || undefined}
-                onSelectItem={setSelectedItem}
-                onUpdateItem={(id, updates) => updateTrackItem('bgm', id, updates)}
-                onDeleteItem={(id) => deleteTrackItem('bgm', id)}
-                hideLabel={true}
+              // onSelectItem={setSelectedItem}
+              // onUpdateItem={(id, updates) => updateTrackItem('bgm', id, updates)}
+              // onDeleteItem={(id) => deleteTrackItem('bgm', id)}
               />
 
-              {/* 视频轨道内容 */}
+              {/* 
+                视频轨道内容 
+                onAddItem={() => addTrackItem('video')}
+              */}
               <Track
                 title="视频"
                 items={videoTrack}
-                onAddItem={() => addTrackItem('video')}
                 totalDuration={maxTrackWidth}
                 zoom={zoom}
                 selectedItem={selectedItem || undefined}
-                onSelectItem={setSelectedItem}
-                onUpdateItem={(id, updates) => updateTrackItem('video', id, updates)}
-                onDeleteItem={(id) => deleteTrackItem('video', id)}
-                hideLabel={true}
+              // onSelectItem={setSelectedItem}
+              // onUpdateItem={(id, updates) => updateTrackItem('video', id, updates)}
+              // onDeleteItem={(id) => deleteTrackItem('video', id)}
               />
             </div>
           </div>
