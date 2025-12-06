@@ -22,6 +22,7 @@ interface SubtitleComparisonItemProps {
     item: SubtitleComparisonData;
     isSelected: boolean;
     isPlayingSource: boolean;
+    isDoubleClick?: boolean;
     isPlayingConvert: boolean;
     isPlayingFromVideo?: boolean; // 左侧视频编辑器正在播放此字幕
     onSelect: () => void;
@@ -30,7 +31,7 @@ interface SubtitleComparisonItemProps {
     onPlayPauseConvert: () => void;
     onPointerToPlaceClick?: () => void;
     onConvert: () => void;
-    onSave: () => void;
+    onSave: (type: string) => void;
 }
 
 export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleComparisonItemProps>(
@@ -38,6 +39,7 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
         {
             item,
             isSelected,
+            isDoubleClick = false,
             isPlayingSource,
             isPlayingConvert,
             isPlayingFromVideo = false,
@@ -58,6 +60,7 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
         }, [item]);
 
         const handleFieldChange = (field: keyof SubtitleComparisonData, value: string) => {
+            // console.log('handleFieldChange--->', field, value);
             const updatedItem = { ...localItem, [field]: value };
             setLocalItem(updatedItem);
             onUpdate(updatedItem);
@@ -67,9 +70,14 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
             <div
                 ref={ref}
                 onClick={onSelect}
+                onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    // 点击后左侧面板红色指针定位到该字幕开始位置
+                    onPointerToPlaceClick?.();
+                }}
                 className={cn(
                     "border rounded-lg p-4 cursor-pointer transition-all",
-                    isPlayingFromVideo
+                    (isDoubleClick || isPlayingFromVideo)
                         ? "border-red-500 bg-primary/50 shadow-lg ring-2 ring-red-500/50"
                         : isSelected
                             ? "border-primary bg-primary/5 shadow-md"
@@ -105,13 +113,15 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        onSave('source');
                                         // 点击后左侧面板红色指针定位到该字幕开始位置
-                                        onPointerToPlaceClick?.();
+                                        // onPointerToPlaceClick?.();
                                     }}
                                     className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
-                                    title="定位到字幕位置"
+                                    title="保存字幕语音"
                                 >
-                                    <ArrowDownToDot className="w-4 h-4" />
+                                    {/* <ArrowDownToDot className="w-4 h-4" /> */}
+                                    <Save className="w-4 h-4" />
                                 </div>
                             </div>
                         </div>
@@ -172,7 +182,7 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                             <div
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onSave();
+                                    onSave('convert');
                                 }}
                                 className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
                                 title="保存字幕语音"

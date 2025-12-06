@@ -38,16 +38,16 @@ export default function VideoEditorPage() {
     const fetchConvertDetail = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const response = await fetch(`/api/video-convert/getConvertDetail?convertId=${convertId}`);
-        
+
         if (!response.ok) {
           throw new Error('获取转换详情失败');
         }
-        
+
         const result = await response.json();
-        
+
         if (result.code === '0') {
           if (result.video_source) {
             setVideoSource(result.video_source);
@@ -67,7 +67,7 @@ export default function VideoEditorPage() {
         setIsLoading(false);
       }
     };
-    
+
     if (convertId) {
       fetchConvertDetail();
     }
@@ -127,42 +127,7 @@ export default function VideoEditorPage() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
-      {/* 面包屑导航 */}
-      <div className="shrink-0 border-b bg-background px-6 py-3">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/${locale}`} className="flex items-center gap-1">
-                  <Home className="size-4" />
-                  首页
-                </Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/${locale}/video_convert/myVideoList`}>
-                  视频列表
-                </Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/${locale}/video_convert/project_detail/${convertId}`}>
-                  {videoSource?.title || '视频详情'}
-                  {convertObj?.type? `【${convertObj.type}】` : ''}
-                </Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{"视频编辑"}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
+
 
       {/* 可调整大小的分隔面板 */}
       <ResizableSplitPanel
@@ -170,6 +135,44 @@ export default function VideoEditorPage() {
         defaultLeftWidthPercent={60}
         leftPanel={
           <div className="h-full flex flex-col relative">
+            {/* 面包屑导航 */}
+            <div className="shrink-0 border-b bg-background px-6 py-3">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href={`/${locale}`} className="flex items-center gap-1">
+                        <Home className="size-4" />
+                        首页
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href={`/${locale}/video_convert/myVideoList`}>
+                        视频列表
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href={`/${locale}/video_convert/project_detail/${convertId}`}>
+                        {videoSource?.title || '视频详情'}
+                        {convertObj?.type ? `【${convertObj.type}】` : ''}
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{"视频编辑"}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+            
+            {/* 左侧视频编辑区 */}
             <VideoEditor
               onExport={handleExport}
               convertObj={convertObj}

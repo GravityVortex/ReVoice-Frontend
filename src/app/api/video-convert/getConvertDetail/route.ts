@@ -22,8 +22,10 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // 模拟数据
-    const resData = getMockJsonData(convertId, 'local_001');
+    // 本地模拟（宝20251205修复后）
+    // const resData = getMockJsonData(convertId, 'local_001');
+    // xuww上传的（宝20251205修复后）
+    const resData = getMockJsonData(convertId, 'upload_001');
 
     return NextResponse.json(resData, {
       status: 200,

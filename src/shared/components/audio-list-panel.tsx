@@ -39,6 +39,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   const [isAutoPlayNext, setIsAutoPlayNext] = useState(false);
   // 单条播放结束
   const [isAudioPlayEnded, setIsAudioPlayEnded] = useState(false);
+  const [doubleClickIdx, setDoubleClickIdx] = useState(-1);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -46,7 +47,8 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
 
   // 监听左侧当前播放字幕索引，滚动右侧列表到对应位置
   useEffect(() => {
-     console.log('右侧面板-寻找字幕位置--->', playingSubtitleIndex);
+    setDoubleClickIdx(-1);
+    console.log('右侧面板-寻找字幕位置--->', playingSubtitleIndex);
     // if (playingSubtitleIndex === -1 || !itemRefs.current[playingSubtitleIndex]) return;
 
 
@@ -203,6 +205,12 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       const timeStr = item.startTime_convert;
       const timeInSeconds = parseTimeToSeconds(timeStr);
       onSeekToSubtitle(timeInSeconds);
+      
+      // 无用，不知道为何
+      // playingSubtitleIndex = -1;
+      setDoubleClickIdx(index);
+      // playingSubtitleIndex = index;
+      // console.log('右侧面板--letPointerToPlace--->', playingSubtitleIndex);
     }
   };
 
@@ -294,13 +302,13 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   };
 
   // 保存处理
-  const handleSave = (item: SubtitleComparisonData) => {
-    console.log('保存字幕:', item);
+  const handleSave = (item: SubtitleComparisonData, type: string) => {
+    console.log(`保存${type}字幕--->`, item);
     // TODO: 实现保存逻辑
   };
 
   return (
-    <div className="h-full gap-2 pb-10 flex flex-col bg-background">
+    <div className="h-full gap-2 pb-1 flex flex-col bg-background">
       {/* 隐藏的音频播放器 */}
       <audio
         ref={audioRef}
@@ -309,43 +317,24 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       />
 
       {/* 头部 */}
-      <div className="px-4 pt-2 pb-1 border-b">
-      <div className="flex items-center justify-between px-4">
-        <h2 className="text-lg font-semibold"
-          onClick={() => {
-            // 测试音频加载时间
-            console.time('音频加载---->');
-            const audio = new Audio();
-            audio.addEventListener('canplaythrough', () => {
-              console.timeEnd('音频加载---->');
-              console.log('加载完成，开始播放');
-              audio.play();
-            });
-            audio.src = convertObj.srt_convert_arr[0] || '';
-          }}>字幕音频对照表</h2>
-        <div className='flex flex-row gap-2 text-white'>
-          {isAutoPlayNext ? (
-            <Headphones className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(false)} />
-          ) : (
-            <HeadphoneOff className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(true)} />
-          )}
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              {/* 加载中 */}
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4 mr-1" onClick={loadSrtFiles} />
-              {/* 重新加载 */}
-            </>
-          )}
+      <div className="px-4 pt-4 pb-2 border-b">
+        <div className="flex items-center justify-between pl-4">
+          <h2 className="text-lg font-semibold"
+            onClick={() => {}}>字幕音频对照表</h2>
+          <div className='flex flex-row gap-0 text-white'>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadSrtFiles}
+            >
+              保存
+            </Button>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center justify-around p-0 text-sm font-bold">
+        <div className="flex items-center justify-around p-1 text-sm font-bold">
           <div>原字幕</div>
           <div>转换后字幕</div>
-      </div>
+        </div>
       </div>
 
       {/* 字幕列表 */}
@@ -371,6 +360,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               ref={(el) => { itemRefs.current[index] = el; }}
               item={item}
               isSelected={selectedId === item.id}
+              isDoubleClick={doubleClickIdx === index}
               isPlayingSource={playingIndex === index && playingType === 'source' && !isAudioPlayEnded}
               isPlayingConvert={playingIndex === index && playingType === 'convert' && !isAudioPlayEnded}
               isPlayingFromVideo={playingSubtitleIndex === index}
@@ -380,22 +370,40 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               onPlayPauseConvert={() => handlePlayPauseConvert(index)}
               onPointerToPlaceClick={() => letPointerToPlace(index)}
               onConvert={() => handleConvert(item)}
-              onSave={() => handleSave(item)}
+              onSave={(type) => handleSave(item, type)}
             />
           ))}
         </div>
       </ScrollArea>
 
       {/* 底部状态栏 */}
-      <div className="p-3 border-t bg-muted/30">
+      <div className="flex flex-row justify-between p-3 border-t bg-muted/30">
         <div className="text-sm text-muted-foreground">
           共 {subtitleItems.length} 条字幕
           {playingIndex >= 0 && playingType && (
             <span className="ml-2 text-primary font-medium">
-              正在播放: {playingType === 'source' ? '原字幕' : '转换后字幕'}第 {playingIndex + 1} 项 
+              正在播放: {playingType === 'source' ? '原字幕' : '转换后字幕'}第 {playingIndex + 1} 项
             </span>
           )}
         </div>
+        <div className='flex flex-row gap-2 text-white'>
+            {isAutoPlayNext ? (
+              <Headphones className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(false)} />
+            ) : (
+              <HeadphoneOff className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(true)} />
+            )}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                {/* 加载中 */}
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-1" onClick={loadSrtFiles} />
+                {/* 重新加载 */}
+              </>
+            )}
+          </div>
       </div>
     </div>
   );

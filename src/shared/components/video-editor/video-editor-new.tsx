@@ -189,6 +189,22 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
     }
   };
 
+  // 计算最长轨道的实际宽度
+  const calculateMaxTrackWidth = useCallback(() => {
+    const allTracks = [
+      ...videoTrack.map(item => item.startTime + item.duration),
+      // ...audioTrack.map(item => item.startTime + item.duration),
+      ...bgmTrack.map(item => item.startTime + item.duration),
+      ...subtitleTrack.map(item => item.startTime + item.duration)
+    ];
+    // console.log('allTracks-->', allTracks);
+
+    const maxContentTime = allTracks.length > 0 ? Math.max(...allTracks) : totalDuration;
+    return Math.max(maxContentTime, totalDuration);
+  }, [videoTrack, bgmTrack, subtitleTrack, totalDuration]);// audioTrack, 
+
+  const maxTrackWidth = calculateMaxTrackWidth();
+
   // 跳转控制
   const skipTime = (seconds: number) => {
     const newTime = Math.max(0, Math.min(currentTime + seconds, totalDuration));
@@ -214,10 +230,8 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
     });
   };
 
-
-
   // 显示红指针位置
-  const scrollPointerVisible = (curTime = currentTime) => {
+  const scrollPointerVisible = useCallback((curTime = currentTime) => {
     // 缩放后将红色指针滚动到可见范围
     setTimeout(() => {
       const scrollContainer = document.getElementById('unified-scroll-container');
@@ -227,7 +241,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
       const contentWidth = scrollContainer.scrollWidth;
       const pointerPercent = (curTime / maxTrackWidth) * 100;
       const pointerLeft = (pointerPercent / 100) * contentWidth;
-      console.log('scrollPointerVisible--currentTime--->', curTime, 'pointerLeft:', pointerLeft, 'containerWidth:', containerWidth, 'contentWidth:', contentWidth);
+      console.log('scrollPointerVisible--curTime--->', curTime, 'pointerLeft:', pointerLeft, 'containerWidth:', containerWidth, 'contentWidth:', contentWidth, 'maxWidth:', maxTrackWidth);
 
       const scrollLeft = scrollContainer.scrollLeft;
       const scrollRight = scrollLeft + containerWidth;
@@ -242,7 +256,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
         });
       }
     }, 10);
-  };
+  }, [currentTime, maxTrackWidth]);
 
   // 音量控制
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -822,19 +836,28 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
     }
   }, [isSubtitleMuted]);
 
-  const scrollPointer2VisibleByRightPanel = (time: number) => {
+  const scrollPointer2VisibleByRightPanel = useCallback((time: number) => {
     // 根据右侧面板请求的时间定位红指针 并滚动到可见范
     setCurrentTime(time);
-    console.log('scrollPointer2VisibleByRightPanel--time--->', time);
+    if (videoRef.current) {
+      videoRef.current.currentTime = time;
+    }
+    lastPlayedSubtitleIndexRef.current = -1;
+    audioPlayPromiseRef.current = null;
+    setPlayingSubtitleIndex(-1);
+    console.log('scrollPointer2VisibleByRightPanel--time--->', time, 'maxTrackWidth: ', maxTrackWidth);
     scrollPointerVisible(time);
-  };
+
+  }, [currentTime, maxTrackWidth]);
+
+
 
   // 注册外部定位回调
   useEffect(() => {
     onSeekToTime?.((time: number) => {
       scrollPointer2VisibleByRightPanel(time);
     });
-  }, [onSeekToTime]);
+  }, [onSeekToTime, scrollPointer2VisibleByRightPanel]);
 
   // 监听字幕播放索引变化，自动滚动到可见区域
   useEffect(() => {
@@ -913,24 +936,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, videoTrack]);
 
-
-  // 计算最长轨道的实际宽度
-  const calculateMaxTrackWidth = useCallback(() => {
-    const allTracks = [
-      ...videoTrack.map(item => item.startTime + item.duration),
-      // ...audioTrack.map(item => item.startTime + item.duration),
-      ...bgmTrack.map(item => item.startTime + item.duration),
-      ...subtitleTrack.map(item => item.startTime + item.duration)
-    ];
-    // console.log('allTracks-->', allTracks);
-
-    const maxContentTime = allTracks.length > 0 ? Math.max(...allTracks) : totalDuration;
-    return Math.max(maxContentTime, totalDuration);
-  }, [videoTrack, bgmTrack, subtitleTrack, totalDuration]);// audioTrack, 
-
-  const maxTrackWidth = calculateMaxTrackWidth();
-  // console.log('maxTrackWidth-->', maxTrackWidth);
-
+  // console.log('maxTrackWidth-->', maxTrackWidth);  
   // 智能扩展时间轴函数 - 不改变刻度比例，只记录日志
   const expandTimelineIfNeeded = useCallback((itemEndTime: number) => {
     if (itemEndTime > maxTrackWidth) {
