@@ -176,6 +176,27 @@ export default function TestFingerprintPage() {
     }
   };
 
+  // 测试 /api/request-test 接口
+  const handleRequestTest = async () => {
+    setRequesting(true);
+    setRequestResponse('');
+    try {
+      const response = await fetch('/api/request-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: 'test', contentType: 'test' }),
+      });
+      const result = await response.json();
+      setRequestResponse(JSON.stringify(result, null, 2));
+      toast.success('请求成功！');
+    } catch (error: any) {
+      setRequestResponse(JSON.stringify({ error: error.message }, null, 2));
+      toast.error('请求失败：' + error.message);
+    } finally {
+      setRequesting(false);
+    }
+  };
+
   const sendTestEmail = async () => {
     if (!emailTo.trim()) {
       toast.error('请输入收件人邮箱');
@@ -310,6 +331,12 @@ export default function TestFingerprintPage() {
                   className="w-14 h-8 align-bottom"
                   onClick={handleRequest} disabled={requesting || !requestUrl.trim()} >
                   {requesting ? '请求中...' : '调用'}
+                </Button>
+                {/* 触发 /api/request-test 接口 */}
+                <Button
+                  className="h-8"
+                  onClick={handleRequestTest} disabled={requesting} variant="outline">
+                  测试接口
                 </Button>
               </div>
 

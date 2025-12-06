@@ -149,6 +149,6 @@ finger_chrome.txt
 finger_safari.txt
 **/*.tsx.bak
 
-
-
+_demo/*
+public/mock_r2/*
 

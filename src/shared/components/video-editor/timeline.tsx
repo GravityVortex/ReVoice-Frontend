@@ -8,7 +8,10 @@ interface TimelineProps {
   totalDuration: number;
   zoom: number;
   onTimeChange: (newTime: number) => void;
+  onTimeLineClick?: (newTime: number) => void;
   className?: string;
+  onDragging?: (isDragging: boolean) => void;// 是否正在拖拽红色指针
+  onDragStop?: (newTime: number) => void;// 拖拽停止时的回调
 }
 
 export function Timeline({
@@ -16,6 +19,9 @@ export function Timeline({
   totalDuration,
   zoom,
   onTimeChange,
+  onTimeLineClick,
+  onDragging,
+  onDragStop,
   className,
 }: TimelineProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -51,9 +57,9 @@ export function Timeline({
     const clickX = e.clientX - rect.left;
     const timelineWidth = rect.width;
     const newTime = (clickX / timelineWidth) * totalDuration;
-
-    onTimeChange(Math.max(0, Math.min(newTime, totalDuration)));
-  }, [totalDuration, onTimeChange, isDragging]);
+    // 调用回调函数
+    onTimeLineClick?.(Math.max(0, Math.min(newTime, totalDuration)));
+  }, [totalDuration, onTimeLineClick, isDragging]);
 
   // 处理播放头拖动开始
   const handlePlayheadMouseDown = useCallback((e: React.MouseEvent) => {
@@ -62,11 +68,12 @@ export function Timeline({
 
     setIsDragging(true);
     console.log('拖动指针开始---->', e.clientX);
+    onDragging?.(true);
     setDragStartX(e.clientX);
     setDragStartTime(currentTime);
 
     document.body.style.cursor = 'ew-resize';
-  }, [currentTime]);
+  }, [currentTime, onDragging]);
 
   // 处理拖动过程
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -85,10 +92,12 @@ export function Timeline({
   const handleMouseUp = useCallback(() => {
     if (isDragging) {
       setIsDragging(false);
-      console.log('拖动结束---->');
+      onDragging?.(false);
+      onDragStop?.(currentTime);
+      console.log('拖动结束---->', currentTime);
       document.body.style.cursor = '';
     }
-  }, [isDragging]);
+  }, [isDragging, currentTime, onDragging, onDragStop]);
 
   // 添加全局事件监听器
   React.useEffect(() => {

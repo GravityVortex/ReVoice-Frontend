@@ -7,12 +7,14 @@ export interface SrtEntry {
 }
 
 /**
- * 解析SRT时间格式 (HH:MM:SS,mmm) 转换为标准格式 (HH:MM:SS)
+ * 解析SRT时间格式 (HH:MM:SS,mmm) 转换为标准格式 (HH:MM:SS.mmm)
+ * 保留毫秒部分以确保精确的时间解析
  */
 function parseTimeCode(timeCode: string): string {
   // SRT格式: 00:00:00,000
-  // 转换为: 00:00:00
-  return timeCode.replace(',', '.').substring(0, 8);
+  // 转换为: 00:00:00.000 (保留毫秒)
+  return timeCode.replace(',', '.');
+  // return timeCode.replace(',', '.').substring(0, 8);
 }
 
 /**
@@ -20,6 +22,8 @@ function parseTimeCode(timeCode: string): string {
  */
 export function parseSrt(srtContent: string): SrtEntry[] {
   const entries: SrtEntry[] = [];
+  const srtList = [];
+  
 
   // 按空行分割字幕块
   const blocks = srtContent.trim().split(/\n\s*\n/);
@@ -52,6 +56,8 @@ export function parseSrt(srtContent: string): SrtEntry[] {
       text = lines.slice(2).join('\n').trim();
       text2 = text;
     }
+
+    
 
 
     entries.push({
@@ -88,6 +94,7 @@ export async function loadSrtFromUrl(url: string): Promise<SrtEntry[]> {
  */
 export async function loadSrtViaProxy(url: string): Promise<SrtEntry[]> {
   try {
+    // console.log('srt url--->', url);
     const proxyUrl = `/api/proxy-srt?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
 

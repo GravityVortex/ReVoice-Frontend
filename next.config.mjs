@@ -29,6 +29,8 @@ const nextConfig = {
     return [];
   },
   turbopack: {
+    // 明确指定项目根目录
+    root: process.cwd(), // 或直接指定路径
     resolveAlias: {
       // fs: {
       //   browser: './empty.ts', // We recommend to fix code imports before using this method

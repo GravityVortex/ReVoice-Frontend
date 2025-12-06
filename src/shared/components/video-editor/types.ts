@@ -55,7 +55,8 @@ export interface VideoEditorProps {
   onExport?: (data: ExportData) => void;
   initialVideo?: string;
   convertObj?: ConvertObj;
-  onPlayingSubtitleChange?: (index: number) => void; // 字幕播放索引变化回调
+  onPlayingSubtitleChange?: (index: number) => void; // 字幕播放索引变化回调，右侧面板联动
+  onSeekToTime?: (callback: (time: number) => void) => void; // 注册外部定位回调
 }
 
 // 导出数据接口

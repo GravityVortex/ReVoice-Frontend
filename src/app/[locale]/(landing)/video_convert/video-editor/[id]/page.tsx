@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import VideoEditor from '@/shared/components/video-editor';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb';
 import { Home, Loader2 } from 'lucide-react';
@@ -31,6 +31,7 @@ export default function VideoEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoSource, setVideoSource] = useState<Record<string, any> | null>(null);
+  const seekToTimeCallbackRef = useRef<((time: number) => void) | null>(null);
 
   // 获取转换详情
   useEffect(() => {
@@ -75,6 +76,18 @@ export default function VideoEditorPage() {
   const handleExport = (data: any) => {
     console.log('导出数据:', data);
     // 这里可以实现导出逻辑
+  };
+
+  // 注册左侧视频编辑器的定位回调
+  const handleRegisterSeekCallback = (callback: (time: number) => void) => {
+    seekToTimeCallbackRef.current = callback;
+  };
+
+  // 右侧面板请求定位时调用
+  const handleSeekToSubtitle = (time: number) => {
+    if (seekToTimeCallbackRef.current) {
+      seekToTimeCallbackRef.current(time);
+    }
   };
 
   // 防止父页面滚动
@@ -157,10 +170,11 @@ export default function VideoEditorPage() {
         defaultLeftWidthPercent={60}
         leftPanel={
           <div className="h-full flex flex-col relative">
-            <VideoEditor 
-              onExport={handleExport} 
+            <VideoEditor
+              onExport={handleExport}
               convertObj={convertObj}
               onPlayingSubtitleChange={setPlayingSubtitleIndex}
+              onSeekToTime={handleRegisterSeekCallback}
             />
 
             {/* playingAudioIndex >= 0 */}
@@ -174,10 +188,11 @@ export default function VideoEditorPage() {
           </div>
         }
         rightPanel={
-          <AudioListPanel 
+          <AudioListPanel
             onPlayingIndexChange={setPlayingAudioIndex}
             convertObj={convertObj}
             playingSubtitleIndex={playingSubtitleIndex}
+            onSeekToSubtitle={handleSeekToSubtitle}
           />
         }
       />

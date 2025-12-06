@@ -8,11 +8,14 @@ import { RefreshCw, Loader2, Headphones, HeadphoneOff } from 'lucide-react';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { loadSrtViaProxy, SrtEntry } from '@/shared/lib/srt-parser';
 import { ConvertObj } from '@/app/[locale]/(landing)/video_convert/video-editor/[id]/page';
+import { fa } from 'zod/v4/locales';
+import { toast } from 'sonner';
 
 interface AudioListPanelProps {
   onPlayingIndexChange?: (index: number) => void;
   convertObj: ConvertObj;
   playingSubtitleIndex?: number; // 左侧视频编辑器当前播放的字幕索引
+  onSeekToSubtitle?: (time: number) => void; // 请求左侧定位到指定时间
 }
 
 /**
@@ -26,7 +29,7 @@ function getAudioUrl(audioArr: string[], index: number): string {
   return '';
 }
 
-export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1 }: AudioListPanelProps) {
+export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle }: AudioListPanelProps) {
   const [subtitleItems, setSubtitleItems] = useState<SubtitleComparisonData[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playingIndex, setPlayingIndex] = useState<number>(-1);
@@ -34,60 +37,97 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAutoPlayNext, setIsAutoPlayNext] = useState(false);
-  
+  // 单条播放结束
+  const [isAudioPlayEnded, setIsAudioPlayEnded] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // 监听playingSubtitleIndex变化，自动滚动到对应项
+  // 监听左侧当前播放字幕索引，滚动右侧列表到对应位置
   useEffect(() => {
-    if (playingSubtitleIndex === -1 || !itemRefs.current[playingSubtitleIndex]) return;
-    
-    const itemElement = itemRefs.current[playingSubtitleIndex];
-    if (!itemElement) return;
-    
-    // 查找ScrollArea的viewport元素
-    const scrollViewport = itemElement.closest('[data-radix-scroll-area-viewport]') as HTMLElement;
-    if (!scrollViewport) return;
-    
-    // 获取元素和容器的位置信息
-    const itemRect = itemElement.getBoundingClientRect();
-    const containerRect = scrollViewport.getBoundingClientRect();
-    
-    // 计算元素相对于容器的位置
-    const itemTop = itemElement.offsetTop;
-    const itemBottom = itemTop + itemElement.offsetHeight;
-    const scrollTop = scrollViewport.scrollTop;
-    const containerHeight = scrollViewport.clientHeight;
-    
-    // 如果元素在可视区域之外，则滚动
-    const padding = 20; // 留一些边距
-    
-    if (itemTop < scrollTop + padding) {
-      // 元素在上方，滚动到顶部
-      scrollViewport.scrollTo({
-        top: Math.max(0, itemTop - padding),
-        behavior: 'smooth'
-      });
-    } else if (itemBottom > scrollTop + containerHeight - padding) {
-      // 元素在下方，滚动到底部
-      scrollViewport.scrollTo({
-        top: itemBottom - containerHeight + padding,
-        behavior: 'smooth'
-      });
-    }
+     console.log('右侧面板-寻找字幕位置--->', playingSubtitleIndex);
+    // if (playingSubtitleIndex === -1 || !itemRefs.current[playingSubtitleIndex]) return;
+
+
+    // const itemElement = itemRefs.current[playingSubtitleIndex];
+    // if (!itemElement) return;
+
+    // // 查找ScrollArea的viewport元素
+    // const scrollViewport = itemElement.closest('[data-radix-scroll-area-viewport]') as HTMLElement;
+    // if (!scrollViewport) return;
+
+    // // 获取元素和容器的位置信息
+    // const itemRect = itemElement.getBoundingClientRect();
+    // const containerRect = scrollViewport.getBoundingClientRect();
+
+    // // 计算元素相对于容器的位置
+    // const itemTop = itemElement.offsetTop;
+    // const itemBottom = itemTop + itemElement.offsetHeight;
+    // const scrollTop = scrollViewport.scrollTop;
+    // const containerHeight = scrollViewport.clientHeight;
+
+    // // 如果元素在可视区域之外，则滚动
+    // const padding = 20; // 留一些边距
+
+    // if (itemTop < scrollTop + padding) {
+    //   // 元素在上方，滚动到顶部
+    //   scrollViewport.scrollTo({
+    //     top: Math.max(0, itemTop - padding),
+    //     behavior: 'smooth'
+    //   });
+    // } else if (itemBottom > scrollTop + containerHeight - padding) {
+    //   // 元素在下方，滚动到底部
+    //   scrollViewport.scrollTo({
+    //     top: itemBottom - containerHeight + padding,
+    //     behavior: 'smooth'
+    //   });
+    // }
+    if (playingSubtitleIndex == null || playingSubtitleIndex < 0) return;
+    const el = itemRefs.current[playingSubtitleIndex];
+    if (!el) return;
+    // 在下一帧执行，避免和布局抖动竞争
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    });
   }, [playingSubtitleIndex]);
-  
+
+  // 将SRT时间格式转换为秒
+  const parseTimeToSeconds = (timeStr: string): number => {
+    const parts = timeStr.split(':');
+    if (parts.length !== 3) return 0;
+
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+
+    let seconds = 0;
+    let milliseconds = 0;
+
+    if (parts[2].includes(',')) {
+      const [sec, ms] = parts[2].split(',');
+      seconds = parseInt(sec, 10);
+      milliseconds = parseInt(ms, 10);
+    } else if (parts[2].includes('.')) {
+      const [sec, ms] = parts[2].split('.');
+      seconds = parseInt(sec, 10);
+      milliseconds = parseInt(ms, 10);
+    } else {
+      seconds = parseInt(parts[2], 10);
+    }
+
+    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+  };
+
   // 加载SRT文件
   const loadSrtFiles = async () => {
     if (!convertObj) {
       setError('缺少转换对象数据');
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const [sourceEntries, convertEntries] = await Promise.all([
         loadSrtViaProxy(convertObj.srt_source),
@@ -108,7 +148,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           endTime_source: sourceEntry.endTime,
           text_source: sourceEntry.text,
           audioUrl_source: getAudioUrl(convertObj.srt_source_arr, i),
-          
+
           startTime_convert: convertEntry.startTime,
           endTime_convert: convertEntry.endTime,
           text_convert: convertEntry.text2 ? convertEntry.text2 : convertEntry.text,
@@ -139,11 +179,11 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     if (onPlayingIndexChange) {
       onPlayingIndexChange(playingIndex);
     }
-    
+
     // 自动选中正在播放的行
     if (playingIndex >= 0 && subtitleItems[playingIndex]) {
       setSelectedId(subtitleItems[playingIndex].id);
-      
+
       // 自动滚动到正在播放的行，保持可见
       const currentItemRef = itemRefs.current[playingIndex];
       if (currentItemRef) {
@@ -156,20 +196,33 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     }
   }, [playingIndex, onPlayingIndexChange, subtitleItems]);
 
+  const letPointerToPlace = (index: number) => {
+    const item = subtitleItems[index];
+    // 通知左侧视频编辑器定位到该字幕的开始时间（但不播放）
+    if (onSeekToSubtitle) {
+      const timeStr = item.startTime_convert;
+      const timeInSeconds = parseTimeToSeconds(timeStr);
+      onSeekToSubtitle(timeInSeconds);
+    }
+  };
+
   // 播放指定索引和类型的音频
   const playAudioAtIndex = (index: number, type: 'source' | 'convert') => {
     if (index < 0 || index >= subtitleItems.length || !audioRef.current) return;
 
     const item = subtitleItems[index];
     const audioUrl = type === 'source' ? item.audioUrl_source : item.audioUrl_convert;
-    
+
+
+
     audioRef.current.src = audioUrl;
     audioRef.current.play().catch((error) => {
       console.error('播放音频失败:', error);
-      // 如果播放失败，尝试播放下一个
-      // playNextAudio();
+      // 重置播放按钮状态
+      setIsAudioPlayEnded(true);
+      toast.error('播放音频失败，请重试！');
     });
-    
+
     setPlayingIndex(index);
     setPlayingType(type);
   };
@@ -177,7 +230,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   // 播放下一个音频（同一类型）
   const playNextAudio = () => {
     if (playingType === null) return;
-    
+
     const nextIndex = playingIndex + 1;
     if (nextIndex < subtitleItems.length) {
       playAudioAtIndex(nextIndex, playingType);
@@ -190,6 +243,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
 
   // 音频播放结束时自动播放下一个
   const handleAudioEnded = () => {
+    setIsAudioPlayEnded(true);
     // 顶部菜单按钮控制是否自动播放
     isAutoPlayNext && playNextAudio();
   };
@@ -206,6 +260,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     } else {
       // 播放新的音频
       playAudioAtIndex(index, 'source');
+      setIsAudioPlayEnded(false);
     }
   };
 
@@ -221,6 +276,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     } else {
       // 播放新的音频
       playAudioAtIndex(index, 'convert');
+      setIsAudioPlayEnded(false);
     }
   };
 
@@ -253,13 +309,25 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       />
 
       {/* 头部 */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">字幕音频对照表</h2>
+      <div className="px-4 pt-2 pb-1 border-b">
+      <div className="flex items-center justify-between px-4">
+        <h2 className="text-lg font-semibold"
+          onClick={() => {
+            // 测试音频加载时间
+            console.time('音频加载---->');
+            const audio = new Audio();
+            audio.addEventListener('canplaythrough', () => {
+              console.timeEnd('音频加载---->');
+              console.log('加载完成，开始播放');
+              audio.play();
+            });
+            audio.src = convertObj.srt_convert_arr[0] || '';
+          }}>字幕音频对照表</h2>
         <div className='flex flex-row gap-2 text-white'>
-            {isAutoPlayNext? (
-            <Headphones className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(false)}/>
+          {isAutoPlayNext ? (
+            <Headphones className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(false)} />
           ) : (
-            <HeadphoneOff className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(true)}/>
+            <HeadphoneOff className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(true)} />
           )}
           {isLoading ? (
             <>
@@ -268,11 +336,16 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
             </>
           ) : (
             <>
-              <RefreshCw className="w-4 h-4 mr-1" onClick={loadSrtFiles}/>
+              <RefreshCw className="w-4 h-4 mr-1" onClick={loadSrtFiles} />
               {/* 重新加载 */}
             </>
           )}
         </div>
+      </div>
+      <div className="flex items-center justify-around p-0 text-sm font-bold">
+          <div>原字幕</div>
+          <div>转换后字幕</div>
+      </div>
       </div>
 
       {/* 字幕列表 */}
@@ -284,27 +357,28 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               <span className="ml-2 text-muted-foreground">正在加载字幕文件...</span>
             </div>
           )}
-          
+
           {error && (
             <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded">
               <p className="font-medium">加载失败</p>
               <p className="text-sm">{error}</p>
             </div>
           )}
-          
+
           {!isLoading && !error && subtitleItems.map((item, index) => (
             <SubtitleComparisonItem
               key={item.id}
               ref={(el) => { itemRefs.current[index] = el; }}
               item={item}
               isSelected={selectedId === item.id}
-              isPlayingSource={playingIndex === index && playingType === 'source'}
-              isPlayingConvert={playingIndex === index && playingType === 'convert'}
+              isPlayingSource={playingIndex === index && playingType === 'source' && !isAudioPlayEnded}
+              isPlayingConvert={playingIndex === index && playingType === 'convert' && !isAudioPlayEnded}
               isPlayingFromVideo={playingSubtitleIndex === index}
               onSelect={() => setSelectedId(item.id)}
               onUpdate={handleUpdateItem}
               onPlayPauseSource={() => handlePlayPauseSource(index)}
               onPlayPauseConvert={() => handlePlayPauseConvert(index)}
+              onPointerToPlaceClick={() => letPointerToPlace(index)}
               onConvert={() => handleConvert(item)}
               onSave={() => handleSave(item)}
             />
@@ -318,7 +392,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           共 {subtitleItems.length} 条字幕
           {playingIndex >= 0 && playingType && (
             <span className="ml-2 text-primary font-medium">
-              正在播放: 第 {playingIndex + 1} 项 ({playingType === 'source' ? '原字幕' : '转换后'})
+              正在播放: {playingType === 'source' ? '原字幕' : '转换后字幕'}第 {playingIndex + 1} 项 
             </span>
           )}
         </div>

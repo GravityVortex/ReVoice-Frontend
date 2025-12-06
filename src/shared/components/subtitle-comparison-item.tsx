@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, forwardRef } from 'react';
-import { Play, Pause, RefreshCw, Save } from 'lucide-react';
+import { Play, Pause, RefreshCw, Save, ArrowDownToDot } from 'lucide-react';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/lib/utils';
 
@@ -28,6 +28,7 @@ interface SubtitleComparisonItemProps {
     onUpdate: (item: SubtitleComparisonData) => void;
     onPlayPauseSource: () => void;
     onPlayPauseConvert: () => void;
+    onPointerToPlaceClick?: () => void;
     onConvert: () => void;
     onSave: () => void;
 }
@@ -46,6 +47,7 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
             onPlayPauseConvert,
             onConvert,
             onSave,
+            onPointerToPlaceClick,
         },
         ref
     ) {
@@ -70,8 +72,8 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                     isPlayingFromVideo
                         ? "border-red-500 bg-primary/50 shadow-lg ring-2 ring-red-500/50"
                         : isSelected
-                        ? "border-primary bg-primary/5 shadow-md"
-                        : "border-border hover:border-primary/50 hover:bg-accent/50"
+                            ? "border-primary bg-primary/5 shadow-md"
+                            : "border-border hover:border-primary/50 hover:bg-accent/50"
                 )}
             >
                 <div className="flex gap-4">
@@ -79,14 +81,14 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                     <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-1 justify-between">
                             {/* 标题行：原字幕【时间】+ 播放图标 */}
-                            <div className="flex items-center gap-1">
+                            <div className="flex w-full items-center gap-2">
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onPlayPauseSource();
                                     }}
                                     className={cn(
-                                        "cursor-pointer transition-colors p-1 rounded hover:bg-accent",
+                                        "cursor-pointer transition-colors p-1 rounded hover:bg-accent border border-border",
                                         isPlayingSource && "text-primary"
                                     )}
                                 >
@@ -96,34 +98,64 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                         <Play className="w-5 h-5" />
                                     )}
                                 </div>
-                                <h4 className="text-sm font-semibold text-foreground">
-                                    原字幕【{localItem.startTime_source} - {localItem.endTime_source}】
-                                </h4>
+                                <div className="grow text-sm font-semibold text-foreground">
+                                    {/* <div>原字幕</div> */}
+                                    <div>{localItem.startTime_source} - {localItem.endTime_source}</div>
+                                </div>
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // 点击后左侧面板红色指针定位到该字幕开始位置
+                                        onPointerToPlaceClick?.();
+                                    }}
+                                    className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
+                                    title="定位到字幕位置"
+                                >
+                                    <ArrowDownToDot className="w-4 h-4" />
+                                </div>
                             </div>
                         </div>
 
-                        {/* 文本框：不可编辑 */}
-                        <Textarea
-                            value={localItem.text_source}
-                            readOnly
-                            rows={3}
-                            className="resize-none bg-muted/50 cursor-default"
-                            onClick={(e) => e.stopPropagation()}
-                        />
+                        {/* 文本框：可编辑，右下角悬浮图标 */}
+                        <div className="relative">
+                            {/* 文本框：可编辑 readOnly*/}
+                            <Textarea
+                                value={localItem.text_source}
+                                placeholder="原字幕内容"
+                                onChange={(e) => handleFieldChange('text_source', e.target.value)}
+                                rows={3}
+                                className="resize-none bg-muted/50 cursor-default"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            {/* 右下角悬浮图标 */}
+                            <div className="absolute bottom-1 right-1 flex gap-1">
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onConvert();
+                                    }}
+                                    className="cursor-pointer p-1.5 rounded bg-background/10 hover:bg-accent transition-colors"
+                                    title="更新字幕语音"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                </div>
+
+                            </div>
+                        </div>
                     </div>
 
                     {/* 右侧：转换后字幕 */}
                     <div className="flex-1 space-y-3">
                         {/* 标题行：转换后字幕【时间】+ 播放图标 */}
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
+                            <div className="flex w-full items-center gap-2">
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onPlayPauseConvert();
                                     }}
                                     className={cn(
-                                        "cursor-pointer transition-colors p-1 rounded hover:bg-accent",
+                                        "cursor-pointer transition-colors p-1 rounded hover:bg-accent border border-border ",
                                         isPlayingConvert && "text-primary"
                                     )}>
                                     {isPlayingConvert ? (
@@ -132,9 +164,10 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                         <Play className="w-5 h-5" />
                                     )}
                                 </div>
-                                <h4 className="text-sm font-semibold text-foreground">
-                                    转换后字幕【{localItem.startTime_convert} - {localItem.endTime_convert}】
-                                </h4>
+                                <div className="grow text-sm font-semibold text-foreground">
+                                    {/* <div>转换后字幕</div> */}
+                                    <div>{localItem.startTime_convert} - {localItem.endTime_convert}</div>
+                                </div>
                             </div>
                             <div
                                 onClick={(e) => {
@@ -142,10 +175,11 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                     onSave();
                                 }}
                                 className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
-                                title="保存"
+                                title="保存字幕语音"
                             >
                                 <Save className="w-4 h-4" />
                             </div>
+
                         </div>
 
                         {/* 文本框：可编辑，右下角悬浮图标 */}
@@ -165,8 +199,8 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                         e.stopPropagation();
                                         onConvert();
                                     }}
-                                    className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
-                                    title="转换"
+                                    className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent transition-colors"
+                                    title="更新字幕语音"
                                 >
                                     <RefreshCw className="w-4 h-4" />
                                 </div>
