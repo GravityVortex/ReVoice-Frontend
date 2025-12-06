@@ -110,26 +110,9 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const showOneTap = async function (configs: Record<string, string>) {
-    try {
-      const authClient = getAuthClient(configs);
-      await authClient.oneTap({
-        callbackURL: '/',
-        onPromptNotification: (notification: any) => {
-          // Handle prompt dismissal silently
-          // This callback is triggered when the prompt is dismissed or skipped
-          console.log('One Tap prompt notification:', notification);
-        },
-        // fetchOptions: {
-        //   onSuccess: () => {
-        //     router.push('/');
-        //   },
-        // },
-      });
-    } catch (error) {
-      // Silently handle One Tap cancellation errors
-      // These errors occur when users close the prompt or decline to sign in
-      // Common errors: FedCM NetworkError, AbortError, etc.
-    }
+    // Google One Tap is configured on the server side in auth config
+    // No client-side initialization needed
+    // The One Tap prompt will automatically appear if enabled in server config
   };
 
   useEffect(() => {
