@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, isNull, or, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNull, or, sql, sum } from 'drizzle-orm';
 
 import { db } from '@/core/db';
 import { credit } from '@/config/db/schema';
@@ -21,10 +21,10 @@ export enum CreditStatus {
   EXPIRED = 'expired',
   DELETED = 'deleted',
 }
-
+// 信用交易类型
 export enum CreditTransactionType {
-  GRANT = 'grant', // grant credit
-  CONSUME = 'consume', // consume credit
+  GRANT = 'grant', // grant credit，增加
+  CONSUME = 'consume', // consume credit，消耗
 }
 
 export enum CreditTransactionScene {
@@ -142,7 +142,15 @@ export async function getCreditsCount({
   return result?.count || 0;
 }
 
-// consume credits
+/**
+ * 消耗积分业务
+ * @param userId 用户ID
+ * @param credits 要消耗的积分：如4
+ * @param scene 场景，如：convert_video
+ * @param description 描述，如：视频转换任务消耗积分
+ * @param metadata 其他元信息 如：{"type":"test"}
+ * @returns 
+ */
 export async function consumeCredits({
   userId,
   credits,
@@ -163,7 +171,7 @@ export async function consumeCredits({
     // 1. check credits balance
     const [creditsBalance] = await tx
       .select({
-        total: sum(credit.remainingCredits),
+        total: sum(credit.remainingCredits),// 剩余积分额度
       })
       .from(credit)
       .where(
@@ -281,6 +289,54 @@ export async function consumeCredits({
       metadata: metadata,
     };
     await tx.insert(credit).values(consumedCredit);
+
+    return consumedCredit;
+  });
+
+  return result;
+}
+
+/**
+ * 退还积分业务
+ * @param creditId 消费记录ID 
+ * @returns 
+ */
+export async function refundCredits({ creditId }: { creditId: string }) {
+  const result = await db().transaction(async (tx) => {
+    // 查到此条消费记录，其中consumedDetail字段记录了关联的所有增加记录和消耗数量
+    const [consumedCredit] = await tx
+      .select()
+      .from(credit)
+      .where(eq(credit.id, creditId));
+
+    if (!consumedCredit || consumedCredit.status !== CreditStatus.ACTIVE) {
+      throw new Error('Credit record not found or already refunded');
+    }
+    // 关联记录都查出来，一一修改
+    const consumedItems = JSON.parse(consumedCredit.consumedDetail || '[]');
+
+    // 逐条更新关联的记录，把remaining_credits字段加回去
+    await Promise.all(
+      consumedItems.map((item: any) => {
+        if (item && item.creditId && item.creditsConsumed > 0) {
+          return tx
+            .update(credit)
+            .set({
+              // remaining_credits字段加回去
+              remainingCredits: sql`${credit.remainingCredits} + ${item.creditsConsumed}`,
+            })
+            .where(eq(credit.id, item.creditId));
+        }
+      })
+    );
+
+    // 标记此条消费记录为已删除
+    await tx
+      .update(credit)
+      .set({
+        status: CreditStatus.DELETED,
+      })
+      .where(eq(credit.id, creditId));
 
     return consumedCredit;
   });

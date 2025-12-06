@@ -18,9 +18,9 @@ import { type Table } from '@/shared/types/blocks/table';
 export default async function CreditsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: number; pageSize?: number; type?: string }>;
+  searchParams: Promise<{ page?: number; pageSize?: number; type?: string; stu?: string }>;
 }) {
-  const { page: pageNum, pageSize, type } = await searchParams;
+  const { page: pageNum, pageSize, type, stu } = await searchParams;
   const page = pageNum || 1;
   const limit = pageSize || 20;
 
@@ -34,12 +34,12 @@ export default async function CreditsPage({
   const total = await getCreditsCount({
     transactionType: type as CreditTransactionType,
     userId: user.id,
-    status: CreditStatus.ACTIVE,
+    status: stu as CreditStatus || CreditStatus.ACTIVE,
   });
 
   const credits = await getCredits({
     userId: user.id,
-    status: CreditStatus.ACTIVE,
+    status: stu as CreditStatus || CreditStatus.ACTIVE,
     transactionType: type as CreditTransactionType,
     page,
     limit,
@@ -114,6 +114,12 @@ export default async function CreditsPage({
       name: 'consume',
       url: '/settings/credits?type=consume',
       is_active: type === 'consume',
+    },
+    {
+      title: t('list.tabs.deleted'),
+      name: 'deleted',
+      url: '/settings/credits?type=consume&stu=deleted',
+      is_active: type === 'deleted',
     },
   ];
 

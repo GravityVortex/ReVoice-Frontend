@@ -14,7 +14,8 @@
     "tabs": {
       "all": "All",
       "grant": "Grant",
-      "consume": "Consume"
+      "consume": "Consume",
+      "deleted": "back"
     }
   },
   "view": {

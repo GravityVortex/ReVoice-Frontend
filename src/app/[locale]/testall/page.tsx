@@ -54,6 +54,13 @@ export default function TestFingerprintPage() {
   const [decryptedOutput, setDecryptedOutput] = useState<string>('');
   const [encryptionType, setEncryptionType] = useState<'util' | 'simple'>('util');
 
+  // 积分测试相关状态
+  const [creditAction, setCreditAction] = useState<'consume' | 'refund'>('consume');
+  const [creditAmount, setCreditAmount] = useState<string>('2');
+  const [creditId, setCreditId] = useState<string>('');
+  const [creditTesting, setCreditTesting] = useState(false);
+  const [creditResult, setCreditResult] = useState<string>('');
+
 
   const testFingerprint = async () => {
     setLoading(true);
@@ -240,6 +247,53 @@ export default function TestFingerprintPage() {
     }
   };
 
+  const handleCreditTest = async () => {
+    if (creditAction === 'consume') {
+      const amount = parseInt(creditAmount);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error('请输入有效的积分数量');
+        return;
+      }
+    } else if (creditAction === 'refund') {
+      if (!creditId.trim()) {
+        toast.error('请输入要退还的积分记录ID');
+        return;
+      }
+    }
+
+    setCreditTesting(true);
+    setCreditResult('');
+    try {
+      const response = await fetch('/api/payment/credits-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: creditAction,
+          credits: creditAction === 'consume' ? parseInt(creditAmount) : undefined,
+          creditId: creditAction === 'refund' ? creditId : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(`${creditAction === 'consume' ? '消耗' : '退还'}积分成功！`);
+        setCreditResult(JSON.stringify(data, null, 2));
+        if (creditAction === 'consume' && data.data?.id) {
+          setCreditId(data.data.id);
+        }
+      } else {
+        toast.error(`操作失败：${data.error || '未知错误'}`);
+        setCreditResult(JSON.stringify(data, null, 2));
+      }
+    } catch (error: any) {
+      toast.error('操作失败：' + error.message);
+      setCreditResult(JSON.stringify({ error: error.message }, null, 2));
+    } finally {
+      setCreditTesting(false);
+    }
+  };
+
   useEffect(() => {
     testFingerprint();
 
@@ -276,6 +330,74 @@ export default function TestFingerprintPage() {
       <h1 className="text-3xl font-bold mb-8">跨浏览器指纹测试</h1>
 
       <div className="grid gap-3">
+
+        {/* 积分测试 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>积分消耗和退还测试</CardTitle>
+            <CardDescription>测试积分消耗和退还功能</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={creditAction === 'consume' ? 'default' : 'outline'}
+                  onClick={() => setCreditAction('consume')}
+                  size="sm"
+                >
+                  消耗积分
+                </Button>
+                <Button
+                  variant={creditAction === 'refund' ? 'default' : 'outline'}
+                  onClick={() => setCreditAction('refund')}
+                  size="sm"
+                >
+                  退还积分
+                </Button>
+              </div>
+
+              {creditAction === 'consume' ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">积分数量</label>
+                  <Input
+                    type="number"
+                    placeholder="2"
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(e.target.value)}
+                    disabled={creditTesting}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">积分记录ID</label>
+                  <Input
+                    placeholder="输入要退还的积分记录ID"
+                    value={creditId}
+                    onChange={(e) => setCreditId(e.target.value)}
+                    disabled={creditTesting}
+                  />
+                </div>
+              )}
+
+              <Button
+                onClick={handleCreditTest}
+                disabled={creditTesting}
+                className="w-full"
+              >
+                {creditTesting ? '处理中...' : '提交'}
+              </Button>
+
+              {creditResult && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">返回结果</label>
+                  <pre className="p-3 bg-muted rounded-lg font-mono text-xs overflow-auto max-h-96">
+                    {creditResult}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 请求测试 */}
         <Card className='gap-0 py-4'>
