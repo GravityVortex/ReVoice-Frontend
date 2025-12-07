@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
     //   "key": "uploads/1764719912423-test2.mp4",
     //   "publicUrl": "https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/uploads/1764719912423-test2.mp4"
     // }
+    const r2Bucket = r2Config.bucket || 'video-store';
 
-
-    return NextResponse.json({ presignedUrl, key, publicUrl });
+    return NextResponse.json({ presignedUrl, key, publicUrl, r2Bucket});
   } catch (error) {
     console.error('Error generating presigned URL:', error);
     return NextResponse.json({ error: 'Failed to generate presigned URL' }, { status: 500 });

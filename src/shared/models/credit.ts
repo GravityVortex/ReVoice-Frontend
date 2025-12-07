@@ -345,6 +345,7 @@ export async function refundCredits({ creditId }: { creditId: string }) {
 }
 
 // get remaining credits
+// 计算用户当前可用的剩余积分总额
 export async function getRemainingCredits(userId: string): Promise<number> {
   const currentTime = new Date();
 

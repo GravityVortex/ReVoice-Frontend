@@ -28,45 +28,46 @@ import { toast } from 'sonner';
 
 // 语言选项
 const LANGUAGES = [
-    { value: 'zh-CN', label: '中文（简体）' },
+    { value: 'zh-CN', label: '中文' },
     { value: 'en-US', label: '英语' },
-    { value: 'fr-FR', label: '法语' },
-    { value: 'de-DE', label: '德语' },
-    { value: 'ja-JP', label: '日语' },
-    { value: 'ko-KR', label: '韩语' },
+    // { value: 'fr-FR', label: '法语' },
+    // { value: 'de-DE', label: '德语' },
+    // { value: 'ja-JP', label: '日语' },
+    // { value: 'ko-KR', label: '韩语' },
     // { value: 'es-ES', label: '西班牙语' },
     // { value: 'pt-PT', label: '葡萄牙语' },
 ];
 
-// 清晰度选项
-const RESOLUTIONS = [
-    { value: '480p', label: '480P', credits: 0 },
-    { value: '720p', label: '720P', credits: 10 },
-    { value: '1080p', label: '1080P', credits: 20 },
-];
 
-// 水印选项
-const WATERMARK_OPTIONS = [
-    { value: 'none', label: '无水印', credits: 0 },
-    { value: 'with', label: '有水印', credits: 0 },
+// 单人多人
+const PEOPLES_OPTIONS = [
+    { value: 'single', label: '单人', credits: 0 },
+    { value: 'multiple', label: '多人', credits: 0 },
 ];
+interface Config {
+    maxFileSizeMB: number;
+    pointsPerMinute: number;
+    userType: string;
+}
 
 interface VideoUploadData {
-    title: string;
-    content: string;
     videoUrl: string;
     videoKey: string;
     videoSize: number;
     videoDuration: number;
     thumbnailUrl?: string;
+
+    fileName: string;
+    fileType: string;
+    r2Key: string;
+    r2Bucket: string;
 }
 
 interface FormData {
     videoUpload: VideoUploadData;
-    targetLanguage: string;
-    resolution: string;
-    watermark: string;
-    remark: string;
+    sourceLanguage: string;// 源语言代码(如:zh-CN)
+    targetLanguage: string;// 目标语言代码(如:en-US)
+    peoples: string;//说话人数量:single/multiple
 }
 
 interface ProjectAddConvertModalProps {
@@ -76,7 +77,6 @@ interface ProjectAddConvertModalProps {
 }
 
 const STORAGE_KEY = 'project_add_convert_form_cache';
-const MAX_SIZE = 300 * 1024 * 1024; // 300MB
 
 
 export function ProjectAddConvertModal({
@@ -101,23 +101,58 @@ export function ProjectAddConvertModal({
     // 表单数据
     const [formData, setFormData] = useState<FormData>({
         videoUpload: {
-            title: '',
-            content: '',
             videoUrl: '',
             videoKey: '',
             videoSize: 0,
             videoDuration: 0,
             thumbnailUrl: '',
+
+            fileName: '',
+            fileType: '',
+            r2Key: '',
+            r2Bucket: '',
         },
-        targetLanguage: 'en-US',// 目标语言
-        resolution: '480p',// 分辨率
-        watermark: 'none',// 水印
-        remark: '',// 转换备注
+        targetLanguage: 'en-US',// 目标语言代码(如:en-US)
+        sourceLanguage: 'zh-CN',// 源语言代码(如:zh-CN)
+        peoples: 'single',// 说话人数量:single/multiple
+    });
+    const [config, setConfig] = useState<Config>({
+        maxFileSizeMB: 300 * 1024 * 1024,
+        pointsPerMinute: 2,
+        userType: 'guest',
     });
 
 
     // 从本地存储加载缓存数据
     useEffect(() => {
+        const fetchConfig = async () => {
+            // 接口获取系统配置
+            const res = await fetch("/api/video-task/getconfig");
+            const backJO = await res.json();
+            console.log("接口获取配置--->", backJO);
+            console.log("当前用户--->", user);
+            const isGuest = user?.email.startsWith('guest_') && user?.email.endsWith('@temp.local');
+            // 默认值
+            const tempConfig: Config = {
+                userType: isGuest ? 'guest' : 'registered',
+                maxFileSizeMB: 300 * 1024 * 1024,
+                pointsPerMinute: 2
+            };
+            for (const item of backJO?.data?.list || []) {
+                if (item.configKey === 'limit.guest.file_size_mb' && isGuest) {
+                    tempConfig.maxFileSizeMB = parseInt(item.configValue) * 1024 * 1024;
+                } else if (item.configKey === 'limit.registered.file_size_mb' && !isGuest) {
+                    tempConfig.maxFileSizeMB = parseInt(item.configValue) * 1024 * 1024;
+                } else if (item.configKey === "credit.points_per_minute") {
+                    tempConfig.pointsPerMinute = parseInt(item.configValue);
+                }
+            }
+            // tempConfig.userType = 'guest'
+            // tempConfig.pointsPerMinute = 8;
+            setConfig(tempConfig)
+            console.log("最终配置--->", tempConfig);
+        };
+
         if (isOpen) {
             const cached = localStorage.getItem(STORAGE_KEY);
             if (cached) {
@@ -137,23 +172,41 @@ export function ProjectAddConvertModal({
                     console.error('解析缓存数据失败:', e);
                 }
             }
+            // 接口获取配置
+            fetchConfig();
         }
     }, [isOpen]);
 
     // 计算消耗积分
     const calculateCredits = () => {
-        const resolutionCredits = RESOLUTIONS.find(r => r.value === formData.resolution)?.credits || 0;
-        const watermarkCredits = WATERMARK_OPTIONS.find(w => w.value === formData.watermark)?.credits || 0;
+        // const resolutionCredits = RESOLUTIONS.find(r => r.value === formData.resolution)?.credits || 0;
+        // const watermarkCredits = PEOPLES_OPTIONS.find(w => w.value === formData.peoples)?.credits || 0;
         const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
-        const durationCredits = durationInMinutes * 2; // 1分钟2积分
-        return resolutionCredits + watermarkCredits + durationCredits;
+        const durationCredits = durationInMinutes * config.pointsPerMinute; // 1分钟2积分
+        return durationCredits;
     };
 
+    // 获取消费后积分
+    const getConsumeCredits = () => {
+        let sy = user?.credits?.remainingCredits || 0;
+        // let sy = 0;
+        if (sy <= 0) return 0;
+        let jf = sy - calculateCredits();
+        return jf;
+    }
+    const getConsumeTime = () => {
+        let jf = user?.credits?.remainingCredits || 0;
+        // let jf = 0;
+        if (jf <= 0) return 0;
+        let duration = Math.floor(jf / 2); // 每分钟2积分
+        return duration;
+    }
+
     // 获取时长积分
-    const getDurationCredits = () => {
-        const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
-        return durationInMinutes * 2; // 1分钟2积分
-    };
+    // const getDurationCredits = () => {
+    //     const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
+    //     return durationInMinutes * 2; // 1分钟2积分
+    // };
 
     // 保存到本地缓存
     const saveToCache = () => {
@@ -172,18 +225,20 @@ export function ProjectAddConvertModal({
     const resetFormData = () => {
         setFormData({
             videoUpload: {
-                title: '',
-                content: '',
                 videoUrl: '',
                 videoKey: '',
                 videoSize: 0,
                 videoDuration: 0,
                 thumbnailUrl: '',
+
+                fileName: '',
+                fileType: '',
+                r2Key: '',
+                r2Bucket: '',
             },
-            targetLanguage: 'en-US',
-            resolution: '480p',
-            watermark: 'none',
-            remark: '',
+            targetLanguage: 'en-US',// 目标语言代码(如:en-US)
+            sourceLanguage: 'zh-CN',// 源语言代码(如:zh-CN)
+            peoples: 'single',// 说话人数量:single/multiple
         });
     };
 
@@ -203,6 +258,7 @@ export function ProjectAddConvertModal({
         }
 
         // 类型与后缀双重判断
+        // MP4, MOV, AVI, MKV
         const isMp4 = file.type === "video/mp4" || file.name.toLowerCase().endsWith(".mp4");
         if (!isMp4) {
             toast.error("仅支持 .mp4 文件");
@@ -211,15 +267,41 @@ export function ProjectAddConvertModal({
         }
 
         // 验证文件大小（500MB）
-        const maxSize = 500 * 1024 * 1024;
+        const maxSize = config.maxFileSizeMB;
         if (file.size > maxSize) {
             resetVideoData(false);
-            toast.error('视频文件不能超过 500MB');
+            toast.error(`视频文件不能超过 ${maxSize}MB`);
             return;
         }
 
         setProgress2(0);
         setUploading(true);
+
+
+        // 从本地文件获取视频信息
+        const localUrl = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.src = localUrl;
+
+        await new Promise<void>((resolve) => {
+            video.onloadedmetadata = () => {
+                const videoDuration = Math.round(video.duration * 10) / 10;
+                setFormData(prev => ({
+                    ...prev,
+                    videoUpload: {
+                        ...prev.videoUpload,
+                        videoDuration,
+                        videoSize: file.size,
+                    },
+                }));
+                console.log('视频时长--->', videoDuration, '秒');
+                URL.revokeObjectURL(localUrl);
+                resolve();
+            };
+        });
+        
+
         try {
 
             const res = await fetch('/api/storage/presigned-url', {
@@ -234,7 +316,7 @@ export function ProjectAddConvertModal({
             }
 
             // 获取上传签名url
-            const { presignedUrl, key, publicUrl } = await res.json();
+            const { presignedUrl, key, publicUrl, r2Bucket } = await res.json();
 
             // 前端直接上传
             const xhr = new XMLHttpRequest();
@@ -256,84 +338,62 @@ export function ProjectAddConvertModal({
                 xhr.send(file);
             });
 
-
             //setResult2(`上传成功！\n文件 URL: ${publicUrl}\n\n注意：需要在 R2 Bucket 设置 CORS 规则才能正常工作`);
 
-
-
-            // 上传视频
-            // const formData = new FormData();
-            // formData.append('file', file);
-
-            // const response = await fetch('/api/storage/upload-video', {
-            //     method: 'POST',
-            //     body: formData,
-            // });
-
-            // if (!response.ok) {
-            //     resetVideoData(false);
-            //     throw new Error('上传失败');
-            // }
-
-            // const result = await response.json();
-            // if (result.code !== 0) {
-            //     resetVideoData(false);
-            //     throw new Error(result.message || '上传失败');
-            // }
 
             const videoUrl = publicUrl;
             const videoKey = key;
             const videoSize = file.size;
 
             // 创建临时视频元素获取时长
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-            video.src = videoUrl;
+            // const video = document.createElement('video');
+            // video.preload = 'metadata';
+            // video.src = videoUrl;
 
-            video.onloadedmetadata = () => {
-                // const durationInMinutes = Math.ceil(video.duration / 60);
-                // setVideoDuration(durationInMinutes);
-                // URL.revokeObjectURL(video.src);
-                // console.log('视频时长（分钟）:', durationInMinutes);
+            // video.onloadedmetadata = () => {
+            //     // const durationInMinutes = Math.ceil(video.duration / 60);
+            //     // setVideoDuration(durationInMinutes);
+            //     // URL.revokeObjectURL(video.src);
+            //     // console.log('视频时长（分钟）:', durationInMinutes);
 
-                window.URL.revokeObjectURL(video.src);
-                const videoDuration = video.duration;// 单位秒
-                // 保留1位小数
-                const formattedDuration = Math.round(videoDuration * 10) / 10;
-                // 更新表单项
-                setFormData(prev => ({
-                    ...prev,
-                    videoUpload: {
-                        ...prev.videoUpload,
-                        videoDuration: formattedDuration,
-                    },
-                }));
-                console.log('视频时长--->', formattedDuration, '秒');
-            };
+            //     window.URL.revokeObjectURL(video.src);
+            //     const videoDuration = video.duration;// 单位秒
+            //     // 保留1位小数
+            //     const formattedDuration = Math.round(videoDuration * 10) / 10;
+            //     // 更新表单项
+            //     setFormData(prev => ({
+            //         ...prev,
+            //         videoUpload: {
+            //             ...prev.videoUpload,
+            //             videoDuration: formattedDuration,
+            //         },
+            //     }));
+            //     console.log('视频时长--->', formattedDuration, '秒');
+            // };
 
             // 尝试截取封面（可能失败）
-            video.currentTime = 1; // 截取第1秒的画面
-            video.onseeked = () => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-                        setFormData(prev => ({
-                            ...prev,
-                            videoUpload: {
-                                ...prev.videoUpload,
-                                thumbnailUrl,
-                            },
-                        }));
-                    }
-                } catch (error) {
-                    console.log('截取封面失败（忽略）:', error);
-                }
-            };
+            // video.currentTime = 1; // 截取第1秒的画面
+            // video.onseeked = () => {
+            //     try {
+            //         const canvas = document.createElement('canvas');
+            //         canvas.width = video.videoWidth;
+            //         canvas.height = video.videoHeight;
+            //         const ctx = canvas.getContext('2d');
+            //         if (ctx) {
+            //             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            //             const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+            //             setFormData(prev => ({
+            //                 ...prev,
+            //                 videoUpload: {
+            //                     ...prev.videoUpload,
+            //                     thumbnailUrl,
+            //                 },
+            //             }));
+            //         }
+            //     } catch (error) {
+            //         console.log('截取封面失败（忽略）:', error);
+            //     }
+            // };
 
             // 更新表单项
             setFormData(prev => ({
@@ -343,6 +403,11 @@ export function ProjectAddConvertModal({
                     videoUrl,
                     videoKey,
                     videoSize,
+
+                    fileName: file.name,
+                    fileType: file.type,
+                    r2Key: key,
+                    r2Bucket: r2Bucket, // || 'video-store',
                 },
             }));
             toast.success('视频上传成功');
@@ -367,13 +432,16 @@ export function ProjectAddConvertModal({
         setFormData(prev => ({
             ...prev,
             videoUpload: {
-                title: prev.videoUpload.title,
-                content: prev.videoUpload.content,
                 videoUrl: '',
                 videoKey: '',
                 videoSize: 0,
                 videoDuration: 0,
                 thumbnailUrl: '',
+
+                fileName: '',
+                fileType: '',
+                r2Key: '',
+                r2Bucket: '',
             },
         }));
         showTip && toast.success('视频已删除');
@@ -387,10 +455,6 @@ export function ProjectAddConvertModal({
 
     // 处理第一步的下一步
     const handleStep1Next = () => {
-        if (!formData.videoUpload.title.trim()) {
-            toast.error('请输入视频标题');
-            return;
-        }
         if (!formData.videoUpload.videoUrl) {
             toast.error('请上传视频文件');
             return;
@@ -424,27 +488,55 @@ export function ProjectAddConvertModal({
 
         setSubmitting(true);
 
-        const payload = {
-            // userId: user?.id || '',
-            targetLanguage: formData.targetLanguage,
-            resolution: formData.resolution,
-            watermark: formData.watermark,
-            remark: formData.remark,
-            credits: calculateCredits(),
-        };
+        // {
+        //     "userId": "user_123456",
+        //     "fileName": "example_video.mp4",
+        //     "fileSizeBytes": 104857600,
+        //     "fileType": "video/mp4",
+        //     "r2Key": "uploads/2025/12/07/abc123def456.mp4",
+        //     "r2Bucket": "my-video-bucket",// 桶名称
+        //     "videoDurationSeconds": 300,
+        //     "checksumSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        //     "uploadStatus": "completed",
+        //     "coverR2Key": "covers/2025/12/07/cover_abc123.jpg",
+        //     "coverSizeBytes": 524288,
+        //     "coverUpdatedAt": "2025-12-07T10:05:00Z",
+        //     "createdBy": "user_123456"
+        // }
+
+        // {
+        //     "userId": "user_123456",
+        //     "originalFileId": "file_id_001",
+        //     "sourceLanguage": "zh-CN",
+        //     "targetLanguage": "en-US",
+        //     "speakerCount": "single",
+        //     "status": "pending",
+        //     "priority": 3,// 优先级:1=最高,4=最低
+        //     "progress": 0,
+        //     "currentStep": "upload_complete",
+        //     "createdBy": "user_123456"
+        // }
 
         const fd = new FormData();
-        fd.append("prefix", "video-convert"); // 可选：自定义存储前缀
-        fd.append("user_uuid", user?.id || "");
-        fd.append("title", formData.videoUpload.title);
-        // fd.append("description", description);
-        fd.append("content", formData.videoUpload.content); // 可以添加更多内容字段
-        fd.append("source_vdo_url", formData.videoUpload.videoUrl); // 视频R2地址
-        fd.append("videoSize", "" + formData.videoUpload.videoSize); // 视频大小
-        fd.append("duration", "" + formData.videoUpload.videoDuration);
+        fd.append("userId", user?.id || ''); // 用户ID
+        fd.append("fileName", "" + formData.videoUpload.fileName); // 
+        fd.append("fileSizeBytes", "" + formData.videoUpload.videoSize); // 
+        fd.append("fileType", "" + formData.videoUpload.fileType); // 
+        fd.append("r2Key", "" + formData.videoUpload.r2Key); // 
+        fd.append("r2Bucket", "" + formData.videoUpload.r2Bucket); // 
+        fd.append("videoDurationSeconds", "" + formData.videoUpload.videoDuration); // 
+        fd.append("credits", "" + calculateCredits()); // 消耗积分
+        fd.append("sourceLanguage", formData.sourceLanguage); // 
+        fd.append("targetLanguage", formData.targetLanguage); // 
+        fd.append("speakerCount", formData.peoples); // 
+
+        // fd.append("prefix", "video-convert"); // 可选：自定义存储前缀
+        // fd.append("user_uuid", user?.id || "");
+        // fd.append("source_vdo_url", formData.videoUpload.videoUrl); // 视频R2地址
+        // fd.append("videoSize", "" + formData.videoUpload.videoSize); // 视频大小
+        // fd.append("duration", "" + formData.videoUpload.videoDuration);
         try {
-            //const res = await fetch("/api/demo/upload-file", {
-            const res = await fetch("/api/video-convert/add-withvideourl", {
+            const res = await fetch("/api/video-task/create", {
                 method: "POST",
                 body: fd,
             });
@@ -479,19 +571,15 @@ export function ProjectAddConvertModal({
         return LANGUAGES.find(l => l.value === value)?.label || value;
     };
 
-    // 获取清晰度标签
-    const getResolutionLabel = (value: string) => {
-        return RESOLUTIONS.find(r => r.value === value)?.label || value;
-    };
 
-    // 获取水印标签
+    // 获取单人双人
     const getWatermarkLabel = (value: string) => {
-        return WATERMARK_OPTIONS.find(w => w.value === value)?.label || value;
+        return PEOPLES_OPTIONS.find(w => w.value === value)?.label || value;
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl h-[780px] flex flex-col p-0">
+            <DialogContent className="max-w-3xl h-[580px] flex flex-col p-0">
                 <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
                     <DialogTitle>上传视频转换</DialogTitle>
                     <DialogDescription className="sr-only">
@@ -556,38 +644,6 @@ export function ProjectAddConvertModal({
                     {currentStep === 1 && (
                         <Card className="mt-2 pt-2 pb-5">
                             <CardContent className="pt-0 space-y-6">
-                                {/* 视频标题 */}
-                                <div className="space-y-2 mb-1">
-                                    <Label htmlFor="videoTitle" className="text-base font-semibold">
-                                        视频标题 <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        id="videoTitle"
-                                        value={formData.videoUpload.title}
-                                        onChange={(e) => setFormData({
-                                            ...formData,
-                                            videoUpload: { ...formData.videoUpload, title: e.target.value }
-                                        })}
-                                        placeholder="请输入视频标题"
-                                    />
-                                </div>
-
-                                {/* 视频内容 */}
-                                <div className="space-y-2 mb-1">
-                                    <Label htmlFor="videoContent" className="text-base font-semibold">
-                                        视频内容
-                                    </Label>
-                                    <Textarea
-                                        id="videoContent"
-                                        value={formData.videoUpload.content}
-                                        onChange={(e) => setFormData({
-                                            ...formData,
-                                            videoUpload: { ...formData.videoUpload, content: e.target.value }
-                                        })}
-                                        placeholder="请输入视频内容描述（可选）"
-                                        rows={4}
-                                    />
-                                </div>
 
                                 {/* 视频文件上传 */}
                                 <div className="space-y-2 mb-1">
@@ -648,7 +704,8 @@ export function ProjectAddConvertModal({
                                         </div>
                                     )}
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        支持上传视频文件，大小不超过 500MB
+                                        {config.userType === 'guest' ? '访客账号' : '当前账号'}
+                                        {`最大支持上传 ${(config?.maxFileSizeMB / 1024 / 1024).toFixed(0)} MB`}
                                     </p>
                                 </div>
                             </CardContent>
@@ -659,9 +716,34 @@ export function ProjectAddConvertModal({
                     {currentStep === 2 && (
                         <Card className="mt-2 pt-2 pb-5">
                             <CardContent className="pt-0 space-y-6">
-                                {/* 目标语言 */}
-                                <div className="flex items-center justify-between gap-3 border-b pb-0 my-1">
-                                    <div className="flex items-center gap-3 py-3">
+                                {/* 原语言 */}
+                                <div className="flex items-center justify-between gap-4 border-b pb-0 my-1">
+                                    <div className="flex items-center gap-3 py-4">
+                                        {/* <Languages className="w-5 h-5 text-primary" /> */}
+                                        <Label htmlFor="sourceLanguage" className="text-base font-medium whitespace-nowrap">
+                                            原语言 <span className="text-red-500">*</span>
+                                        </Label>
+                                    </div>
+                                    <Select
+                                        value={formData.sourceLanguage}
+                                        onValueChange={(value) => setFormData({ ...formData, sourceLanguage: value })}
+                                    >
+                                        <SelectTrigger id="sourceLanguage" className="flex-1 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto py-3 pr-0 pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right focus:ring-0 focus:ring-offset-0">
+                                            <SelectValue placeholder="请选择" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {LANGUAGES.map((lang) => (
+                                                <SelectItem key={lang.value} value={lang.value} className="focus:bg-transparent hover:bg-transparent">
+                                                    {lang.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <ChevronRight className="w-5 h-5 text-muted-foreground mr-0" />
+                                </div>
+
+                                <div className="flex items-center justify-between gap-4 border-b pb-0 my-1">
+                                    <div className="flex items-center gap-3 py-4">
                                         {/* <Languages className="w-5 h-5 text-primary" /> */}
                                         <Label htmlFor="targetLanguage" className="text-base font-medium whitespace-nowrap">
                                             目标语言 <span className="text-red-500">*</span>
@@ -686,9 +768,8 @@ export function ProjectAddConvertModal({
                                 </div>
 
                                 {/* 原视频时长 */}
-                                <div className="flex items-center justify-between gap-3 py-3 mb-4 border-b">
+                                {/* <div className="flex items-center justify-between gap-3 py-3 mb-4 border-b">
                                     <div className="flex items-center gap-3">
-                                        {/* <Clock className="w-5 h-5 text-primary" /> */}
                                         <Label className="text-base font-medium whitespace-nowrap">
                                             原视频时长 <span className="text-red-500">*</span>
                                         </Label>
@@ -697,80 +778,33 @@ export function ProjectAddConvertModal({
                                         <span className="text-muted-foreground">
                                             {formData.videoUpload.videoDuration > 0 ? `${Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟` : '加载中...'}
                                         </span>
-                                        {/* <ChevronRight className="w-5 h-5 text-muted-foreground" /> */}
                                     </div>
-                                </div>
+                                </div> */}
 
-                                {/* 视频清晰度 */}
-                                <div className="space-y-2 mb-4">
-                                    <Label className="text-base font-semibold">
-                                        {/* <Video className="w-5 h-5 text-primary" /> */}
-                                        视频清晰度<span className="text-red-500">*</span></Label>
-                                    <div className="flex gap-3">
-                                        {RESOLUTIONS.map((res) => (
-                                            <button
-                                                key={res.value}
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, resolution: res.value })}
-                                                className={cn(
-                                                    "flex-1 px-4 py-3 rounded-lg border-2 transition-all font-medium",
-                                                    formData.resolution === res.value
-                                                        ? "border-primary bg-primary/10 text-primary"
-                                                        : "border-muted-foreground/30 hover:border-primary/50"
-                                                )}
-                                            >
-                                                <div className="text-center">
-                                                    <div className="text-lg">{res.label}</div>
-                                                    <div className="text-xs text-muted-foreground mt-1">
-                                                        {res.credits} 积分
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* 视频水印 */}
-                                <div className="space-y-2 mb-4">
+                                {/* 单人双人 */}
+                                <div className="space-y-3 mb-4 mt-2">
                                     <Label className="text-base font-semibold">
                                         {/* <Droplet className="w-5 h-5 text-primary" /> */}
-                                        视频水印</Label>
+                                        视频中说话人数</Label>
                                     <div className="flex gap-3">
-                                        {WATERMARK_OPTIONS.map((option) => (
+                                        {PEOPLES_OPTIONS.map((option) => (
                                             <button
                                                 key={option.value}
                                                 type="button"
-                                                onClick={() => setFormData({ ...formData, watermark: option.value })}
+                                                onClick={() => setFormData({ ...formData, peoples: option.value })}
                                                 className={cn(
-                                                    "flex-1 px-6 py-3 rounded-lg border-2 transition-all font-medium",
-                                                    formData.watermark === option.value
+                                                    "flex-1 px-6 py-2 rounded-lg border-2 transition-all font-medium",
+                                                    formData.peoples === option.value
                                                         ? "border-primary bg-primary/10 text-primary"
                                                         : "border-muted-foreground/30 hover:border-primary/50"
                                                 )}
                                             >
                                                 <div className="text-center">
-                                                    <div className="text-lg">{option.label}</div>
-                                                    <div className="text-xs text-muted-foreground mt-1">
-                                                        {option.credits} 积分
-                                                    </div>
+                                                    <div className="text-sm">{option.label}</div>
                                                 </div>
                                             </button>
                                         ))}
                                     </div>
-                                </div>
-
-                                {/* 转换备注 */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="remark" className="text-base font-semibold">
-                                        {/* <BookText className="w-5 h-5 text-primary" /> */}
-                                        视频转换备注</Label>
-                                    <Textarea
-                                        id="remark"
-                                        value={formData.remark}
-                                        onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                                        placeholder="请输入备注信息（可选）"
-                                        rows={4}
-                                    />
                                 </div>
                             </CardContent>
                         </Card>
@@ -783,55 +817,37 @@ export function ProjectAddConvertModal({
                                 <div className="space-y-4">
                                     {/* <h3 className="mb-0 text-lg font-semibold text-primary">视频转换配置确认</h3> */}
 
-                                    <div className="my-0 grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-                                        <div className="col-span-2 space-y-1">
-                                            <p className="text-sm text-muted-foreground">视频标题</p>
-                                            <p className="font-semibold">{formData.videoUpload.title}</p>
-                                        </div>
+                                    <div className="my-0 grid grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
                                         <div className="col-span-1 space-y-1">
-                                            <p className="text-sm text-muted-foreground">视频时长</p>
-                                            <p className="font-semibold">{Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟</p>
+                                            <p className="text-sm text-muted-foreground text-center">视频时长</p>
+                                            <p className="font-semibold text-center">{Math.ceil(formData.videoUpload.videoDuration / 60)}分钟</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-muted-foreground text-center">原语言</p>
+                                            <p className="font-semibold text-center">{getLanguageLabel(formData.sourceLanguage)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-muted-foreground text-center">目标语言</p>
+                                            <p className="font-semibold text-center">{getLanguageLabel(formData.targetLanguage)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-muted-foreground text-center">说话人数</p>
+                                            <p className="font-semibold text-center">{getWatermarkLabel(formData.peoples)}</p>
                                         </div>
                                     </div>
-                                    <div className="my-0 grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">目标语言</p>
-                                            <p className="font-semibold">{getLanguageLabel(formData.targetLanguage)}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">视频清晰度</p>
-                                            <p className="font-semibold">{getResolutionLabel(formData.resolution)}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">视频水印</p>
-                                            <p className="font-semibold">{getWatermarkLabel(formData.watermark)}</p>
-                                        </div>
-                                    </div>
-
-                                    {formData.videoUpload.content && (
-                                        <div className="mt-0 px-4 bg-muted/30 rounded-lg">
-                                            <p className="text-sm text-muted-foreground mb-2">视频内容</p>
-                                            <p className="text-sm">{formData.videoUpload.content}</p>
-                                        </div>
-                                    )}
-
-                                    {formData.remark && (
-                                        <div className="mt-0 px-4 bg-muted/30 rounded-lg">
-                                            <p className="text-sm text-muted-foreground mb-2">视频转换备注</p>
-                                            <p className="text-sm">{formData.remark}</p>
-                                        </div>
-                                    )}
 
                                     {/* 积分消耗 */}
-                                    <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
-                                        <div className="flex gap-6 items-center justify-between">
+                                    <div className="py-4 px-0 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
+                                        <div className="flex gap-1 items-center justify-between">
 
                                             <div className="text-right flex-1 text-sm text-muted-foreground">
-                                                <p>视频时长: <span className='text-lg text-yellow-600'>{getDurationCredits()} </span>积分</p>
-                                                <p className='mt-1'>清晰度: <span className='text-lg text-yellow-600'>{RESOLUTIONS.find(r => r.value === formData.resolution)?.credits} </span>积分</p>
-                                                <p className='mt-1'>视频水印: <span className='text-lg text-yellow-600'>{WATERMARK_OPTIONS.find(w => w.value === formData.watermark)?.credits}</span> 积分</p>
-                                                <p className='mt-1'>总计消耗: <span className='text-2xl text-red-600'>{calculateCredits()}</span> 积分</p>
+                                                <p className='mt-1'>消耗积分: <span className='text-2xl text-red-600'>{calculateCredits()}</span> 积分</p>
+                                                <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+                                                    💡 每分钟消耗{config.pointsPerMinute}积分
+                                                </p>
+                                                {(getConsumeCredits() <= 0) && (<p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+                                                    积分不足，只够处理前{getConsumeTime()}分钟！
+                                                </p>)}
                                             </div>
                                             <div className='flex-1'>
                                                 {/* <p className="text-sm text-muted-foreground mb-1">剩余积分</p> */}
@@ -842,23 +858,23 @@ export function ProjectAddConvertModal({
                                                     <span className="text-lg text-muted-foreground">积分</span>
                                                 </div>
                                                 <div className="flex justify-center items-baseline gap-2">
-                                                    {!user?.emailVerified && (<a href="/settings/profile" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
+                                                    {config.userType === 'guest' && (<a href="/settings/profile" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <MailCheck className="text-sm text-blue-600 hover:underline">
                                                             认证
                                                         </MailCheck>
-                                                        认证获得更多积分
+                                                        注册得更多积分
                                                     </a>)}
-                                                    <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
+                                                    {/* <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <CircleDollarSign className="text-sm text-blue-600 hover:underline">
                                                             充值积分
                                                         </CircleDollarSign>
-                                                        按需购买积分使用
-                                                    </a>
+                                                        注册得更多积分
+                                                    </a> */}
                                                     <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <Crown className="text-sm text-blue-600 hover:underline">
                                                             订阅
                                                         </Crown>
-                                                        订阅享受跟多权益
+                                                        订阅享受多权益
                                                     </a>
                                                 </div>
                                             </div>
@@ -867,7 +883,7 @@ export function ProjectAddConvertModal({
 
                                     <div className="mt-5 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                                            💡 提示：转换任务提交后将在后台处理，根据视频大小不同预计需要 3-10 分钟完成。
+                                            💡 提示：转换任务根据视频大小不同预计需要 3-10 分钟完成。
                                         </p>
                                     </div>
                                 </div>
@@ -889,7 +905,7 @@ export function ProjectAddConvertModal({
                                 </Button>
                                 <Button
                                     onClick={handleStep1Next}
-                                    disabled={!formData.videoUpload.title || !formData.videoUpload.videoUrl}
+                                    disabled={!formData.videoUpload.videoUrl}
                                 >
                                     下一步
                                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -905,7 +921,7 @@ export function ProjectAddConvertModal({
                                 </Button>
                                 <Button
                                     onClick={handleStep2Next}
-                                    disabled={!formData.resolution || !formData.targetLanguage}
+                                    disabled={!formData.targetLanguage}
                                 >
                                     下一步
                                     <ChevronRight className="w-4 h-4 ml-1" />

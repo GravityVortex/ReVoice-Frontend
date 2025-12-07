@@ -40,26 +40,50 @@ import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-p
 import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useRouter } from "next/navigation";
-
+import { envConfigs } from "@/config";
+//         "videoItem": {
+//             "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
+//             "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+//             "fileName": "test3.mp4",
+//             "fileSizeBytes": 2419199,
+//             "fileType": "video/mp4",
+//             "r2Key": "uploads/1765106611963-test3.mp4",
+//             "r2Bucket": "video-store",
+//             "videoDurationSeconds": 65,
+//             "checksumSha256": "",
+//             "uploadStatus": "pending",
+//             "coverR2Key": null,
+//             "coverSizeBytes": null,
+//             "coverUpdatedAt": null,
+//             "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+//             "createdAt": "2025-12-07T11:24:05.135Z",
+//             "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+//             "updatedAt": "2025-12-07T11:24:05.135Z",
+//             "delStatus": 0
+//         },
 
 // 视频详情数据类型
 interface VideoDetail {
   id: number;
   uuid: string;
-  user_uuid: string;
-  title: string;
-  duration: string;
-  description: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  status: string;
-  cover_url: string;
-  source_vdo_url: string;
+  userId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  fileType: string;
+
+  videoDurationSeconds: number;
+  // description: string;
+  // content: string;
+  createdAt: string;
+  updatedAt: string;
+  uploadStatus: string;
+  coverR2Key: string;
+
+  r2Key: string;
   result_vdo_url: string;
   result_vdo_preview_url: string;
-  author_name: string;
-  author_avatar_url: string;
+  // author_name: string;
+  // author_avatar_url: string;
   locale: string;
 }
 
@@ -206,26 +230,77 @@ export default function ProjectDetailPage() {
         setError("");
         console.log("[ProjectDetailPage] 页面加载，项目ID:", id);
 
-        const response = await fetch(`/api/video-convert/detail?id=${id}`);
-        const data = await response.json();
+        const response = await fetch(`/api/video-task/detail?fileId=${id}`);
+        const backJO = await response.json();
+        // {
+        //     "code": 0,
+        //     "message": "ok",
+        //     "data": {
+        //         "videoItem": {
+        //             "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
+        //             "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+        //             "fileName": "test3.mp4",
+        //             "fileSizeBytes": 2419199,
+        //             "fileType": "video/mp4",
+        //             "r2Key": "uploads/1765106611963-test3.mp4",
+        //             "r2Bucket": "video-store",
+        //             "videoDurationSeconds": 65,
+        //             "checksumSha256": "",
+        //             "uploadStatus": "pending",
+        //             "coverR2Key": null,
+        //             "coverSizeBytes": null,
+        //             "coverUpdatedAt": null,
+        //             "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+        //             "createdAt": "2025-12-07T11:24:05.135Z",
+        //             "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+        //             "updatedAt": "2025-12-07T11:24:05.135Z",
+        //             "delStatus": 0
+        //         },
+        //         "taskList": [
+        //             {
+        //                 "id": "221e9937-c663-4de0-84ee-32a29aef6da6",
+        //                 "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+        //                 "originalFileId": "8bb54f6e-8572-44f5-a674-ae939b026c63",
+        //                 "status": "pending",
+        //                 "priority": 3,
+        //                 "progress": 0,
+        //                 "currentStep": null,
+        //                 "sourceLanguage": "zh-CN",
+        //                 "targetLanguage": "en-US",
+        //                 "speakerCount": "single",
+        //                 "processDurationSeconds": 0,
+        //                 "creditId": "61986398-4a24-4650-b0ce-3ba50405dd11",
+        //                 "creditsConsumed": 4,
+        //                 "errorMessage": null,
+        //                 "startedAt": null,
+        //                 "completedAt": null,
+        //                 "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+        //                 "createdAt": "2025-12-07T11:24:06.605Z",
+        //                 "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+        //                 "updatedAt": "2025-12-07T11:24:06.605Z",
+        //                 "delStatus": 0
+        //             }
+        //         ]
+        //     }
+        // }
 
-        if (data?.code !== 0) {
-          setError(data?.message || "获取视频详情失败");
+        if (backJO?.code !== 0) {
+          setError(backJO?.message || "获取视频详情失败");
           return;
         }
 
-        console.log("[ProjectDetailPage] 获取视频详情成功--->", data.data);
-        setVideoDetail(data.data);
+        console.log("[ProjectDetailPage] 获取视频详情成功--->", backJO);
+        setVideoDetail(backJO.data.videoItem);
 
         // 初始化测试用子视频列表数据
-        sonVideoList = [];
+        sonVideoList = backJO.data.taskList || [];
         // 初始化可折叠状态
-        sonVideoList.push({ id: 0 });
-        sonVideoList.push({ id: 1 });
+        // sonVideoList.push({ id: 0 });
+        // sonVideoList.push({ id: 1 });
         // 创建新对象来触发状态更新
         setExpandedMap({
           "id_row_0": true,
-          "id_row_1": false,
+          // "id_row_1": false,
         });
       } catch (err) {
         console.error("[ProjectDetailPage] 获取视频详情失败:", err);
@@ -266,7 +341,33 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const statusInfo = statusMap[videoDetail?.status || ""] || { label: videoDetail?.status || "-", color: "text-gray-600" };
+  const miaoGsh = (seconds = 0) =>  {
+    // 转换秒数为 HH:MM:SS 格式
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    const duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return duration;
+  }
+
+  // const statusInfo = statusMap[videoDetail?.status || ""] || { label: videoDetail?.status || "-", color: "text-gray-600" };
+
+  const yyMap: any = {
+    "zh-CN": "中文",
+    "en-US": "英文",
+  };
+  const statusMap: any = {
+    "pending": { label: "排队中", color: "text-cyan-600" },
+    "processing": { label: "转换中", color: "text-orange-500" },
+    "completed": { label: "转换成功", color: "text-green-600" },
+    "failed": { label: "转换失败", color: "text-red-500" },
+    "cancelled": { label: "已取消", color: "text-gray-500" },
+  };
+
+
+  const getConvertStr = (video: any) => {
+    return `${yyMap[video.sourceLanguage] || '未知语种'} 转 ${yyMap[video.targetLanguage] || '未知语种'}`;
+  }
 
   // 下载按钮点击
   const onDownLoadClick = async (e: any) => {
@@ -311,7 +412,7 @@ export default function ProjectDetailPage() {
       // 创建隐藏的 a 标签触发下载
       const link = document.createElement('a');
       link.href = data.data.url;
-      link.download = videoDetail.title || 'video.mp4';
+      link.download = videoDetail.fileName || 'video.mp4';
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
@@ -348,7 +449,7 @@ export default function ProjectDetailPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{videoDetail?.title || "项目详情"}</BreadcrumbPage>
+              <BreadcrumbPage>{videoDetail?.fileName || "项目详情"}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -363,18 +464,18 @@ export default function ProjectDetailPage() {
             {/* 视频播放器 */}
             <div className="p-4">
               <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
-                {videoDetail?.source_vdo_url ? (
+                {videoDetail?.r2Key ? (
                   <>
-                    {videoDetail?.cover_url && (
+                    {videoDetail?.coverR2Key && (
                       <img
-                        src={videoDetail.cover_url}
-                        alt={videoDetail.title || "视频封面"}
+                        src={envConfigs.r2_public_url + videoDetail.coverR2Key}
+                        alt={videoDetail.fileName || "视频封面"}
                         className="h-full w-full object-cover"
                       />
                     )}
                     {/* onClick={() => setIsPlayingLeft(true)} */}
                     <button
-                      onClick={() => handlePlayVideo(videoDetail.source_vdo_url, videoDetail.title)}
+                      onClick={() => handlePlayVideo(envConfigs.r2_public_url + videoDetail.r2Key, videoDetail.fileName)}
                       className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all hover:bg-black/40"
                     >
                       <div className="flex size-16 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform hover:scale-110">
@@ -394,27 +495,27 @@ export default function ProjectDetailPage() {
             <div className="px-4 pb-4 space-y-3  overflow-y-scroll">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">源视频标题</p>
-                <p className="font-semibold text-base text-primary">{videoDetail?.title || "-"}</p>
+                <p className="font-semibold text-base text-primary">{videoDetail?.fileName || "-"}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">源视频大小</p>
                   {/* <p className={cn("text-sm font-medium", statusInfo.color)}>{statusInfo.label}</p> */}
-                  <p className="font-semibold text-base">157.87M</p>
+                  <p className="font-semibold text-base">{((videoDetail?.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)}MB</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">源视频时长</p>
-                  <p className="text-sm font-medium">{videoDetail?.duration ? `${videoDetail.duration}秒` : "-"}</p>
+                  <p className="text-sm font-medium">{videoDetail?.videoDurationSeconds ? `${miaoGsh(videoDetail?.videoDurationSeconds)}` : "-"}</p>
                 </div>
               </div>
 
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">源视频上传时间</p>
-                <p className="text-sm font-medium">{formatDate(videoDetail?.created_at || "")}</p>
+                <p className="text-sm font-medium">{formatDate(videoDetail?.createdAt || "")}</p>
               </div>
 
-              {videoDetail?.content && (
+              {/* {videoDetail?.content && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">源视频内容介绍</p>
                   <div className="text-sm leading-relaxed">
@@ -434,7 +535,7 @@ export default function ProjectDetailPage() {
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
 
@@ -520,18 +621,21 @@ export default function ProjectDetailPage() {
                         <div className="grow-0 h-30 relative aspect-video overflow-hidden rounded-lg bg-black">
                           {videoDetail?.result_vdo_preview_url || videoDetail?.result_vdo_preview_url ? (
                             <>
-                              {videoDetail?.cover_url && (
+                              {videoDetail?.coverR2Key && (
                                 <img
-                                  src={videoDetail.cover_url}
-                                  alt={videoDetail.title || "视频封面"}
-                                  className="h-30  object-cover aspect-video"
+                                  src={envConfigs.r2_public_url + videoDetail.coverR2Key}
+                                  alt={videoDetail.fileName || "视频封面"}
+                                  className={cn(
+                                    "h-30 object-cover aspect-video",
+                                    video.status === "pending" && "animate-pulse"
+                                  )}
                                 />
                               )}
                               {/* onClick={() => setIsPlayingRight(true)} */}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePlayVideo(videoDetail.result_vdo_preview_url, videoDetail.title)
+                                  handlePlayVideo(videoDetail.result_vdo_preview_url, videoDetail.fileName)
                                 }}
                                 className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all hover:bg-black/40"
                               >
@@ -551,8 +655,10 @@ export default function ProjectDetailPage() {
 
                           <div className="flex justify-between space-y-1">
                             <p className="font-medium text-primary hover:text-primary/80">
-                              {videoDetail?.title || "-"}
-                              <span className={cn("ml-5 text-sm font-medium", statusInfo.color)}>{`【${statusInfo.label}】`}</span>
+                              {videoDetail?.fileName || "-"}
+                              <span className={cn("ml-5 text-sm font-medium", 
+                                `${statusMap[video.status].color}`
+                              )}>{`【${statusMap[video.status].label}】`}</span>
                             </p>
                             <ChevronDown
                               className={cn(
@@ -564,14 +670,15 @@ export default function ProjectDetailPage() {
 
                           </div>
                           <div className="space-y-1">
-                            <span className="text-xs px-3 py-1 rounded-full bg-background text-white bg-emerald-800">中文转英文</span>
+                            <span className="text-xs px-3 py-1 rounded-full bg-background text-white bg-emerald-800">{getConvertStr(video)}</span>
                             {/* <span className={cn("ml-10 text-sm font-medium", statusInfo.color)}>{statusInfo.label}</span> */}
-                            <span className="ml-10 font-medium">{videoDetail?.duration ? `目标视频时长：${videoDetail.duration} 秒` : "-"}</span>
-                            <span className="ml-10 font-medium">转换用时：2分24秒</span>
+                            <span className="ml-10 font-medium">{video?.processDurationSeconds ? `目标视频时长：${video.processDurationSeconds} 秒` : "-"}</span>
+                            {/* <span className="ml-10 font-medium">转换用时：2分24秒</span> */}
+                            <span className="ml-10 font-medium">当前步骤：{video.current_step || '排队中'}</span>
                           </div>
 
                           <div className="flex justify-between items-end">
-                            <span className="inline-block font-medium">{`开始转换时间：${formatDate(videoDetail?.created_at || "")}`}</span>
+                            <span className="inline-block font-medium">{`开始转换时间：${formatDate(video?.startedAt || "")}`}</span>
                             {/* 操作按钮 - 右下角 */}
                             <div className="flex justify-end gap-2">
                               <Button variant="outline" size="sm" onClick={onDownLoadClick}>
@@ -628,7 +735,7 @@ export default function ProjectDetailPage() {
                             setActiveTabIdx("1");
                             setIsProgressDialogOpen(true);
                           }}>
-                          转换概要信息 <CircleEllipsis className="size-4" />
+                          转换进度 <CircleEllipsis className="size-4" />
                           {/* </Button> */}
                         </div>
 
@@ -638,25 +745,25 @@ export default function ProjectDetailPage() {
                             <p className="font-medium">英语</p>
                             {/* <p className={cn("text-sm font-medium", statusInfo.color)}>{statusInfo.label}</p> */}
                           </div>
-                          <div className="space-y-1">
+                          {/* <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">转换耗时</p>
                             <p className="font-medium">4分21秒</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">目标视频大小</p>
                             <p className="font-medium">157.87M</p>
-                          </div>
+                          </div> */}
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">目标视频时长</p>
-                            <p className="font-medium">18分钟25秒</p>
+                            <p className="font-medium">{miaoGsh(video.processDurationSeconds)} </p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">开始转换时间</p>
-                            <p className="font-medium">{formatDate(videoDetail?.created_at || "")}</p>
+                            <p className="font-medium">{formatDate(video?.startedAt || "")}</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">转换结束时间</p>
-                            <p className="font-medium">{formatDate(videoDetail?.updated_at || "")}</p>
+                            <p className="font-medium">{formatDate(video?.completedAt || "")}</p>
                           </div>
                         </div>
 

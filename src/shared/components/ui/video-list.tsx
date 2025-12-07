@@ -5,7 +5,8 @@ import { cn } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useRouter } from "next/navigation";
 
-export type VideoConversionStatus = "success" | "processing" | "failed";
+// pending/processing/completed/failed/cancelled'
+export type VideoConversionStatus = "pending" | "completed" | "processing" | "failed" | "cancelled";
 
 export interface VideoListItem {
   id: string;
@@ -32,7 +33,12 @@ export interface VideoListProps {
 
 // 状态颜色映射
 const statusColors: Record<VideoConversionStatus, { bg: string; text: string; border: string }> = {
-  success: {
+  pending: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-200",
+  },
+  completed: {
     bg: "bg-green-50",
     text: "text-green-700",
     border: "border-green-200",
@@ -47,13 +53,20 @@ const statusColors: Record<VideoConversionStatus, { bg: string; text: string; bo
     text: "text-gray-700",
     border: "border-gray-200",
   },
+  cancelled: {
+    bg: "bg-red-50",
+    text: "text-red-700",
+    border: "border-red-200",
+  },
 };
 
 // 状态文本映射
 const statusText: Record<VideoConversionStatus, string> = {
-  success: "转换成功",
+  pending: "等待中",
+  completed: "转换成功",
   processing: "转换中",
   failed: "转换失败",
+  cancelled: "已取消",
 };
 
 // -------------------------------VideoList---start----分隔符---------------------------
@@ -172,7 +185,7 @@ function VideoCard({
         <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10" />
 
         {/* 中间播放按钮 */}
-        {status === "success" && (
+        {status === "completed" && (
           <button
             type="button"
             aria-label="play video"
@@ -191,9 +204,11 @@ function VideoCard({
           <div
             className={cn(
               "w-0 h-0 border-l-transparent border-b-transparent",
-              status === "success" && "border-t-green-700 border-r-green-700",
+              status === "pending" && "border-t-blue-500 border-r-blue-500",
+              status === "completed" && "border-t-green-700 border-r-green-700",
               status === "processing" && "border-t-orange-400 border-r-orange-400",
-              status === "failed" && "border-t-gray-600 border-r-gray-600"
+              status === "failed" && "border-t-gray-600 border-r-gray-600",
+              status === "cancelled" && "border-t-red-600 border-r-red-600"
             )}
             style={{
               borderTopWidth: "28px",
@@ -207,9 +222,11 @@ function VideoCard({
           {/* 状态文字 */}
           <div className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center">
             <span className="text-white text-[10px] font-bold leading-none transform rotate-45 whitespace-nowrap">
-              {status === "success" && "成功"}
+              {status === "pending" && "等待"}
+              {status === "completed" && "成功"}
               {status === "processing" && "转换中"}
               {status === "failed" && "失败"}
+              {status === "cancelled" && "取消"}
             </span>
           </div>
         </div>
@@ -240,14 +257,14 @@ function VideoCard({
           {/* 时长 */}
           {duration && (
             <div className="flex flex-row justify-between items-center gap-1">
-            <div className="flex items-center gap-1.5">
-              <Clock className="size-4" />
-              <span>视频时长: {duration} 秒</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Video className="size-4" />
-              <span>视频大小: {(videoSize / 1024 / 1024).toFixed(2)} MB</span>
-            </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="size-4" />
+                <span>视频时长: {duration}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Video className="size-4" />
+                <span>视频大小: {(videoSize / 1024 / 1024).toFixed(2)} MB</span>
+              </div>
             </div>
           )}
 

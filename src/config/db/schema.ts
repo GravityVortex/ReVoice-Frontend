@@ -561,3 +561,114 @@ export const video_convert = pgTable("video_convert", {
   author_avatar_url: varchar({ length: 255 }),
   locale: varchar({ length: 50 }),
 });
+
+// 原始文件表
+export const vtFileOriginal = pgTable(
+  'vt_file_original',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    userId: varchar('user_id', { length: 50 })
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    fileName: varchar('file_name', { length: 255 }).notNull(),
+    fileSizeBytes: integer('file_size_bytes').notNull(),
+    fileType: varchar('file_type', { length: 50 }).notNull(),
+    r2Key: text('r2_key').notNull(),
+    r2Bucket: varchar('r2_bucket', { length: 100 }).notNull(),
+    videoDurationSeconds: integer('video_duration_seconds'),
+    checksumSha256: varchar('checksum_sha256', { length: 64 }),
+    uploadStatus: varchar('upload_status', { length: 20 }).notNull().default('pending'),
+    coverR2Key: text('cover_r2_key'),
+    coverSizeBytes: integer('cover_size_bytes'),
+    coverUpdatedAt: timestamp('cover_updated_at'),
+    createdBy: varchar('created_by', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedBy: varchar('updated_by', { length: 64 }),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    delStatus: integer('del_status').notNull().default(0),
+  },
+  (table) => [
+    index('idx_vt_file_original_user_id').on(table.userId),
+    index('idx_vt_file_original_r2_key').on(table.r2Key),
+    index('idx_vt_file_original_created_at').on(table.createdAt),
+  ]
+);
+
+
+// 系统配置表
+export const vtSystemConfig = pgTable('vt_system_config', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  configKey: varchar('config_key', { length: 100 }).notNull().unique(),
+  configValue: text('config_value').notNull(),
+  configType: varchar('config_type', { length: 20 }).notNull(),
+  description: text('description'),
+  createdBy: varchar('created_by', { length: 64 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 64 }),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  delStatus: integer('del_status').notNull().default(0),
+});
+
+// 任务主表
+export const vtTaskMain = pgTable(
+  'vt_task_main',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    userId: varchar('user_id', { length: 50 })
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    originalFileId: varchar('original_file_id', { length: 64 })
+      .notNull()
+      .references(() => vtFileOriginal.id, { onDelete: 'restrict' }),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    priority: integer('priority').notNull().default(3),
+    progress: integer('progress').notNull().default(0),
+    currentStep: varchar('current_step', { length: 50 }),
+    sourceLanguage: varchar('source_language', { length: 10 }).notNull(),
+    targetLanguage: varchar('target_language', { length: 10 }).notNull(),
+    speakerCount: varchar('speaker_count', { length: 20 }).notNull(),
+    processDurationSeconds: integer('process_duration_seconds'),
+    creditId: text('credit_id'),
+    creditsConsumed: integer('credits_consumed'),
+    errorMessage: text('error_message'),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdBy: varchar('created_by', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedBy: varchar('updated_by', { length: 64 }),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    delStatus: integer('del_status').notNull().default(0),
+  },
+  (table) => [
+    index('idx_vt_task_main_schedule').on(table.status, table.priority, table.createdAt),
+    index('idx_vt_task_main_user_id').on(table.userId),
+    index('idx_vt_task_main_created_at').on(table.createdAt),
+    index('idx_vt_task_main_original_file').on(table.originalFileId),
+    index('idx_vt_task_main_completed_at').on(table.completedAt),
+  ]
+);
+
+// 字幕存储表
+export const vtTaskSubtitle = pgTable(
+  'vt_task_subtitle',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    taskId: varchar('task_id', { length: 64 })
+      .notNull()
+      .references(() => vtTaskMain.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id', { length: 50 }).notNull(),
+    stepName: varchar('step_name', { length: 50 }).notNull(),
+    subtitleData: text('subtitle_data', { mode: 'json' }).notNull(),
+    subtitleFormat: varchar('subtitle_format', { length: 20 }),
+    language: varchar('language', { length: 20 }),
+    createdBy: varchar('created_by', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedBy: varchar('updated_by', { length: 64 }),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    delStatus: integer('del_status').notNull().default(0),
+  },
+  (table) => [
+    index('idx_vt_task_subtitle_task_id').on(table.taskId),
+    index('idx_vt_task_subtitle_task_step').on(table.taskId, table.stepName),
+  ]
+);

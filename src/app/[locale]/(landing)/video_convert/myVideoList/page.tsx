@@ -10,6 +10,7 @@ import { ProjectAddConvertModal } from "@/shared/blocks/video-convert/project-ad
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
+import { envConfigs } from "@/config";
 
 // import { Pagination } from "@/shared/types/blocks/pagination";
 
@@ -98,32 +99,98 @@ export default function VideoConvertPage() {
     try {
       setLoading(true);
       setError("");
-      // console.log("当前用户--->", user);
-      // const user_id = user?.id || "";
+      console.log("list当前用户--->", user);
+      const user_id = user?.id || "";
       // 暂时查询所有数据
-      const user_id = "";
-      const url = `/api/video-convert/getlist?userId=${user_id}&page=${page}&limit=${pageSize}`
+      // const user_id = "";
+      // const url = `/api/video-convert/getlist?userId=${user_id}&page=${page}&limit=${pageSize}`
+      const url = `/api/video-task/list?userId=${user_id}&page=${page}&limit=${pageSize}`
       const response = await fetch(url, {
         method: "GET",
       });
       
       const data = await response.json();
-      // console.log("视频列表数据:", data);
+      console.log("视频列表数据-->", data);
+      // {
+      //     "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
+      //     "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+      //     "fileName": "test3.mp4",
+      //     "fileSizeBytes": 2419199,
+      //     "fileType": "video/mp4",
+      //     "r2Key": "uploads/1765106611963-test3.mp4",
+      //     "r2Bucket": "video-store",
+      //     "videoDurationSeconds": 65,
+      //     "checksumSha256": "",
+      //     "uploadStatus": "pending",
+      //     "coverR2Key": null,
+      //     "coverSizeBytes": null,
+      //     "coverUpdatedAt": null,
+      //     "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+      //     "createdAt": "2025-12-07T11:24:05.135Z",
+      //     "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+      //     "updatedAt": "2025-12-07T11:24:05.135Z",
+      //     "delStatus": 0,
+      //     "tasks":[
+      //               {
+      //                 "id": "221e9937-c663-4de0-84ee-32a29aef6da6",
+      //                 "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+      //                 "originalFileId": "8bb54f6e-8572-44f5-a674-ae939b026c63",
+      //                 "status": "pending",
+      //                 "priority": 3,
+      //                 "progress": 0,
+      //                 "currentStep": null,
+      //                 "sourceLanguage": "zh-CN",
+      //                 "targetLanguage": "en-US",
+      //                 "speakerCount": "single",
+      //                 "processDurationSeconds": 0,
+      //                 "creditId": "61986398-4a24-4650-b0ce-3ba50405dd11",
+      //                 "creditsConsumed": 4,
+      //                 "errorMessage": null,
+      //                 "startedAt": null,
+      //                 "completedAt": null,
+      //                 "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+      //                 "createdAt": "2025-12-07T11:24:06.605Z",
+      //                 "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
+      //                 "updatedAt": "2025-12-07T11:24:06.605Z",
+      //                 "delStatus": 0
+      //               }
+      //             ]
+      // }
       
       if (data?.code === 0) {
         const responseData = data.data;
         // 转换数据格式以匹配VideoListItem接口
-        const convertedList: VideoListItem[] = (responseData.list || []).map((item: any) => ({
-          id: item.id.toString(),
-          title: item.title || "未命名视频",
-          cover: item.cover_url || "https://picsum.photos/seed/" + item.id + "/640/360",
-          videoUrl: item.source_vdo_url || "",
-          status: item.status === "created" ? "processing" : item.status,
-          duration: item.duration || "0:00",
-          convertedAt: new Date(item.created_at).toLocaleString("zh-CN"),
-          content: item.content || "",
-          videoSize: item.videoSize || 3400000,// 视频大小，单位B
-        }));
+        const convertedList: VideoListItem[] = (responseData.list || []).map((item: any) => {
+          // 根据 tasks 确定 status= pending/processing/completed/failed/cancelled'
+          let status = "pending";
+          if (item.tasks && item.tasks.length > 0) {
+            if (item.tasks.length === 1) {
+              status = item.tasks[0].status;
+            } else {
+              const hasProcessing = item.tasks.some((task: any) => task.status === "processing");
+              status = hasProcessing ? "processing" : item.tasks[0].status;
+            }
+          }
+
+          // 转换秒数为 HH:MM:SS 格式
+          const seconds = item.videoDurationSeconds || 0;
+          const h = Math.floor(seconds / 3600);
+          const m = Math.floor((seconds % 3600) / 60);
+          const s = seconds % 60;
+          const duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+          return {
+            id: item.id.toString(),
+            title: item.fileName || "未命名视频",
+            cover: item.coverR2Key || "https://picsum.photos/seed/" + item.id + "/640/360",
+            videoUrl: item.r2Key || "",
+            status,
+            duration,
+            convertedAt: new Date(item.createdAt).toLocaleString("zh-CN"),
+            content: item.content || "",
+            videoSize: item.fileSizeBytes || 3400000,
+          };
+        });
         
         setVideoList(convertedList);
         
@@ -164,7 +231,7 @@ export default function VideoConvertPage() {
       title: "产品介绍视频 - 2025这声发布会",
       cover: "https://picsum.photos/seed/1/640/360",
       videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      status: "success",
+      status: "completed",
       duration: "5:23",
       convertedAt: "2025-11-15 14:30",
       videoSize: 52300000,
@@ -227,7 +294,7 @@ export default function VideoConvertPage() {
         <VideoPlayerModal
           isOpen={isPlayerOpen}
           onClose={handleClosePlayer}
-          videoUrl={selectedVideo.videoUrl}
+          videoUrl={envConfigs.r2_public_url + selectedVideo.videoUrl}
           title={selectedVideo.title}
         />
       )}
