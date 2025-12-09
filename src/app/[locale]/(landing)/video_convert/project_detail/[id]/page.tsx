@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from 'sonner';
 import { cn, formatDate, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { motion, Variants } from "motion/react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -35,6 +36,7 @@ import {
   Download,
   Edit2,
   Loader2,
+  BookmarkX,
 } from "lucide-react";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
@@ -381,7 +383,7 @@ export default function ProjectDetailPage() {
 
 
 
-  
+
 
   // 格式化时间
   // const formatDate = (dateStr: string) => {
@@ -489,6 +491,17 @@ export default function ProjectDetailPage() {
 
   const getPreviewVideoUrl = (taskMain: any, type: string) => {
     return taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
+  }
+
+  const image: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+  }
+
+  const shape: React.CSSProperties = {
+    strokeWidth: 6,
+    strokeLinecap: "round",
+    fill: "transparent",
   }
 
   return (
@@ -718,9 +731,37 @@ export default function ProjectDetailPage() {
                               </button>
                             </>
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                            <div className="relative flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
                               {/* animate-pulse呼吸灯动画 */}
                               <Video className="size-10 text-muted-foreground animate-pulse" />
+                              {/* 直接插入组件 */}
+                              {/* 描边动画 */}
+                              <motion.svg
+                                className="absolute inset-0"
+                                width="100%"
+                                height="100%"
+                                style={image}
+                              >
+                                <defs>
+                                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#818cf888" />
+                                    <stop offset="100%" stopColor="#6a73cc88" />
+                                  </linearGradient>
+                                </defs>
+                                <motion.rect
+                                  width="100%"
+                                  height="100%"
+                                  x="0"
+                                  y="0"
+                                  rx="8"
+                                  stroke="url(#gradient)"
+                                  strokeDasharray="0.8 0.2"
+                                  pathLength="1"
+                                  animate={{ strokeDashoffset: [0, -1] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeIn" }}
+                                  style={shape}
+                                />
+                              </motion.svg>
                             </div>
                           )}
                         </div>
@@ -749,7 +790,7 @@ export default function ProjectDetailPage() {
 
                           </div>
                           <div className="space-y-1">
-                            
+
                             {/* <span className={cn("ml-10 text-sm font-medium", statusInfo.color)}>{statusInfo.label}</span> */}
                             <span className="ml-0 font-medium">{taskMain?.processDurationSeconds ? `目标视频时长：${miao2Hms(taskMain?.processDurationSeconds)} ` : "-"}</span>
                             {/* <span className="ml-10 font-medium">转换用时：2分24秒</span> */}
@@ -760,14 +801,21 @@ export default function ProjectDetailPage() {
                             <span className="inline-block font-medium">{`开始转换时间：${formatDate(taskMain?.startedAt || "")}`}</span>
                             {/* 操作按钮 - 右下角 */}
                             <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={onDownLoadClick}>
+                              <Button variant="outline" size="sm" 
+                              disabled={taskMain?.status !== "completed"}
+                              onClick={onDownLoadClick}>
                                 <Download className="size-4" />
                                 下载
                               </Button>
-                              <Button variant="outline" size="sm" onClick={(e) => {
-                                e.stopPropagation();
-                                onSonItemEditClick("convert_" + index);
-                              }}>
+                              {/* 当status为pending时，改按钮才可以点击 */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={taskMain?.status !== "completed"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSonItemEditClick("convert_" + index);
+                                }}>
                                 <Edit2 className="size-4" />
                                 编辑
                               </Button>
@@ -781,12 +829,13 @@ export default function ProjectDetailPage() {
                                 <ListOrdered className="size-4" />
                                 进度
                               </Button>
-                              <Button variant="destructive" size="sm" onClick={(e) => {
+                              <Button variant="destructive" size="sm" 
+                              onClick={(e) => {
                                 e.stopPropagation();
                                 onDevelopClick();
                               }}>
-                                <Trash2 className="size-4" />
-                                删除
+                                <BookmarkX className="size-4" />
+                                取消
                               </Button>
                             </div>
                           </div>
@@ -820,11 +869,17 @@ export default function ProjectDetailPage() {
                             {taskMain?.progress}%
                           </span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-gray-600">
+                        <div className="relative h-2 w-full rounded-full bg-gray-600">
                           <div
-                            className="h-full rounded-full bg-primary transition-all duration-500"
-                            style={{ width: `${taskMain?.progress}%` }}
-                          ></div>
+                            className="h-full rounded-full bg-primary opacity-50"
+                            style={{width: `${taskMain?.progress}%`}}/>
+
+                          <motion.div
+                            className="absolute top-0 h-full rounded-full bg-primary"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${taskMain?.progress}%` }}
+                            transition={{ duration: 1.5, ease: "easeOut", repeat: Infinity, repeatDelay: 3 }}
+                          />
                         </div>
 
                         {/* 步骤展示 */}
