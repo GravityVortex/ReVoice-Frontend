@@ -1,10 +1,10 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Collapsible,
@@ -101,15 +101,8 @@ const menuItems = [
   // { icon: Share2, label: "分享", id: "share" },
   // { icon: Trash2, label: "删除", id: "delete" },
 ];
-// 测试用视频列表数据
-let taskMainList: any = [];
 
-// 状态映射
-const statusMap: Record<string, { label: string; color: string }> = {
-  success: { label: "转换成功", color: "text-green-600" },
-  processing: { label: "转换中", color: "text-orange-500" },
-  failed: { label: "转换失败", color: "text-red-500" },
-};
+
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -139,7 +132,11 @@ export default function ProjectDetailPage() {
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [preUrl, setPreUrl] = useState<string>("");
-
+  // 轮询定时器ID
+  const pollingTimerDetailRef = useRef<NodeJS.Timeout | null>(null);
+  // 测试用视频列表数据
+  // let taskMainList: any = [];
+  const [taskMainList, setTaskMainList] = useState<Record<string, any>[]>([]);
 
   const onSonItemEditClick = (taskMainId: string) => {
     console.log("编辑视频转换，onSonItemEditClick--->", taskMainId);
@@ -298,7 +295,11 @@ export default function ProjectDetailPage() {
         setPreUrl(backJO.data.preUrl);
 
         // 初始化测试用子视频列表数据
-        taskMainList = backJO.data.taskList || [];
+        setTaskMainList(backJO.data.taskList);
+        // 设置任务ID用于轮询
+        if (backJO.data.taskList?.[0]?.id) {
+          setTaskMainId(backJO.data.taskList[0].id);
+        }
         // 初始化可折叠状态
         // taskMainList.push({ id: 0 });
         // taskMainList.push({ id: 1 });
@@ -318,15 +319,79 @@ export default function ProjectDetailPage() {
     fetchVideoDetail();
   }, [id]);
 
-  // 格式化时间
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "-";
+
+  // API请求
+  const fetchTaskProgress = useCallback(async () => {
+    // setLoading(true);
+    // console.warn('详情页请求taskMainId--->', taskMainId);
     try {
-      return new Date(dateStr).toLocaleString("zh-CN");
-    } catch {
-      return dateStr;
+      const response = await fetch('/api/video-task/getTaskDetail?taskId=' + taskMainId);
+      const result = await response.json();
+
+      if (result.code === 0 && result.data) {
+        const { taskItem } = result.data;
+        console.log('详情页轮询请求结果--->', taskItem)
+        // 更新任务信息
+        setTaskMainList([taskItem]);
+      }
+    } catch (error) {
+      console.error('获取转换进度失败:', error);
+    } finally {
+      // setLoading(false);
     }
-  };
+  }, [taskMainId]);
+
+  // 清除轮询定时器
+  const clearPolling = useCallback(() => {
+    if (pollingTimerDetailRef.current) {
+      clearInterval(pollingTimerDetailRef.current);
+      pollingTimerDetailRef.current = null;
+      console.log('详情页轮询已停止');
+    }
+  }, []);
+
+  // 启动轮询
+  const startPolling = useCallback(() => {
+    if (pollingTimerDetailRef.current) return;
+    fetchTaskProgress();
+    pollingTimerDetailRef.current = setInterval(fetchTaskProgress, 15000);
+    console.log('详情页轮询已启动');
+  }, [fetchTaskProgress]);
+
+  // 轮询控制
+  useEffect(() => {
+    if (!taskMainList.length) return;
+
+    const status = taskMainList[0]?.status;
+    const shouldStop = status === "completed" || status === "failed" || status === "cancelled";
+
+    if (shouldStop) {
+      clearPolling();
+      return;
+    }
+
+    if (status === "processing" && !isProgressDialogOpen) {
+      startPolling();
+    } else {
+      clearPolling();
+    }
+
+    return clearPolling;
+  }, [taskMainList[0]?.status, isProgressDialogOpen, startPolling, clearPolling]);
+
+
+
+  
+
+  // 格式化时间
+  // const formatDate = (dateStr: string) => {
+  //   if (!dateStr) return "-";
+  //   try {
+  //     return new Date(dateStr).toLocaleString("zh-CN");
+  //   } catch {
+  //     return dateStr;
+  //   }
+  // };
 
   // 加载中
   if (loading) {
@@ -363,7 +428,7 @@ export default function ProjectDetailPage() {
 
 
   const getConvertStr = (taskMain: any) => {
-    return `${yyMap[taskMain.sourceLanguage] || '未知语种'} 转 ${yyMap[taskMain.targetLanguage] || '未知语种'}`;
+    return `${yyMap[taskMain?.sourceLanguage] || '未知语种'}转${yyMap[taskMain?.targetLanguage] || '未知语种'}`;
   }
 
   // 下载按钮点击
@@ -635,7 +700,7 @@ export default function ProjectDetailPage() {
                                   }}
                                   className={cn(
                                     "h-30 object-cover aspect-video",
-                                    taskMain.status === "pending" && "animate-pulse"
+                                    taskMain?.status === "pending" && "animate-pulse"
                                   )}
                                 />
                               )}
@@ -654,7 +719,8 @@ export default function ProjectDetailPage() {
                             </>
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                              <Video className="size-10 text-muted-foreground" />
+                              {/* animate-pulse呼吸灯动画 */}
+                              <Video className="size-10 text-muted-foreground animate-pulse" />
                             </div>
                           )}
                         </div>
@@ -665,8 +731,13 @@ export default function ProjectDetailPage() {
                             <p className="font-medium text-primary hover:text-primary/80">
                               {videoDetail?.fileName || "-"}
                               <span className={cn("ml-5 text-sm font-medium",
-                                `${statusMap[taskMain.status].color}`
-                              )}>{`【${statusMap[taskMain.status].label}】`}</span>
+                                `${statusMap[taskMain?.status || ""]?.color}`
+                              )}>
+                                {`【${statusMap[taskMain?.status || ""]?.label}】`}
+                              </span>
+                              <span className={`ml-5 text-sm text-green-600`}>
+                                【{getConvertStr(taskMain)}】
+                              </span>
                             </p>
                             <ChevronDown
                               className={cn(
@@ -678,11 +749,11 @@ export default function ProjectDetailPage() {
 
                           </div>
                           <div className="space-y-1">
-                            <span className="text-xs px-3 py-1 rounded-full bg-background text-white bg-emerald-800">{getConvertStr(taskMain)}</span>
+                            
                             {/* <span className={cn("ml-10 text-sm font-medium", statusInfo.color)}>{statusInfo.label}</span> */}
-                            <span className="ml-10 font-medium">{taskMain?.processDurationSeconds ? `目标视频时长：${miao2Hms(taskMain.processDurationSeconds)} ` : "-"}</span>
+                            <span className="ml-0 font-medium">{taskMain?.processDurationSeconds ? `目标视频时长：${miao2Hms(taskMain?.processDurationSeconds)} ` : "-"}</span>
                             {/* <span className="ml-10 font-medium">转换用时：2分24秒</span> */}
-                            {/* <span className="ml-10 font-medium">当前步骤：{taskMain.current_step || '排队中'}</span> */}
+                            {/* <span className="ml-10 font-medium">当前步骤：{taskMain?.current_step || '排队中'}</span> */}
                           </div>
 
                           <div className="flex justify-between items-end">
@@ -702,7 +773,7 @@ export default function ProjectDetailPage() {
                               </Button>
                               <Button variant="outline" size="sm" onClick={(e) => {
                                 e.stopPropagation();
-                                setTaskMainId(taskMain.id);
+                                setTaskMainId(taskMain?.id);
                                 // 切换到进度条页面
                                 setActiveTabIdx("1");
                                 setIsProgressDialogOpen(true);
@@ -737,7 +808,7 @@ export default function ProjectDetailPage() {
                             className="flex items-center gap-1 px-0 mx-0 text-lg text-primary"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setTaskMainId(taskMain.id);
+                              setTaskMainId(taskMain?.id);
                               // 切换到进度条页面
                               setActiveTabIdx("1");
                               setIsProgressDialogOpen(true);
@@ -798,7 +869,7 @@ export default function ProjectDetailPage() {
                           className="flex items-center gap-1 px-0 mx-0 text-lg text-primary"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setTaskMainId(taskMain.id);
+                            setTaskMainId(taskMain?.id);
                             // 切换到进度条页面
                             setActiveTabIdx("1");
                             setIsProgressDialogOpen(true);
@@ -823,7 +894,7 @@ export default function ProjectDetailPage() {
                           </div> */}
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">目标视频时长</p>
-                            <p className="font-medium">{miao2Hms(taskMain.processDurationSeconds)} </p>
+                            <p className="font-medium">{miao2Hms(taskMain?.processDurationSeconds)} </p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">开始转换时间</p>

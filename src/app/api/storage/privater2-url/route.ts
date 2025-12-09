@@ -25,6 +25,9 @@ export async function GET(request: Request) {
     if (!key) {
       return respErr('key is required');
     }
+    // TODO: 调用java接口获取私桶中文件访问url
+    // ...
+
     // const storageService = await getStorageService();
     // const provider = storageService.getProvider('r2');
     // if (!provider || provider.name !== 'r2') {

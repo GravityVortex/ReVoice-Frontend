@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
     }
 
+    // TODO: 调用java接口生成presigned url
+    // ...
+
     const storageService = await getStorageService();
     // const provider = storageService.getDefaultProvider();
     const provider = storageService.getProvider('r2');

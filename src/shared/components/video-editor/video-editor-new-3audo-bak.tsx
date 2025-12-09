@@ -423,7 +423,7 @@
 
 //     // let cha = Math.abs(newTime - curTimeRef.current);
 //     let cha = newTime - curTimeRef.current;
-//     // TODO 点击时间轴，切换右侧面板联动定位到待播放的字幕
+//     // DOEND 点击时间轴，切换右侧面板联动定位到待播放的字幕
 //     if (!isPlaying && (cha > 1 || cha < -1)) {
 //       console.warn('寻找字幕音频索引--cha-->', cha);
 //       curTimeRef.current = newTime;

@@ -37,5 +37,17 @@ export function miao2Hms(seconds = 0) {
   return duration;
 }
 
-
+/**
+ * 格式化时间
+ * @param dateStr 日期字符串
+ * @returns 格式化后的时间字符串
+ */ 
+export function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  try {
+    return new Date(dateStr).toLocaleString("zh-CN");
+  } catch {
+    return dateStr;
+  }
+};
 

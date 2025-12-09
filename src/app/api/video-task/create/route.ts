@@ -1,8 +1,9 @@
-import {getUuid} from '@/shared/lib/hash';
-import {respData, respErr} from '@/shared/lib/resp';
+import { getUuid } from '@/shared/lib/hash';
+import { respData, respErr } from '@/shared/lib/resp';
 import { consumeCredits, getRemainingCredits } from '@/shared/models/credit';
-import {insertVtFileOriginal} from '@/shared/models/vt_file_original';
-import {insertVtTaskMain} from '@/shared/models/vt_task_main';
+import { getUserSubscriptionType } from '@/shared/models/order';
+import { insertVtFileOriginal } from '@/shared/models/vt_file_original';
+import { insertVtTaskMain } from '@/shared/models/vt_task_main';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,12 +28,12 @@ export async function POST(req: Request) {
     const speakerCount = formData.get('speakerCount') as string;
 
     if (!userId || !fileName || !fileSizeBytes || !fileType || !r2Key || !credits
-        || !r2Bucket || !sourceLanguage || !targetLanguage || !speakerCount) {
+      || !r2Bucket || !sourceLanguage || !targetLanguage || !speakerCount) {
       return respErr('Missing required fields');
     }
 
     // 1. 消耗积分
-    // TODO 积分不足也扣，只处理部分视频时长
+    // DOEND 积分不足也扣，只处理部分视频时长
     const remainingCredits = await getRemainingCredits(userId);
     let finalCredits = credits;
     let finalHandlerTime = videoDurationSeconds;
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       finalCredits = remainingCredits;
       finalHandlerTime = finalCredits / 2 * 60; // 按2积分/分钟计算可处理时长
     }
-    
+
     let creditRecord;
     try {
       creditRecord = await consumeCredits({
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
         credits: finalCredits,
         scene: 'convert_video',
         description: '视频转换任务消耗积分',
-        metadata: JSON.stringify({credits: credits, finalCredits: finalCredits}),
+        metadata: JSON.stringify({ credits: credits, finalCredits: finalCredits }),
       });
     } catch (e: any) {
       return respErr(e.message || '积分不足');
@@ -71,8 +72,21 @@ export async function POST(req: Request) {
       updatedBy: userId,
     });
 
-    // TODO 未区分包月和包年用户，设置任务优先级（注册用户registered）或 4（匿名用户guest）. 
-    let priorityV = userType === 'registered' ? 3 : 4;
+    // DOEND 未区分包月和包年用户，设置任务优先级（注册用户registered）或 4（匿名用户guest）. 
+    let priorityV = 4;
+    if (userType === 'registered') {
+      const { type } = await getUserSubscriptionType(userId);
+      if (type === 'month') {
+        priorityV = 2;
+      } else if (type === 'year') {
+        priorityV = 1;
+      }
+    } 
+    // 匿名用户
+    else {
+      priorityV = 4;
+    }
+
     // 3. 插入vt_task_main表
     const taskMain = await insertVtTaskMain({
       id: getUuid(),

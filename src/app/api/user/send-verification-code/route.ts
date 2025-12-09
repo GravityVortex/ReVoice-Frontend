@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const expires = Date.now() + 5 * 60 * 1000;
     verificationCodes.set(`${userId}:${email}`, { code, expires });
 
-    // TODO: 实际发送邮件
+    // TODO: 发送邮件验证码转发java接口
     // 这里应该调用邮件服务发送验证码
     console.log(`[验证码] 用户 ${userId} 的邮箱 ${email} 验证码: ${code}`);
     

@@ -366,3 +366,54 @@ export async function updateSubscriptionInTransaction({
 
   return result;
 }
+
+/**
+ * 查询用户当前的订阅类型
+ * @param userId 用户ID
+ * @returns 订阅类型信息：{ type: 'month' | 'year' | null, isValid: boolean, order: Order | null }
+ */
+export async function getUserSubscriptionType(userId: string): Promise<{
+  type: 'month' | 'year' | null;
+  isValid: boolean;
+  order: Order | null;
+}> {
+  // 查询最近一条已支付的订单
+  const [latestOrder] = await db()
+    .select()
+    .from(order)
+    .where(
+      and(
+        eq(order.userId, userId),
+        eq(order.status, OrderStatus.PAID)
+      )
+    )
+    .orderBy(desc(order.createdAt))
+    .limit(1);
+
+  // 如果没有订单，返回 null
+  if (!latestOrder) {
+    return {
+      type: null,
+      isValid: false,
+      order: null,
+    };
+  }
+
+  // 检查订单是否在有效期内
+  const currentTime = new Date();
+  const orderCreatedAt = new Date(latestOrder.createdAt);
+  const validDays = latestOrder.creditsValidDays || 0;
+  const expirationDate = new Date(orderCreatedAt);
+  expirationDate.setDate(expirationDate.getDate() + validDays);
+
+  const isValid = currentTime <= expirationDate;
+
+  // 获取订阅类型
+  const subscriptionType = latestOrder.paymentInterval as 'month' | 'year' | null;
+
+  return {
+    type: subscriptionType,
+    isValid,
+    order: latestOrder,
+  };
+}

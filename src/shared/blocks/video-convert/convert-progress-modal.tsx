@@ -65,37 +65,89 @@ export function ConversionProgressModal({
     taskMainId,
 }: ConversionProgressModalProps) {
     // console.log('ConversionProgressModal activeTabIdx--->', activeTabIdx);
-    const [activeTab, setActiveTab] = useState(activeTabIdx === '1' ? 'logs' : 'overview');
+    const [activeTab, setActiveTab] = useState(activeTabIdx === '1' ? 'tab_progress' : 'tab_detail');
     const [loading, setLoading] = useState(false);
     // 记住状态变更之前的值，不是响应式，不会随着组件的更新而更新。
     const prevTaskMainIdRef = useRef<string | null>(null);
     const [progressData, setProgressData] = useState<TaskStep[] | null>(null);
     const [taskMainInfo, setTaskMainInfo] = useState<TaskItem | null>(null);
-    
+    // 轮询定时器ID
+    const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    // 步骤元素引用，用于自动滚动
+    const stepRefsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+
     // 根据 activeTabIdx 切换 tab
     // useEffect: 进行副作用执行，例如在组件加载或者在组件更新的时候执行一些函数
     useEffect(() => {
-        if (activeTabIdx === '1') {
-            setActiveTab('logs');
-        } else if (activeTabIdx === '0') {
-            setActiveTab('overview');
+        if (activeTabIdx === '0') {
+            setActiveTab('tab_detail');
         }
+        else if (activeTabIdx === '1') {
+            setActiveTab('tab_progress');
+        } 
     }, [activeTabIdx, taskMainId]);
 
-    // 模拟请求获取转换进度数据 - 只在 taskMainId 变化时请求
+    // 清除轮询定时器
+    const clearPolling = () => {
+        if (pollingTimerRef.current) {
+            clearInterval(pollingTimerRef.current);
+            pollingTimerRef.current = null;
+            console.log('轮询已停止并已经销毁。');
+        }
+    };
+
+    // 启动轮询
+    const startPolling = () => {
+        // 先清除可能存在的旧定时器
+        clearPolling();
+
+        // 立即执行一次
+        fetchConversionProgress();
+
+        // 启动5秒间隔的轮询
+        pollingTimerRef.current = setInterval(() => {
+            console.log('轮询查询进度--->', taskMainId);
+            fetchConversionProgress();
+        }, 15000);
+
+        console.log('轮询已启动，间隔5秒');
+    };
+
+    // 监听弹框打开/关闭状态，控制轮询
     useEffect(() => {
         if (isOpen && taskMainId) {
             // 检查 taskMainId 是否与上次相同
-            if (prevTaskMainIdRef.current === taskMainId) {
-                console.warn('taskMainId 未变化，跳过接口请求--->', taskMainId);
-                return;
+            const taskIdChanged = prevTaskMainIdRef.current !== taskMainId;
+
+            if (taskIdChanged) {
+                // 更新 prevTaskMainId
+                prevTaskMainIdRef.current = taskMainId;
             }
-            
-            // 更新 prevTaskMainId
-            prevTaskMainIdRef.current = taskMainId;
-            fetchConversionProgress();
+
+            // 启动轮询
+            startPolling();
+        } else {
+            // 弹框关闭时停止轮询
+            clearPolling();
         }
+
+        // 组件卸载时清除轮询
+        return () => {
+            clearPolling();
+        };
     }, [isOpen, taskMainId]);
+
+    // 监听 progressData 变化，在 tab_progress 页面时自动滚动到 processing 步骤
+    useEffect(() => {
+        if (isOpen && activeTab === 'tab_progress' && progressData && progressData.length > 0) {
+            // 使用更长的延迟确保 DOM 完全渲染
+            const timer = setTimeout(() => {
+                scrollToProcessingStep(progressData);
+            }, 200);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [progressData, activeTab, isOpen]);
 
     // 根据进度百分比获取当前步骤描述
     const getProgressStep = (progress: number): string => {
@@ -111,25 +163,46 @@ export function ConversionProgressModal({
         return '准备中...';
     };
 
-    // 模拟 API 请求函数
+    // 滚动到首个 processing 状态的步骤
+    const scrollToProcessingStep = (progressList: TaskStep[]) => {
+        // 找到首个 processing 状态的步骤
+        const processingStep = progressList.find(step => step.stepStatus === 'processing');
+        
+        if (processingStep) {
+            // 使用 setTimeout 确保 DOM 已更新
+            setTimeout(() => {
+                const stepElement = stepRefsRef.current.get(processingStep.id);
+                if (stepElement) {
+                    stepElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                    });
+                    console.log('自动滚动到步骤:', processingStep.stepName);
+                }
+            }, 100);
+        }
+    };
+
+    // API请求
     const fetchConversionProgress = async () => {
-        setLoading(true);
-        console.warn('模拟接口请求taskMainId--->', taskMainId);
+        // setLoading(true);
+        // console.warn('请求taskMainId--->', taskMainId);
         try {
-            
-            const response = await fetch('/api/video-task/getTaskDetail?taskId=' + taskMainId);
+
+            const response = await fetch('/api/video-task/getTaskDetail?taskId=' + taskMainId + '&progress=true');
             const result = await response.json();
-            
+
             if (result.code === 0 && result.data) {
                 const { progressList, taskItem } = result.data;
-                
+                // 更新进度条
                 setProgressData(progressList);
+                // 更新任务信息
                 setTaskMainInfo(taskItem);
             }
         } catch (error) {
             console.error('获取转换进度失败:', error);
         } finally {
-            setLoading(false);
+            // setLoading(false);
         }
     };
 
@@ -146,12 +219,12 @@ export function ConversionProgressModal({
                             查看视频转换的详细进度信息和日志
                         </DialogDescription>
                         <TabsList className="mt-5 grid w-2/3 grid-cols-2 mx-auto">
-                            <TabsTrigger value="overview">转换概览</TabsTrigger>
-                            <TabsTrigger value="logs">进度日志</TabsTrigger>
+                            <TabsTrigger value="tab_detail">转换概览</TabsTrigger>
+                            <TabsTrigger value="tab_progress">进度日志</TabsTrigger>
                         </TabsList>
                     </DialogHeader>
 
-                    {loading ? (
+                    {!progressData || progressData.length === 0 ? (
                         <div className="flex items-center justify-center py-12 flex-1">
                             <Loader2 className="size-8 animate-spin text-primary" />
                             <span className="ml-3 text-muted-foreground">加载进度数据中...</span>
@@ -160,7 +233,7 @@ export function ConversionProgressModal({
                         <div className="flex-1 overflow-y-auto px-6 pb-6">
                             <div className="space-y-6">
 
-                                <TabsContent value="overview" className="mt-1">
+                                <TabsContent value="tab_detail" className="mt-1">
 
                                     <Card>
                                         <CardHeader>
@@ -180,7 +253,7 @@ export function ConversionProgressModal({
                                                         style={{ width: `${taskMainInfo?.progress}%` }}
                                                     ></div>
                                                 </div>
-                                                
+
                                                 {/* 步骤展示 */}
                                                 <div className="pt-1 flex flex-row justify-between gap-2">
                                                     {[
@@ -197,7 +270,7 @@ export function ConversionProgressModal({
                                                         const progress = taskMainInfo?.progress || 0;
                                                         const isActive = progress >= step.range[0] && progress <= step.range[1];
                                                         const isCompleted = progress > step.range[1];
-                                                        
+
                                                         return (
                                                             <div key={index} className="text-center">
                                                                 <p className={cn(
@@ -266,7 +339,7 @@ export function ConversionProgressModal({
                                     </Card>
                                 </TabsContent>
 
-                                <TabsContent value="logs" className="mt-1 max-h-[65vh] overflow-hidden overflow-y-auto"
+                                <TabsContent value="tab_progress" className="mt-1 max-h-[65vh] overflow-hidden overflow-y-auto"
                                     style={{ borderRadius: 10 }}>
                                     <Card>
                                         <CardHeader>
@@ -283,9 +356,19 @@ export function ConversionProgressModal({
                                                         const date = new Date(timestamp);
                                                         return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                                                     };
-                                                    
+
                                                     return (
-                                                        <div key={task.id} className="relative flex gap-2">
+                                                        <div 
+                                                            key={task.id} 
+                                                            className="relative flex gap-2"
+                                                            ref={(el) => {
+                                                                if (el) {
+                                                                    stepRefsRef.current.set(task.id, el);
+                                                                } else {
+                                                                    stepRefsRef.current.delete(task.id);
+                                                                }
+                                                            }}
+                                                        >
                                                             {/* 状态图标 */}
                                                             <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 bg-background">
                                                                 {task.stepStatus === 'completed' && (

@@ -298,13 +298,13 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   // 转换处理
   const handleConvert = (item: SubtitleComparisonData) => {
     console.log('转换字幕:', item);
-    // TODO: 实现转换逻辑
+    // TODO: 实现字幕转语音逻辑
   };
 
   // 保存处理
   const handleSave = (item: SubtitleComparisonData, type: string) => {
     console.log(`保存${type}字幕--->`, item);
-    // TODO: 实现保存逻辑
+    // TODO: 实现字幕保存逻辑
   };
 
   return (
