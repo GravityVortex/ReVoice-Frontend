@@ -1,21 +1,13 @@
 import { respData, respErr } from '@/shared/lib/resp';
-import { getAllVtSystemConfigs, getSystemLimitByConfigKeyArr} from '@/shared/models/vt_system_config';
+import { getSystemConfigs } from '@/shared/cache/system-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // const list = await getAllVtSystemConfigs();
-
-    const keyArr = [
-    'limit.guest.file_size_mb',
-    'limit.registered.file_size_mb',
-    'limit.monthly.file_size_mb',
-    'limit.yearly.file_size_mb',
-    'credit.points_per_minute'
-  ]
-    const list = await getSystemLimitByConfigKeyArr(keyArr);
+    // 获取缓存中配置
+    const list = await getSystemConfigs();
     return respData({ list });
   } catch (e) {
     console.log('failed:', e);

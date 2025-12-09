@@ -11,6 +11,8 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const userId = formData.get('userId') as string;
+    // 'guest' : 'registered'
+    const userType = formData.get('userType') as string;
     const fileName = formData.get('fileName') as string;
     const fileSizeBytes = parseInt(formData.get('fileSizeBytes') as string);
     const fileType = formData.get('fileType') as string;
@@ -69,12 +71,15 @@ export async function POST(req: Request) {
       updatedBy: userId,
     });
 
+    // TODO 未区分包月和包年用户，设置任务优先级（注册用户registered）或 4（匿名用户guest）. 
+    let priorityV = userType === 'registered' ? 3 : 4;
     // 3. 插入vt_task_main表
     const taskMain = await insertVtTaskMain({
       id: getUuid(),
       userId,
       originalFileId: fileOriginal.id,
       status: 'pending',
+      priority: priorityV,
       sourceLanguage,
       targetLanguage,
       speakerCount,

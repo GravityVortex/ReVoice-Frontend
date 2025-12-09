@@ -529,6 +529,7 @@ export function ProjectAddConvertModal({
         fd.append("sourceLanguage", formData.sourceLanguage); // 
         fd.append("targetLanguage", formData.targetLanguage); // 
         fd.append("speakerCount", formData.peoples); // 
+        fd.append("userType", config.userType); // 'guest' : 'registered'
 
         // fd.append("prefix", "video-convert"); // 可选：自定义存储前缀
         // fd.append("user_uuid", user?.id || "");

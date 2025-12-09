@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { X, Loader2 } from "lucide-react";
 
 
 export interface VideoPlayerModalProps {
@@ -18,11 +18,40 @@ export function VideoPlayerModal({
   title,
 }: VideoPlayerModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [finalUrl, setFinalUrl] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
-  // 关闭时暂停视频
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchUrl = async () => {
+      if (videoUrl.startsWith("http")) {
+        setFinalUrl(videoUrl);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(videoUrl)}`);
+        const data = await res.json();
+        if (data.code === 0) {
+          console.log('获取私桶预览地址--->', data.data.url)
+          setFinalUrl(data.data.url);
+        }
+      } catch (error) {
+        console.error("Failed to fetch video URL:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUrl();
+  }, [isOpen, videoUrl]);
+
   useEffect(() => {
     if (!isOpen && videoRef.current) {
       videoRef.current.pause();
+      setFinalUrl("");
     }
   }, [isOpen]);
 
@@ -72,16 +101,22 @@ export function VideoPlayerModal({
 
         {/* 视频播放器 */}
         <div className="overflow-hidden rounded-lg bg-black shadow-2xl">
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            controls
-            autoPlay
-            className="max-h-[calc(100vh-200px)] w-full"
-            controlsList="nodownload"
-          >
-            您的浏览器不支持视频播放。
-          </video>
+          {loading ? (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <Loader2 className="size-12 animate-spin text-white" />
+            </div>
+          ) : finalUrl ? (
+            <video
+              ref={videoRef}
+              src={finalUrl}
+              controls
+              autoPlay
+              className="min-h-[50vh] max-h-[calc(100vh-200px)] w-full"
+              controlsList="nodownload"
+            >
+              您的浏览器不支持视频播放。
+            </video>
+          ) : null}
         </div>
       </div>
     </div>

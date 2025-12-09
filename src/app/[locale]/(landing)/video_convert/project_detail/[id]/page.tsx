@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn } from "@/shared/lib/utils";
+import { cn, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Collapsible,
@@ -34,6 +34,7 @@ import {
   Plus,
   Download,
   Edit2,
+  Loader2,
 } from "lucide-react";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
@@ -101,7 +102,7 @@ const menuItems = [
   // { icon: Trash2, label: "删除", id: "delete" },
 ];
 // 测试用视频列表数据
-let sonVideoList: any = [];
+let taskMainList: any = [];
 
 // 状态映射
 const statusMap: Record<string, { label: string; color: string }> = {
@@ -129,7 +130,7 @@ export default function ProjectDetailPage() {
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
   // 转换进度弹框状态
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
-  const [convertId, setConvertId] = useState<string>(id);
+  const [taskMainId, setTaskMainId] = useState<string>(id);
   const [activeTabIdx, setActiveTabIdx] = useState<string>("0");
   // 新建转换弹框状态
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -137,9 +138,11 @@ export default function ProjectDetailPage() {
   // 修改弹框
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [preUrl, setPreUrl] = useState<string>("");
 
-  const onSonItemEditClick = (convertId: string) => {
-    console.log("编辑视频转换，onSonItemEditClick--->", convertId);
+
+  const onSonItemEditClick = (taskMainId: string) => {
+    console.log("编辑视频转换，onSonItemEditClick--->", taskMainId);
     router.push(`/${locale}/video_convert/video-editor/${id}`);
   };
 
@@ -291,12 +294,14 @@ export default function ProjectDetailPage() {
 
         console.log("[ProjectDetailPage] 获取视频详情成功--->", backJO);
         setVideoDetail(backJO.data.videoItem);
+        // 预览前缀
+        setPreUrl(backJO.data.preUrl);
 
         // 初始化测试用子视频列表数据
-        sonVideoList = backJO.data.taskList || [];
+        taskMainList = backJO.data.taskList || [];
         // 初始化可折叠状态
-        // sonVideoList.push({ id: 0 });
-        // sonVideoList.push({ id: 1 });
+        // taskMainList.push({ id: 0 });
+        // taskMainList.push({ id: 1 });
         // 创建新对象来触发状态更新
         setExpandedMap({
           "id_row_0": true,
@@ -341,14 +346,6 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const miaoGsh = (seconds = 0) =>  {
-    // 转换秒数为 HH:MM:SS 格式
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    const duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    return duration;
-  }
 
   // const statusInfo = statusMap[videoDetail?.status || ""] || { label: videoDetail?.status || "-", color: "text-gray-600" };
 
@@ -365,8 +362,8 @@ export default function ProjectDetailPage() {
   };
 
 
-  const getConvertStr = (video: any) => {
-    return `${yyMap[video.sourceLanguage] || '未知语种'} 转 ${yyMap[video.targetLanguage] || '未知语种'}`;
+  const getConvertStr = (taskMain: any) => {
+    return `${yyMap[taskMain.sourceLanguage] || '未知语种'} 转 ${yyMap[taskMain.targetLanguage] || '未知语种'}`;
   }
 
   // 下载按钮点击
@@ -412,7 +409,7 @@ export default function ProjectDetailPage() {
       // 创建隐藏的 a 标签触发下载
       const link = document.createElement('a');
       link.href = data.data.url;
-      link.download = videoDetail.fileName || 'video.mp4';
+      link.download = videoDetail.fileName || 'taskMain.mp4';
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
@@ -424,6 +421,10 @@ export default function ProjectDetailPage() {
       alert("下载失败，请稍后重试");
     }
   };
+
+  const getPreviewVideoUrl = (taskMain: any, type: string) => {
+    return taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
@@ -468,14 +469,18 @@ export default function ProjectDetailPage() {
                   <>
                     {videoDetail?.coverR2Key && (
                       <img
-                        src={envConfigs.r2_public_url + videoDetail.coverR2Key}
-                        alt={videoDetail.fileName || "视频封面"}
+                        src={preUrl + '/' + videoDetail.coverR2Key}
+                        // alt={videoDetail.fileName || "视频封面"}
+                        onError={(e) => {
+                          // e.currentTarget.src='/logo.png'// 设置默认图片
+                          e.currentTarget.style.display = 'none';// 隐藏img
+                        }}
                         className="h-full w-full object-cover"
                       />
                     )}
                     {/* onClick={() => setIsPlayingLeft(true)} */}
                     <button
-                      onClick={() => handlePlayVideo(envConfigs.r2_public_url + videoDetail.r2Key, videoDetail.fileName)}
+                      onClick={() => handlePlayVideo(videoDetail.r2Key, videoDetail.fileName)}
                       className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all hover:bg-black/40"
                     >
                       <div className="flex size-16 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform hover:scale-110">
@@ -494,30 +499,30 @@ export default function ProjectDetailPage() {
             {/* 基本信息，可滚动内容区域 */}
             <div className="px-4 pb-4 space-y-3  overflow-y-scroll">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">源视频标题</p>
+                <p className="text-sm text-muted-foreground">原视频</p>
                 <p className="font-semibold text-base text-primary">{videoDetail?.fileName || "-"}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">源视频大小</p>
+                  <p className="text-xs text-muted-foreground">原视频大小</p>
                   {/* <p className={cn("text-sm font-medium", statusInfo.color)}>{statusInfo.label}</p> */}
                   <p className="font-semibold text-base">{((videoDetail?.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)}MB</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">源视频时长</p>
-                  <p className="text-sm font-medium">{videoDetail?.videoDurationSeconds ? `${miaoGsh(videoDetail?.videoDurationSeconds)}` : "-"}</p>
+                  <p className="text-xs text-muted-foreground">原视频时长</p>
+                  <p className="text-sm font-medium">{videoDetail?.videoDurationSeconds ? `${miao2Hms(videoDetail?.videoDurationSeconds)}` : "-"}</p>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">源视频上传时间</p>
+                <p className="text-xs text-muted-foreground">原视频上传时间</p>
                 <p className="text-sm font-medium">{formatDate(videoDetail?.createdAt || "")}</p>
               </div>
 
               {/* {videoDetail?.content && (
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">源视频内容介绍</p>
+                  <p className="text-xs text-muted-foreground">原视频内容介绍</p>
                   <div className="text-sm leading-relaxed">
                     <p className={cn(
                       "transition-all",
@@ -595,7 +600,7 @@ export default function ProjectDetailPage() {
         {/* 右侧内容区域 */}
         <main className="flex-1 overflow-auto p-6">
           {/* 转换视频列表页面 */}
-          {sonVideoList.map((video: any, index: number) => (
+          {taskMainList.map((taskMain: any, index: number) => (
             <div key={index}>
 
               {/* 可折叠卡片 isExpanded*/}
@@ -619,15 +624,18 @@ export default function ProjectDetailPage() {
                       <div className="flex gap-6 py-2 my-0">
                         {/* 列表中：头部视频封面 */}
                         <div className="grow-0 h-30 relative aspect-video overflow-hidden rounded-lg bg-black">
-                          {videoDetail?.result_vdo_preview_url || videoDetail?.result_vdo_preview_url ? (
+                          {getPreviewVideoUrl(taskMain, 'preview') ? (
                             <>
                               {videoDetail?.coverR2Key && (
                                 <img
-                                  src={envConfigs.r2_public_url + videoDetail.coverR2Key}
-                                  alt={videoDetail.fileName || "视频封面"}
+                                  src={preUrl + '/' + videoDetail.coverR2Key}
+                                  onError={(e) => {
+                                    // e.currentTarget.src='/logo.png'// 设置默认图片
+                                    e.currentTarget.style.display = 'none';// 隐藏img
+                                  }}
                                   className={cn(
                                     "h-30 object-cover aspect-video",
-                                    video.status === "pending" && "animate-pulse"
+                                    taskMain.status === "pending" && "animate-pulse"
                                   )}
                                 />
                               )}
@@ -635,7 +643,7 @@ export default function ProjectDetailPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePlayVideo(videoDetail.result_vdo_preview_url, videoDetail.fileName)
+                                  handlePlayVideo(getPreviewVideoUrl(taskMain, 'preview'), videoDetail?.fileName || '')
                                 }}
                                 className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all hover:bg-black/40"
                               >
@@ -656,9 +664,9 @@ export default function ProjectDetailPage() {
                           <div className="flex justify-between space-y-1">
                             <p className="font-medium text-primary hover:text-primary/80">
                               {videoDetail?.fileName || "-"}
-                              <span className={cn("ml-5 text-sm font-medium", 
-                                `${statusMap[video.status].color}`
-                              )}>{`【${statusMap[video.status].label}】`}</span>
+                              <span className={cn("ml-5 text-sm font-medium",
+                                `${statusMap[taskMain.status].color}`
+                              )}>{`【${statusMap[taskMain.status].label}】`}</span>
                             </p>
                             <ChevronDown
                               className={cn(
@@ -670,15 +678,15 @@ export default function ProjectDetailPage() {
 
                           </div>
                           <div className="space-y-1">
-                            <span className="text-xs px-3 py-1 rounded-full bg-background text-white bg-emerald-800">{getConvertStr(video)}</span>
+                            <span className="text-xs px-3 py-1 rounded-full bg-background text-white bg-emerald-800">{getConvertStr(taskMain)}</span>
                             {/* <span className={cn("ml-10 text-sm font-medium", statusInfo.color)}>{statusInfo.label}</span> */}
-                            <span className="ml-10 font-medium">{video?.processDurationSeconds ? `目标视频时长：${video.processDurationSeconds} 秒` : "-"}</span>
+                            <span className="ml-10 font-medium">{taskMain?.processDurationSeconds ? `目标视频时长：${miao2Hms(taskMain.processDurationSeconds)} ` : "-"}</span>
                             {/* <span className="ml-10 font-medium">转换用时：2分24秒</span> */}
-                            <span className="ml-10 font-medium">当前步骤：{video.current_step || '排队中'}</span>
+                            {/* <span className="ml-10 font-medium">当前步骤：{taskMain.current_step || '排队中'}</span> */}
                           </div>
 
                           <div className="flex justify-between items-end">
-                            <span className="inline-block font-medium">{`开始转换时间：${formatDate(video?.startedAt || "")}`}</span>
+                            <span className="inline-block font-medium">{`开始转换时间：${formatDate(taskMain?.startedAt || "")}`}</span>
                             {/* 操作按钮 - 右下角 */}
                             <div className="flex justify-end gap-2">
                               <Button variant="outline" size="sm" onClick={onDownLoadClick}>
@@ -694,7 +702,7 @@ export default function ProjectDetailPage() {
                               </Button>
                               <Button variant="outline" size="sm" onClick={(e) => {
                                 e.stopPropagation();
-                                setConvertId("convert_" + index);
+                                setTaskMainId(taskMain.id);
                                 // 切换到进度条页面
                                 setActiveTabIdx("1");
                                 setIsProgressDialogOpen(true);
@@ -723,6 +731,66 @@ export default function ProjectDetailPage() {
                       <div aria-hidden
                         className="my-5 h-px min-w-0 [background-image:linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] bg-[length:6px_1px] bg-repeat-x opacity-25" />
 
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div
+                            className="flex items-center gap-1 px-0 mx-0 text-lg text-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTaskMainId(taskMain.id);
+                              // 切换到进度条页面
+                              setActiveTabIdx("1");
+                              setIsProgressDialogOpen(true);
+                            }}>
+                            转换进度 <CircleEllipsis className="size-4" />
+                            {/* </Button> */}
+                          </div>
+                          <span className="text-2xl font-bold text-primary">
+                            {taskMain?.progress}%
+                          </span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-gray-600">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${taskMain?.progress}%` }}
+                          ></div>
+                        </div>
+
+                        {/* 步骤展示 */}
+                        <div className="pt-1 flex flex-row justify-between gap-2">
+                          {[
+                            { name: '音视频分离', range: [0, 11] },
+                            { name: '人声背景分离', range: [12, 22] },
+                            { name: '生成原始字幕', range: [23, 33] },
+                            { name: '翻译字幕', range: [34, 44] },
+                            { name: '音频切片', range: [45, 55] },
+                            { name: '语音合成', range: [56, 66] },
+                            { name: '音频时间对齐', range: [67, 77] },
+                            { name: '合并音频', range: [78, 88] },
+                            { name: '合并音视频', range: [89, 100] },
+                          ].map((step, index) => {
+                            const progress = taskMain?.progress || 0;
+                            const isActive = progress >= step.range[0] && progress <= step.range[1];
+                            const isCompleted = progress > step.range[1];
+
+                            return (
+                              <div key={index} className="text-center">
+                                <p className={cn(
+                                  "flex flex-row items-center gap-1 text-xs font-medium transition-colors",
+                                  isActive && "text-primary font-semibold",
+                                  isCompleted && "text-green-600",
+                                  !isActive && !isCompleted && "text-gray-400"
+                                )}>
+                                  {step.name}
+                                  {isActive && (<Loader2 className="size-4 animate-spin text-primary" />)}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+
                       <div className="pt-0 mt-4 space-y-4">
 
                         {/* <Button variant="ghost" size="sm" */}
@@ -730,12 +798,12 @@ export default function ProjectDetailPage() {
                           className="flex items-center gap-1 px-0 mx-0 text-lg text-primary"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setConvertId("convert_" + index);
+                            setTaskMainId(taskMain.id);
                             // 切换到进度条页面
                             setActiveTabIdx("1");
                             setIsProgressDialogOpen(true);
                           }}>
-                          转换进度 <CircleEllipsis className="size-4" />
+                          基本信息 <CircleEllipsis className="size-4" />
                           {/* </Button> */}
                         </div>
 
@@ -755,15 +823,15 @@ export default function ProjectDetailPage() {
                           </div> */}
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">目标视频时长</p>
-                            <p className="font-medium">{miaoGsh(video.processDurationSeconds)} </p>
+                            <p className="font-medium">{miao2Hms(taskMain.processDurationSeconds)} </p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">开始转换时间</p>
-                            <p className="font-medium">{formatDate(video?.startedAt || "")}</p>
+                            <p className="font-medium">{formatDate(taskMain?.startedAt || "")}</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">转换结束时间</p>
-                            <p className="font-medium">{formatDate(video?.completedAt || "")}</p>
+                            <p className="font-medium">{formatDate(taskMain?.completedAt || "")}</p>
                           </div>
                         </div>
 
@@ -830,7 +898,7 @@ export default function ProjectDetailPage() {
 
                         {videoDetail?.source_vdo_url && (
                           <p>
-                            <span className="text-muted-foreground">源视频: </span>
+                            <span className="text-muted-foreground">原视频: </span>
                             <a
                               href={videoDetail.source_vdo_url}
                               target="_blank"
@@ -892,7 +960,7 @@ export default function ProjectDetailPage() {
       <ConversionProgressModal
         isOpen={isProgressDialogOpen}
         onClose={() => setIsProgressDialogOpen(false)}
-        convertId={convertId}
+        taskMainId={taskMainId}
         activeTabIdx={activeTabIdx}
       />
 

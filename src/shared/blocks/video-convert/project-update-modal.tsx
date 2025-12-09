@@ -129,7 +129,7 @@ export function ProjectUpdateModal({
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <form onSubmit={handleSubmit} className="space-y-6">
-                <DialogContent className="max-w-3/5 h-[760px] flex flex-col p-0">
+                <DialogContent className="max-w-3/5 h-[580px] flex flex-col p-0">
                     <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
                         <DialogTitle>修改基本信息</DialogTitle>
                         <DialogDescription className="sr-only">
@@ -189,7 +189,7 @@ export function ProjectUpdateModal({
                                 </div> */}
 
                                 {/* 视频内容 */}
-                                <div className="space-y-3 mt-4">
+                                {/* <div className="space-y-3 mt-4">
                                     <Label htmlFor="content">视频内容</Label>
                                     <Textarea
                                         id="content"
@@ -198,7 +198,7 @@ export function ProjectUpdateModal({
                                         placeholder="输入视频详细内容"
                                         rows={6}
                                     />
-                                </div>
+                                </div> */}
 
                             </CardContent>
                         </Card>

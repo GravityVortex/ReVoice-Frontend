@@ -28,5 +28,5 @@ export const envConfigs = {
   db_singleton_enabled: process.env.DB_SINGLETON_ENABLED || 'false',
   auth_url: process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || '',
   auth_secret: process.env.AUTH_SECRET ?? '', // openssl rand -base64 32
-  r2_public_url: process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? 'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/',
+  // r2_public_url: process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? 'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/',
 };

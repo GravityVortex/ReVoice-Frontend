@@ -19,7 +19,7 @@ export default function VideoConvertPage() {
   const locale = (params?.locale as string) || "zh";
   const router = useRouter();
   const { user } = useAppContext();
-  
+
   const [selectedVideo, setSelectedVideo] = useState<VideoListItem | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [videoList, setVideoList] = useState<VideoListItem[]>([]);
@@ -32,19 +32,19 @@ export default function VideoConvertPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   // 转换进度弹框状态
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
-  const [convertId, setConvertId] = useState<string>("");
+  const [taskMainId, setTaskMainId] = useState<string>("");
   const [activeTabIdx, setActiveTabIdx] = useState<string>("1");
   // 修改弹框
   // const [projectSourceId, setProjectSourceId] = useState<string>("");
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
+  const [preUrl, setPreUrl] = useState<string>("");
 
   const handlePlayVideo = (item: VideoListItem) => {
     setSelectedVideo(item);
     setIsPlayerOpen(true);
   };
-  
+
   const handleEditClick = (item: VideoListItem, index: number) => {
     console.log("编辑视频转换，handleEditClick--->" + index, item);
     // router.push(`/${locale}/video_convert/update?id=${item.id}`);
@@ -62,8 +62,21 @@ export default function VideoConvertPage() {
   const onStatusClick = (item: VideoListItem) => {
     console.log("查看转换进度，onStatusClick--->", item);
     setActiveTabIdx("1");
-    setConvertId(item.id);
-    setIsProgressDialogOpen(true);
+
+    let tempId;
+    if (item.tasks && item.tasks.length > 0) {
+      if (item.tasks.length === 1) {
+        tempId = item.tasks[0].id;
+      } else {
+        const theIt = item.tasks.find((task: any) => task.status === "processing");
+        tempId = theIt ? theIt.id : item.tasks[0].id;
+      }
+    }
+    // 列表页寻找子任务taskMainId
+    if (tempId) {
+      setTaskMainId(tempId);
+      setIsProgressDialogOpen(true);
+    }
   };
   const goAddClick = () => {
     router.push(`/${locale}/video_convert/add`);
@@ -108,7 +121,7 @@ export default function VideoConvertPage() {
       const response = await fetch(url, {
         method: "GET",
       });
-      
+
       const data = await response.json();
       console.log("视频列表数据-->", data);
       // {
@@ -156,9 +169,10 @@ export default function VideoConvertPage() {
       //               }
       //             ]
       // }
-      
+
       if (data?.code === 0) {
         const responseData = data.data;
+        setPreUrl(responseData.preUrl || "");
         // 转换数据格式以匹配VideoListItem接口
         const convertedList: VideoListItem[] = (responseData.list || []).map((item: any) => {
           // 根据 tasks 确定 status= pending/processing/completed/failed/cancelled'
@@ -182,18 +196,19 @@ export default function VideoConvertPage() {
           return {
             id: item.id.toString(),
             title: item.fileName || "未命名视频",
-            cover: item.coverR2Key || "https://picsum.photos/seed/" + item.id + "/640/360",
+            cover: (responseData.preUrl + '/' + item.coverR2Key) || ("https://picsum.photos/seed/" + item.id + "/640/360"),
             videoUrl: item.r2Key || "",
             status,
             duration,
             convertedAt: new Date(item.createdAt).toLocaleString("zh-CN"),
             content: item.content || "",
             videoSize: item.fileSizeBytes || 3400000,
+            tasks: item.tasks,// 任务列表
           };
         });
-        
+
         setVideoList(convertedList);
-        
+
         // 更新分页信息
         if (responseData.pagination) {
           setCurrentPage(responseData.pagination.page);
@@ -235,10 +250,11 @@ export default function VideoConvertPage() {
       duration: "5:23",
       convertedAt: "2025-11-15 14:30",
       videoSize: 52300000,
+      tasks: []
     },
   ];
-  
- 
+
+
 
   return (
     <div className="container mx-auto py-0">
@@ -274,7 +290,7 @@ export default function VideoConvertPage() {
             onVideoPlay={handlePlayVideo}
             onStatusClick={onStatusClick}
           />
-          
+
           {/* 分页组件 - 只在有真实数据时显示 */}
           {videoList.length > 0 && totalPages > 1 && (
             <div className="mt-8 flex justify-end">
@@ -285,7 +301,7 @@ export default function VideoConvertPage() {
                 onPageChange={handlePageChange}
               />
             </div>
-          )} 
+          )}
         </>
       )}
 
@@ -294,7 +310,7 @@ export default function VideoConvertPage() {
         <VideoPlayerModal
           isOpen={isPlayerOpen}
           onClose={handleClosePlayer}
-          videoUrl={envConfigs.r2_public_url + selectedVideo.videoUrl}
+          videoUrl={selectedVideo.videoUrl}
           title={selectedVideo.title}
         />
       )}
@@ -303,7 +319,7 @@ export default function VideoConvertPage() {
       <ConversionProgressModal
         isOpen={isProgressDialogOpen}
         onClose={() => setIsProgressDialogOpen(false)}
-        convertId={convertId}
+        taskMainId={taskMainId}
         activeTabIdx={activeTabIdx}
       />
 

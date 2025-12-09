@@ -264,7 +264,7 @@ export default function VideoUpdatePage() {
             {/* 视频播放器 */}
             {formData.source_vdo_url ? (
               <div className="space-y-2">
-                <Label>源视频</Label>
+                <Label>原视频</Label>
                 <video
                   src={formData.source_vdo_url}
                   controls

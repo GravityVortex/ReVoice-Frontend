@@ -18,6 +18,7 @@ export interface VideoListItem {
   convertedAt?: string; // 转换时间，例如："2024-01-15 14:30"
   createdAt?: string; // 创建时间
   videoSize: number; // 视频大小，单位B
+  tasks: Record<string, string>[] | null;
 }
 
 export interface VideoListProps {
@@ -167,6 +168,10 @@ function VideoCard({
           <img
             src={cover}
             alt={title}
+            onError={(e) => {
+              // e.currentTarget.src='/logo.png'// 设置默认图片
+              e.currentTarget.style.display = 'none';// 隐藏img
+            }}
             className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] "
             // className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.03] opacity-99 blur-[0.9px] brightness-90 contrast-90"
             loading="lazy"

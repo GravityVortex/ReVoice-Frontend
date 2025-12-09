@@ -1,3 +1,4 @@
+import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { getVtFileOriginalList, getVtFileOriginalTotal } from '@/shared/models/vt_file_original';
 import { getVtTaskMainListByFileIds } from '@/shared/models/vt_task_main';
@@ -32,8 +33,11 @@ export async function GET(req: Request) {
       ...video,
       tasks: taskList.filter(task => task.originalFileId === video.id),
     }));
+    // 5. 获取R2前缀URL
+    const preUrl = await getSystemConfigByKey('r2.public.base_url');
 
     return respData({
+      preUrl,
       list: videoListWithTasks,
       pagination: {
         page,
