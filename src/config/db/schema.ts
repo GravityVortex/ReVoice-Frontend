@@ -672,3 +672,56 @@ export const vtTaskSubtitle = pgTable(
     index('idx_vt_task_subtitle_task_step').on(table.taskId, table.stepName),
   ]
 );
+
+// 最终文件表
+export const vtFileFinal = pgTable(
+  'vt_file_final',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    taskId: varchar('task_id', { length: 64 }).notNull(),
+    userId: varchar('user_id', { length: 50 })
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    fileType: varchar('file_type', { length: 50 }).notNull(),
+    fileSizeBytes: integer('file_size_bytes').notNull(),
+    r2Key: text('r2_key').notNull(),
+    r2Bucket: varchar('r2_bucket', { length: 100 }).notNull(),
+    downloadCount: integer('download_count').notNull().default(0),
+    lastDownloadedAt: timestamp('last_downloaded_at'),
+    createdBy: varchar('created_by', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedBy: varchar('updated_by', { length: 64 }),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    delStatus: integer('del_status').notNull().default(0),
+  },
+  (table) => [
+    index('idx_vt_file_final_task_id').on(table.taskId),
+    index('idx_vt_file_final_user_id').on(table.userId),
+    index('idx_vt_file_final_file_type').on(table.fileType),
+  ]
+);
+
+// 任务文件表
+export const vtFileTask = pgTable(
+  'vt_file_task',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    taskId: varchar('task_id', { length: 64 }).notNull(),
+    userId: varchar('user_id', { length: 50 }).notNull(),
+    stepName: varchar('step_name', { length: 50 }).notNull(),
+    fileKey: varchar('file_key', { length: 255 }).notNull(),
+    fileSizeBytes: integer('file_size_bytes'),
+    r2Key: text('r2_key').notNull(),
+    r2Bucket: varchar('r2_bucket', { length: 100 }).notNull(),
+    expiresAt: timestamp('expires_at'),
+    createdBy: varchar('created_by', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedBy: varchar('updated_by', { length: 64 }),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    delStatus: integer('del_status').notNull().default(0),
+  },
+  (table) => [
+    index('idx_vt_file_task_task_id').on(table.taskId),
+    index('idx_vt_file_task_step_name').on(table.taskId, table.stepName),
+  ]
+);

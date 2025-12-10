@@ -8,13 +8,13 @@ import { getMockJsonData } from './mock-data';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const convertId = searchParams.get('convertId');
+    const taskMainId = searchParams.get('taskMainId');
 
-    if (!convertId) {
+    if (!taskMainId) {
       return NextResponse.json(
         {
           code: '400',
-          msg: '缺少convertId参数',
+          msg: '缺少taskMainId参数',
           data: null,
         },
         { status: 400 }
@@ -22,10 +22,10 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // 本地模拟（宝20251205修复后）
+    // TODO 本地模拟（宝20251205修复后）
     // const resData = getMockJsonData(convertId, 'local_001');
     // xuww上传的（宝20251205修复后）
-    const resData = getMockJsonData(convertId, 'upload_001');
+    const resData = getMockJsonData(taskMainId, 'upload_001');
 
     return NextResponse.json(resData, {
       status: 200,

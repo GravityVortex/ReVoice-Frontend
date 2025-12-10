@@ -1,6 +1,6 @@
 import { vtTaskSubtitle } from '@/config/db/schema';
 import { db } from '@/core/db';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 
 export type VtTaskSubtitle = typeof vtTaskSubtitle.$inferSelect;
 export type NewVtTaskSubtitle = typeof vtTaskSubtitle.$inferInsert;
@@ -41,5 +41,39 @@ export async function updateVtTaskSubtitleByTaskId(taskId: string, data: Partial
     .update(vtTaskSubtitle)
     .set(data)
     .where(eq(vtTaskSubtitle.taskId, taskId))
+    .returning();
+}
+
+export async function getVtTaskSubtitleListByTaskIdAndStepName(taskId: string, stepNameArr: string[]) {
+  return await db()
+    .select({
+      taskId: vtTaskSubtitle.taskId,
+      stepName: vtTaskSubtitle.stepName,
+      subtitleData: vtTaskSubtitle.subtitleData,
+    })
+    .from(vtTaskSubtitle)
+    .where(and(
+      eq(vtTaskSubtitle.taskId, taskId),
+      inArray(vtTaskSubtitle.stepName, stepNameArr),
+      eq(vtTaskSubtitle.delStatus, 0)
+    ))
+    .orderBy(desc(vtTaskSubtitle.createdAt));
+}
+
+/**
+ * 更新字幕大JSON数据
+ * @param taskId 任务ID，
+ * @param stepName 步骤名，原字幕:gen_subtitle; 翻译字幕:translate_srt
+ * @param subtitleData 字幕大JSON数据
+ * @returns 
+ */
+export async function updateSubtitleDataByTaskId(taskId: string, stepName: string, subtitleData: any) {
+  return await db()
+    .update(vtTaskSubtitle)
+    .set({ 
+      subtitleData,
+      updatedAt: new Date()
+    })
+    .where(and(eq(vtTaskSubtitle.taskId, taskId), eq(vtTaskSubtitle.stepName, stepName)))
     .returning();
 }

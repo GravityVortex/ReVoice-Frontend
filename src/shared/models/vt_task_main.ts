@@ -1,4 +1,4 @@
-import { vtTaskMain } from '@/config/db/schema';
+import { vtTaskMain, vtFileOriginal } from '@/config/db/schema';
 import { db } from '@/core/db';
 import { eq, desc, and, count, inArray } from 'drizzle-orm';
 
@@ -61,5 +61,19 @@ export async function getVtTaskMainListByFileIds(fileIds: string[]) {
     .select()
     .from(vtTaskMain)
     .where(and(inArray(vtTaskMain.originalFileId, fileIds), eq(vtTaskMain.delStatus, 0)))
+    .orderBy(desc(vtTaskMain.createdAt));
+}
+
+/**
+ * 连表查询示例
+ * @param userId 用户ID
+ * @returns 
+ */
+export async function getVtTaskMainListWithOriginalByUserId(userId: string) {
+  return await db()
+    .select()
+    .from(vtTaskMain)
+    .leftJoin(vtFileOriginal, eq(vtTaskMain.originalFileId, vtFileOriginal.id))
+    .where(and(eq(vtTaskMain.userId, userId), eq(vtTaskMain.delStatus, 0)))
     .orderBy(desc(vtTaskMain.createdAt));
 }
