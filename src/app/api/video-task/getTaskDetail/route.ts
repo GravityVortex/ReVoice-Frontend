@@ -1,3 +1,5 @@
+
+// 前端轮询请求接口
 import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
@@ -109,9 +111,6 @@ export async function GET(req: Request) {
         },
       ];
     }
-
-
-
 
     // 4. 获取R2前缀URL
     // const preUrl = await getSystemConfigByKey('r2.public.base_url');

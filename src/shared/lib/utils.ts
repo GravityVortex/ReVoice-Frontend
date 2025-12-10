@@ -5,10 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-
+//  "sourceLanguage": "auto",
+//  "targetLanguage": "zh",
 export const LanguageMap: any = {
   'zh-CN': '中文',
+  'zh': '中文',
   'en-US': '英文',
+  'auto': '',
 
   '中文': 'zh-CN',
   '中文简体': 'zh-CN',
@@ -23,9 +26,12 @@ const statusMap: any = {
   'cancelled': { label: '已取消', color: 'text-gray-500' },
 };
 
-
+//  "sourceLanguage": "auto",
+//  "targetLanguage": "zh",
 export function getLanguageConvertStr(item: any) {
-  return `${LanguageMap[item?.sourceLanguage] || '未知语种'} 转 ${LanguageMap[item?.targetLanguage] || '未知语种'}`;
+  // console.log('getLanguageConvertStr-->', item)
+  return `${LanguageMap[item?.sourceLanguage] 
+    || ''}转${LanguageMap[item?.targetLanguage] || '未知语种'}`;
 }
 
 

@@ -10,7 +10,7 @@ export type VideoConversionStatus = "pending" | "completed" | "processing" | "fa
 
 export interface VideoListItem {
   id: string;
-  title: string; // 视频名称
+  fileName: string; // 视频名称
   cover: string; // 封面图 URL
   videoUrl: string; // R2 视频地址
   status: VideoConversionStatus; // 转换状态
@@ -156,29 +156,34 @@ function VideoCard({
   onCardContentClick: () => void;
   onStatusClick: () => void;
 }) {
-  const { title, cover, status, duration, convertedAt, videoSize } = item;
+  const { fileName, cover, status, duration, convertedAt, videoSize } = item;
   const colors = statusColors[status];
+  const [imgSrc, setImgSrc] = React.useState('/imgs/cover_video_def.jpg');
+
+  React.useEffect(() => {
+    if (cover) {
+      const img = new Image();
+      img.src = cover;
+      img.onload = () => setImgSrc(cover);
+      img.onerror = () => setImgSrc('/imgs/cover_video_def.jpg');
+    }
+  }, [cover]);
 
   return (
-    // rounded-bl-md rounded-br-md rounded-tl-[0] 
+    // rounded-bl-md rounded-br-md rounded-tl-[0]
     <Card className="rounded-[2px] py-0 group overflow-hidden transition-transform duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:ring-1 hover:ring-primary/20">
       {/* 封面区域 */}
-      <div className="rounded-tl-[2px] rounded-tr-[2px] relative aspect-video w-full overflow-hidden bg-muted/40">
-        {cover ? (
-          <img
-            src={cover}
-            alt={title}
-            onError={(e) => {
-              // e.currentTarget.src='/logo.png'// 设置默认图片
-              e.currentTarget.style.display = 'none';// 隐藏img
-            }}
-            className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] "
-            // className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.03] opacity-99 blur-[0.9px] brightness-90 contrast-90"
-            loading="lazy"
-          />
-        ) : (
-          <div className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full bg-gradient-to-br from-muted to-muted/50 opacity-70 blur-[0.5px]" />
-        )}
+      <div className="rounded-tl-[2px] rounded-tr-[2px] relative aspect-video w-full overflow-hidden bg-muted/40 border-b-[0.5px]">
+        <img src={imgSrc}
+          alt={fileName}
+          onError={(e) => {
+            e.currentTarget.src = '/imgs/cover_video_def.jpg'// 设置默认图片
+            // e.currentTarget.style.display = 'none';// 隐藏img
+          }}
+          className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] "
+          // className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.03] opacity-99 blur-[0.9px] brightness-90 contrast-90"
+          loading="lazy"
+        />
 
         {/* 毛玻璃效果覆盖层 */}
         {status === "failed" && (
@@ -254,7 +259,7 @@ function VideoCard({
           className="line-clamp-2 text-base font-semibold leading-snug cursor-pointer hover:text-primary transition-colors"
         // onClick={onCardContentClick}
         >
-          {title}
+          {fileName}
         </div>
 
         {/* 视频元信息 */}

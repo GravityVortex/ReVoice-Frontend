@@ -1,17 +1,21 @@
-import { getSystemConfigByKey } from '@/shared/cache/system-config';
-import { respData, respErr } from '@/shared/lib/resp';
-import { getVtFileOriginalList, getVtFileOriginalTotal } from '@/shared/models/vt_file_original';
-import { getVtTaskMainListByFileIds } from '@/shared/models/vt_task_main';
+import {getSystemConfigByKey} from '@/shared/cache/system-config';
+import {respData, respErr} from '@/shared/lib/resp';
+import {getUserInfo} from '@/shared/models/user';
+import {getVtFileOriginalList, getVtFileOriginalTotal} from '@/shared/models/vt_file_original';
+import {getVtTaskMainListByFileIds} from '@/shared/models/vt_task_main';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
+    const {searchParams} = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const userId = searchParams.get('userId') || '';
+    // const userId = searchParams.get('userId') || '';
+
+    const user = await getUserInfo();
+    const userId = user?.id;
 
     if (!userId) {
       return respErr('userId is required');
@@ -29,10 +33,11 @@ export async function GET(req: Request) {
     const taskList = await getVtTaskMainListByFileIds(fileIds);
 
     // 4. 按 original_file_id 分组任务到对应视频的 tasks 集合
-    const videoListWithTasks = videoList.map(video => ({
-      ...video,
-      tasks: taskList.filter(task => task.originalFileId === video.id),
-    }));
+    const videoListWithTasks = videoList.map(
+        video => ({
+          ...video,
+          tasks: taskList.filter(task => task.originalFileId === video.id),
+        }));
     // 5. 获取R2前缀URL
     const preUrl = await getSystemConfigByKey('r2.public.base_url');
 

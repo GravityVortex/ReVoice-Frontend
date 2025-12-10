@@ -31,8 +31,8 @@ export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProp
     setLoading(true);
     try {
       let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
-      // const response = await fetch(`/api/video-convert/getCompareSrtList?taskId=${taskId}`);
-      const response = await fetch(`/api/video-convert/getCompareSrtList?taskId=${tempId}`);
+      // const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${taskId}`);
+      const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${tempId}`);
       const result = await response.json();
       if (result.code === 0) {
         setSubtitles(result.data || []);

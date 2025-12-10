@@ -52,31 +52,32 @@ export function ProjectUpdateModal({
     const [videoDuration, setVideoDuration] = useState(0);
 
     // 表单数据
-
     const [formData, setFormData] = useState({
         title: "",
         // description: "",
-        content: "",
+        // content: "",
         cover_url: "",
+        cover_key: "",
+        cover_size: 0,
         // source_vdo_url: "",
         // result_vdo_url: "",
         // duration: "",
     });
+    // console.log('modal---formData-->', formData)
+
 
     useEffect(() => {
-        if (projectItem) {
+        if (projectItem && isOpen) {
             console.log("ProjectUpdateModal 接收到的 projectItem--->", projectItem);
             setFormData({
-                title: projectItem.title || "",
-                // description: projectItem.description || "",
-                content: projectItem.content || "",
-                cover_url: projectItem.cover || projectItem.cover_url || "",
-                // source_vdo_url: projectItem.source_vdo_url || "",
-                // result_vdo_url: projectItem.result_vdo_url || "",
-                // duration: projectItem.duration || "",
+                title: projectItem.fileName || "",
+                cover_size: projectItem.coverSizeBytes || 0,
+                // 列表页cover；
+                cover_url: projectItem.cover || "",
+                cover_key: projectItem.coverR2Key || "",
             });
         }
-    }, [projectItem]);
+    }, [projectItem, isOpen]);
 
 
     // 处理取消
@@ -89,13 +90,19 @@ export function ProjectUpdateModal({
 
     // 处理提交
     const handleSubmit = async () => {
+        if (!formData.cover_url && !formData.title) {
+            onClose();
+            return;
+        }
         setSubmitting(true);
         try {
             const theItem = {
                 id: projectItem.id,
-                ...formData,
+                fileName: formData.title,
+                cover_key: formData.cover_key,
+                cover_size: formData.cover_size,
             };
-            const response = await fetch("/api/video-convert/update", {
+            const response = await fetch("/api/video-task/update-video", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -154,12 +161,14 @@ export function ProjectUpdateModal({
                                         aspectRatio="16/9"
                                         onChange={(items: ImageUploaderValue[]) => {
                                             console.log("封面上传结果 items--->", items);
-                                            const uploadedUrl = items.find(
+                                            const uploadedItem = items.find(
                                                 (item) => item.status === 'uploaded' && item.url
-                                            )?.url;
+                                            );
                                             setFormData((prev) => ({
                                                 ...prev,
-                                                cover_url: uploadedUrl || '',
+                                                cover_url: uploadedItem?.url || '',
+                                                cover_key: uploadedItem?.key || '',
+                                                cover_size: uploadedItem?.size || 0,
                                             }));
                                         }}
                                     />
@@ -167,12 +176,12 @@ export function ProjectUpdateModal({
 
                                 {/* 视频标题 */}
                                 <div className="space-y-3 mt-4">
-                                    <Label htmlFor="title">视频标题</Label>
+                                    <Label htmlFor="title">视频名称</Label>
                                     <Input
                                         id="title"
                                         value={formData.title}
                                         onChange={(e) => handleChange("title", e.target.value)}
-                                        placeholder="输入视频标题"
+                                        placeholder="输入视频名称"
                                         required
                                     />
                                 </div>

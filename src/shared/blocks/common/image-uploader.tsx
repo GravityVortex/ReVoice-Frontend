@@ -14,6 +14,7 @@ export interface ImageUploaderValue {
   id: string;
   preview: string;
   url?: string;
+  key?: string;
   status: UploadStatus;
   size?: number;
 }
@@ -62,7 +63,8 @@ const uploadImageFile = async (file: File) => {
     throw new Error(result.message || 'Upload failed');
   }
 
-  return result.data.urls[0] as string;
+  // return result.data.urls[0] as string;
+  return result.data.results[0];
 };
 
 export function ImageUploader({
@@ -81,18 +83,20 @@ export function ImageUploader({
   const isInitializedRef = useRef(false);
   const onChangeRef = useRef(onChange);
   const isInternalChangeRef = useRef(false);
+  // console.log('IU--defaultPreviews--0-->', defaultPreviews)
 
   // 使用 defaultPreviews 初始化 items，只在组件挂载时执行一次
   const [items, setItems] = useState<UploadItem[]>(() => {
-    if (defaultPreviews?.length) {
-      return defaultPreviews.map((url, index) => ({
-        id: `preset-${url}-${index}`,
-        preview: url,
-        url,
-        status: 'uploaded' as UploadStatus,
-      }));
+    if (!defaultPreviews?.length) {
+      return [];
     }
-    return [];
+    // console.log('IU--defaultPreviews--1-->', defaultPreviews)
+    return defaultPreviews.map((url, index) => ({
+      id: `preset-${url}-${index}`,
+      preview: url,
+      url,
+      status: 'uploaded' as UploadStatus,
+    }));
   });
 
   const maxCount = allowMultiple ? maxImages : 1;
@@ -120,6 +124,12 @@ export function ImageUploader({
 
     // 使用函数式更新来访问最新的 items
     setItems((currentItems) => {
+      // 如果有正在上传的项目，不要更新
+      const hasUploading = currentItems.some(item => item.status === 'uploading');
+      if (hasUploading) {
+        return currentItems;
+      }
+
       const currentUrls = currentItems
         .filter((item) => item.status === 'uploaded' && item.url)
         .map((item) => item.url as string);
@@ -161,14 +171,23 @@ export function ImageUploader({
       return;
     }
 
+    // 只在所有项目都不是 uploading 状态时才触发回调
+    const hasUploading = items.some(item => item.status === 'uploading');
+    if (hasUploading) {
+      return;
+    }
+
     // 标记这是内部变化
     isInternalChangeRef.current = true;
 
+    // console.log('IU--回调了--->')
+
     onChangeRef.current?.(
-      items.map(({ id, preview, url, status, size }) => ({
+      items.map(({ id, preview, url, key, status, size }) => ({
         id,
         preview,
         url,
+        key,
         status,
         size,
       }))
@@ -216,8 +235,11 @@ export function ImageUploader({
     Promise.all(
       newItems.map(async (item) => {
         try {
-          const url = await uploadImageFile(item.file as File);
+          const itemJO = await uploadImageFile(item.file as File);
+          // console.log('IU--接口获取了--->', itemJO)
+
           setItems((prev) => {
+            // console.log('IU--接口后setItems--->', itemJO)
             const next = prev.map((current) => {
               if (current.id === item.id) {
                 // Revoke the blob URL since we have the uploaded URL now
@@ -226,8 +248,9 @@ export function ImageUploader({
                 }
                 return {
                   ...current,
-                  preview: url, // Replace preview with uploaded URL
-                  url,
+                  preview: itemJO.url, // Replace preview with uploaded URL
+                  url: itemJO.url,
+                  key: itemJO.key,
                   status: 'uploaded' as UploadStatus,
                   file: undefined,
                 };
@@ -313,7 +336,7 @@ export function ImageUploader({
               imageClassName
             )}
           >
-            <div 
+            <div
               className="relative overflow-hidden rounded-lg"
               style={aspectRatio ? { aspectRatio } : undefined}
             >
@@ -357,7 +380,7 @@ export function ImageUploader({
             "group border-border bg-muted/50 hover:border-border hover:bg-muted relative overflow-hidden rounded-xl border border-dashed p-1 shadow-sm transition",
             imageClassName
           )}>
-            <div 
+            <div
               className="relative overflow-hidden rounded-lg"
               style={aspectRatio ? { aspectRatio } : undefined}
             >

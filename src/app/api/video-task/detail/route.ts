@@ -16,6 +16,9 @@ export async function GET(req: Request) {
       return respErr('fileId is required');
     }
 
+    // 延迟1秒
+    // await new Promise(resolve => setTimeout(resolve, 1500));
+
     // 1. 查询用户的视频Item
     const videoItem = await findVtFileOriginalById(fileId);
 

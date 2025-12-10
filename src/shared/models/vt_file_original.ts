@@ -1,6 +1,7 @@
 import { vtFileOriginal } from '@/config/db/schema';
 import { db } from '@/core/db';
 import { eq, desc, and, count } from 'drizzle-orm';
+import { title } from 'process';
 
 export type VtFileOriginal = typeof vtFileOriginal.$inferSelect;
 export type NewVtFileOriginal = typeof vtFileOriginal.$inferInsert;
@@ -23,6 +24,28 @@ export async function updateVtFileOriginal(id: string, data: Partial<NewVtFileOr
   const [result] = await db()
     .update(vtFileOriginal)
     .set(data)
+    .where(eq(vtFileOriginal.id, id))
+    .returning();
+  return result;
+}
+
+/**
+ * 修改封面和标题
+ * @param id 
+ * @param title 
+ * @param cover 
+ * @returns 
+ */
+export async function updateVtFileOriginalCoverTitle(id: string, title: string, coverKey: string, coverSize: number) {
+  const [result] = await db()
+    .update(vtFileOriginal)
+    .set({
+      fileName: title,
+      coverR2Key: coverKey,
+      coverSizeBytes: coverSize,
+      coverUpdatedAt: new Date(),
+      updatedAt: new Date()
+    })
     .where(eq(vtFileOriginal.id, id))
     .returning();
   return result;

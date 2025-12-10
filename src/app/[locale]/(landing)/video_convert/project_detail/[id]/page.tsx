@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getLanguageConvertStr, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -37,6 +37,9 @@ import {
   Edit2,
   Loader2,
   BookmarkX,
+  Coins,
+  ListOrderedIcon,
+  BadgeDollarSign,
 } from "lucide-react";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
@@ -45,6 +48,7 @@ import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update
 import { CompareSrtModal } from "@/shared/blocks/video-convert/compare-srt-modal";
 import { useRouter } from "next/navigation";
 import { envConfigs } from "@/config";
+import { ThemeToggler } from "@/shared/blocks/common/theme-toggler";
 //         "videoItem": {
 //             "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
 //             "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
@@ -94,9 +98,10 @@ interface VideoDetail {
 // 侧边栏菜单项
 const menuItems = [
   // { icon: Video, label: "转换视频列表", id: "list" },
-  { icon: Settings, label: "新建语种转换", id: "create" },
+  // { icon: Settings, label: "新建语种转换", id: "create" },
   { icon: Share2, label: "修改基本信息", id: "edit" },
   { icon: ListOrdered, label: "转换视频进度", id: "progress" },
+  { icon: BadgeDollarSign, label: "限时订阅优惠", id: "pricing" },
   // { icon: FileText, label: "详细信息", id: "details" },
   // { icon: Share2, label: "基本信息编辑", id: "edit1" },
   // { icon: Share2, label: "基本信息编辑", id: "edit2" },
@@ -142,6 +147,8 @@ export default function ProjectDetailPage() {
   // 测试用视频列表数据
   // let taskMainList: any = [];
   const [taskMainList, setTaskMainList] = useState<Record<string, any>[]>([]);
+  // 左侧封面图片状态
+  const [leftCoverSrc, setLeftCoverSrc] = useState('/imgs/cover_video_def.jpg');
 
   const onSonItemEditClick = (taskMainId: string) => {
     console.log("编辑视频转换，onSonItemEditClick--->", taskMainId);
@@ -155,7 +162,7 @@ export default function ProjectDetailPage() {
       if (!prev) return prev;
       return {
         ...prev,
-        title: changeItem.title,
+        fileName: changeItem.fileName,
         cover_url: changeItem.cover,
         content: changeItem.content,
       };
@@ -194,9 +201,14 @@ export default function ProjectDetailPage() {
         setProjectItem({ ...videoDetail });
         setIsEditDialogOpen(true);
         break;
-      case "share":
-        // onDevelopClick();
-        router.push(`/${locale}/video_convert/video-editor/`);
+      case "backList":
+        router.push(`/${locale}/video_convert/myVideoList`);
+        break;
+      case "credits":
+        router.push(`/${locale}/settings/credits`);
+        break;
+      case "pricing":
+        router.push(`/${locale}/pricing`);
         break;
       case "delete":
         onDevelopClick();
@@ -295,7 +307,14 @@ export default function ProjectDetailPage() {
         }
 
         console.log("[ProjectDetailPage] 获取视频详情成功--->", backJO);
-        setVideoDetail(backJO.data.videoItem);
+        const tempItem = backJO.data.videoItem;
+        setVideoDetail({
+          ...tempItem,
+          // title: tempItem.fileName,
+          cover: tempItem.coverR2Key ? (backJO.data.preUrl + '/' + tempItem.coverR2Key) : '',
+          // coverSize: tempItem.coverSizeBytes,
+          // coverR2Key: tempItem.coverR2Key,
+        });
         // 预览前缀
         setPreUrl(backJO.data.preUrl);
 
@@ -324,6 +343,16 @@ export default function ProjectDetailPage() {
     fetchVideoDetail();
   }, [id]);
 
+  // 预加载左侧封面图片
+  useEffect(() => {
+    if (videoDetail?.coverR2Key && preUrl) {
+      const coverUrl = preUrl + '/' + videoDetail.coverR2Key;
+      const img = new Image();
+      img.src = coverUrl;
+      img.onload = () => setLeftCoverSrc(coverUrl);
+      img.onerror = () => setLeftCoverSrc('/imgs/cover_video_def.jpg');
+    }
+  }, [videoDetail?.coverR2Key, preUrl]);
 
   // API请求
   const fetchTaskProgress = useCallback(async () => {
@@ -401,8 +430,109 @@ export default function ProjectDetailPage() {
   // 加载中
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-        <div className="text-lg text-muted-foreground">加载中...</div>
+      <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
+        {/* 面包屑骨架 */}
+        <div className="shrink-0 border-b bg-background px-6 py-3">
+          <div className="h-5 w-64 bg-muted rounded animate-pulse"></div>
+        </div>
+
+        {/* 主体内容 */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* 左侧菜单栏骨架 */}
+          <aside className="flex flex-col border-r w-96 shrink-0 bg-muted/30">
+            <div className="flex flex-col flex-1 pb-0 overflow-y-hidden">
+              {/* 视频播放器骨架 */}
+              <div className="p-4">
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted animate-pulse"></div>
+              </div>
+
+              {/* 基本信息骨架 */}
+              <div className="px-4 pb-4 space-y-3">
+                <div className="h-6 w-3/4 bg-muted rounded animate-pulse"></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="h-16 bg-muted rounded animate-pulse"></div>
+                  <div className="h-16 bg-muted rounded animate-pulse"></div>
+                </div>
+                <div className="h-12 bg-muted rounded animate-pulse"></div>
+              </div>
+            </div>
+
+            {/* 底部按钮骨架 */}
+            <div className="shrink-0">
+              <div className="h-px bg-muted"></div>
+              <div className="px-2 mt-2 pb-2 space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-10 bg-muted rounded-lg animate-pulse"></div>
+                ))}
+              </div>
+              <div className="flex flex-row shrink-0 border-t">
+                <div className="flex-1 h-12 bg-muted/50 animate-pulse"></div>
+                <div className="flex-1 h-12 bg-muted/50 border-l animate-pulse"></div>
+              </div>
+            </div>
+          </aside>
+
+          {/* 右侧内容区域骨架 */}
+          <main className="flex-1 overflow-auto p-6">
+            <div className="border-2 rounded-lg bg-card">
+              <div className="p-6 space-y-4">
+                {/* 折叠时显示的内容 */}
+                <div className="flex gap-6 animate-pulse">
+                  <div className="h-30 aspect-video bg-muted rounded-lg border-2"></div>
+                  <div className="flex-1 space-y-3">
+                    <div className="h-6 w-3/4 bg-muted rounded border"></div>
+                    <div className="h-6 w-1/3 bg-muted rounded border mt-5"></div>
+                    <div className="h-6 w-1/4 bg-muted rounded border mt-5 mb-0"></div>
+                    <div className="flex justify-end gap-2 -mt-6">
+                      <div className="h-8 w-16 bg-muted rounded border"></div>
+                      <div className="h-8 w-16 bg-muted rounded border"></div>
+                      <div className="h-8 w-16 bg-muted rounded border"></div>
+                      <div className="h-8 w-16 bg-muted rounded border"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 展开时显示的详细信息骨架 */}
+                <div className="space-y-4 pt-4 border-t-2 animate-pulse">
+                  <div className="h-6 w-32 bg-muted rounded border"></div>
+                  {/* 进度条 */}
+                  <div className="h-20 w-full bg-muted rounded-lg border"></div>
+                  <div className="grid grid-cols-9 gap-2">
+                    {[...Array(9)].map((_, i) => (
+                      <div key={i} className="h-8 bg-muted rounded"></div>
+                    ))}
+                  </div>
+
+                  <div className="h-6 w-32 bg-muted rounded border mt-6"></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-16 bg-muted rounded border"></div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-6 mt-6">
+                    <div className="flex-1 space-y-3 border-2 rounded-lg p-4">
+                      <div className="h-6 w-24 bg-muted rounded mx-auto"></div>
+                      <div className="h-12 bg-muted rounded"></div>
+                      <div className="flex justify-around">
+                        <div className="h-8 w-20 bg-muted rounded border"></div>
+                        <div className="h-8 w-20 bg-muted rounded border"></div>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3 border-2 rounded-lg p-4">
+                      <div className="h-6 w-24 bg-muted rounded mx-auto"></div>
+                      <div className="h-12 bg-muted rounded"></div>
+                      <div className="flex justify-around">
+                        <div className="h-8 w-20 bg-muted rounded border"></div>
+                        <div className="h-8 w-20 bg-muted rounded border"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
@@ -432,10 +562,6 @@ export default function ProjectDetailPage() {
   };
 
 
-  const getConvertStr = (taskMain: any) => {
-    return `${yyMap[taskMain?.sourceLanguage] || '未知语种'}转${yyMap[taskMain?.targetLanguage] || '未知语种'}`;
-  }
-
   // 下载按钮点击
   const onDownLoadClick = async (e: any) => {
     e.stopPropagation();
@@ -461,7 +587,7 @@ export default function ProjectDetailPage() {
       console.log("[Download] 开始下载，文件 key:", key);
 
       // 调用下载 API 获取签名 URL，60秒过期
-      const response = await fetch(`/api/video-convert/download?key=${encodeURIComponent(key)}&expiresIn=60`);
+      const response = await fetch(`/api/video-task/download-video?key=${encodeURIComponent(key)}&expiresIn=60`);
       const data = await response.json();
 
       if (data.code !== 0) {
@@ -499,8 +625,8 @@ export default function ProjectDetailPage() {
       let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
       let name = 'translate_srt';
       let videoName = videoDetail?.fileName || '';
-      // const response = await fetch(`/api/video-convert/getDownLoadSrt?taskId=${taskMainId}&stepName=${stepName}`);
-      const response = await fetch(`/api/video-convert/getDownLoadSrt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
+      // const response = await fetch(`/api/video-task/downLoad-srt?taskId=${taskMainId}&stepName=${stepName}`);
+      const response = await fetch(`/api/video-task/downLoad-srt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
       if (!response.ok) {
         const error = await response.json();
         alert(error.message || "下载字幕失败");
@@ -539,7 +665,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
       {/* 面包屑导航 */}
-      <div className="shrink-0 border-b bg-background px-6 py-3">
+      <div className="shrink-0 border-b bg-background px-6 py-3 flex items-center justify-between">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -564,6 +690,7 @@ export default function ProjectDetailPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+        <ThemeToggler type="toggle" />
       </div>
 
       {/* 主体内容 */}
@@ -577,17 +704,14 @@ export default function ProjectDetailPage() {
               <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
                 {videoDetail?.r2Key ? (
                   <>
-                    {videoDetail?.coverR2Key && (
-                      <img
-                        src={preUrl + '/' + videoDetail.coverR2Key}
-                        // alt={videoDetail.fileName || "视频封面"}
-                        onError={(e) => {
-                          // e.currentTarget.src='/logo.png'// 设置默认图片
-                          e.currentTarget.style.display = 'none';// 隐藏img
-                        }}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
+                    <img
+                      src={leftCoverSrc}
+                      alt={videoDetail.fileName || "视频封面"}
+                      onError={(e) => {
+                        e.currentTarget.src = '/imgs/cover_video_def.jpg';
+                      }}
+                      className="h-full w-full object-cover"
+                    />
                     {/* onClick={() => setIsPlayingLeft(true)} */}
                     <button
                       onClick={() => handlePlayVideo(videoDetail.r2Key, videoDetail.fileName)}
@@ -607,7 +731,7 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* 基本信息，可滚动内容区域 */}
-            <div className="px-4 pb-4 space-y-3  overflow-y-scroll">
+            <div className="px-6 pb-6 space-y-5 overflow-y-scroll">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">原视频</p>
                 <p className="font-semibold text-base text-primary">{videoDetail?.fileName || "-"}</p>
@@ -685,13 +809,13 @@ export default function ProjectDetailPage() {
             {/* 底部水平两个按钮 */}
             <div className="flex flex-row shrink-0 border-t bg-black/40">
               <button
-                onClick={handlMenuClick.bind(null, { id: "share" })}
+                onClick={handlMenuClick.bind(null, { id: "credits" })}
                 className={cn(
                   "flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white",
                   "hover:bg-primary/90 transition-colors"
                 )}>
-                <Share2 className="size-4" />
-                分享
+                <Coins className="size-4" />
+                积分
               </button>
               <button
                 onClick={handlMenuClick.bind(null, { id: "delete" })}
@@ -728,7 +852,7 @@ export default function ProjectDetailPage() {
                 }}
                 className="mb-5 transition-all duration-500 ease-in-out">
                 <Card className="w-full pt-2 pb-0 gap-0">
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 pb-2">
                     {/* 折叠时显示的内容 - 上方左侧视频播放器 + 右侧基本信息 */}
                     <CollapsibleTrigger asChild>
                       <div className="flex gap-6 py-2 my-0">
@@ -809,7 +933,7 @@ export default function ProjectDetailPage() {
                                 {`【${statusMap[taskMain?.status || ""]?.label}】`}
                               </span>
                               <span className={`ml-5 text-sm text-green-600`}>
-                                【{getConvertStr(taskMain)}】
+                                【{getLanguageConvertStr(taskMain)}】
                               </span>
                             </p>
                             <ChevronDown
@@ -833,9 +957,9 @@ export default function ProjectDetailPage() {
                             <span className="inline-block font-medium">{`开始转换时间：${formatDate(taskMain?.startedAt || "")}`}</span>
                             {/* 操作按钮 - 右下角 */}
                             <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" 
-                              disabled={taskMain?.status !== "completed"}
-                              onClick={onDownLoadClick}>
+                              <Button variant="outline" size="sm"
+                                disabled={taskMain?.status !== "completed"}
+                                onClick={onDownLoadClick}>
                                 <Download className="size-4" />
                                 下载
                               </Button>
@@ -861,11 +985,11 @@ export default function ProjectDetailPage() {
                                 <ListOrdered className="size-4" />
                                 进度
                               </Button>
-                              <Button variant="destructive" size="sm" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDevelopClick();
-                              }}>
+                              <Button variant="destructive" size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDevelopClick();
+                                }}>
                                 <BookmarkX className="size-4" />
                                 取消
                               </Button>
@@ -881,7 +1005,7 @@ export default function ProjectDetailPage() {
 
                       {/* 分隔虚线 */}
                       <div aria-hidden
-                        className="my-5 h-px min-w-0 [background-image:linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] bg-[length:6px_1px] bg-repeat-x opacity-25" />
+                        className="mt-3 mb-5 h-px min-w-0 [background-image:linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] bg-[length:6px_1px] bg-repeat-x opacity-25" />
 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -904,12 +1028,12 @@ export default function ProjectDetailPage() {
                         <div className="relative h-2 w-full rounded-full bg-gray-600">
                           <div
                             className="h-full rounded-full bg-primary opacity-50"
-                            style={{width: `${taskMain?.progress}%`}}/>
+                            style={{ width: `${taskMain?.progress}%` }} />
 
                           <motion.div
                             className="absolute top-0 h-full rounded-full bg-primary"
                             initial={{ width: 0 }}
-                            animate={{ width: `${taskMain?.progress}%` }}
+                            animate={{ width: `${taskMain?.progress === 0 ? 100 : taskMain?.progress}%` }}
                             transition={{ duration: 1.5, ease: "easeOut", repeat: Infinity, repeatDelay: 3 }}
                           />
                         </div>
@@ -928,6 +1052,7 @@ export default function ProjectDetailPage() {
                             { name: '合并音视频', range: [89, 100] },
                           ].map((step, index) => {
                             const progress = taskMain?.progress || 0;
+
                             const isActive = progress >= step.range[0] && progress <= step.range[1];
                             const isCompleted = progress > step.range[1];
 
@@ -935,12 +1060,12 @@ export default function ProjectDetailPage() {
                               <div key={index} className="text-center">
                                 <p className={cn(
                                   "flex flex-row items-center gap-1 text-xs font-medium transition-colors",
-                                  isActive && "text-primary font-semibold",
+                                  isActive && "text-cyan-600 font-semibold",
                                   isCompleted && "text-green-600",
                                   !isActive && !isCompleted && "text-gray-400"
                                 )}>
                                   {step.name}
-                                  {isActive && (<Loader2 className="size-4 animate-spin text-primary" />)}
+                                  {isActive && (<Loader2 className="size-4 animate-spin text-cyan-600" />)}
                                 </p>
                               </div>
                             );
@@ -958,7 +1083,7 @@ export default function ProjectDetailPage() {
                             e.stopPropagation();
                             setTaskMainId(taskMain?.id);
                             // 切换到进度条页面
-                            setActiveTabIdx("1");
+                            setActiveTabIdx("0");
                             setIsProgressDialogOpen(true);
                           }}>
                           基本信息 <CircleEllipsis className="size-4" />
@@ -1021,11 +1146,15 @@ export default function ProjectDetailPage() {
                             <p className="text-primary text-lg text-muted-foreground text-center">音频</p>
                             <p className="text-sm text-muted-foreground my-5 text-center">视频转换成功后，音频也可以单独下载，在下载前，建议您先试听一下。</p>
                             <div className="flex justify-around mt-2 gap-2">
-                              <Button variant="outline" size="sm" onClick={onDevelopClick}>
+                              <Button variant="outline" size="sm"
+                                disabled={taskMain?.status !== "completed"}
+                                onClick={onDevelopClick}>
                                 <Share2 className="size-4" />
                                 试听
                               </Button>
-                              <Button variant="outline" size="sm" onClick={onDevelopClick}>
+                              <Button variant="outline" size="sm"
+                                disabled={taskMain?.status !== "completed"}
+                                onClick={onDevelopClick}>
                                 <Download className="size-4" />
                                 下载
                               </Button>
@@ -1040,14 +1169,18 @@ export default function ProjectDetailPage() {
                             <p className="text-primary text-lg text-muted-foreground text-center">字幕</p>
                             <p className="text-sm text-muted-foreground my-5 text-center">视频转换成功后，字幕可以单独下载，翻译后的字幕可以和原视频字幕对比。</p>
                             <div className="flex justify-around mt-2 gap-2">
-                              <Button variant="outline" size="sm" onClick={(e) => {
-                                e.stopPropagation();
-                                setIsCompareDialogOpen(true);
-                              }}>
+                              <Button variant="outline" size="sm"
+                                disabled={taskMain?.status !== "completed"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsCompareDialogOpen(true);
+                                }}>
                                 <Edit className="size-4" />
                                 对比
                               </Button>
-                              <Button variant="outline" size="sm" onClick={(e) => onDownloadSrtClick(e, 'translate_srt')}>
+                              <Button variant="outline" size="sm"
+                                disabled={taskMain?.status !== "completed"}
+                                onClick={(e) => onDownloadSrtClick(e, 'translate_srt')}>
                                 <Download className="size-4" />
                                 下载
                               </Button>
@@ -1095,13 +1228,15 @@ export default function ProjectDetailPage() {
             </div>
           ))}
           {/* 水平居中加好 */}
-          <div className="flex justify-center items-center w-24 h-24 mx-auto border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => {
-              setProjectSourceId("xxx");
-              setIsAddDialogOpen(true);
-            }}>
-            <Plus className="w-8 h-8 text-gray-400" />
-          </div>
+          {false && (
+            <div className="flex justify-center items-center w-24 h-24 mx-auto border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                setProjectSourceId("xxx");
+                setIsAddDialogOpen(true);
+              }}>
+              <Plus className="w-8 h-8 text-gray-400" />
+            </div>)
+          }
 
         </main>
       </div>

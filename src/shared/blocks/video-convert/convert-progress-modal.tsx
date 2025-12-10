@@ -275,12 +275,12 @@ export function ConversionProgressModal({
                                                             <div key={index} className="text-center">
                                                                 <p className={cn(
                                                                     "flex flex-row items-center gap-1 text-xs font-medium transition-colors",
-                                                                    isActive && "text-primary font-semibold",
+                                                                    isActive && "text-cyan-600 font-semibold",
                                                                     isCompleted && "text-green-600",
                                                                     !isActive && !isCompleted && "text-gray-400"
                                                                 )}>
                                                                     {step.name}
-                                                                    {isActive && (<Loader2 className="size-4 animate-spin text-primary" />)}
+                                                                    {isActive && (<Loader2 className="size-4 animate-spin text-cyan-600" />)}
                                                                 </p>
                                                             </div>
                                                         );

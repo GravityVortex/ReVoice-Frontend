@@ -116,7 +116,6 @@ export default function VideoConvertPage() {
       const user_id = user?.id || "";
       // 暂时查询所有数据
       // const user_id = "";
-      // const url = `/api/video-convert/getlist?userId=${user_id}&page=${page}&limit=${pageSize}`
       const url = `/api/video-task/list?userId=${user_id}&page=${page}&limit=${pageSize}`
       const response = await fetch(url, {
         method: "GET",
@@ -194,14 +193,17 @@ export default function VideoConvertPage() {
           const duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
           return {
-            id: item.id.toString(),
-            title: item.fileName || "未命名视频",
-            cover: (responseData.preUrl + '/' + item.coverR2Key) || ("https://picsum.photos/seed/" + item.id + "/640/360"),
+            ...item,
+            // id: item.id.toString(),
+            fileName: item.fileName || "未命名视频",
+            // coverR2Key: item.coverR2Key,
+            // coverSize: item.coverSizeBytes,
+            // ("https://picsum.photos/seed/" + item.id + "/640/360")
+            cover: item.coverR2Key? (responseData.preUrl + '/' + item.coverR2Key) : '',
             videoUrl: item.r2Key || "",
             status,
             duration,
             convertedAt: new Date(item.createdAt).toLocaleString("zh-CN"),
-            content: item.content || "",
             videoSize: item.fileSizeBytes || 3400000,
             tasks: item.tasks,// 任务列表
           };
@@ -264,10 +266,35 @@ export default function VideoConvertPage() {
         <Button className="mask-add text-white" onClick={goAdd2Click}>上传</Button>
       </div>
 
-      {/* 加载状态 */}
+      {/* 加载状态龙骨状态 */}
       {loading && (
-        <div className="flex justify-center items-center py-12">
-          <div className="text-lg">加载中...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+          {[...Array(6)].map((_, index) => (
+            <div key={index} className="border-2 rounded-lg overflow-hidden bg-card">
+              {/* 视频封面骨架 */}
+              <div className="aspect-video bg-muted border-b-2"></div>
+
+              {/* 内容区域骨架 */}
+              <div className="px-4 py-4 pt-2 space-y-3 mt-2">
+                {/* 标题 */}
+                <div className="h-5 w-3/4 bg-muted rounded border"></div>
+
+                {/* 状态和时长 */}
+                <div className="flex justify-between gap-2">
+                  <div className="h-5 w-full bg-muted rounded border"></div>
+                  <div className="h-5 w-full bg-muted rounded border"></div>
+                </div>
+
+                {/* 转换时间 */}
+                {/* <div className="h-4 w-32 bg-muted rounded border"></div> */}
+
+                {/* 按钮组 */}
+                <div className="">
+                  <div className="h-5 w-full flex-1 bg-muted rounded border"></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

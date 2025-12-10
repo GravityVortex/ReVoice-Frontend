@@ -147,7 +147,6 @@ export const getDBJsonData = async (taskMainId: string) => {
         const step12Start = Date.now();
         // const originalSubtitleList = allSubtitleList[0]?.subtitleData || [];
         const originalSubtitleItem = allSubtitleList.find((item) => item.stepName === 'gen_subtitle');
-
         console.log('[getDBJsonData] 步骤12 - 格式化原字幕耗时:', Date.now() - step12Start, 'ms');
 
         // 13、过滤translateList为翻译字幕列表
