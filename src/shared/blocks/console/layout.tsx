@@ -32,7 +32,7 @@ export function ConsoleLayout({
     <div className={`bg-background min-h-screen ${className}`}>
       {/* 顶部tab */}
       {topNav && (
-        <div className="border-border border-b">
+        <div className="border-border/30 border-b">
           <div className="container">
             <nav className="flex items-center gap-4 text-sm">
               {topNav.items.map((item, idx) => (

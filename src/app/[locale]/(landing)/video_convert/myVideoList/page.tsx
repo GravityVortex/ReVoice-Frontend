@@ -245,7 +245,7 @@ export default function VideoConvertPage() {
   const itemListDefault: VideoListItem[] = [
     {
       id: "1",
-      title: "产品介绍视频 - 2025这声发布会",
+      fileName: "产品介绍视频 - 2025这声发布会",
       cover: "https://picsum.photos/seed/1/640/360",
       videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
       status: "completed",
@@ -338,7 +338,7 @@ export default function VideoConvertPage() {
           isOpen={isPlayerOpen}
           onClose={handleClosePlayer}
           videoUrl={selectedVideo.videoUrl}
-          title={selectedVideo.title}
+          title={selectedVideo.fileName}
         />
       )}
 
