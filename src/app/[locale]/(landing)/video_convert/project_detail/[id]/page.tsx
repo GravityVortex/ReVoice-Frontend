@@ -42,6 +42,7 @@ import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
+import { CompareSrtModal } from "@/shared/blocks/video-convert/compare-srt-modal";
 import { useRouter } from "next/navigation";
 import { envConfigs } from "@/config";
 //         "videoItem": {
@@ -134,6 +135,8 @@ export default function ProjectDetailPage() {
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [preUrl, setPreUrl] = useState<string>("");
+  // 字幕对比弹框
+  const [isCompareDialogOpen, setIsCompareDialogOpen] = useState(false);
   // 轮询定时器ID
   const pollingTimerDetailRef = useRef<NodeJS.Timeout | null>(null);
   // 测试用视频列表数据
@@ -486,6 +489,35 @@ export default function ProjectDetailPage() {
     } catch (error) {
       console.error("[Download] 下载失败:", error);
       alert("下载失败，请稍后重试");
+    }
+  };
+
+  // 下载字幕
+  const onDownloadSrtClick = async (e: any, stepName: string) => {
+    e.stopPropagation();
+    try {
+      let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
+      let name = 'translate_srt';
+      let videoName = videoDetail?.fileName || '';
+      // const response = await fetch(`/api/video-convert/getDownLoadSrt?taskId=${taskMainId}&stepName=${stepName}`);
+      const response = await fetch(`/api/video-convert/getDownLoadSrt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || "下载字幕失败");
+        return;
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${stepName}_${taskMainId}.srt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("[SRT Download] 失败:", error);
+      alert("下载字幕失败，请稍后重试");
     }
   };
 
@@ -1008,11 +1040,14 @@ export default function ProjectDetailPage() {
                             <p className="text-primary text-lg text-muted-foreground text-center">字幕</p>
                             <p className="text-sm text-muted-foreground my-5 text-center">视频转换成功后，字幕可以单独下载，翻译后的字幕可以和原视频字幕对比。</p>
                             <div className="flex justify-around mt-2 gap-2">
-                              <Button variant="outline" size="sm" onClick={onDevelopClick}>
+                              <Button variant="outline" size="sm" onClick={(e) => {
+                                e.stopPropagation();
+                                setIsCompareDialogOpen(true);
+                              }}>
                                 <Edit className="size-4" />
                                 对比
                               </Button>
-                              <Button variant="outline" size="sm" onClick={onDevelopClick}>
+                              <Button variant="outline" size="sm" onClick={(e) => onDownloadSrtClick(e, 'translate_srt')}>
                                 <Download className="size-4" />
                                 下载
                               </Button>
@@ -1104,6 +1139,13 @@ export default function ProjectDetailPage() {
         isOpen={isEditDialogOpen}
         onUpdateEvent={onItemUpdateEvent}
         onClose={() => setIsEditDialogOpen(false)}
+      />
+
+      {/* 字幕对比弹框 */}
+      <CompareSrtModal
+        isOpen={isCompareDialogOpen}
+        onClose={() => setIsCompareDialogOpen(false)}
+        taskId={taskMainId}
       />
     </div>
   );
