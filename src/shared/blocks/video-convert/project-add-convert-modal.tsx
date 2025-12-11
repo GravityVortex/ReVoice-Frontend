@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/shared/lib/utils';
 import {
     Dialog,
@@ -28,21 +29,14 @@ import { toast } from 'sonner';
 
 // 语言选项
 const LANGUAGES = [
-    { value: 'zh-CN', label: '中文' },
-    { value: 'en-US', label: '英语' },
-    // { value: 'fr-FR', label: '法语' },
-    // { value: 'de-DE', label: '德语' },
-    // { value: 'ja-JP', label: '日语' },
-    // { value: 'ko-KR', label: '韩语' },
-    // { value: 'es-ES', label: '西班牙语' },
-    // { value: 'pt-PT', label: '葡萄牙语' },
+    { value: 'zh-CN', key: 'zh-CN' },
+    { value: 'en-US', key: 'en-US' },
 ];
-
 
 // 单人多人
 const PEOPLES_OPTIONS = [
-    { value: 'single', label: '单人', credits: 0 },
-    { value: 'multiple', label: '多人', credits: 0 },
+    { value: 'single', key: 'single', credits: 0 },
+    { value: 'multiple', key: 'multiple', credits: 0 },
 ];
 interface Config {
     maxFileSizeMB: number;
@@ -84,6 +78,7 @@ export function ProjectAddConvertModal({
     onClose,
     onCreateTaskSuccess,
 }: ProjectAddConvertModalProps) {
+    const t = useTranslations('video_convert.projectAddConvertModal');
     const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const { user } = useAppContext();
@@ -252,7 +247,7 @@ export function ProjectAddConvertModal({
 
         // 验证文件类型
         if (!file.type.startsWith('video/')) {
-            toast.error('请选择视频文件');
+            toast.error(t('upload.selectVideo'));
             resetVideoData(false);
             return;
         }
@@ -261,7 +256,7 @@ export function ProjectAddConvertModal({
         // MP4, MOV, AVI, MKV
         const isMp4 = file.type === "video/mp4" || file.name.toLowerCase().endsWith(".mp4");
         if (!isMp4) {
-            toast.error("仅支持 .mp4 文件");
+            toast.error(t('upload.onlyMp4'));
             resetVideoData(false);
             return;
         }
@@ -270,7 +265,7 @@ export function ProjectAddConvertModal({
         const maxSize = config.maxFileSizeMB;
         if (file.size > maxSize) {
             resetVideoData(false);
-            toast.error(`视频文件不能超过 ${maxSize}MB`);
+            toast.error(`${t('upload.maxSizeExceeded')} ${maxSize}MB`);
             return;
         }
 
@@ -410,10 +405,10 @@ export function ProjectAddConvertModal({
                     r2Bucket: r2Bucket, // || 'video-store',
                 },
             }));
-            toast.success('视频上传成功');
+            toast.success(t('upload.uploadSuccess'));
         } catch (error: any) {
             console.error('视频上传失败:', error);
-            toast.error(error?.message || '视频上传失败');
+            toast.error(error?.message || t('upload.uploadFailed'));
         } finally {
             setUploading(false);
             if (videoInputRef.current) {
@@ -444,7 +439,7 @@ export function ProjectAddConvertModal({
                 r2Bucket: '',
             },
         }));
-        showTip && toast.success('视频已删除');
+        showTip && toast.success(t('upload.videoDeleted'));
     };
 
     // 处理取消
@@ -456,7 +451,7 @@ export function ProjectAddConvertModal({
     // 处理第一步的下一步
     const handleStep1Next = () => {
         if (!formData.videoUpload.videoUrl) {
-            toast.error('请上传视频文件');
+            toast.error(t('messages.uploadVideoRequired'));
             return;
         }
         saveToCache();
@@ -466,7 +461,7 @@ export function ProjectAddConvertModal({
     // 处理第二步的下一步
     const handleStep2Next = () => {
         if (!formData.targetLanguage) {
-            toast.error('请选择目标语言');
+            toast.error(t('messages.targetLanguageRequired'));
             return;
         }
         saveToCache();
@@ -552,16 +547,16 @@ export function ProjectAddConvertModal({
                 setCurrentStep(1);
                 // 回调
                 onCreateTaskSuccess?.();
-                toast.success('转换任务已创建！');
+                toast.success(t('messages.taskCreated'));
 
                 onClose();
             } else {
                 console.error('提交失败:', data);
-                toast.error(data?.message || '提交失败，稍后再试！');
+                toast.error(data?.message || t('messages.submitFailed'));
             }
         } catch (e) {
             console.error('提交失败--->', e);
-            toast.error('提交失败，稍后再试！');
+            toast.error(t('messages.submitFailed'));
         } finally {
             setSubmitting(false);
         }
@@ -569,22 +564,23 @@ export function ProjectAddConvertModal({
 
     // 获取语言标签
     const getLanguageLabel = (value: string) => {
-        return LANGUAGES.find(l => l.value === value)?.label || value;
+        const lang = LANGUAGES.find(l => l.value === value);
+        return lang ? t(`languages.${lang.key}`) : value;
     };
-
 
     // 获取单人双人
     const getWatermarkLabel = (value: string) => {
-        return PEOPLES_OPTIONS.find(w => w.value === value)?.label || value;
+        const option = PEOPLES_OPTIONS.find(w => w.value === value);
+        return option ? t(`speakers.${option.key}`) : value;
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl h-[580px] flex flex-col p-0">
+            <DialogContent className="min-w-[700px] h-[680px] flex flex-col p-0">
                 <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
-                    <DialogTitle>上传视频转换</DialogTitle>
+                    <DialogTitle>{t('title')}</DialogTitle>
                     <DialogDescription className="sr-only">
-                        上传视频，创建转换任务
+                        {t('description')}
                     </DialogDescription>
 
                     {/* 步骤指示器 */}
@@ -600,7 +596,7 @@ export function ProjectAddConvertModal({
                                 "ml-2 text-sm font-medium",
                                 currentStep === 1 ? "text-primary" : "text-green-500"
                             )}>
-                                上传视频
+                                {t('steps.uploadVideo')}
                             </span>
                         </div>
 
@@ -617,7 +613,7 @@ export function ProjectAddConvertModal({
                                 "ml-2 text-sm font-medium",
                                 currentStep === 2 ? "text-primary" : currentStep > 2 ? "text-green-500" : "text-muted-foreground"
                             )}>
-                                配置参数
+                                {t('steps.configParams')}
                             </span>
                         </div>
 
@@ -634,7 +630,7 @@ export function ProjectAddConvertModal({
                                 "ml-2 text-sm font-medium",
                                 currentStep === 3 ? "text-primary" : "text-muted-foreground"
                             )}>
-                                确认转换
+                                {t('steps.confirmConvert')}
                             </span>
                         </div>
                     </div>
@@ -649,7 +645,7 @@ export function ProjectAddConvertModal({
                                 {/* 视频文件上传 */}
                                 <div className="space-y-2 mb-1">
                                     <Label className="text-base font-semibold">
-                                        视频文件 <span className="text-red-500">*</span>
+                                        {t('upload.videoFile')} <span className="text-red-500">*</span>
                                     </Label>
                                     <input
                                         ref={videoInputRef}
@@ -670,7 +666,7 @@ export function ProjectAddConvertModal({
                                             {uploading ? (
                                                 <div className="text-center w-full">
                                                     <Upload className="w-6 h-6 mx-auto mb-1 animate-pulse" />
-                                                    <span className="text-xs">上传中...</span>
+                                                    <span className="text-xs">{t('upload.uploading')}</span>
                                                     <div className='mt-2'>
                                                         <div className="h-2 rounded-lg w-[80%] mx-auto bg-[#f0f0f0]">
                                                             <div className="h-2 rounded-lg bg-[#10b981]" style={{ width: `${progress2}%`, transition: 'width 0.3s' }} />
@@ -683,12 +679,12 @@ export function ProjectAddConvertModal({
                                             )}
                                         </button>
                                     ) : (
-                                        <div className="relative inline-block">
+                                        <div className="relative inline-block w-full">
                                             <video
                                                 ref={videoRef}
                                                 src={formData.videoUpload.videoUrl}
                                                 controls
-                                                className="w-full max-w-md h-auto rounded-lg border"
+                                                className="w-full object-cover aspect-video h-auto rounded-lg border"
                                             />
                                             <Button
                                                 size="icon"
@@ -699,14 +695,14 @@ export function ProjectAddConvertModal({
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                             <div className="mt-2 text-sm text-muted-foreground">
-                                                文件大小: {(formData.videoUpload.videoSize / 1024 / 1024).toFixed(2)} MB
-                                                {formData.videoUpload.videoDuration > 0 && ` | 时长: ${Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟`}
+                                                {t('upload.fileSize')}: {(formData.videoUpload.videoSize / 1024 / 1024).toFixed(2)} MB
+                                                {formData.videoUpload.videoDuration > 0 && ` | ${t('upload.duration')}: ${Math.ceil(formData.videoUpload.videoDuration / 60)} 分钟`}
                                             </div>
                                         </div>
                                     )}
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        {config.userType === 'guest' ? '访客账号' : '当前账号'}
-                                        {`最大支持上传 ${(config?.maxFileSizeMB / 1024 / 1024).toFixed(0)} MB`}
+                                        {config.userType === 'guest' ? t('upload.guestAccount') : t('upload.currentAccount')}
+                                        {`${t('upload.maxSize')} ${(config?.maxFileSizeMB / 1024 / 1024).toFixed(0)} MB`}
                                     </p>
                                 </div>
                             </CardContent>
@@ -716,26 +712,29 @@ export function ProjectAddConvertModal({
                     {/* 第二步：配置参数 */}
                     {currentStep === 2 && (
                         <Card className="mt-2 pt-2 pb-5">
-                            <CardContent className="pt-0 space-y-6">
+                            <CardContent className="pt-0 space-y-8">
                                 {/* 原语言 */}
-                                <div className="flex items-center justify-between gap-4 border-b pb-0 my-1">
+                                <div className="flex items-center justify-between h-20 gap-4 border-b pb-0 my-1">
                                     <div className="flex items-center gap-3 py-4">
                                         {/* <Languages className="w-5 h-5 text-primary" /> */}
                                         <Label htmlFor="sourceLanguage" className="text-base font-medium whitespace-nowrap">
-                                            原语言 <span className="text-red-500">*</span>
+                                            {t('config.sourceLanguage')} <span className="text-red-500">*</span>
                                         </Label>
                                     </div>
                                     <Select
                                         value={formData.sourceLanguage}
                                         onValueChange={(value) => setFormData({ ...formData, sourceLanguage: value })}
                                     >
-                                        <SelectTrigger id="sourceLanguage" className="flex-1 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto py-3 pr-0 pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right focus:ring-0 focus:ring-offset-0">
-                                            <SelectValue placeholder="请选择" />
+                                        <SelectTrigger id="sourceLanguage" className="
+                                        flex-1 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent 
+                                        data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto py-3 pr-0 
+                                        pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right focus:ring-0 focus:ring-offset-0">
+                                            <SelectValue placeholder={t('config.selectPlaceholder')} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {LANGUAGES.map((lang) => (
-                                                <SelectItem key={lang.value} value={lang.value} className="focus:bg-transparent hover:bg-transparent">
-                                                    {lang.label}
+                                                <SelectItem key={lang.value} value={lang.value} className="focus:!bg-transparent hover:!bg-transparent data-[state=checked]:!bg-transparent">
+                                                    {t(`languages.${lang.key}`)}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -743,24 +742,26 @@ export function ProjectAddConvertModal({
                                     <ChevronRight className="w-5 h-5 text-muted-foreground mr-0" />
                                 </div>
 
-                                <div className="flex items-center justify-between gap-4 border-b pb-0 my-1">
+                                <div className="flex items-center justify-between h-20 gap-4 border-b pb-0 my-1">
                                     <div className="flex items-center gap-3 py-4">
                                         {/* <Languages className="w-5 h-5 text-primary" /> */}
                                         <Label htmlFor="targetLanguage" className="text-base font-medium whitespace-nowrap">
-                                            目标语言 <span className="text-red-500">*</span>
+                                            {t('config.targetLanguage')} <span className="text-red-500">*</span>
                                         </Label>
                                     </div>
                                     <Select
                                         value={formData.targetLanguage}
                                         onValueChange={(value) => setFormData({ ...formData, targetLanguage: value })}
                                     >
-                                        <SelectTrigger id="targetLanguage" className="flex-1 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto py-3 pr-0 pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right focus:ring-0 focus:ring-offset-0">
-                                            <SelectValue placeholder="请选择" />
+                                        <SelectTrigger id="targetLanguage" className="flex-1 border-0 shadow-none bg-transparent hover:bg-transparent 
+                                        focus:bg-transparent data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto 
+                                        py-3 pr-0 pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right">
+                                            <SelectValue placeholder={t('config.selectPlaceholder')} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {LANGUAGES.map((lang) => (
-                                                <SelectItem key={lang.value} value={lang.value} className="focus:bg-transparent hover:bg-transparent">
-                                                    {lang.label}
+                                                <SelectItem key={lang.value} value={lang.value} className="focus:!bg-transparent hover:!bg-transparent data-[state=checked]:!bg-transparent">
+                                                    {t(`languages.${lang.key}`)}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -783,10 +784,10 @@ export function ProjectAddConvertModal({
                                 </div> */}
 
                                 {/* 单人双人 */}
-                                <div className="space-y-3 mb-4 mt-2">
+                                <div className="space-y-3 mb-4 mt-10 h-40">
                                     <Label className="text-base font-semibold">
                                         {/* <Droplet className="w-5 h-5 text-primary" /> */}
-                                        视频中说话人数</Label>
+                                        {t('config.speakerCount')}</Label>
                                     <div className="flex gap-3">
                                         {PEOPLES_OPTIONS.map((option) => (
                                             <button
@@ -801,7 +802,7 @@ export function ProjectAddConvertModal({
                                                 )}
                                             >
                                                 <div className="text-center">
-                                                    <div className="text-sm">{option.label}</div>
+                                                    <div className="text-sm">{t(`speakers.${option.key}`)}</div>
                                                 </div>
                                             </button>
                                         ))}
@@ -813,78 +814,72 @@ export function ProjectAddConvertModal({
 
                     {/* 第三步：确认信息 */}
                     {currentStep === 3 && (
-                        <Card className="mt-2 pt-2">
+                        <Card className="mt-2 pt-2 pb-8">
                             <CardContent className="pt-0 space-y-6">
                                 <div className="space-y-4">
                                     {/* <h3 className="mb-0 text-lg font-semibold text-primary">视频转换配置确认</h3> */}
 
-                                    <div className="my-0 grid grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
-                                        <div className="col-span-1 space-y-1">
-                                            <p className="text-sm text-muted-foreground text-center">视频时长</p>
+                                    <div className="my-5 grid grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
+                                        <div className="col-span-1 space-y-2">
+                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.videoDuration')}</p>
                                             <p className="font-semibold text-center">{Math.ceil(formData.videoUpload.videoDuration / 60)}分钟</p>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground text-center">原语言</p>
+                                        <div className="space-y-2">
+                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.sourceLanguage')}</p>
                                             <p className="font-semibold text-center">{getLanguageLabel(formData.sourceLanguage)}</p>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground text-center">目标语言</p>
+                                        <div className="space-y-2">
+                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.targetLanguage')}</p>
                                             <p className="font-semibold text-center">{getLanguageLabel(formData.targetLanguage)}</p>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground text-center">说话人数</p>
+                                        <div className="space-y-2">
+                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.speakerCount')}</p>
                                             <p className="font-semibold text-center">{getWatermarkLabel(formData.peoples)}</p>
                                         </div>
                                     </div>
 
                                     {/* 积分消耗 */}
-                                    <div className="py-4 px-0 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
+                                    <div className="py-8 px-0 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
                                         <div className="flex gap-1 items-center justify-between">
 
                                             <div className="text-right flex-1 text-sm text-muted-foreground">
-                                                <p className='mt-1'>消耗积分: <span className='text-2xl text-red-600'>{calculateCredits()}</span> 积分</p>
-                                                <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
-                                                    💡 每分钟消耗{config.pointsPerMinute}积分
+                                                <p className='mt-1'>{t('confirm.consumeCredits')}: <span className='text-2xl text-red-600'>{calculateCredits()}</span> {t('confirm.credits')}</p>
+                                                <p className="mt-3 text-sm text-blue-800 dark:text-blue-200">
+                                                    💡 {t('confirm.creditsPerMinute', { points: config.pointsPerMinute })}
                                                 </p>
-                                                {(getConsumeCredits() <= 0) && (<p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
-                                                    积分不足，只够处理前{getConsumeTime()}分钟！
+                                                {(getConsumeCredits() <= 0) && (<p className="mt-3 text-sm text-blue-800 dark:text-blue-200">
+                                                    {t('confirm.insufficientCredits', { minutes: getConsumeTime() })}
                                                 </p>)}
                                             </div>
-                                            <div className='flex-1'>
+                                            <div className='flex-1 gap-2'>
                                                 {/* <p className="text-sm text-muted-foreground mb-1">剩余积分</p> */}
                                                 <div className="flex items-baseline gap-2 justify-center">
-                                                    <span className="text-lg text-muted-foreground">剩余</span>
+                                                    <span className="text-lg text-muted-foreground">{t('confirm.remainingCredits')}</span>
                                                     <span className="text-4xl font-bold text-primary">{user?.credits?.remainingCredits}</span>
                                                     {/* <span className="text-4xl font-bold text-primary">{calculateCredits()}</span> */}
-                                                    <span className="text-lg text-muted-foreground">积分</span>
+                                                    <span className="text-lg text-muted-foreground">{t('confirm.credits')}</span>
                                                 </div>
                                                 <div className="flex justify-center items-baseline gap-2">
                                                     {config.userType === 'guest' && (<a href="/settings/profile" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <MailCheck className="text-sm text-blue-600 hover:underline">
-                                                            认证
+                                                            {t('confirm.register')}
                                                         </MailCheck>
-                                                        注册得更多积分
+                                                        {t('confirm.registerTip')}
                                                     </a>)}
-                                                    {/* <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
-                                                        <CircleDollarSign className="text-sm text-blue-600 hover:underline">
-                                                            充值积分
-                                                        </CircleDollarSign>
-                                                        注册得更多积分
-                                                    </a> */}
                                                     <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <Crown className="text-sm text-blue-600 hover:underline">
-                                                            订阅
+                                                            {t('confirm.subscribe')}
                                                         </Crown>
-                                                        订阅享受多权益
+                                                        {t('confirm.subscribeTip')}
                                                     </a>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="mt-5 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                                            💡 提示：转换任务根据视频大小不同预计需要 3-10 分钟完成。
+                                            {t('confirm.estimatedTime')}
                                         </p>
                                     </div>
                                 </div>
@@ -902,13 +897,13 @@ export function ProjectAddConvertModal({
                                     variant="outline"
                                     onClick={handleCancel}
                                 >
-                                    取消
+                                    {t('buttons.cancel')}
                                 </Button>
                                 <Button
                                     onClick={handleStep1Next}
                                     disabled={!formData.videoUpload.videoUrl}
                                 >
-                                    下一步
+                                    {t('buttons.next')}
                                     <ChevronRight className="w-4 h-4 ml-1" />
                                 </Button>
                             </>
@@ -918,13 +913,13 @@ export function ProjectAddConvertModal({
                                     variant="outline"
                                     onClick={handlePrevious}
                                 >
-                                    上一步
+                                    {t('buttons.previous')}
                                 </Button>
                                 <Button
                                     onClick={handleStep2Next}
                                     disabled={!formData.targetLanguage}
                                 >
-                                    下一步
+                                    {t('buttons.next')}
                                     <ChevronRight className="w-4 h-4 ml-1" />
                                 </Button>
                             </>
@@ -934,13 +929,13 @@ export function ProjectAddConvertModal({
                                     variant="outline"
                                     onClick={handlePrevious}
                                 >
-                                    上一步
+                                    {t('buttons.previous')}
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={submitting}
                                 >
-                                    {submitting ? "提交中..." : "开始转换"}
+                                    {submitting ? t('buttons.submitting') : t('buttons.startConvert')}
                                 </Button>
                             </>
                         )}

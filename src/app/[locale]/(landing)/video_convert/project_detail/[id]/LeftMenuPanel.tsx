@@ -10,6 +10,7 @@ interface LeftMenuPanelProps {
   activeMenu: string;
   handlMenuClick: (item: any) => void;
   handlePlayVideo: (url: string, title: string) => void;
+  t: (key: string) => string;
 }
 
 export function LeftMenuPanel({
@@ -19,6 +20,7 @@ export function LeftMenuPanel({
   activeMenu,
   handlMenuClick,
   handlePlayVideo,
+  t,
 }: LeftMenuPanelProps) {
   return (
     <aside className="flex flex-col border-r w-96 shrink-0 bg-muted/30">
@@ -57,23 +59,23 @@ export function LeftMenuPanel({
         {/* 基本信息，可滚动内容区域 */}
         <div className="px-6 pb-6 space-y-5 overflow-y-scroll">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">原视频</p>
+            <p className="text-sm text-muted-foreground">{t('videoInfo.originalVideo')}</p>
             <p className="font-semibold text-base text-primary">{videoDetail?.fileName || "-"}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">原视频大小</p>
+              <p className="text-xs text-muted-foreground">{t('videoInfo.size')}</p>
               <p className="font-semibold text-base">{((videoDetail?.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)}MB</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">原视频时长</p>
+              <p className="text-xs text-muted-foreground">{t('videoInfo.duration')}</p>
               <p className="text-sm font-medium">{videoDetail?.videoDurationSeconds ? `${miao2Hms(videoDetail?.videoDurationSeconds)}` : "-"}</p>
             </div>
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">原视频上传时间</p>
+            <p className="text-xs text-muted-foreground">{t('videoInfo.uploadTime')}</p>
             <p className="text-sm font-medium">{formatDate(videoDetail?.createdAt || "")}</p>
           </div>
         </div>
@@ -112,7 +114,7 @@ export function LeftMenuPanel({
               "hover:bg-primary/90 transition-colors"
             )}>
             <Coins className="size-4" />
-            积分
+            {t('menu.credits')}
           </button>
           <button
             onClick={handlMenuClick.bind(null, { id: "delete" })}
@@ -121,7 +123,7 @@ export function LeftMenuPanel({
               "border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors"
             )}>
             <Trash2 className="size-4" />
-            删除
+            {t('menu.delete')}
           </button>
         </div>
       </div>

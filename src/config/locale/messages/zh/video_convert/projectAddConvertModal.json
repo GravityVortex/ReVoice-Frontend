@@ -1,0 +1,67 @@
+{
+  "title": "上传视频转换",
+  "description": "上传视频，创建转换任务",
+  "steps": {
+    "uploadVideo": "上传视频",
+    "configParams": "配置参数",
+    "confirmConvert": "确认转换"
+  },
+  "upload": {
+    "videoFile": "视频文件",
+    "uploading": "上传中...",
+    "fileSize": "文件大小",
+    "duration": "时长",
+    "maxSize": "最大支持上传",
+    "guestAccount": "访客账号",
+    "currentAccount": "当前账号",
+    "selectVideo": "请选择视频文件",
+    "onlyMp4": "仅支持 .mp4 文件",
+    "maxSizeExceeded": "视频文件不能超过",
+    "uploadSuccess": "视频上传成功",
+    "uploadFailed": "视频上传失败",
+    "videoDeleted": "视频已删除"
+  },
+  "config": {
+    "sourceLanguage": "原语言",
+    "targetLanguage": "目标语言",
+    "speakerCount": "视频中说话人数",
+    "selectPlaceholder": "请选择"
+  },
+  "languages": {
+    "zh-CN": "中文",
+    "en-US": "英语"
+  },
+  "speakers": {
+    "single": "单人",
+    "multiple": "多人"
+  },
+  "confirm": {
+    "videoDuration": "视频时长",
+    "sourceLanguage": "原语言",
+    "targetLanguage": "目标语言",
+    "speakerCount": "说话人数",
+    "consumeCredits": "消耗积分",
+    "creditsPerMinute": "每分钟消耗{points}积分",
+    "insufficientCredits": "积分不足，只够处理前{minutes}分钟！",
+    "remainingCredits": "剩余",
+    "credits": "积分",
+    "register": "认证",
+    "registerTip": "注册得更多积分",
+    "subscribe": "订阅",
+    "subscribeTip": "订阅享受多权益",
+    "estimatedTime": "提示：转换任务根据视频大小不同预计需要 3-10 分钟完成。"
+  },
+  "buttons": {
+    "cancel": "取消",
+    "next": "下一步",
+    "previous": "上一步",
+    "startConvert": "开始转换",
+    "submitting": "提交中..."
+  },
+  "messages": {
+    "uploadVideoRequired": "请上传视频文件",
+    "targetLanguageRequired": "请选择目标语言",
+    "taskCreated": "转换任务已创建！",
+    "submitFailed": "提交失败，稍后再试！"
+  }
+}

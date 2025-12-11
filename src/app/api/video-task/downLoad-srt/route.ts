@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const subtitleJson = typeof subtitleData[0].subtitleData === 'string'
       ? JSON.parse(subtitleData[0].subtitleData)
       : subtitleData[0].subtitleData;
-    const list = subtitleJson.segments || [];
+    const list = subtitleJson || [];
 
     if (list.length === 0) {
       return NextResponse.json(
@@ -61,10 +61,22 @@ export async function GET(request: NextRequest) {
 
 /**
  * 将字幕列表转换为 srt 格式
+ * @param subtitleList
+ * @returns
+ */
+function convertToSrt(subtitleList: any[]): string {
+  return subtitleList.map((item, index) => {
+    return `${item.seq || index + 1}\n${item.start} --> ${item.end}\n${item.txt}\n`;
+  }).join('\n');
+}
+
+
+/**
+ * 模拟转换为 srt 格式
  * @param subtitleList 
  * @returns 
  */
-function convertToSrt(subtitleList: any[]): string {
+function convertToSrtMock(subtitleList: any[]): string {
   return subtitleList.map((item, index) => {
     const formatTime = (seconds: number) => {
       const h = Math.floor(seconds / 3600);

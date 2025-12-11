@@ -1,6 +1,7 @@
 import { vtTaskMain, vtFileOriginal } from '@/config/db/schema';
 import { db } from '@/core/db';
 import { eq, desc, and, count, inArray } from 'drizzle-orm';
+import { progress } from 'framer-motion';
 
 export type VtTaskMain = typeof vtTaskMain.$inferSelect;
 export type NewVtTaskMain = typeof vtTaskMain.$inferInsert;
@@ -58,7 +59,22 @@ export async function getVtTaskMainListByFileId(originalFileId: string) {
 export async function getVtTaskMainListByFileIds(fileIds: string[]) {
   if (fileIds.length === 0) return [];
   return await db()
-    .select()
+    .select({
+      id: vtTaskMain.id,
+      status: vtTaskMain.status,
+      originalFileId: vtTaskMain.originalFileId,
+      priority: vtTaskMain.priority,
+      progress: vtTaskMain.progress,
+      currentStep: vtTaskMain.currentStep,
+      sourceLanguage: vtTaskMain.sourceLanguage,
+      targetLanguage: vtTaskMain.targetLanguage,
+      speakerCount: vtTaskMain.speakerCount,
+      processDurationSeconds: vtTaskMain.processDurationSeconds,
+      startedAt: vtTaskMain.startedAt,
+      completedAt: vtTaskMain.completedAt,
+      createdBy: vtTaskMain.createdBy,
+      // delStatus: vtTaskMain.delStatus,
+    })
     .from(vtTaskMain)
     .where(and(inArray(vtTaskMain.originalFileId, fileIds), eq(vtTaskMain.delStatus, 0)))
     .orderBy(desc(vtTaskMain.createdAt));

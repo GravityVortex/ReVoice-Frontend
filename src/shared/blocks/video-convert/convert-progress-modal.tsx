@@ -16,6 +16,7 @@ import {
     Loader2,
     Clock,
 } from 'lucide-react';
+import { useParams } from 'next/navigation';
 
 interface TaskStep {
     id: number;
@@ -76,6 +77,9 @@ export function ConversionProgressModal({
     // 步骤元素引用，用于自动滚动
     const stepRefsRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
+    const params = useParams();
+    const locale = (params.locale as string) || 'zh';
+
     // 根据 activeTabIdx 切换 tab
     // useEffect: 进行副作用执行，例如在组件加载或者在组件更新的时候执行一些函数
     useEffect(() => {
@@ -84,7 +88,7 @@ export function ConversionProgressModal({
         }
         else if (activeTabIdx === '1') {
             setActiveTab('tab_progress');
-        } 
+        }
     }, [activeTabIdx, taskMainId]);
 
     // 清除轮询定时器
@@ -161,7 +165,7 @@ export function ConversionProgressModal({
             const timer = setTimeout(() => {
                 scrollToProcessingStep(progressData);
             }, 200);
-            
+
             return () => clearTimeout(timer);
         }
     }, [progressData, activeTab, isOpen]);
@@ -184,7 +188,7 @@ export function ConversionProgressModal({
     const scrollToProcessingStep = (progressList: TaskStep[]) => {
         // 找到首个 processing 状态的步骤
         const processingStep = progressList.find(step => step.stepStatus === 'processing');
-        
+
         if (processingStep) {
             // 使用 setTimeout 确保 DOM 已更新
             setTimeout(() => {
@@ -235,7 +239,7 @@ export function ConversionProgressModal({
                 {/* Tab 切换 */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
-                        <DialogTitle>转换进度【{taskMainInfo ? getLanguageConvertStr(taskMainInfo) : '加载中...'}】</DialogTitle>
+                        <DialogTitle>转换进度【{taskMainInfo ? getLanguageConvertStr(taskMainInfo, locale) : '加载中...'}】</DialogTitle>
                         {/* 省略则警告：Warning: Missing Description or aria-describedby={undefined} for {DialogContent} */}
                         <DialogDescription className="sr-only">
                             查看视频转换的详细进度信息和日志
@@ -380,8 +384,8 @@ export function ConversionProgressModal({
                                                     };
 
                                                     return (
-                                                        <div 
-                                                            key={task.id} 
+                                                        <div
+                                                            key={task.id}
                                                             className="relative flex gap-2"
                                                             ref={(el) => {
                                                                 if (el) {

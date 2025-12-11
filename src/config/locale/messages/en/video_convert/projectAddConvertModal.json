@@ -1,0 +1,67 @@
+{
+  "title": "Upload Video for Conversion",
+  "description": "Upload video and create conversion task",
+  "steps": {
+    "uploadVideo": "Upload Video",
+    "configParams": "Configure Parameters",
+    "confirmConvert": "Confirm Conversion"
+  },
+  "upload": {
+    "videoFile": "Video File",
+    "uploading": "Uploading...",
+    "fileSize": "File Size",
+    "duration": "Duration",
+    "maxSize": "Maximum upload size",
+    "guestAccount": "Guest Account",
+    "currentAccount": "Current Account",
+    "selectVideo": "Please select a video file",
+    "onlyMp4": "Only .mp4 files are supported",
+    "maxSizeExceeded": "Video file cannot exceed",
+    "uploadSuccess": "Video uploaded successfully",
+    "uploadFailed": "Video upload failed",
+    "videoDeleted": "Video deleted"
+  },
+  "config": {
+    "sourceLanguage": "Source Language",
+    "targetLanguage": "Target Language",
+    "speakerCount": "Number of Speakers in Video",
+    "selectPlaceholder": "Please select"
+  },
+  "languages": {
+    "zh-CN": "Chinese",
+    "en-US": "English"
+  },
+  "speakers": {
+    "single": "Single",
+    "multiple": "Multiple"
+  },
+  "confirm": {
+    "videoDuration": "Video Duration",
+    "sourceLanguage": "Source Language",
+    "targetLanguage": "Target Language",
+    "speakerCount": "Speaker Count",
+    "consumeCredits": "Credits to Consume",
+    "creditsPerMinute": "{points} credits per minute",
+    "insufficientCredits": "Insufficient credits, only enough for the first {minutes} minutes!",
+    "remainingCredits": "Remaining",
+    "credits": "Credits",
+    "register": "Verify",
+    "registerTip": "Register for more credits",
+    "subscribe": "Subscribe",
+    "subscribeTip": "Subscribe for more benefits",
+    "estimatedTime": "💡 Tip: Conversion tasks take approximately 3-10 minutes depending on video size."
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "next": "Next",
+    "previous": "Previous",
+    "startConvert": "Start Conversion",
+    "submitting": "Submitting..."
+  },
+  "messages": {
+    "uploadVideoRequired": "Please upload a video file",
+    "targetLanguageRequired": "Please select target language",
+    "taskCreated": "Conversion task created!",
+    "submitFailed": "Submission failed, please try again later!"
+  }
+}

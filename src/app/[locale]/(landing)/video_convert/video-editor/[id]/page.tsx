@@ -40,7 +40,7 @@ export default function VideoEditorPage() {
       setError(null);
 
       try {
-        const response = await fetch(`/api/video-task/editVideoAudiosubtitleDetail?convertId=${convertId}`);
+        const response = await fetch(`/api/video-task/editVideoAudiosubtitleDetail?taskMainId=${convertId}`);
 
         if (!response.ok) {
           throw new Error('获取转换详情失败');

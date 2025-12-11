@@ -1,0 +1,19 @@
+{
+  "title": "Edit Basic Information",
+  "description": "Edit basic information",
+  "fields": {
+    "videoCover": "Video Cover",
+    "videoName": "Video Name",
+    "coverUploadHint": "Supports image files up to 3MB",
+    "namePlaceholder": "Enter video name"
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "save": "Save Changes",
+    "submitting": "Submitting..."
+  },
+  "messages": {
+    "saveSuccess": "Changes saved successfully",
+    "saveFailed": "Submission failed, please try again"
+  }
+}

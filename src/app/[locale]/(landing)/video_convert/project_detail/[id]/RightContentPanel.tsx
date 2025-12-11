@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatDate, getLanguageConvertStr, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getLanguageConvertStr, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion } from "motion/react"
 import {
@@ -30,21 +30,16 @@ interface RightContentPanelProps {
   expandedMap: Record<string, boolean>;
   onExpandChange: (index: number) => void;
   onPlayVideo: (url: string, title: string) => void;
-  onDownLoadClick: (e: any) => void;
+  onDownLoadClick: (e: any, taskMain: any) => void;
   onSonItemEditClick: (taskMainId: string) => void;
   onProgressClick: (taskMainId: string, tabIdx: string) => void;
   onDevelopClick: () => void;
   onDownloadSrtClick: (e: any, stepName: string) => void;
   onCompareClick: () => void;
+  t: (key: string) => string;
+  locale: string;
 }
 
-const statusMap: any = {
-  "pending": { label: "排队中", color: "text-cyan-600" },
-  "processing": { label: "转换中", color: "text-orange-500" },
-  "completed": { label: "转换成功", color: "text-green-600" },
-  "failed": { label: "转换失败", color: "text-red-500" },
-  "cancelled": { label: "已取消", color: "text-gray-500" },
-};
 
 const image: React.CSSProperties = {
   width: "100%",
@@ -58,6 +53,7 @@ const shape: React.CSSProperties = {
 }
 
 const getPreviewVideoUrl = (taskMain: any, type: string) => {
+  // console.log('getPreviewVideoUrl---taskMain--->', taskMain)
   return taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
 }
 
@@ -74,7 +70,28 @@ export function RightContentPanel({
   onDevelopClick,
   onDownloadSrtClick,
   onCompareClick,
+  t,
+  locale,
 }: RightContentPanelProps) {
+  const statusMap: any = {
+    "pending": { label: t('status.pending'), color: "text-cyan-600" },
+    "processing": { label: t('status.processing'), color: "text-orange-500" },
+    "completed": { label: t('status.completed'), color: "text-green-600" },
+    "failed": { label: t('status.failed'), color: "text-red-500" },
+    "cancelled": { label: t('status.cancelled'), color: "text-gray-500" },
+  };
+
+  const steps = [
+    { name: t('steps.audioVideoSeparation'), range: [0, 11] },
+    { name: t('steps.vocalBackgroundSeparation'), range: [12, 22] },
+    { name: t('steps.generateSubtitles'), range: [23, 33] },
+    { name: t('steps.translateSubtitles'), range: [34, 44] },
+    { name: t('steps.audioSlicing'), range: [45, 55] },
+    { name: t('steps.voiceSynthesis'), range: [56, 66] },
+    { name: t('steps.audioAlignment'), range: [67, 77] },
+    { name: t('steps.mergeAudio'), range: [78, 88] },
+    { name: t('steps.mergeVideo'), range: [89, 100] },
+  ];
   return (
     <main className="flex-1 overflow-auto p-6">
       {/* 转换视频列表页面 */}
@@ -88,7 +105,7 @@ export function RightContentPanel({
             className="mb-5 transition-all duration-500 ease-in-out">
             <Card className="w-full pt-2 pb-0 gap-0">
               <CardContent className="space-y-4 pb-2">
-                {/* 折叠时显示的内容 - 上方左侧视频播放器 + 右侧基本信息 */}
+                {/* 折叠时显示的内容 - 上方左侧视频播放器 + 右侧{t('conversion.basicInfo')} */}
                 <CollapsibleTrigger asChild>
                   <div className="flex gap-6 py-2 my-0">
                     {/* 列表中：头部视频封面 */}
@@ -97,9 +114,12 @@ export function RightContentPanel({
                         <>
                           {videoDetail?.coverR2Key && (
                             <img
-                              src={preUrl + '/' + videoDetail.coverR2Key}
+                              // src={preUrl + '/' + videoDetail.coverR2Key}
+                              src={getPreviewUrl(videoDetail.userId, taskMain.id, preUrl, videoDetail.coverR2Key)}
                               onError={(e) => {
-                                e.currentTarget.style.display = 'none';
+                                console.log("[RightContentPanel] onError", e);
+                                // e.currentTarget.style.display = 'none';
+                                e.currentTarget.src = '/imgs/cover_video_def.jpg';
                               }}
                               className={cn(
                                 "h-30 object-cover aspect-video",
@@ -154,7 +174,7 @@ export function RightContentPanel({
                         </div>
                       )}
                     </div>
-                    {/* 列表中：头部基本信息 */}
+                    {/* 列表中：头部{t('conversion.basicInfo')} */}
                     <div className="grow space-y-3 mt-2">
                       <div className="flex justify-between space-y-1">
                         <p className="font-medium text-primary hover:text-primary/80">
@@ -165,7 +185,7 @@ export function RightContentPanel({
                             {`【${statusMap[taskMain?.status || ""]?.label}】`}
                           </span>
                           <span className={`ml-5 text-sm text-green-600`}>
-                            【{getLanguageConvertStr(taskMain)}】
+                            【{getLanguageConvertStr(taskMain, locale)}】
                           </span>
                         </p>
                         <ChevronDown
@@ -176,18 +196,21 @@ export function RightContentPanel({
                         />
                       </div>
                       <div className="space-y-1">
-                        <span className="ml-0 font-medium">{taskMain?.processDurationSeconds ? `目标视频时长：${miao2Hms(taskMain?.processDurationSeconds)} ` : "-"}</span>
+                        <span className="ml-0 font-medium">{taskMain?.processDurationSeconds ? `${t('conversion.targetDuration')}：${miao2Hms(taskMain?.processDurationSeconds)} ` : "-"}</span>
                       </div>
 
                       <div className="flex justify-between items-end">
-                        <span className="inline-block font-medium">{`开始转换时间：${formatDate(taskMain?.startedAt || "")}`}</span>
+                        <span className="inline-block font-medium">{`${t('conversion.startTime')}：${formatDate(taskMain?.startedAt || "")}`}</span>
                         {/* 操作按钮 - 右下角 */}
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
-                            onClick={onDownLoadClick}>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDownLoadClick(e, taskMain);
+                            }}>
                             <Download className="size-4" />
-                            下载
+                            {t('buttons.download')}
                           </Button>
                           <Button
                             variant="outline"
@@ -195,17 +218,17 @@ export function RightContentPanel({
                             disabled={taskMain?.status !== "completed"}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onSonItemEditClick("convert_" + index);
+                              onSonItemEditClick(taskMain?.id);
                             }}>
                             <Edit2 className="size-4" />
-                            编辑
+                            {t('buttons.edit')}
                           </Button>
                           <Button variant="outline" size="sm" onClick={(e) => {
                             e.stopPropagation();
                             onProgressClick(taskMain?.id, "1");
                           }}>
                             <ListOrdered className="size-4" />
-                            进度
+                            {t('buttons.progress')}
                           </Button>
                           <Button variant="destructive" size="sm"
                             onClick={(e) => {
@@ -213,7 +236,7 @@ export function RightContentPanel({
                               onDevelopClick();
                             }}>
                             <BookmarkX className="size-4" />
-                            取消
+                            {t('buttons.cancel')}
                           </Button>
                         </div>
                       </div>
@@ -235,7 +258,7 @@ export function RightContentPanel({
                           e.stopPropagation();
                           onProgressClick(taskMain?.id, "1");
                         }}>
-                        转换进度 <CircleEllipsis className="size-4" />
+                        {t('conversion.progress')} <CircleEllipsis className="size-4" />
                       </div>
                       <span className="text-2xl font-bold text-primary">
                         {taskMain?.progress}%
@@ -258,17 +281,7 @@ export function RightContentPanel({
 
                     {/* 步骤展示 */}
                     <div className="pt-1 flex flex-row justify-between gap-2">
-                      {[
-                        { name: '音视频分离', range: [0, 11] },
-                        { name: '人声背景分离', range: [12, 22] },
-                        { name: '生成原始字幕', range: [23, 33] },
-                        { name: '翻译字幕', range: [34, 44] },
-                        { name: '音频切片', range: [45, 55] },
-                        { name: '语音合成', range: [56, 66] },
-                        { name: '音频时间对齐', range: [67, 77] },
-                        { name: '合并音频', range: [78, 88] },
-                        { name: '合并音视频', range: [89, 100] },
-                      ].map((step, index) => {
+                      {steps.map((step, index) => {
                         const progress = taskMain?.progress || 0;
                         const isActive = progress >= step.range[0] && progress < step.range[1];
                         const isCompleted = progress >= step.range[1];
@@ -297,24 +310,24 @@ export function RightContentPanel({
                         e.stopPropagation();
                         onProgressClick(taskMain?.id, "0");
                       }}>
-                      基本信息 <CircleEllipsis className="size-4" />
+                      {t('conversion.basicInfo')} <CircleEllipsis className="size-4" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">目标视频语言</p>
+                        <p className="text-sm text-muted-foreground">{t('conversion.targetLanguage')}</p>
                         <p className="font-medium">英语</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">目标视频时长</p>
+                        <p className="text-sm text-muted-foreground">{t('conversion.targetDuration')}</p>
                         <p className="font-medium">{miao2Hms(taskMain?.processDurationSeconds)} </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">开始转换时间</p>
+                        <p className="text-sm text-muted-foreground">{t('conversion.startTime')}</p>
                         <p className="font-medium">{formatDate(taskMain?.startedAt || "")}</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">转换结束时间</p>
+                        <p className="text-sm text-muted-foreground">{t('conversion.endTime')}</p>
                         <p className="font-medium">{formatDate(taskMain?.completedAt || "")}</p>
                       </div>
                     </div>
@@ -326,20 +339,20 @@ export function RightContentPanel({
                     {/* 底部 */}
                     <div className="flex space-y-0 gap-6">
                       <div className="flex-1 gap-6 mt-5 mb-5">
-                        <p className="text-primary text-lg text-muted-foreground text-center">音频</p>
-                        <p className="text-sm text-muted-foreground my-5 text-center">视频转换成功后，音频也可以单独下载，在下载前，建议您先试听一下。</p>
+                        <p className="text-primary text-lg text-muted-foreground text-center">{t('audio.title')}</p>
+                        <p className="text-sm text-muted-foreground my-5 text-center">{t('audio.description')}</p>
                         <div className="flex justify-around mt-2 gap-2">
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
                             onClick={onDevelopClick}>
                             <Share2 className="size-4" />
-                            试听
+                            {t('audio.preview')}
                           </Button>
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
                             onClick={onDevelopClick}>
                             <Download className="size-4" />
-                            下载
+                            {t('audio.download')}
                           </Button>
                         </div>
                       </div>
@@ -349,8 +362,8 @@ export function RightContentPanel({
                         className="my-0 min-h-full min-w-1 [background-image:linear-gradient(0deg,var(--color-foreground)_1px,transparent_1px)] bg-[length:1px_6px] bg-repeat-y opacity-25" />
 
                       <div className="flex-1 gap-6 mt-5 mb-5">
-                        <p className="text-primary text-lg text-muted-foreground text-center">字幕</p>
-                        <p className="text-sm text-muted-foreground my-5 text-center">视频转换成功后，字幕可以单独下载，翻译后的字幕可以和原视频字幕对比。</p>
+                        <p className="text-primary text-lg text-muted-foreground text-center">{t('subtitle.title')}</p>
+                        <p className="text-sm text-muted-foreground my-5 text-center">{t('subtitle.description')}</p>
                         <div className="flex justify-around mt-2 gap-2">
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
@@ -359,13 +372,13 @@ export function RightContentPanel({
                               onCompareClick();
                             }}>
                             <Edit className="size-4" />
-                            对比
+                            {t('subtitle.compare')}
                           </Button>
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
                             onClick={(e) => onDownloadSrtClick(e, 'translate_srt')}>
                             <Download className="size-4" />
-                            下载
+                            {t('subtitle.download')}
                           </Button>
                         </div>
                       </div>

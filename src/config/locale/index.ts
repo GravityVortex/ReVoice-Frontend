@@ -48,4 +48,8 @@ export const localeMessagesPaths = [
   'activity/ai-tasks',
   'activity/chats',
   'video_convert/sidebar',
+  'video_convert/myVideoList',
+  'video_convert/projectDetail',
+  'video_convert/projectAddConvertModal',
+  'video_convert/projectUpdateModal',
 ];

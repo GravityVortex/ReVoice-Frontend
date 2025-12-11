@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, getLanguageConvertStr, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -47,10 +47,13 @@ import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { CompareSrtModal } from "@/shared/blocks/video-convert/compare-srt-modal";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { envConfigs } from "@/config";
 import { ThemeToggler } from "@/shared/blocks/common/theme-toggler";
 import { LeftMenuPanel } from "./LeftMenuPanel";
 import { RightContentPanel } from "./RightContentPanel";
+import { LocaleSelector, SignUser } from "@/shared/blocks/common";
+
 //         "videoItem": {
 //             "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
 //             "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
@@ -98,19 +101,13 @@ interface VideoDetail {
 }
 
 // 侧边栏菜单项
-const menuItems = [
-  // { icon: Video, label: "转换视频列表", id: "list" },
-  // { icon: Settings, label: "新建语种转换", id: "create" },
-  { icon: Share2, label: "修改基本信息", id: "edit" },
-  { icon: ListOrdered, label: "转换视频进度", id: "progress" },
-  { icon: BadgeDollarSign, label: "限时订阅优惠", id: "pricing" },
-  // { icon: FileText, label: "详细信息", id: "details" },
-  // { icon: Share2, label: "基本信息编辑", id: "edit1" },
-  // { icon: Share2, label: "基本信息编辑", id: "edit2" },
-  // { icon: Share2, label: "基本信息编辑", id: "edit3" },
-  // { icon: Share2, label: "分享", id: "share" },
-  // { icon: Trash2, label: "删除", id: "delete" },
-];
+// const menuItems = [
+//   { icon: Share2, label: "修改基本信息", id: "edit" },
+//   { icon: ListOrdered, label: "转换视频进度", id: "progress" },
+//   { icon: BadgeDollarSign, label: "限时订阅优惠", id: "pricing" },
+// ];
+
+
 
 
 
@@ -118,6 +115,10 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const locale = (params.locale as string) || "zh";
+  const t = useTranslations('video_convert.projectDetail');
+  const t2 = useTranslations('landing');
+  const header = t2.raw('header');
+  // console.log('header', header)
   const router = useRouter();
 
 
@@ -152,9 +153,17 @@ export default function ProjectDetailPage() {
   // 左侧封面图片状态
   const [leftCoverSrc, setLeftCoverSrc] = useState('/imgs/cover_video_def.jpg');
 
+
+  const menuItems = [
+    { icon: Share2, label: t('menu.editInfo'), id: "edit" },
+    { icon: ListOrdered, label: t('menu.progress'), id: "progress" },
+    { icon: BadgeDollarSign, label: t('menu.pricing'), id: "pricing" },
+  ];
+
+
   const onSonItemEditClick = (taskMainId: string) => {
     console.log("编辑视频转换，onSonItemEditClick--->", taskMainId);
-    router.push(`/${locale}/video_convert/video-editor/${id}`);
+    router.push(`/${locale}/video_convert/video-editor/${taskMainId}`);
   };
 
   // 修改项目后更新列表数据
@@ -549,33 +558,27 @@ export default function ProjectDetailPage() {
   }
 
 
-  // const statusInfo = statusMap[videoDetail?.status || ""] || { label: videoDetail?.status || "-", color: "text-gray-600" };
-
-  const yyMap: any = {
-    "zh-CN": "中文",
-    "en-US": "英文",
-  };
-  const statusMap: any = {
-    "pending": { label: "排队中", color: "text-cyan-600" },
-    "processing": { label: "转换中", color: "text-orange-500" },
-    "completed": { label: "转换成功", color: "text-green-600" },
-    "failed": { label: "转换失败", color: "text-red-500" },
-    "cancelled": { label: "已取消", color: "text-gray-500" },
-  };
-
 
   // 下载按钮点击
-  const onDownLoadClick = async (e: any) => {
+  const onDownLoadClick = async (e: any, taskMain: any) => {
     e.stopPropagation();
-    if (!videoDetail?.result_vdo_url) {
-      alert("暂无可下载的视频链接");
+    console.log('onDownLoadClick---taskMain--->', taskMain)
+    const finalFileList = taskMain?.finalFileList;
+    if (!finalFileList || finalFileList?.length === 0) {
+      toast.error("暂无可下载的视频链接");
+      return;
+    }
+    // preview、video、subtitle
+    const videoFinalItem = finalFileList.find((itm: any) => itm.fileType === 'video');
+    if (!videoFinalItem) {
+      toast.error("暂无可下载的视频链接");
       return;
     }
 
     try {
       // 从 URL 中提取文件 key
       // 假设 result_vdo_url 格式为: https://domain.com/bucket/path/to/file.mp4
-      const url = new URL(videoDetail.result_vdo_url);
+      const url = new URL(preUrl + '/' + videoFinalItem.r2Key);
       let key = url.pathname.substring(1); // 移除开头的 /
 
       // 如果路径包含 bucket 名称，需要移除它
@@ -586,14 +589,15 @@ export default function ProjectDetailPage() {
         // 如果你的 URL 格式是 https://domain.com/bucket/key，取消下面的注释
         // key = pathParts.slice(1).join('/');
       }
-      console.log("[Download] 开始下载，文件 key:", key);
+      // console.log("[Download] 开始下载，文件 key:", key);
+      const bucketName = videoFinalItem.r2Bucket;
 
       // 调用下载 API 获取签名 URL，60秒过期
-      const response = await fetch(`/api/video-task/download-video?key=${encodeURIComponent(key)}&expiresIn=60`);
+      const response = await fetch(`/api/video-task/download-video?bucket=${bucketName}&key=${encodeURIComponent(key)}&expiresIn=60`);
       const data = await response.json();
 
       if (data.code !== 0) {
-        alert(data.message || "获取下载链接失败");
+        toast.error(data.message || "获取下载链接失败");
         return;
       }
 
@@ -607,7 +611,7 @@ export default function ProjectDetailPage() {
       // 创建隐藏的 a 标签触发下载
       const link = document.createElement('a');
       link.href = data.data.url;
-      link.download = videoDetail.fileName || 'taskMain.mp4';
+      link.download = taskMain.fileName || 'taskMain.mp4';
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
@@ -616,7 +620,7 @@ export default function ProjectDetailPage() {
       console.log("[Download] 下载已触发");
     } catch (error) {
       console.error("[Download] 下载失败:", error);
-      alert("下载失败，请稍后重试");
+      toast.error("下载失败，请稍后重试");
     }
   };
 
@@ -624,14 +628,14 @@ export default function ProjectDetailPage() {
   const onDownloadSrtClick = async (e: any, stepName: string) => {
     e.stopPropagation();
     try {
-      let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
-      let name = 'translate_srt';
+      // let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
+      // let name = 'translate_srt';
       let videoName = videoDetail?.fileName || '';
-      // const response = await fetch(`/api/video-task/downLoad-srt?taskId=${taskMainId}&stepName=${stepName}`);
-      const response = await fetch(`/api/video-task/downLoad-srt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
+      const response = await fetch(`/api/video-task/downLoad-srt?taskId=${taskMainId}&stepName=${stepName}`);
+      // const response = await fetch(`/api/video-task/downLoad-srt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
       if (!response.ok) {
         const error = await response.json();
-        alert(error.message || "下载字幕失败");
+        toast.error(error.message || "下载字幕失败");
         return;
       }
       const blob = await response.blob();
@@ -645,7 +649,7 @@ export default function ProjectDetailPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("[SRT Download] 失败:", error);
-      alert("下载字幕失败，请稍后重试");
+      toast.error("下载字幕失败，请稍后重试");
     }
   };
 
@@ -674,7 +678,7 @@ export default function ProjectDetailPage() {
               <BreadcrumbLink asChild>
                 <Link href={`/${locale}`} className="flex items-center gap-1">
                   <Home className="size-4" />
-                  首页
+                  {t('breadcrumb.home')}
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -682,7 +686,7 @@ export default function ProjectDetailPage() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href={`/${locale}/video_convert/myVideoList`}>
-                  我的视频
+                  {t('breadcrumb.myVideos')}
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -692,7 +696,12 @@ export default function ProjectDetailPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <ThemeToggler type="toggle" />
+
+        <div className="flex flex-row gap-6 items-center mr-2">
+          <LocaleSelector type="button" />
+          <ThemeToggler type="toggle" />
+          {/* <SignUser userNav={header.user_nav} /> */}
+        </div>
       </div>
 
       {/* 主体内容 */}
@@ -705,10 +714,13 @@ export default function ProjectDetailPage() {
           activeMenu={activeMenu}
           handlMenuClick={handlMenuClick}
           handlePlayVideo={handlePlayVideo}
+          t={t}
         />
 
         {/* 右侧内容区域 */}
         <RightContentPanel
+          t={t}
+          locale={locale}
           taskMainList={taskMainList}
           videoDetail={videoDetail}
           preUrl={preUrl}

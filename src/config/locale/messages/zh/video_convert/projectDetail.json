@@ -1,0 +1,63 @@
+{
+  "status": {
+    "pending": "排队中",
+    "processing": "转换中",
+    "completed": "转换成功",
+    "failed": "转换失败",
+    "cancelled": "已取消"
+  },
+  "breadcrumb": {
+    "home": "首页",
+    "myVideos": "我的视频"
+  },
+  "menu": {
+    "editInfo": "修改基本信息",
+    "progress": "转换视频进度",
+    "pricing": "限时订阅优惠",
+    "credits": "积分",
+    "delete": "删除"
+  },
+  "videoInfo": {
+    "originalVideo": "原视频",
+    "size": "原视频大小",
+    "duration": "原视频时长",
+    "uploadTime": "原视频上传时间"
+  },
+  "conversion": {
+    "progress": "转换进度",
+    "basicInfo": "基本信息",
+    "targetLanguage": "目标视频语言",
+    "targetDuration": "目标视频时长",
+    "startTime": "开始转换时间",
+    "endTime": "转换结束时间"
+  },
+  "steps": {
+    "audioVideoSeparation": "音视频分离",
+    "vocalBackgroundSeparation": "人声背景分离",
+    "generateSubtitles": "生成原始字幕",
+    "translateSubtitles": "翻译字幕",
+    "audioSlicing": "音频切片",
+    "voiceSynthesis": "语音合成",
+    "audioAlignment": "音频时间对齐",
+    "mergeAudio": "合并音频",
+    "mergeVideo": "合并音视频"
+  },
+  "audio": {
+    "title": "音频",
+    "description": "视频转换成功后，音频也可以单独下载，在下载前，建议您先试听一下。",
+    "preview": "试听",
+    "download": "下载"
+  },
+  "subtitle": {
+    "title": "字幕",
+    "description": "视频转换成功后，字幕可以单独下载，翻译后的字幕可以和原视频字幕对比。",
+    "compare": "对比",
+    "download": "下载"
+  },
+  "buttons": {
+    "download": "下载",
+    "edit": "编辑",
+    "progress": "进度",
+    "cancel": "取消"
+  }
+}

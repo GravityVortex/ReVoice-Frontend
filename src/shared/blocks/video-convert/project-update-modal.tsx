@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/shared/lib/utils';
 import {
     Dialog,
@@ -43,6 +44,7 @@ export function ProjectUpdateModal({
     projectItem,
     onUpdateEvent
 }: ProjectUpdateModalProps) {
+    const t = useTranslations('video_convert.projectUpdateModal');
     const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const { user } = useAppContext();
@@ -118,16 +120,16 @@ export function ProjectUpdateModal({
                     cover: formData.cover_url,
                     ...theItem
                 });
-                toast.info('保存修改成功');
+                toast.info(t('messages.saveSuccess'));
                 onClose();
             } else {
                 console.log("更新失败--->", data);
                 // setError(data?.message || "更新视频失败");
-                toast.error('提交失败，请重试');
+                toast.error(t('messages.saveFailed'));
             }
         } catch (error) {
             console.error('提交失败:', error);
-            toast.error('提交失败，请重试');
+            toast.error(t('messages.saveFailed'));
         } finally {
             setSubmitting(false);
         }
@@ -138,9 +140,9 @@ export function ProjectUpdateModal({
             <form onSubmit={handleSubmit} className="space-y-6">
                 <DialogContent className="max-w-3/5 h-[580px] flex flex-col p-0">
                     <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
-                        <DialogTitle>修改基本信息</DialogTitle>
+                        <DialogTitle>{t('title')}</DialogTitle>
                         <DialogDescription className="sr-only">
-                            修改基本信息
+                            {t('description')}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -149,13 +151,13 @@ export function ProjectUpdateModal({
                             <CardContent>
                                 {/* 封面上传 */}
                                 <div className="space-y-3 mt-4">
-                                    <Label>视频封面</Label>
+                                    <Label>{t('fields.videoCover')}</Label>
                                     <ImageUploader
                                         allowMultiple={false}
                                         maxImages={1}
                                         maxSizeMB={3}
                                         title=""
-                                        emptyHint="支持上传图片文件，大小不超过 3MB"
+                                        emptyHint={t('fields.coverUploadHint')}
                                         defaultPreviews={formData.cover_url ? [formData.cover_url] : []}
                                         imageClassName="w-full"
                                         aspectRatio="16/9"
@@ -176,12 +178,12 @@ export function ProjectUpdateModal({
 
                                 {/* 视频标题 */}
                                 <div className="space-y-3 mt-4">
-                                    <Label htmlFor="title">视频名称</Label>
+                                    <Label htmlFor="title">{t('fields.videoName')}</Label>
                                     <Input
                                         id="title"
                                         value={formData.title}
                                         onChange={(e) => handleChange("title", e.target.value)}
-                                        placeholder="输入视频名称"
+                                        placeholder={t('fields.namePlaceholder')}
                                         required
                                     />
                                 </div>
@@ -218,7 +220,7 @@ export function ProjectUpdateModal({
                             <Button
                                 variant="outline"
                                 onClick={handleCancel}>
-                                取消修改
+                                {t('buttons.cancel')}
                             </Button>
 
                             <Button
@@ -226,7 +228,7 @@ export function ProjectUpdateModal({
                                 onClick={handleSubmit}
                                 disabled={submitting} >
                                 {/* <Save className="mr-2 size-4" /> */}
-                                {submitting ? "提交中..." : "保存修改"}
+                                {submitting ? t('buttons.submitting') : t('buttons.save')}
                             </Button>
                         </div>
                     </div>

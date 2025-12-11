@@ -5,6 +5,7 @@ import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
 import { NextResponse } from 'next/server';
 import { getAuth } from '@/core/auth';
 import { headers } from 'next/headers';
+import { getPrivateR2SignUrl } from '@/extensions/storage/privateR2Util';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,23 +37,7 @@ export async function GET(request: Request) {
     // 获得r2的配置信息
     // const r2Config = (provider as any).configs;
     // 多个存储桶公用一个
-    const endpoint = 'https://a611f60c1436512acfe03a1efe79a50a.r2.cloudflarestorage.com';
-    const client = new S3Client({
-      region: 'auto',
-      endpoint,
-      credentials: {
-        accessKeyId: '8c8b2be18e4795250df389d2e7cbaa2b',// 每个存储桶单独id
-        secretAccessKey: '114e0ccba3a492c6e8f76c0b057f554b8b5808d34f22bf35bfa86af0765b6d15',// 每个存储桶单独secret
-      },
-      forcePathStyle: false,
-    });
-
-    const command = new GetObjectCommand({
-      Bucket: 'zhesheng',// 存储桶名称
-      Key: key,
-    });
-    // 获取访问预览url
-    const url = await getSignedUrl(client, command, {expiresIn: 3600});
+    const url = await getPrivateR2SignUrl(key, 3600);
     // console.log('Generated presigned URL--->', url);
 
     return respData({url});

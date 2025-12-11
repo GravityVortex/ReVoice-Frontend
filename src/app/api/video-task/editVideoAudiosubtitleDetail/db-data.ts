@@ -9,6 +9,7 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getSystemConfigByKey, JAVA_SERVER_BASE_URL, USE_JAVA_REQUEST } from "@/shared/cache/system-config";
 import { doPost } from "@/app/api/request-proxy/route";
+import { generatePrivateR2SignUrl } from "@/extensions/storage/privateR2Util";
 
 
 /**
@@ -195,40 +196,40 @@ export const getDBJsonData = async (taskMainId: string) => {
  * @param expiresIn 过期时间（秒）
  * @returns 预签名URL数组
  */
-async function generatePrivateR2SignUrl(r2KeyArr: any[] = [], expiresIn: number = 3600): Promise<string[]> {
-    try {
-        // 多个存储桶公用一个
-        const endpoint = 'https://a611f60c1436512acfe03a1efe79a50a.r2.cloudflarestorage.com';
-        const client = new S3Client({
-            region: 'auto',
-            endpoint,
-            credentials: {
-                accessKeyId: '8c8b2be18e4795250df389d2e7cbaa2b',// 每个存储桶单独id
-                secretAccessKey: '114e0ccba3a492c6e8f76c0b057f554b8b5808d34f22bf35bfa86af0765b6d15',// 每个存储桶单独secret
-            },
-            forcePathStyle: false,
-        });
+// async function generatePrivateR2SignUrl(r2KeyArr: any[] = [], expiresIn: number = 3600): Promise<string[]> {
+//     try {
+//         // 多个存储桶公用一个
+//         const endpoint = 'https://a611f60c1436512acfe03a1efe79a50a.r2.cloudflarestorage.com';
+//         const client = new S3Client({
+//             region: 'auto',
+//             endpoint,
+//             credentials: {
+//                 accessKeyId: '8c8b2be18e4795250df389d2e7cbaa2b',// 每个存储桶单独id
+//                 secretAccessKey: '114e0ccba3a492c6e8f76c0b057f554b8b5808d34f22bf35bfa86af0765b6d15',// 每个存储桶单独secret
+//             },
+//             forcePathStyle: false,
+//         });
 
-        const urlList: string[] = [];
-        for (const r2Key of r2KeyArr) {
-            if (!r2Key) {
-                continue;
-            }
-            const command = new GetObjectCommand({
-                Bucket: 'zhesheng',// 存储桶名称
-                Key: r2Key,
-            });
-            // 获取访问预览url
-            const url = await getSignedUrl(client, command, { expiresIn: 3600 });
-            // console.log('Generated presigned URL--->', url);
-            urlList.push(url);
-        }
-        return urlList;
-    } catch (error) {
-        console.error('[generatePrivateR2SignUrl] 生成签名URL失败:', error);
-        return [];
-    }
-}
+//         const urlList: string[] = [];
+//         for (const r2Key of r2KeyArr) {
+//             if (!r2Key) {
+//                 continue;
+//             }
+//             const command = new GetObjectCommand({
+//                 Bucket: 'zhesheng',// 存储桶名称
+//                 Key: r2Key,
+//             });
+//             // 获取访问预览url
+//             const url = await getSignedUrl(client, command, { expiresIn: 3600 });
+//             // console.log('Generated presigned URL--->', url);
+//             urlList.push(url);
+//         }
+//         return urlList;
+//     } catch (error) {
+//         console.error('[generatePrivateR2SignUrl] 生成签名URL失败:', error);
+//         return [];
+//     }
+// }
 
 /**
  * 调用Java服务器

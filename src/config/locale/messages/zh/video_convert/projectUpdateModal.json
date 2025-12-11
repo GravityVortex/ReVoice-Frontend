@@ -1,0 +1,19 @@
+{
+  "title": "修改基本信息",
+  "description": "修改基本信息",
+  "fields": {
+    "videoCover": "视频封面",
+    "videoName": "视频名称",
+    "coverUploadHint": "支持上传图片文件，大小不超过 3MB",
+    "namePlaceholder": "输入视频名称"
+  },
+  "buttons": {
+    "cancel": "取消修改",
+    "save": "保存修改",
+    "submitting": "提交中..."
+  },
+  "messages": {
+    "saveSuccess": "保存修改成功",
+    "saveFailed": "提交失败，请重试"
+  }
+}

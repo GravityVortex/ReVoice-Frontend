@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMockJsonData } from './mock-data';
+import { getDBJsonData } from './db-data';
 
 /**
  * 模拟接口：获取视频转换详情
- * GET /api/video-convert/getConvertDetail?convertId=xxx
+ * GET /api/video-task/editVideoAudiosubtitleDetail?taskMainId=xxx
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
     // const resData = getMockJsonData(convertId, 'local_001');
     // xuww上传的（宝20251205修复后）
     const resData = getMockJsonData(taskMainId, 'upload_001');
+    const resData2 = await getDBJsonData(taskMainId);
+    console.log('真实请求resData--->', resData2);
 
     return NextResponse.json(resData, {
       status: 200,

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { Button } from "@/shared/components/ui/button";
@@ -19,6 +20,7 @@ export default function VideoConvertPage() {
   const locale = (params?.locale as string) || "zh";
   const router = useRouter();
   const { user } = useAppContext();
+  const t = useTranslations('video_convert.myVideoList');
 
   const [selectedVideo, setSelectedVideo] = useState<VideoListItem | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
@@ -261,9 +263,9 @@ export default function VideoConvertPage() {
   return (
     <div className="container mx-auto py-0">
       <div className="mb-8 flex justify-between">
-        <h1 className="text-3xl font-bold">我的视频转换</h1>
-        {/* <Button className="mask-add color-" onClick={goAddClick}>上传</Button> */}
-        <Button className="mask-add text-white" onClick={goAdd2Click}>上传</Button>
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
+        {/* <Button className="mask-add color-" onClick={goAddClick}>{t('buttons.upload')}</Button> */}
+        <Button className="mask-add text-white" onClick={goAdd2Click}>{t('buttons.upload')}</Button>
       </div>
 
       {/* 加载状态龙骨状态 */}
@@ -301,7 +303,7 @@ export default function VideoConvertPage() {
       {/* 错误状态 */}
       {error && (
         <div className="flex justify-center items-center py-12">
-          <div className="text-red-500 text-lg">{error}</div>
+          <div className="text-red-500 text-lg">{t('error')}</div>
         </div>
       )}
 

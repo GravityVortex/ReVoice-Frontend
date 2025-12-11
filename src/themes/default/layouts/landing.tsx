@@ -1,3 +1,15 @@
+/**
+  
+  在src/app/[locale]/(landing)/layout.tsx页面通过以下代码：
+
+  const Layout = await getThemeLayout('landing');
+  <Layout header={header} footer={footer}>
+    ...
+  </Layout>
+  
+  通过 getThemeLayout 函数动态加载主题的 landing 布局
+  实际加载的就是 src/themes/default/layouts/landing.tsx
+ */
 import { ReactNode } from 'react';
 
 import {

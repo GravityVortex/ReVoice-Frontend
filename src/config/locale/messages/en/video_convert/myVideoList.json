@@ -1,0 +1,28 @@
+{
+  "title": "My Video Conversions",
+  "buttons": {
+    "upload": "Upload"
+  },
+  "loading": "Loading...",
+  "error": "Failed to fetch video list",
+  "empty": "No videos",
+  "status": {
+    "pending": "Pending",
+    "completed": "Completed",
+    "processing": "Processing",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "statusShort": {
+    "pending": "Pending",
+    "completed": "Success",
+    "processing": "Processing",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "fields": {
+    "duration": "Duration",
+    "size": "Size",
+    "uploadTime": "Upload Time"
+  }
+}

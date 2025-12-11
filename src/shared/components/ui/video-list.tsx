@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo } from "react";
 import { Play, Edit, Clock, Calendar, Video } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -61,14 +62,6 @@ const statusColors: Record<VideoConversionStatus, { bg: string; text: string; bo
   },
 };
 
-// 状态文本映射
-const statusText: Record<VideoConversionStatus, string> = {
-  pending: "等待中",
-  completed: "转换成功",
-  processing: "转换中",
-  failed: "转换失败",
-  cancelled: "已取消",
-};
 
 // -------------------------------VideoList---start----分隔符---------------------------
 export function VideoList({
@@ -82,6 +75,7 @@ export function VideoList({
   locale = "zh",
 }: VideoListProps) {
   const router = useRouter();
+  const t = useTranslations('video_convert.myVideoList');
 
   // 缓存数据
   const colsClass = useMemo(() => {
@@ -130,6 +124,7 @@ export function VideoList({
         <VideoCard
           key={it.id}
           item={it}
+          t={t}
           onEdit={() => handleEdit(it, index)}
           onPlay={() => handlePlayVideo(it, index)}
           onCardContentClick={() => handleItemClick(it, index)}
@@ -142,20 +137,24 @@ export function VideoList({
 // -------------------------------VideoList---end----分隔符---------------------------
 
 // -------------------------------VideoCard---start----分隔符---------------------------
-// 卡片组件
-function VideoCard({
-  item,
-  onEdit,
-  onPlay,
-  onCardContentClick,
-  onStatusClick,
-}: {
+interface VideoCardProps {
   item: VideoListItem;
+  t: (key: string) => string;
   onEdit: () => void;
   onPlay: () => void;
   onCardContentClick: () => void;
   onStatusClick: () => void;
-}) {
+}
+
+// 卡片组件
+function VideoCard({
+  item,
+  t,
+  onEdit,
+  onPlay,
+  onCardContentClick,
+  onStatusClick,
+}: VideoCardProps) {
   const { fileName, cover, status, duration, convertedAt, videoSize } = item;
   const colors = statusColors[status];
   const [imgSrc, setImgSrc] = React.useState('/imgs/cover_video_def.jpg');
@@ -232,11 +231,7 @@ function VideoCard({
           {/* 状态文字 */}
           <div className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center">
             <span className="text-white text-[10px] font-bold leading-none transform rotate-45 whitespace-nowrap">
-              {status === "pending" && "等待"}
-              {status === "completed" && "成功"}
-              {status === "processing" && "转换中"}
-              {status === "failed" && "失败"}
-              {status === "cancelled" && "取消"}
+              {t(`statusShort.${status}`)}
             </span>
           </div>
         </div>
@@ -269,11 +264,11 @@ function VideoCard({
             <div className="flex flex-row justify-between items-center gap-1">
               <div className="flex items-center gap-1.5">
                 <Clock className="size-4" />
-                <span>视频时长: {duration}</span>
+                <span>{t('fields.duration')}: {duration}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Video className="size-4" />
-                <span>视频大小: {(videoSize / 1024 / 1024).toFixed(2)} MB</span>
+                <span>{t('fields.size')}: {(videoSize / 1024 / 1024).toFixed(2)} MB</span>
               </div>
             </div>
           )}
@@ -282,7 +277,7 @@ function VideoCard({
           {convertedAt && (
             <div className="flex items-center gap-1.5">
               <Calendar className="size-4" />
-              <span>上传时间: {convertedAt}</span>
+              <span>{t('fields.uploadTime')}: {convertedAt}</span>
             </div>
           )}
 

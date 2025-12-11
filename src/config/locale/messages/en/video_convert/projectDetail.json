@@ -1,0 +1,63 @@
+{
+  "status": {
+    "pending": "Pending",
+    "processing": "Processing",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "breadcrumb": {
+    "home": "Home",
+    "myVideos": "My Videos"
+  },
+  "menu": {
+    "editInfo": "Edit Basic Info",
+    "progress": "Conversion Progress",
+    "pricing": "Limited Time Offer",
+    "credits": "Credits",
+    "delete": "Delete"
+  },
+  "videoInfo": {
+    "originalVideo": "Original Video",
+    "size": "Original Video Size",
+    "duration": "Original Video Duration",
+    "uploadTime": "Upload Time"
+  },
+  "conversion": {
+    "progress": "Conversion Progress",
+    "basicInfo": "Basic Info",
+    "targetLanguage": "Target Language",
+    "targetDuration": "Target Duration",
+    "startTime": "Start Time",
+    "endTime": "End Time"
+  },
+  "steps": {
+    "audioVideoSeparation": "Audio/Video Separation",
+    "vocalBackgroundSeparation": "Vocal/Background Separation",
+    "generateSubtitles": "Generate Subtitles",
+    "translateSubtitles": "Translate Subtitles",
+    "audioSlicing": "Audio Slicing",
+    "voiceSynthesis": "Voice Synthesis",
+    "audioAlignment": "Audio Alignment",
+    "mergeAudio": "Merge Audio",
+    "mergeVideo": "Merge Audio/Video"
+  },
+  "audio": {
+    "title": "Audio",
+    "description": "After successful conversion, audio can be downloaded separately. We recommend previewing before downloading.",
+    "preview": "Preview",
+    "download": "Download"
+  },
+  "subtitle": {
+    "title": "Subtitle",
+    "description": "After successful conversion, subtitles can be downloaded separately and compared with original subtitles.",
+    "compare": "Compare",
+    "download": "Download"
+  },
+  "buttons": {
+    "download": "Download",
+    "edit": "Edit",
+    "progress": "Progress",
+    "cancel": "Cancel"
+  }
+}

@@ -16,7 +16,10 @@ export default async function LandingLayout({
   // load page data
   const t = await getTranslations('landing');
 
-  // load layout component
+  /**
+   * 通过 getThemeLayout 函数动态加载主题的 landing 布局
+   * 实际加载的就是 src/themes/default/layouts/landing.tsx
+   */
   const Layout = await getThemeLayout('landing');
 
   // header and footer to display

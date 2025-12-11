@@ -3,7 +3,7 @@
 import { getSystemConfigByKey, JAVA_SERVER_BASE_URL, USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
-import { findVtTaskMainById, getVtTaskMainListByFileIds } from '@/shared/models/vt_task_main';
+import { findVtTaskMainById} from '@/shared/models/vt_task_main';
 import { doPost } from '../../request-proxy/route';
 
 export const runtime = 'nodejs';

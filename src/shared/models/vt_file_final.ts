@@ -15,7 +15,12 @@ export async function getVtFileFinalListByTaskId(taskId: string) {
 
 export async function getVtFileFinalListByTaskIds(taskIds: string[]) {
   return await db()
-    .select()
+    .select({
+      taskId: vtFileFinal.taskId,
+      r2Key: vtFileFinal.r2Key,
+      r2Bucket: vtFileFinal.r2Bucket,
+      fileType: vtFileFinal.fileType,
+    })
     .from(vtFileFinal)
     .where(and(inArray(vtFileFinal.taskId, taskIds), eq(vtFileFinal.delStatus, 0)))
     .orderBy(desc(vtFileFinal.createdAt));
