@@ -52,7 +52,9 @@
     "title": "Subtitle",
     "description": "After successful conversion, subtitles can be downloaded separately and compared with original subtitles.",
     "compare": "Compare",
-    "download": "Download"
+    "download_yuan": "Original Subtitle",
+    "download_tran": "Translated Subtitle",
+    "download_double": "Bilingual Subtitle"
   },
   "buttons": {
     "download": "Download",

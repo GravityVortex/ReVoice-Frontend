@@ -1,25 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Play, Copy } from 'lucide-react';
+import { Play, Pause, Copy, Download } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { useAppContext } from '@/shared/contexts/app';
 
 interface CompareSrtModalProps {
   isOpen: boolean;
   onClose: () => void;
   taskId: string;
+  onDownBtnsClick?: (e: any, stepName: string) => void;
 }
 
 interface SubtitleItem {
-  start: number;
-  end: number;
-  text: string;
+  id: string;
+  start: string;
+  end: string;
+  gen_txt: string;
+  tra_txt: string;
 }
 
-export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProps) {
+export function CompareSrtModal({ isOpen, onClose, taskId, onDownBtnsClick }: CompareSrtModalProps) {
+  const { user } = useAppContext();
   const [subtitles, setSubtitles] = useState<SubtitleItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [playingAudio, setPlayingAudio] = useState<{ id: string; type: 'gen' | 'tra' } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const onDownBtnsClickRef = useRef(onDownBtnsClick);
+  const [preUrl, setPreUrl] = useState<string>();
 
   useEffect(() => {
     if (isOpen && taskId) {
@@ -30,12 +39,13 @@ export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProp
   const fetchSubtitles = async () => {
     setLoading(true);
     try {
-      let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
-      // const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${taskId}`);
-      const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${tempId}`);
+      // let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
+      const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${taskId}`);
+      // const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${tempId}`);
       const result = await response.json();
       if (result.code === 0) {
-        setSubtitles(result.data || []);
+        setSubtitles(result.data.list || []);
+        setPreUrl(result.data.preUrl);
       }
     } catch (error) {
       console.error('获取字幕失败:', error);
@@ -44,12 +54,30 @@ export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProp
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 1000);
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+  const formatTimeLen = (str: string) => {
+    if(str.length > 9) return str.split(',')[0];
+    return str;
+  };
+
+  const handlePlayAudio = (id: string, type: 'gen' | 'tra') => {
+    const userId = user?.id || '';
+    const folder = type === 'gen' ? 'split_audio/audio' : 'adj_audio_time';
+    const audioUrl =  `${preUrl}/dev/${userId}/${taskId}/${folder}/${id}.wav`;
+    console.log('audioUrl--->', audioUrl)
+
+    if (playingAudio?.id === id && playingAudio?.type === type) {
+      audioRef.current?.pause();
+      setPlayingAudio(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setPlayingAudio(null);
+      audio.play();
+      audioRef.current = audio;
+      setPlayingAudio({ id, type });
+    }
   };
 
   return (
@@ -87,14 +115,17 @@ export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProp
               </div>
 
               {subtitles.map((item, index) => {
-                const [original, translated] = item.text.split('\n');
+                const original = item?.gen_txt || '';
+                const translated = item?.tra_txt || '';
+                const isPlayingGen = playingAudio?.id === item.id && playingAudio?.type === 'gen';
+                const isPlayingTra = playingAudio?.id === item.id && playingAudio?.type === 'tra';
                 return (
                   <div key={index} className="grid grid-cols-2 gap-4">
                     <div className="border rounded-lg p-4 bg-card">
                       <div className="flex items-center justify-between mb-2">
-                        <Button variant="ghost" size="sm" className="h-8 px-2">
-                          <Play className="size-4 mr-1" />
-                          {formatTime(item.start)} - {formatTime(item.end)}
+                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => handlePlayAudio(item.id, 'gen')}>
+                          {isPlayingGen ? <Pause className="size-4 mr-1" /> : <Play className="size-4 mr-1" />}
+                          {formatTimeLen(item.start)} - {formatTimeLen(item.end)}
                         </Button>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <Copy className="size-4" />
@@ -105,9 +136,9 @@ export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProp
 
                     <div className="border rounded-lg p-4 bg-card">
                       <div className="flex items-center justify-between mb-2">
-                        <Button variant="ghost" size="sm" className="h-8 px-2">
-                          <Play className="size-4 mr-1" />
-                          {formatTime(item.start)} - {formatTime(item.end)}
+                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => handlePlayAudio(item.id, 'tra')}>
+                          {isPlayingTra ? <Pause className="size-4 mr-1" /> : <Play className="size-4 mr-1" />}
+                          {formatTimeLen(item.start)} - {formatTimeLen(item.end)}
                         </Button>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <Copy className="size-4" />
@@ -122,9 +153,11 @@ export function CompareSrtModal({ isOpen, onClose, taskId }: CompareSrtModalProp
           )}
         </div>
 
-        {/* <div className="border-t pt-4 flex justify-end">
-          <Button variant="outline" onClick={onClose}>保存</Button>
-        </div> */}
+        <div className="border-t pt-4 flex justify-end gap-6">
+          <Button variant="outline" onClick={(e)=>{onDownBtnsClickRef.current?.(e, 'gen_srt');}}><Download className="size-4" />原字幕</Button>
+          <Button variant="outline" onClick={(e)=>{onDownBtnsClickRef.current?.(e, 'translate_srt');}}><Download className="size-4" />翻译字幕</Button>
+          <Button variant="outline" onClick={(e)=>{onDownBtnsClickRef.current?.(e, 'double_srt');}}><Download className="size-4" />双语字幕</Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

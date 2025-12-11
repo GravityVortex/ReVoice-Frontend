@@ -1,4 +1,4 @@
-import {getSystemConfigByKey, USE_JAVA_REQUEST} from '@/shared/cache/system-config';
+import {USE_JAVA_REQUEST} from '@/shared/cache/system-config';
 import {respData, respErr} from '@/shared/lib/resp';
 import {getVtTaskSubtitleListByTaskIdAndStepName} from '@/shared/models/vt_task_subtitle';
 import fs from 'fs';
@@ -11,21 +11,13 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const taskId = searchParams.get('taskId');
+    const stepName = searchParams.get('stepName');
+    const fileName = searchParams.get('fileName') || '';
 
     if (!taskId) {
       return respErr('缺少 taskId 参数')
     }
-    // 翻译前后字幕列表
-    // [
-    //   {
-    //     "end": 2.5,
-    //     "text": "大家好\nHello",
-    //     "start": 0
-    //   }
-    // ]
 
-    // DOEND 真实请求
-    // if (USE_JAVA_REQUEST) {
     const subtitleData = await getVtTaskSubtitleListByTaskIdAndStepName(
         taskId, ['gen_srt', 'translate_srt']);
     if (!subtitleData || subtitleData.length === 0) {
@@ -67,34 +59,41 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    if (list.length === 0) {
-      return respErr('获取字幕对比列表为空')
-    }
-    // 5. 获取R2前缀URL
-    const preUrl = await getSystemConfigByKey('r2.public.base_url');
-    return respData({
-      list,
-      preUrl
+    const filteredList = list.map(({file_path, ...rest}: any) => rest);
+    // 转换为 srt 格式
+    const srtContent = convertToSrt(filteredList);
+    // 生成文件名
+    const srtName = `${fileName || taskId}_${stepName}`;
+
+    return new NextResponse(srtContent, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${srtName}.srt"`,
+      },
     });
-    // }
-    // 模拟
-    // else {
-    //   // 读取同目录下 mock_srt_compare.json 并直接返回其内容
-    //   const mockPath = path.join(
-    //       process.cwd(),
-    //       'src/app/api/video-task/getCompareSrtList/mock_srt_compare.json');
-    //   const mockRaw = fs.readFileSync(mockPath, 'utf-8');
-    //   const mockJson = JSON.parse(mockRaw);
-
-    //   // 延迟1秒
-    //   // await new Promise(resolve => setTimeout(resolve, 1500));
-    //   return respData(mockJson);
-    // }
-
-
-
   } catch (error) {
-    console.error('获取字幕对比列表失败:', error);
-    return respErr('获取字幕对比列表失败')
+    console.error('[SRT Download API] 失败:', error);
+    return NextResponse.json(
+        {
+          code: -1,
+          message: error instanceof Error ? error.message : '下载失败'
+        },
+        {status: 500});
   }
+}
+
+/**
+ * 将字幕列表转换为 srt 格式
+ * @param subtitleList
+ * @returns
+ */
+function convertToSrt(subtitleList: any[]): string {
+  return subtitleList
+      .map((item, index) => {
+        const text = item.gen_txt && item.tra_txt
+          ? `${item.gen_txt}\n${item.tra_txt}`
+          : item.gen_txt || item.tra_txt || item.txt || '';
+        return `${item.seq || index + 1}\n${item.start} --> ${item.end}\n${text}\n`;
+      })
+      .join('\n');
 }

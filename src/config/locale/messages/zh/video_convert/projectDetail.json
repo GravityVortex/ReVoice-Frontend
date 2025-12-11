@@ -51,8 +51,10 @@
   "subtitle": {
     "title": "字幕",
     "description": "视频转换成功后，字幕可以单独下载，翻译后的字幕可以和原视频字幕对比。",
-    "compare": "对比",
-    "download": "下载"
+    "compare": "双语对比",
+    "download_yuan": "原字幕",
+    "download_tran": "翻译字幕",
+    "download_double": "双语字幕"
   },
   "buttons": {
     "download": "下载",

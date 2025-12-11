@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -322,7 +322,9 @@ export default function ProjectDetailPage() {
         setVideoDetail({
           ...tempItem,
           // title: tempItem.fileName,
-          cover: tempItem.coverR2Key ? (backJO.data.preUrl + '/' + tempItem.coverR2Key) : '',
+          // cover: tempItem.coverR2Key ? (backJO.data.preUrl + '/' + tempItem.coverR2Key) : '',
+          cover: tempItem.coverR2Key ? getPreviewUrl(tempItem.user_id, 
+            backJO.data.taskList?.[0]?.id, backJO.data.preUrl, tempItem.coverR2Key) : '',
           // coverSize: tempItem.coverSizeBytes,
           // coverR2Key: tempItem.coverR2Key,
         });
@@ -357,7 +359,7 @@ export default function ProjectDetailPage() {
   // 预加载左侧封面图片
   useEffect(() => {
     if (videoDetail?.coverR2Key && preUrl) {
-      const coverUrl = preUrl + '/' + videoDetail.coverR2Key;
+      const coverUrl = getPreviewUrl(videoDetail.userId, taskMainId, preUrl, videoDetail.coverR2Key);
       const img = new Image();
       img.src = coverUrl;
       img.onload = () => setLeftCoverSrc(coverUrl);
@@ -631,8 +633,14 @@ export default function ProjectDetailPage() {
       // let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
       // let name = 'translate_srt';
       let videoName = videoDetail?.fileName || '';
-      const response = await fetch(`/api/video-task/downLoad-srt?taskId=${taskMainId}&stepName=${stepName}`);
-      // const response = await fetch(`/api/video-task/downLoad-srt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
+      let downloadUrl = '';
+      if (stepName === 'double_srt') {
+        downloadUrl = `/api/video-task/download-double-srt?taskId=${taskMainId}&stepName=${stepName}`;
+      } else {
+        downloadUrl = `/api/video-task/download-srt?taskId=${taskMainId}&stepName=${stepName}`;
+      }
+      const response = await fetch(downloadUrl);
+      // const response = await fetch(`/api/video-task/download-srt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
       if (!response.ok) {
         const error = await response.json();
         toast.error(error.message || "下载字幕失败");
@@ -784,6 +792,7 @@ export default function ProjectDetailPage() {
       {/* 字幕对比弹框 */}
       <CompareSrtModal
         isOpen={isCompareDialogOpen}
+        onDownBtnsClick={onDownloadSrtClick}
         onClose={() => setIsCompareDialogOpen(false)}
         taskId={taskMainId}
       />

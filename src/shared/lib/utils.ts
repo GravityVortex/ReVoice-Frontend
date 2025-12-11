@@ -87,6 +87,7 @@ export function formatDate(dateStr: string) {
 
 
 export function getPreviewUrl(userId: string, taskId: string, r2PreUrl: string, url: string) {
+  taskId = taskId || 'task7';
   return `${r2PreUrl}/dev/${userId}/${taskId}/${url}`;
 }
 

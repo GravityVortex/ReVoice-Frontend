@@ -376,9 +376,21 @@ export function RightContentPanel({
                           </Button>
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
+                            onClick={(e) => onDownloadSrtClick(e, 'gen_srt')}>
+                            <Download className="size-4" />
+                            {t('subtitle.download_yuan')}
+                          </Button>
+                          <Button variant="outline" size="sm"
+                            disabled={taskMain?.status !== "completed"}
                             onClick={(e) => onDownloadSrtClick(e, 'translate_srt')}>
                             <Download className="size-4" />
-                            {t('subtitle.download')}
+                            {t('subtitle.download_tran')}
+                          </Button>
+                          <Button variant="outline" size="sm"
+                            disabled={taskMain?.status !== "completed"}
+                            onClick={(e) => onDownloadSrtClick(e, 'double_srt')}>
+                            <Download className="size-4" />
+                            {t('subtitle.download_double')}
                           </Button>
                         </div>
                       </div>
