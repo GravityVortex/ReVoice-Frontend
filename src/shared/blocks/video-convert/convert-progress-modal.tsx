@@ -124,8 +124,10 @@ export function ConversionProgressModal({
                 prevTaskMainIdRef.current = taskMainId;
             }
 
-            // 启动轮询
-            startPolling();
+            // 只有在任务未完成时才启动轮询
+            if (!taskMainInfo || (taskMainInfo.status !== 'completed' && taskMainInfo.status !== 'failed' && taskMainInfo.status !== 'cancelled')) {
+                startPolling();
+            }
         } else {
             // 弹框关闭时停止轮询
             clearPolling();
@@ -136,6 +138,21 @@ export function ConversionProgressModal({
             clearPolling();
         };
     }, [isOpen, taskMainId]);
+
+    // 监听任务状态变化，控制轮询
+    useEffect(() => {
+        if (taskMainInfo && isOpen) {
+            const status = taskMainInfo.status;
+            if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+                clearPolling();
+            } else if (status === 'processing' || status === 'pending') {
+                // 确保轮询正在运行
+                if (!pollingTimerRef.current) {
+                    startPolling();
+                }
+            }
+        }
+    }, [taskMainInfo?.status, isOpen]);
 
     // 监听 progressData 变化，在 tab_progress 页面时自动滚动到 processing 步骤
     useEffect(() => {
@@ -189,7 +206,7 @@ export function ConversionProgressModal({
         // console.warn('请求taskMainId--->', taskMainId);
         try {
 
-            const response = await fetch('/api/video-task/getTaskDetail?taskId=' + taskMainId + '&progress=true');
+            const response = await fetch('/api/video-task/getTaskProgress?taskId=' + taskMainId + '&progress=true');
             const result = await response.json();
 
             if (result.code === 0 && result.data) {
@@ -198,6 +215,11 @@ export function ConversionProgressModal({
                 setProgressData(progressList);
                 // 更新任务信息
                 setTaskMainInfo(taskItem);
+
+                // 如果任务已结束，停止轮询
+                if (taskItem.status === 'completed' || taskItem.status === 'failed' || taskItem.status === 'cancelled') {
+                    clearPolling();
+                }
             }
         } catch (error) {
             console.error('获取转换进度失败:', error);
@@ -249,8 +271,8 @@ export function ConversionProgressModal({
                                                 </div>
                                                 <div className="h-2 w-full rounded-full bg-gray-600">
                                                     <div
-                                                        className="h-full rounded-full bg-primary transition-all duration-500"
-                                                        style={{ width: `${taskMainInfo?.progress}%` }}
+                                                        className={cn("h-full rounded-full bg-primary", (taskMainInfo?.progress ?? 0) < 100 && "transition-all duration-500")}
+                                                        style={{ width: `${taskMainInfo?.progress ?? 0}%` }}
                                                     ></div>
                                                 </div>
 
@@ -268,8 +290,8 @@ export function ConversionProgressModal({
                                                         { name: '合并音视频', range: [89, 100] },
                                                     ].map((step, index) => {
                                                         const progress = taskMainInfo?.progress || 0;
-                                                        const isActive = progress >= step.range[0] && progress <= step.range[1];
-                                                        const isCompleted = progress > step.range[1];
+                                                        const isActive = progress >= step.range[0] && progress < step.range[1];
+                                                        const isCompleted = progress >= step.range[1];
 
                                                         return (
                                                             <div key={index} className="text-center">

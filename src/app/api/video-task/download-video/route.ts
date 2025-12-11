@@ -4,7 +4,7 @@ import { R2Provider } from '@/extensions/storage';
 
 /**
  * 生成 Cloudflare R2 签名下载 URL
- * GET /api/video-convert/download?key=xxx&expiresIn=3600
+ * GET /api/video-task/download?key=xxx&expiresIn=3600
  */
 export async function GET(request: NextRequest) {
   try {

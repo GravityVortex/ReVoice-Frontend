@@ -86,8 +86,10 @@ export const getDBJsonData = async (taskMainId: string) => {
             if (USE_JAVA_REQUEST) {
                 // 调用Java服务器
                 const url = `${JAVA_SERVER_BASE_URL}/api/r2/presigned-url`;
-                const params = JSON.stringify({ key: backgroundAudioFile.r2Key, expiresIn: 86400 });
-                backgroundAudioUrl = await getJavaServer(url, params);
+                const params = [{ key: noSoundVideoFile?.r2Key, expiresIn: 86400 },{ key: backgroundAudioFile.r2Key, expiresIn: 86400 }];
+                const resUrlArr = await getJavaServer(url, params);
+                noSoundVideoUrl = resUrlArr[0];
+                backgroundAudioUrl = resUrlArr[1];
             } else {
                 // 调用自己的接口
                 const r2KeyArr = [noSoundVideoFile?.r2Key, backgroundAudioFile?.r2Key];
@@ -228,14 +230,24 @@ async function generatePrivateR2SignUrl(r2KeyArr: any[] = [], expiresIn: number 
     }
 }
 
-async function getJavaServer(url: string, params: string) {
-    const url2 = url;
-    const params2 = params;// '{"name":"李四"}';// json格式string
+/**
+ * 调用Java服务器
+ * @param url 
+ * @param params 
+ * @returns 
+ */
+async function getJavaServer(url: string, params: any[]) {
+    // const params = params;// '{"name":"李四"}';// json格式string
     const headers = {
         'Authorization': '',
     };
-    const backJO = await doPost(url2, params2, headers);
+    (params);
+    const backJO = await doPost(url, JSON.stringify(params), headers);
     const jsonData = await backJO.json();
     console.log('服务器之间POST请求响应--->', JSON.stringify(jsonData));
-    return jsonData;
+    if (!jsonData || !jsonData.success) {
+        // throw new Error('获取签名URL失败');
+        return [...Array(params?.length)].map(() => '');
+    }
+    return jsonData.data;
 }
