@@ -203,7 +203,7 @@ export default function VideoConvertPage() {
             // coverSize: item.coverSizeBytes,
             // ("https://picsum.photos/seed/" + item.id + "/640/360")
             // cover: item.coverR2Key? (responseData.preUrl + '/' + item.coverR2Key) : '',
-            cover: item.coverR2Key? getPreviewUrl(item.user_id, '', responseData.preUrl, item.coverR2Key) : '',
+            cover: item.coverR2Key? getPreviewUrl(item.userId, item.id, responseData.preUrl, item.coverR2Key) : '',
             videoUrl: item.r2Key || "",
             status,
             duration,
@@ -212,7 +212,7 @@ export default function VideoConvertPage() {
             tasks: item.tasks,// 任务列表
           };
         });
-
+        console.log('convertedList---->', convertedList)
         setVideoList(convertedList);
 
         // 更新分页信息

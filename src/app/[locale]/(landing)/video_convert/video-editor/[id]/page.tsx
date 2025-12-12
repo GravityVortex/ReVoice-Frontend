@@ -1,25 +1,16 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import VideoEditor from '@/shared/components/video-editor';
+import VideoEditor, { ConvertObj } from '@/shared/components/video-editor';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb';
 import { Home, Loader2 } from 'lucide-react';
 import Link from "next/link";
 import { useParams } from 'next/navigation';
 import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
 import { AudioListPanel } from '@/shared/components/audio-list-panel';
+import { getLanguageConvertStr } from '@/shared/lib/utils';
 
-// 转换对象类型定义
-export interface ConvertObj {
-  convertId: string;
-  type: string;
-  video_nosound: string;
-  sound_bg: string;
-  srt_source: string;
-  srt_convert: string;
-  srt_source_arr: string[];
-  srt_convert_arr: string[];
-}
+
 
 export default function VideoEditorPage() {
   const params = useParams();
@@ -32,7 +23,7 @@ export default function VideoEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [videoSource, setVideoSource] = useState<Record<string, any> | null>(null);
   const seekToTimeCallbackRef = useRef<((time: number) => void) | null>(null);
-
+  // const [r2PreUrl, setR2PreUrl] = useState<string>('');
   // 获取转换详情
   useEffect(() => {
     const fetchConvertDetail = async () => {
@@ -49,13 +40,18 @@ export default function VideoEditorPage() {
         const result = await response.json();
 
         if (result.code === '0') {
-          if (result.video_source) {
-            setVideoSource(result.video_source);
+
+          if (result.videoItem) {
+            setVideoSource(result.videoItem);
+            // setR2PreUrl(result.publicBaseUrl);
           }
-          if (result.convert_obj) {
-            setConvertObj(result.convert_obj);
+          if (result.taskMainItem) {
+            setConvertObj({
+              ...result.taskMainItem,
+              r2preUrl: result.publicBaseUrl
+            });
           }
-          console.log('成功加载转换详情:', result.convert_obj);
+          console.log('成功加载转换详情:', result.taskMainItem);
         } else {
           throw new Error(result.msg || '数据格式错误');
         }
@@ -158,9 +154,9 @@ export default function VideoEditorPage() {
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                      <Link href={`/${locale}/video_convert/project_detail/${convertId}`}>
-                        {videoSource?.title || '视频详情'}
-                        {convertObj?.type ? `【${convertObj.type}】` : ''}
+                      <Link href={`/${locale}/video_convert/project_detail/${videoSource?.id}`}>
+                        {videoSource?.fileName || '视频详情'}
+                        <span className='text-fd-success'>{`【${getLanguageConvertStr(convertObj)}】`}</span>
                       </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>

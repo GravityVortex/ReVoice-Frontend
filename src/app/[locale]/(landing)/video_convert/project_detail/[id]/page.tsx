@@ -77,7 +77,7 @@ import { LocaleSelector, SignUser } from "@/shared/blocks/common";
 
 // 视频详情数据类型
 interface VideoDetail {
-  id: number;
+  id: string;
   uuid: string;
   userId: string;
   fileName: string;
@@ -324,7 +324,7 @@ export default function ProjectDetailPage() {
           // title: tempItem.fileName,
           // cover: tempItem.coverR2Key ? (backJO.data.preUrl + '/' + tempItem.coverR2Key) : '',
           cover: tempItem.coverR2Key ? getPreviewUrl(tempItem.user_id, 
-            backJO.data.taskList?.[0]?.id, backJO.data.preUrl, tempItem.coverR2Key) : '',
+            tempItem.id, backJO.data.preUrl, tempItem.coverR2Key) : '',
           // coverSize: tempItem.coverSizeBytes,
           // coverR2Key: tempItem.coverR2Key,
         });
@@ -359,7 +359,7 @@ export default function ProjectDetailPage() {
   // 预加载左侧封面图片
   useEffect(() => {
     if (videoDetail?.coverR2Key && preUrl) {
-      const coverUrl = getPreviewUrl(videoDetail.userId, taskMainId, preUrl, videoDetail.coverR2Key);
+      const coverUrl = getPreviewUrl(videoDetail.userId, videoDetail.id, preUrl, videoDetail.coverR2Key);
       const img = new Image();
       img.src = coverUrl;
       img.onload = () => setLeftCoverSrc(coverUrl);

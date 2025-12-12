@@ -26,11 +26,11 @@ export async function GET(request: NextRequest) {
     // TODO 本地模拟（宝20251205修复后）
     // const resData = getMockJsonData(convertId, 'local_001');
     // xuww上传的（宝20251205修复后）
-    const resData = getMockJsonData(taskMainId, 'upload_001');
-    const resData2 = await getDBJsonData(taskMainId);
-    console.log('真实请求resData--->', resData2);
+    // const resData = getMockJsonData(taskMainId, 'upload_001');
+    const resDataReal = await getDBJsonData(taskMainId);
+    console.log('真实请求resData--->', resDataReal);
 
-    return NextResponse.json(resData, {
+    return NextResponse.json(resDataReal, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',

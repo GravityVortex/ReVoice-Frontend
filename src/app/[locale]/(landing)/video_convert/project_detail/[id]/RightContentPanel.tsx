@@ -115,7 +115,7 @@ export function RightContentPanel({
                           {videoDetail?.coverR2Key && (
                             <img
                               // src={preUrl + '/' + videoDetail.coverR2Key}
-                              src={getPreviewUrl(videoDetail.userId, taskMain.id, preUrl, videoDetail.coverR2Key)}
+                              src={getPreviewUrl(videoDetail.userId, videoDetail.id, preUrl, videoDetail.coverR2Key)}
                               onError={(e) => {
                                 console.log("[RightContentPanel] onError", e);
                                 // e.currentTarget.style.display = 'none';

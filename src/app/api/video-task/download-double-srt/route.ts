@@ -1,9 +1,6 @@
-import {USE_JAVA_REQUEST} from '@/shared/cache/system-config';
 import {respData, respErr} from '@/shared/lib/resp';
 import {getVtTaskSubtitleListByTaskIdAndStepName} from '@/shared/models/vt_task_subtitle';
-import fs from 'fs';
 import {NextRequest, NextResponse} from 'next/server';
-import path from 'path';
 
 
 
@@ -33,15 +30,8 @@ export async function GET(request: NextRequest) {
       return respErr('未找到原字幕数据')
     }
 
-    const genSrtList = typeof genSrtItem.subtitleData === 'string' ?
-        JSON.parse(genSrtItem.subtitleData) :
-        genSrtItem.subtitleData;
-
-    const translateSrtList = translateSrtItem ?
-        (typeof translateSrtItem.subtitleData === 'string' ?
-             JSON.parse(translateSrtItem.subtitleData) :
-             translateSrtItem.subtitleData) :
-        [];
+    const genSrtList = genSrtItem.subtitleData as unknown as any[];
+    const translateSrtList = (translateSrtItem?.subtitleData as unknown as any[]) || [];
 
     // 合并双语字幕
     const list = genSrtList.map((genItem: any, index: number) => {

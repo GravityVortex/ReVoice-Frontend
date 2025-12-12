@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, forwardRef } from 'react';
-import { Play, Pause, RefreshCw, Save, ArrowDownToDot } from 'lucide-react';
+import { Play, Pause, RefreshCw, Save, ArrowDownToDot, Sparkles, Wand2, Zap, Stars, Cpu, Bot, Rocket, Lightbulb, Pencil, Layers, Package } from 'lucide-react';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/lib/utils';
 
@@ -113,7 +113,8 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onSave('source');
+                                        onSave('gen_srt');
+                                        // 原字幕: gen_srt; 翻译字幕: translate_srt
                                         // 点击后左侧面板红色指针定位到该字幕开始位置
                                         // onPointerToPlaceClick?.();
                                     }}
@@ -147,7 +148,8 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                     className="cursor-pointer p-1.5 rounded bg-background/10 hover:bg-accent transition-colors"
                                     title="更新字幕语音"
                                 >
-                                    <RefreshCw className="w-4 h-4" />
+                                    {/* <RefreshCw className="w-4 h-4" /> */}
+                                    <Sparkles className="w-4 h-4" />
                                 </div>
 
                             </div>
@@ -182,7 +184,7 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                             <div
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onSave('convert');
+                                    onSave('translate_srt');
                                 }}
                                 className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
                                 title="保存字幕语音"
@@ -212,7 +214,9 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                     className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent transition-colors"
                                     title="更新字幕语音"
                                 >
-                                    <RefreshCw className="w-4 h-4" />
+                                    {/* <RefreshCw className="w-4 h-4" /> */}
+                                    <Sparkles className="w-4 h-4" />
+                                    
                                 </div>
 
                             </div>

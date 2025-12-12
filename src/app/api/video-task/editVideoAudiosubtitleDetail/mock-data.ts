@@ -26,7 +26,7 @@ function getMockSuncongUploadData(convertId: string) {
   return {
     code: '0',
     msg: '成功',
-    video_source: {
+    videoItem: {
       id: 2,
       uuid: '52f66632-690c-475d-8a74-f8965344054e',
       user_uuid: 'd60aec6d-3e35-4be7-a695-036939775695',
@@ -47,16 +47,15 @@ function getMockSuncongUploadData(convertId: string) {
       author_avatar_url: null,
       locale: 'zh',
     },
-    convert_obj: {
-      convertId: convertId,
+    taskMainItem: {
+      id: convertId,
       type: '中文转英文',
-      video_nosound:
+      noSoundVideoUrl:
           'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/video-no-sound/MrBeast_1_100_000_000_video_nosound.mp4',
-      video_nosound_duration: 1015,
+      processDurationSeconds: 1015,
 
-      sound_bg:
+      backgroundAudioUrl:
           'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/sound-bg/background.wav',
-      sound_bg_duration: 1015,
 
       srt_source:
           'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/srt-text/MrBeast_1_100_000_000.bilingual_convert.srt',
@@ -420,7 +419,7 @@ function getProject000Data(convertId: string, preUrl: string) {
   return {
     code: '0',
     msg: '成功',
-    video_source: {
+    videoItem: {
       id: 2,
       uuid: '52f66632-690c-475d-8a74-f8965344054e',
       user_uuid: 'd60aec6d-3e35-4be7-a695-036939775695',
@@ -440,15 +439,14 @@ function getProject000Data(convertId: string, preUrl: string) {
       author_avatar_url: null,
       locale: 'zh',
     },
-    convert_obj:
+    taskMainItem:
         {
-          convertId: convertId,
+          id: convertId,
           type: '中文转英文',
-          video_nosound: preUrl + 'video_nosound.mp4',
-          video_nosound_duration: 1015,
+          noSoundVideoUrl: preUrl + 'video_nosound.mp4',
+          processDurationSeconds: 1015,
 
-          sound_bg: preUrl + 'sound_background.wav',
-          sound_bg_duration: 1015,
+          backgroundAudioUrl: preUrl + 'sound_background.wav',
 
           //   srt_source:
           //       preUrl +
@@ -1831,7 +1829,7 @@ function getProject001Data(convertId: string, preUrl: string) {
   return {
     code: '0',
     msg: '成功',
-    video_source: {
+    videoItem: {
       id: 2,
       uuid: '52f66632-690c-475d-8a74-f8965344054e',
       user_uuid: 'd60aec6d-3e35-4be7-a695-036939775695',
@@ -1852,17 +1850,16 @@ function getProject001Data(convertId: string, preUrl: string) {
       author_avatar_url: null,
       locale: 'zh',
     },
-    convert_obj:
+    taskMainItem:
         {
-          convertId: convertId,
+          id: convertId,
           type: '中文转英文',
-          video_nosound: preUrl.indexOf('localhost') >= 0 ? preUrl + '/video_nosound.mp4':
+          noSoundVideoUrl: preUrl.indexOf('localhost') >= 0 ? preUrl + '/video_nosound.mp4':
           'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/video-no-sound/MrBeast_1_100_000_000_video_nosound.mp4',
-          video_nosound_duration: 1015,
+          processDurationSeconds: 1015,
 
-          sound_bg:  preUrl.indexOf('localhost') >= 0 ? preUrl + 'sound_background.wav':
+          backgroundAudioUrl:  preUrl.indexOf('localhost') >= 0 ? preUrl + 'sound_background.wav':
           'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/sound-bg/background.wav',
-          sound_bg_duration: 1015,
 
           srt_source:
               'https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/srt-text/project_001/MrBeast_1_100_000_000_bilingual.srt',

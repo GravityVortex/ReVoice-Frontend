@@ -4,29 +4,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SubtitleComparisonItem, SubtitleComparisonData } from './subtitle-comparison-item';
 import { Button } from '@/shared/components/ui/button';
-import { RefreshCw, Loader2, Headphones, HeadphoneOff } from 'lucide-react';
+import { Loader2, Headphones, HeadphoneOff } from 'lucide-react';
+import { Play, Pause, RefreshCw, Save, ArrowDownToDot, Sparkles, Wand2, Zap, Stars, Cpu, Bot, Rocket, Lightbulb, Pencil, Layers, Package } from 'lucide-react';
+
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { loadSrtViaProxy, SrtEntry } from '@/shared/lib/srt-parser';
-import { ConvertObj } from '@/app/[locale]/(landing)/video_convert/video-editor/[id]/page';
-import { fa } from 'zod/v4/locales';
 import { toast } from 'sonner';
+import { ConvertObj } from './video-editor';
+import { useAppContext } from '../contexts/app';
 
 interface AudioListPanelProps {
   onPlayingIndexChange?: (index: number) => void;
   convertObj: ConvertObj;
   playingSubtitleIndex?: number; // 左侧视频编辑器当前播放的字幕索引
   onSeekToSubtitle?: (time: number) => void; // 请求左侧定位到指定时间
-}
-
-/**
- * 根据索引从数组中获取音频URL
- */
-function getAudioUrl(audioArr: string[], index: number): string {
-  if (index >= 0 && index < audioArr.length) {
-    return audioArr[index];
-  }
-  // 如果索引超出范围，返回空字符串
-  return '';
 }
 
 export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle }: AudioListPanelProps) {
@@ -44,6 +34,8 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   const audioRef = useRef<HTMLAudioElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { user } = useAppContext();
+
 
   // 监听左侧当前播放字幕索引，滚动右侧列表到对应位置
   useEffect(() => {
@@ -131,32 +123,32 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     setError(null);
 
     try {
-      const [sourceEntries, convertEntries] = await Promise.all([
-        loadSrtViaProxy(convertObj.srt_source),
-        loadSrtViaProxy(convertObj.srt_convert),
-      ]);
+      const sourceArr = convertObj.srt_source_arr || [];
+      const convertArr = convertObj.srt_convert_arr || [];
 
-      // 合并两个SRT文件的数据
-      const maxLength = Math.max(sourceEntries.length, convertEntries.length);
+      // 合并两个JSON数组
+      const maxLength = Math.max(sourceArr.length, convertArr.length);
       const items: SubtitleComparisonData[] = [];
 
       for (let i = 0; i < maxLength; i++) {
-        const sourceEntry = sourceEntries[i] || { index: i + 1, startTime: '00:00:00', endTime: '00:00:00', text: '', text2: null };
-        const convertEntry = convertEntries[i] || { index: i + 1, startTime: '00:00:00', endTime: '00:00:00', text: '', text2: null };
+        const sourceItem = sourceArr[i];
+        const convertItem = convertArr[i];
 
         items.push({
-          id: String(i + 1),
-          startTime_source: sourceEntry.startTime,
-          endTime_source: sourceEntry.endTime,
-          text_source: sourceEntry.text,
-          audioUrl_source: getAudioUrl(convertObj.srt_source_arr, i),
+          id: sourceItem?.id || convertItem?.id || String(i + 1),
+          startTime_source: sourceItem?.start || '00:00:00,000',
+          endTime_source: sourceItem?.end || '00:00:00,000',
+          text_source: sourceItem?.txt || '',
+          audioUrl_source: sourceItem?.audio_url || '',
 
-          startTime_convert: convertEntry.startTime,
-          endTime_convert: convertEntry.endTime,
-          text_convert: convertEntry.text2 ? convertEntry.text2 : convertEntry.text,
-          audioUrl_convert: getAudioUrl(convertObj.srt_convert_arr, i),
+          startTime_convert: convertItem?.start || '00:00:00,000',
+          endTime_convert: convertItem?.end || '00:00:00,000',
+          text_convert: convertItem?.txt || '',
+          audioUrl_convert: convertItem?.audio_url || '',
         });
       }
+      // 合成双语字幕实体列表
+      convertObj.srt_double_arr = items;
 
       setSubtitleItems(items);
       console.log(`成功加载 ${items.length} 条字幕对照`);
@@ -205,7 +197,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       const timeStr = item.startTime_convert;
       const timeInSeconds = parseTimeToSeconds(timeStr);
       onSeekToSubtitle(timeInSeconds);
-      
+
       // 无用，不知道为何
       // playingSubtitleIndex = -1;
       setDoubleClickIdx(index);
@@ -219,7 +211,12 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     if (index < 0 || index >= subtitleItems.length || !audioRef.current) return;
 
     const item = subtitleItems[index];
-    const audioUrl = type === 'source' ? item.audioUrl_source : item.audioUrl_convert;
+    // const audioUrl = type === 'source' ? item.audioUrl_source : item.audioUrl_convert;
+
+    const userId = user?.id || '';
+    const folder = type === 'source' ? 'split_audio/audio' : 'adj_audio_time';
+    const audioUrl = `${convertObj.r2preUrl}/dev/${userId}/${convertObj.id}/${folder}/${item.id}.wav`;
+    console.log('audioUrl--->', audioUrl)
 
 
 
@@ -299,12 +296,58 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   const handleConvert = (item: SubtitleComparisonData) => {
     console.log('转换字幕:', item);
     // TODO: 实现字幕转语音逻辑
+    toast.info('调用宝python生成语音试听...')
   };
 
-  // 保存处理
-  const handleSave = (item: SubtitleComparisonData, type: string) => {
-    console.log(`保存${type}字幕--->`, item);
-    // TODO: 实现字幕保存逻辑
+  // 字幕保存
+  const handleSave = async (item: SubtitleComparisonData, type: string) => {
+    try {
+      const sourceArr = convertObj.srt_source_arr || [];
+      const convertArr = convertObj.srt_convert_arr || [];
+
+      let targetItem;
+      if (type === 'gen_srt') {
+        targetItem = sourceArr.find((itm: any) => itm.id === item.id);
+        if (targetItem) {
+          targetItem.txt = item.text_source;
+        }
+      } else if (type === 'translate_srt') {
+        targetItem = convertArr.find((itm: any) => itm.id === item.id);
+        if (targetItem) {
+          targetItem.txt = item.text_convert;
+        }
+      }
+
+      if (!targetItem) {
+        toast.error('未找到要更新的字幕项');
+        return;
+      }
+
+      const resp = await fetch('/api/video-task/update-subtitle-item', {
+        method: 'POST',
+        body: JSON.stringify({
+          taskId: convertObj.id,
+          type: type,
+          seq: targetItem.seq,
+          item: targetItem
+        }),
+      });
+
+      if (!resp.ok) {
+        throw new Error(`request failed with status: ${resp.status}`);
+      }
+
+      const { code, message } = await resp.json();
+
+      if (code === 0) {
+        toast.success('保存成功！');
+      } else {
+        toast.error(message || '保存失败！');
+      }
+    } catch (error) {
+      console.error('保存字幕失败:', error);
+      toast.error('保存失败！');
+    }
   };
 
   return (
@@ -320,7 +363,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       <div className="px-4 pt-4 pb-2 border-b">
         <div className="flex items-center justify-between pl-4">
           <h2 className="text-lg font-semibold"
-            onClick={() => {}}>字幕音频对照表</h2>
+            onClick={() => { }}>字幕音频对照表</h2>
           <div className='flex flex-row gap-0 text-white'>
             <Button
               variant="outline"
@@ -387,23 +430,34 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           )}
         </div>
         <div className='flex flex-row gap-2 text-white'>
-            {isAutoPlayNext ? (
-              <Headphones className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(false)} />
-            ) : (
-              <HeadphoneOff className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(true)} />
-            )}
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                {/* 加载中 */}
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-1" onClick={loadSrtFiles} />
-                {/* 重新加载 */}
-              </>
-            )}
-          </div>
+          {isAutoPlayNext ? (
+            <Headphones className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(false)} />
+          ) : (
+            <HeadphoneOff className='w-4 h-4 mr-1' onClick={() => setIsAutoPlayNext(true)} />
+          )}
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              {/* 加载中 */}
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4 mr-1" onClick={loadSrtFiles} />
+              {/* <Sparkles className="w-4 h-4" /> */}
+              {/* <Wand2 className="w-4 h-4" />
+              <Zap className="w-4 h-4" />
+              <Stars className="w-4 h-4" />
+              <Cpu className="w-4 h-4" />
+              <Bot className="w-4 h-4" />
+              <Rocket className="w-4 h-4" />
+              <Lightbulb className="w-4 h-4" />
+              <Pencil className="w-4 h-4" />
+              <Layers className="w-4 h-4" />
+              <Package className="w-4 h-4" /> */}
+              {/* 重新加载 */}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

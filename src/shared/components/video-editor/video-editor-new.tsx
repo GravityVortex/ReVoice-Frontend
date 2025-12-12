@@ -682,12 +682,12 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
     const loadResources = async () => {
       try {
         // 1. 加载视频轨道（无声视频）
-        if (convertObj.video_nosound) {
+        if (convertObj.noSoundVideoUrl) {
           const videoItem: TrackItem = {
             id: 'video-main',
             type: 'video',
             name: '主视频',
-            url: convertObj.video_nosound,
+            url: convertObj.noSoundVideoUrl,
             startTime: 0,
             duration: 60, // 默认60秒，实际加载后会更新
             volume: 100
@@ -696,18 +696,18 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
 
           // 设置视频源
           if (videoRef.current) {
-            videoRef.current.src = convertObj.video_nosound;
+            videoRef.current.src = convertObj.noSoundVideoUrl;
             videoRef.current.load();
           }
         }
 
         // 2. 加载背景音乐轨道
-        if (convertObj.sound_bg) {
+        if (convertObj.backgroundAudioUrl) {
           const bgmItem: TrackItem = {
             id: 'bgm-main',
             type: 'bgm',
             name: '背景音乐',
-            url: convertObj.sound_bg,
+            url: convertObj.backgroundAudioUrl,
             startTime: 0,
             duration: 60, // 默认60秒，实际加载后会更新
             volume: 80
@@ -716,75 +716,40 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
 
           // 设置背景音乐源
           if (bgmAudioRef.current) {
-            bgmAudioRef.current.src = convertObj.sound_bg;
+            bgmAudioRef.current.src = convertObj.backgroundAudioUrl;
             bgmAudioRef.current.load();
           }
         }
 
         // 3. 加载SRT字幕并生成字幕轨道
-        if (convertObj.srt_convert) {
-          const srtEntries = await loadSrtViaProxy(convertObj.srt_convert);
-          // debugger
-
-          // let srtList: any = [];
-          // let item = {};
-          // let idx = 0;
-          const subtitleItems: SubtitleTrackItem[] = srtEntries.map((entry, index) => {
-
+        if (convertObj.srt_convert_arr && convertObj.srt_convert_arr.length > 0) {
+          const subtitleItems: SubtitleTrackItem[] = convertObj.srt_convert_arr.map((entry, index) => {
             // 将SRT时间转换为秒
-            const startTime = parseTimeToSeconds(entry.startTime);
-            const endTime = parseTimeToSeconds(entry.endTime);
-            // 保留3位小数
+            const startTime = parseTimeToSeconds(entry.start);
+            const endTime = parseTimeToSeconds(entry.end);
             const duration = parseFloat((endTime - startTime).toFixed(3));
 
-            // 调试日志：输出前3条字幕的时间解析结果
             if (index < 10) {
-              console.log(`字幕 ${index + 1}: ${entry.startTime} -> ${startTime}s, ${entry.endTime} -> ${endTime}s, 时长: ${duration}s`);
+              console.log(`字幕 ${index + 1}: ${entry.start} -> ${startTime}s, ${entry.end} -> ${endTime}s, 时长: ${duration}s`);
             }
 
-            // item = {
-            //   "id": "sub_" + (idx++),
-            //   "url": convertObj.srt_convert_arr[index] || '',
-            //   "startTime": startTime,
-            //   "duration": duration
-            // };
-            // srtList.push(item);
+            const userId = convertObj.userId || '';
+            const audioUrl = `${convertObj.r2preUrl}/dev/${userId}/${convertObj.id}/adj_audio_time/${entry.id}.wav`;
 
             return {
-              id: `subtitle-${index}`,
+              id: entry.id,
               type: 'video',
               name: `字幕 ${index + 1}`,
               startTime,
               duration,
-              text: entry.text2 || entry.text,
+              text: entry.txt,
               fontSize: 16,
               color: '#ffffff',
-              audioUrl: convertObj.srt_convert_arr[index] || ''
+              audioUrl
             };
           });
-          // console.log("srtList-->", JSON.stringify(srtList))
           setSubtitleTrack(subtitleItems);
           console.log(`成功加载 ${subtitleItems.length} 条字幕到轨道`);
-
-
-
-
-
-          // if (subtitleAudioRef.current) {
-          //   subtitleAudioRef.current.addEventListener('canplaythrough', () => {
-          //     console.timeEnd('audio1音频加载--->');
-          //   });
-          // }
-          // if (subtitleAudio2Ref.current) {
-          //   subtitleAudio2Ref.current.addEventListener('canplaythrough', () => {
-          //     console.timeEnd('audio2音频加载--->');
-          //   });
-          // }
-          // if (subtitleAudio3Ref.current) {
-          //   subtitleAudio3Ref.current.addEventListener('canplaythrough', () => {
-          //     console.timeEnd('audio3音频加载--->');
-          //   });
-          // }
         }
       } catch (error) {
         console.error('加载资源失败:', error);

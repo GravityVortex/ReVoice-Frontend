@@ -40,13 +40,34 @@ export interface SubtitleTrackItem {
 
 // 转换对象类型
 export interface ConvertObj {
-  convertId: string;
-  video_nosound: string;
-  sound_bg: string;
-  srt_source: string;
-  srt_convert: string;
-  srt_source_arr: string[];
-  srt_convert_arr: string[];
+  id: string;
+  userId: string;
+  originalFileId: string;
+  status: string;
+  priority: string;
+  progress: string;
+  currentStep: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  speakerCount: string;
+  processDurationSeconds: number;
+  startedAt: string;
+  completedAt: string;
+  noSoundVideoUrl: string;
+  backgroundAudioUrl: string;
+  srt_source_arr: any[];
+  srt_convert_arr: any[];
+
+  srt_double_arr: any[];// 两个字幕合成的字段
+  r2preUrl?:string; // 组装进来的，公桶前缀
+
+  // convertId: string;
+  // video_nosound: string;
+  // sound_bg: string;
+  // srt_source: string;
+  // srt_convert: string;
+  // srt_source_arr: string[];
+  // srt_convert_arr: string[];
 }
 
 // 视频编辑器属性

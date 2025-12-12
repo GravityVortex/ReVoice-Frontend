@@ -2,6 +2,9 @@ import {type ClassValue, clsx} from 'clsx';
 // import {useParams} from 'next/navigation';
 import {twMerge} from 'tailwind-merge';
 
+const endpoint = process.env.R2_ENDPOINT!;
+
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -86,8 +89,18 @@ export function formatDate(dateStr: string) {
 };
 
 
-export function getPreviewUrl(userId: string, taskId: string, r2PreUrl: string, url: string) {
-  taskId = taskId || 'task7';
-  return `${r2PreUrl}/dev/${userId}/${taskId}/${url}`;
+/**
+ * 获取完整的视频封面图片
+ * @param userId 
+ * @param fileId 
+ * @param r2PreUrl 
+ * @param url 
+ * @returns 
+ */
+export function getPreviewUrl(userId: string, fileId: string, r2PreUrl: string, url: string) {
+  // 生产环境和测试环境
+  // 封面地址：{env}/{userId}/{fileId}/frame_img/image/xxx.jpg
+  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev';// dev、pro
+  return `${r2PreUrl}/${env}/${userId}/${fileId}/${url}`;
 }
 

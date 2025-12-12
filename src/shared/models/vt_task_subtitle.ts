@@ -1,6 +1,6 @@
 import { vtTaskSubtitle } from '@/config/db/schema';
 import { db } from '@/core/db';
-import { eq, desc, and, inArray } from 'drizzle-orm';
+import { eq, desc, and, inArray, sql } from 'drizzle-orm';
 
 export type VtTaskSubtitle = typeof vtTaskSubtitle.$inferSelect;
 export type NewVtTaskSubtitle = typeof vtTaskSubtitle.$inferInsert;
@@ -63,17 +63,44 @@ export async function getVtTaskSubtitleListByTaskIdAndStepName(taskId: string, s
 /**
  * 更新字幕大JSON数据
  * @param taskId 任务ID，
- * @param stepName 步骤名，原字幕:gen_subtitle; 翻译字幕:translate_srt
+ * @param stepName 步骤名，原字幕:gen_srt; 翻译字幕:translate_srt
  * @param subtitleData 字幕大JSON数据
- * @returns 
+ * @returns
  */
 export async function updateSubtitleDataByTaskId(taskId: string, stepName: string, subtitleData: any) {
   return await db()
     .update(vtTaskSubtitle)
-    .set({ 
-      subtitleData,
+    .set({
+      subtitleData: JSON.stringify(subtitleData),
       updatedAt: new Date()
     })
     .where(and(eq(vtTaskSubtitle.taskId, taskId), eq(vtTaskSubtitle.stepName, stepName)))
     .returning();
+}
+
+/**
+ * 更新字幕数组中的单条记录
+ * @param taskId 任务ID
+ * @param stepName 步骤名
+ * @param seq 字幕序号
+ * @param updatedItem 更新的字幕项
+ * @returns
+ */
+export async function updateSingleSubtitleItem(taskId: string, stepName: string, seq: string, updatedItem: any) {
+  const result = await db().execute(
+    sql`UPDATE vt_task_subtitle
+        SET subtitle_data = (
+          SELECT jsonb_agg(
+            CASE
+              WHEN elem->>'seq' = ${seq} THEN ${JSON.stringify(updatedItem)}::jsonb
+              ELSE elem
+            END
+          )
+          FROM jsonb_array_elements(subtitle_data) elem
+        ),
+        updated_at = NOW()
+        WHERE task_id = ${taskId} AND step_name = ${stepName}
+        RETURNING *`
+  );
+  return result;
 }

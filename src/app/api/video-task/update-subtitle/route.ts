@@ -13,14 +13,14 @@ export async function POST(req: Request) {
       return respErr("missing taskId or type or content parameter");
     }
 
-    // 更新字幕大JSON数据
+    // 更新字幕大JSON数据，原字幕:gen_srt; 翻译字幕:translate_srt
     const updatedSubtitle = await updateSubtitleDataByTaskId(taskId, type, content);
 
     if (!updatedSubtitle) {
       return respErr("update subtitle failed");
     }
 
-    return respData(updatedSubtitle);
+    return respData({taskId, type, message: '保存成功'});
   } catch (e) {
     console.log("update subtitle failed:", e);
     return respErr("update subtitle failed");
