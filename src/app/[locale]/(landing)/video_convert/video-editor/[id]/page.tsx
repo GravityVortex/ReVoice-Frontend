@@ -156,7 +156,9 @@ export default function VideoEditorPage() {
                     <BreadcrumbLink asChild>
                       <Link href={`/${locale}/video_convert/project_detail/${videoSource?.id}`}>
                         {videoSource?.fileName || '视频详情'}
-                        <span className='text-fd-success'>{`【${getLanguageConvertStr(convertObj)}】`}</span>
+                        {/* <span className='text-fd-success'> */}
+                        {`【${getLanguageConvertStr(convertObj)}】`}
+                        {/* </span> */}
                       </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
@@ -167,7 +169,7 @@ export default function VideoEditorPage() {
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            
+
             {/* 左侧视频编辑区 */}
             <VideoEditor
               onExport={handleExport}

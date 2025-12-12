@@ -61,5 +61,41 @@
     "edit": "Edit",
     "progress": "Progress",
     "cancel": "Cancel"
+  },
+  "progressModal": {
+    "title": "Conversion Progress",
+    "loading": "Loading...",
+    "loadingData": "Loading progress data...",
+    "tabs": {
+      "overview": "Overview",
+      "logs": "Progress Logs"
+    },
+    "overview": {
+      "progressTitle": "Conversion Progress",
+      "totalProgress": "Total Progress",
+      "taskInfoTitle": "Task Details",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "sourceLanguage": "Source Language",
+      "targetLanguage": "Target Language",
+      "taskStatus": "Task Status",
+      "speakerCount": "Speaker Count",
+      "single": "Single",
+      "multiple": "Multiple",
+      "processDuration": "Process Duration",
+      "creditsConsumed": "Credits Consumed"
+    },
+    "logs": {
+      "title": "Conversion Progress Logs",
+      "statusCompleted": "Completed",
+      "statusProcessing": "Processing",
+      "statusPending": "Pending",
+      "statusFailed": "Failed",
+      "completedDesc": "Completed",
+      "processingDesc": "Processing",
+      "pendingDesc": "Waiting for",
+      "errorLabel": "Error",
+      "completedTime": "Completed Time"
+    }
   }
 }

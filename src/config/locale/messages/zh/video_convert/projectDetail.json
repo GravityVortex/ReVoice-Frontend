@@ -61,5 +61,41 @@
     "edit": "编辑",
     "progress": "进度",
     "cancel": "取消"
+  },
+  "progressModal": {
+    "title": "转换进度",
+    "loading": "加载中...",
+    "loadingData": "加载进度数据中...",
+    "tabs": {
+      "overview": "转换概览",
+      "logs": "进度日志"
+    },
+    "overview": {
+      "progressTitle": "转换进度",
+      "totalProgress": "总进度",
+      "taskInfoTitle": "任务详细信息",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "sourceLanguage": "源语言",
+      "targetLanguage": "目标语言",
+      "taskStatus": "任务状态",
+      "speakerCount": "说话人数量",
+      "single": "单人",
+      "multiple": "多人",
+      "processDuration": "处理时长",
+      "creditsConsumed": "消耗积分"
+    },
+    "logs": {
+      "title": "转换进度日志",
+      "statusCompleted": "已完成",
+      "statusProcessing": "进行中",
+      "statusPending": "等待中",
+      "statusFailed": "失败",
+      "completedDesc": "已完成",
+      "processingDesc": "进行中",
+      "pendingDesc": "等待",
+      "errorLabel": "错误",
+      "completedTime": "完成时间"
+    }
   }
 }

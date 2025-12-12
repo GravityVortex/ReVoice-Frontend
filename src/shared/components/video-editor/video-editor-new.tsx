@@ -17,7 +17,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   // 基础状态
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [totalDuration, setTotalDuration] = useState(60);
+  const [totalDuration, setTotalDuration] = useState(convertObj?.processDurationSeconds || 60);
   const [zoom, setZoom] = useState(1);
   const [volume, setVolume] = useState(80);
 
@@ -681,6 +681,9 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
 
     const loadResources = async () => {
       try {
+        // 默认视频时长
+        setTotalDuration(convertObj.processDurationSeconds);
+
         // 1. 加载视频轨道（无声视频）
         if (convertObj.noSoundVideoUrl) {
           const videoItem: TrackItem = {
@@ -689,7 +692,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             name: '主视频',
             url: convertObj.noSoundVideoUrl,
             startTime: 0,
-            duration: 60, // 默认60秒，实际加载后会更新
+            duration: convertObj.processDurationSeconds, // 默认60秒，实际加载后会更新
             volume: 100
           };
           setVideoTrack([videoItem]);
@@ -709,7 +712,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             name: '背景音乐',
             url: convertObj.backgroundAudioUrl,
             startTime: 0,
-            duration: 60, // 默认60秒，实际加载后会更新
+            duration: convertObj.processDurationSeconds, // 默认60秒，实际加载后会更新
             volume: 80
           };
           setBgmTrack([bgmItem]);

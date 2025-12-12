@@ -91,16 +91,26 @@ export function formatDate(dateStr: string) {
 
 /**
  * 获取完整的视频封面图片
- * @param userId 
- * @param fileId 
- * @param r2PreUrl 
- * @param url 
- * @returns 
+ * @param userId
+ * @param fileId
+ * @param r2PreUrl
+ * @param url
+ * @returns
  */
-export function getPreviewUrl(userId: string, fileId: string, r2PreUrl: string, url: string) {
+export function getPreviewUrl(
+    userId: string, fileId: string, r2PreUrl: string, url: string) {
   // 生产环境和测试环境
   // 封面地址：{env}/{userId}/{fileId}/frame_img/image/xxx.jpg
-  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev';// dev、pro
+  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev';  // dev、pro
   return `${r2PreUrl}/${env}/${userId}/${fileId}/${url}`;
 }
 
+
+export function getPreviewCoverUrl(videoItem: any, r2PreUrl: string) {
+  if (!videoItem || !videoItem?.coverR2Key) return '';
+
+  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev';  // dev、pro
+  // 封面地址：{env}/{userId}/{fileId}/frame_img/image/xxx.jpg
+  return `${videoItem.r2PreUrl || r2PreUrl}/${env}/${videoItem.userId}/${
+      videoItem.id}/${videoItem.coverR2Key}`;
+}

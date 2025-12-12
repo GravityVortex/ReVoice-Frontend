@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { cn, getLanguageConvertStr, LanguageMap, miao2Hms } from '@/shared/lib/utils';
+import { cn, getLanguageConvertStr, LanguageMap, LanguageMapEn, miao2Hms } from '@/shared/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -17,6 +17,7 @@ import {
     Clock,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface TaskStep {
     id: number;
@@ -79,6 +80,8 @@ export function ConversionProgressModal({
 
     const params = useParams();
     const locale = (params.locale as string) || 'zh';
+    const t = useTranslations('video_convert.projectDetail');
+    const tSteps = useTranslations('video_convert.projectDetail.steps');
 
     // 根据 activeTabIdx 切换 tab
     // useEffect: 进行副作用执行，例如在组件加载或者在组件更新的时候执行一些函数
@@ -172,16 +175,16 @@ export function ConversionProgressModal({
 
     // 根据进度百分比获取当前步骤描述
     const getProgressStep = (progress: number): string => {
-        if (progress >= 0 && progress <= 11) return '音视频分离';
-        if (progress >= 12 && progress <= 22) return '人声背景分离';
-        if (progress >= 23 && progress <= 33) return '生成原始字幕';
-        if (progress >= 34 && progress <= 44) return '翻译字幕';
-        if (progress >= 45 && progress <= 55) return '音频切片';
-        if (progress >= 56 && progress <= 66) return '语音合成';
-        if (progress >= 67 && progress <= 77) return '音频时间对齐';
-        if (progress >= 78 && progress <= 88) return '合并音频';
-        if (progress >= 89 && progress <= 100) return '合并音视频';
-        return '准备中...';
+        if (progress >= 0 && progress <= 11) return tSteps('audioVideoSeparation');
+        if (progress >= 12 && progress <= 22) return tSteps('vocalBackgroundSeparation');
+        if (progress >= 23 && progress <= 33) return tSteps('generateSubtitles');
+        if (progress >= 34 && progress <= 44) return tSteps('translateSubtitles');
+        if (progress >= 45 && progress <= 55) return tSteps('audioSlicing');
+        if (progress >= 56 && progress <= 66) return tSteps('voiceSynthesis');
+        if (progress >= 67 && progress <= 77) return tSteps('audioAlignment');
+        if (progress >= 78 && progress <= 88) return tSteps('mergeAudio');
+        if (progress >= 89 && progress <= 100) return tSteps('mergeVideo');
+        return t('progressModal.loading');
     };
 
     // 滚动到首个 processing 状态的步骤
@@ -232,28 +235,34 @@ export function ConversionProgressModal({
         }
     };
 
+    function getLanguage(lan?: string) {
+        if (!lan) return '';
+        const map = locale === 'zh' ? LanguageMap : LanguageMapEn;
+        return map[lan] || lan;
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="min-w-3/5 max-w-[80vw] h-[80vh] flex flex-col p-0">
+            <DialogContent className="min-w-[780px] max-w-[80vw] h-[80vh] flex flex-col p-0">
 
                 {/* Tab 切换 */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
-                        <DialogTitle>转换进度【{taskMainInfo ? getLanguageConvertStr(taskMainInfo, locale) : '加载中...'}】</DialogTitle>
+                        <DialogTitle>{t('progressModal.title')}【{taskMainInfo ? getLanguageConvertStr(taskMainInfo, locale) : t('progressModal.loading')}】</DialogTitle>
                         {/* 省略则警告：Warning: Missing Description or aria-describedby={undefined} for {DialogContent} */}
                         <DialogDescription className="sr-only">
-                            查看视频转换的详细进度信息和日志
+                            {t('progressModal.title')}
                         </DialogDescription>
                         <TabsList className="mt-5 grid w-2/3 grid-cols-2 mx-auto">
-                            <TabsTrigger value="tab_detail">转换概览</TabsTrigger>
-                            <TabsTrigger value="tab_progress">进度日志</TabsTrigger>
+                            <TabsTrigger value="tab_detail">{t('progressModal.tabs.overview')}</TabsTrigger>
+                            <TabsTrigger value="tab_progress">{t('progressModal.tabs.logs')}</TabsTrigger>
                         </TabsList>
                     </DialogHeader>
 
                     {!progressData || progressData.length === 0 ? (
                         <div className="flex items-center justify-center py-12 flex-1">
                             <Loader2 className="size-8 animate-spin text-primary" />
-                            <span className="ml-3 text-muted-foreground">加载进度数据中...</span>
+                            <span className="ml-3 text-muted-foreground">{t('progressModal.loadingData')}</span>
                         </div>
                     ) : progressData ? (
                         <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -263,12 +272,12 @@ export function ConversionProgressModal({
 
                                     <Card>
                                         <CardHeader>
-                                            <CardTitle>转换进度</CardTitle>
+                                            <CardTitle>{t('progressModal.overview.progressTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-muted-foreground">总进度</span>
+                                                    <span className="text-sm text-muted-foreground">{t('progressModal.overview.totalProgress')}</span>
                                                     <span className="text-2xl font-bold text-primary">
                                                         {taskMainInfo?.progress}%
                                                     </span>
@@ -283,15 +292,15 @@ export function ConversionProgressModal({
                                                 {/* 步骤展示 */}
                                                 <div className="pt-1 flex flex-row justify-between gap-2">
                                                     {[
-                                                        { name: '音视频分离', range: [0, 11] },
-                                                        { name: '人声背景分离', range: [12, 22] },
-                                                        { name: '生成原始字幕', range: [23, 33] },
-                                                        { name: '翻译字幕', range: [34, 44] },
-                                                        { name: '音频切片', range: [45, 55] },
-                                                        { name: '语音合成', range: [56, 66] },
-                                                        { name: '音频时间对齐', range: [67, 77] },
-                                                        { name: '合并音频', range: [78, 88] },
-                                                        { name: '合并音视频', range: [89, 100] },
+                                                        { name: tSteps('audioVideoSeparation'), range: [0, 11] },
+                                                        { name: tSteps('vocalBackgroundSeparation'), range: [12, 22] },
+                                                        { name: tSteps('generateSubtitles'), range: [23, 33] },
+                                                        { name: tSteps('translateSubtitles'), range: [34, 44] },
+                                                        { name: tSteps('audioSlicing'), range: [45, 55] },
+                                                        { name: tSteps('voiceSynthesis'), range: [56, 66] },
+                                                        { name: tSteps('audioAlignment'), range: [67, 77] },
+                                                        { name: tSteps('mergeAudio'), range: [78, 88] },
+                                                        { name: tSteps('mergeVideo'), range: [89, 100] },
                                                     ].map((step, index) => {
                                                         const progress = taskMainInfo?.progress || 0;
                                                         const isActive = progress >= step.range[0] && progress < step.range[1];
@@ -318,7 +327,7 @@ export function ConversionProgressModal({
 
                                     <Card className='mt-5'>
                                         <CardHeader>
-                                            <CardTitle>任务详细信息</CardTitle>
+                                            <CardTitle>{t('progressModal.overview.taskInfoTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="space-y-4">
@@ -328,35 +337,35 @@ export function ConversionProgressModal({
                                                         <p className="font-medium text-xs break-all">{taskMainInfo?.id}</p>
                                                     </div> */}
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">开始时间</p>
-                                                        <p className="font-medium">{taskMainInfo?.startedAt ? new Date(taskMainInfo.startedAt).toLocaleString('zh-CN') : '-'}</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.startTime')}</p>
+                                                        <p className="font-medium">{taskMainInfo?.startedAt ? new Date(taskMainInfo.startedAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US') : '-'}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">结束时间</p>
-                                                        <p className="font-medium">{taskMainInfo?.completedAt ? new Date(taskMainInfo.completedAt).toLocaleString('zh-CN') : '-'}</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.endTime')}</p>
+                                                        <p className="font-medium">{taskMainInfo?.completedAt ? new Date(taskMainInfo.completedAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US') : '-'}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">源语言</p>
-                                                        <p className="font-medium">{LanguageMap[taskMainInfo?.sourceLanguage || ''] || taskMainInfo?.sourceLanguage}</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.sourceLanguage')}</p>
+                                                        <p className="font-medium">{getLanguage(taskMainInfo?.sourceLanguage)}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">目标语言</p>
-                                                        <p className="font-medium">{LanguageMap[taskMainInfo?.targetLanguage || ''] || taskMainInfo?.targetLanguage}</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.targetLanguage')}</p>
+                                                        <p className="font-medium">{getLanguage(taskMainInfo?.targetLanguage)}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">任务状态</p>
-                                                        <p className="font-medium">{taskMainInfo?.status}</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.taskStatus')}</p>
+                                                        <p className="font-medium">{taskMainInfo?.status ? t(`status.${taskMainInfo.status}`) : '-'}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">说话人数量</p>
-                                                        <p className="font-medium">{taskMainInfo?.speakerCount === 'single' ? '单人' : '多人'}</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.speakerCount')}</p>
+                                                        <p className="font-medium">{taskMainInfo?.speakerCount === 'single' ? t('progressModal.overview.single') : t('progressModal.overview.multiple')}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">处理时长</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.processDuration')}</p>
                                                         <p className="font-medium">{miao2Hms(taskMainInfo?.processDurationSeconds || 0)}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">消耗积分</p>
+                                                        <p className="text-sm text-muted-foreground">{t('progressModal.overview.creditsConsumed')}</p>
                                                         <p className="font-medium">{taskMainInfo?.creditsConsumed || 0}</p>
                                                     </div>
                                                 </div>
@@ -369,7 +378,7 @@ export function ConversionProgressModal({
                                     style={{ borderRadius: 10 }}>
                                     <Card>
                                         <CardHeader>
-                                            <CardTitle>转换进度日志</CardTitle>
+                                            <CardTitle>{t('progressModal.logs.title')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="relative space-y-1">
@@ -380,7 +389,7 @@ export function ConversionProgressModal({
                                                     const formatTime = (timestamp: number) => {
                                                         if (!timestamp) return '-';
                                                         const date = new Date(timestamp);
-                                                        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                                                        return date.toLocaleTimeString(locale === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                                                     };
 
                                                     return (
@@ -437,26 +446,26 @@ export function ConversionProgressModal({
                                                                                         task.stepStatus === 'failed' && 'bg-red-100 text-red-700'
                                                                                     )}
                                                                                 >
-                                                                                    {task.stepStatus === 'completed' && '已完成'}
-                                                                                    {task.stepStatus === 'processing' && '进行中'}
-                                                                                    {task.stepStatus === 'pending' && '等待中'}
-                                                                                    {task.stepStatus === 'failed' && '失败'}
+                                                                                    {task.stepStatus === 'completed' && t('progressModal.logs.statusCompleted')}
+                                                                                    {task.stepStatus === 'processing' && t('progressModal.logs.statusProcessing')}
+                                                                                    {task.stepStatus === 'pending' && t('progressModal.logs.statusPending')}
+                                                                                    {task.stepStatus === 'failed' && t('progressModal.logs.statusFailed')}
                                                                                 </span>
                                                                             </div>
                                                                             <p className="mt-1 text-sm text-muted-foreground">
-                                                                                {task.stepStatus === 'completed' && `${task.stepName}已完成`}
-                                                                                {task.stepStatus === 'processing' && `${task.stepName}进行中`}
-                                                                                {task.stepStatus === 'pending' && `等待${task.stepName}`}
+                                                                                {task.stepStatus === 'completed' && `${task.stepName}${t('progressModal.logs.completedDesc')}`}
+                                                                                {task.stepStatus === 'processing' && `${task.stepName}${t('progressModal.logs.processingDesc')}`}
+                                                                                {task.stepStatus === 'pending' && `${t('progressModal.logs.pendingDesc')}${task.stepName}`}
                                                                                 {task.stepStatus === 'failed' && `${task.errorMessage}`}
                                                                             </p>
                                                                             {task.stepStatus === 'failed' && task.errorMessage && (
                                                                                 <p className="mt-2 text-xs text-red-600">
-                                                                                    错误: {task.errorMessage}
+                                                                                    {t('progressModal.logs.errorLabel')}: {task.errorMessage}
                                                                                 </p>
                                                                             )}
                                                                             {task.stepStatus === 'completed' && task.completedAt && (
                                                                                 <p className="mt-2 text-xs text-muted-foreground">
-                                                                                    完成时间: {formatTime(task.completedAt)}
+                                                                                    {t('progressModal.logs.completedTime')}: {formatTime(task.completedAt)}
                                                                                 </p>
                                                                             )}
                                                                         </div>

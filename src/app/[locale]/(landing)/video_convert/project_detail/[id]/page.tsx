@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getPreviewCoverUrl, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -91,6 +91,7 @@ interface VideoDetail {
   updatedAt: string;
   uploadStatus: string;
   coverR2Key: string;
+  cover?: string; // 拼接完全预览路径
 
   r2Key: string;
   result_vdo_url: string;
@@ -209,7 +210,7 @@ export default function ProjectDetailPage() {
         setIsAddDialogOpen(true);
         break;
       case "edit":
-        setProjectItem({ ...videoDetail });
+        setProjectItem({ ...videoDetail});
         setIsEditDialogOpen(true);
         break;
       case "backList":
@@ -323,8 +324,7 @@ export default function ProjectDetailPage() {
           ...tempItem,
           // title: tempItem.fileName,
           // cover: tempItem.coverR2Key ? (backJO.data.preUrl + '/' + tempItem.coverR2Key) : '',
-          cover: tempItem.coverR2Key ? getPreviewUrl(tempItem.user_id, 
-            tempItem.id, backJO.data.preUrl, tempItem.coverR2Key) : '',
+          cover: getPreviewCoverUrl(tempItem, backJO.data.preUrl),
           // coverSize: tempItem.coverSizeBytes,
           // coverR2Key: tempItem.coverR2Key,
         });
@@ -359,10 +359,10 @@ export default function ProjectDetailPage() {
   // 预加载左侧封面图片
   useEffect(() => {
     if (videoDetail?.coverR2Key && preUrl) {
-      const coverUrl = getPreviewUrl(videoDetail.userId, videoDetail.id, preUrl, videoDetail.coverR2Key);
+      // const coverUrl = getPreviewUrl(videoDetail.userId, videoDetail.id, preUrl, videoDetail.coverR2Key);
       const img = new Image();
-      img.src = coverUrl;
-      img.onload = () => setLeftCoverSrc(coverUrl);
+      img.src = videoDetail?.cover;
+      img.onload = () => setLeftCoverSrc(videoDetail?.cover);
       img.onerror = () => setLeftCoverSrc('/imgs/cover_video_def.jpg');
     }
   }, [videoDetail?.coverR2Key, preUrl]);

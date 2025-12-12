@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatDate, getLanguageConvertStr, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getLanguageConvertStr, getPreviewCoverUrl, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion } from "motion/react"
 import {
@@ -115,7 +115,7 @@ export function RightContentPanel({
                           {videoDetail?.coverR2Key && (
                             <img
                               // src={preUrl + '/' + videoDetail.coverR2Key}
-                              src={getPreviewUrl(videoDetail.userId, videoDetail.id, preUrl, videoDetail.coverR2Key)}
+                              src={getPreviewCoverUrl(videoDetail, preUrl)}
                               onError={(e) => {
                                 console.log("[RightContentPanel] onError", e);
                                 // e.currentTarget.style.display = 'none';

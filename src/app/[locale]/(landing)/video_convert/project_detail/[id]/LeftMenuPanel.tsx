@@ -57,7 +57,7 @@ export function LeftMenuPanel({
         </div>
 
         {/* 基本信息，可滚动内容区域 */}
-        <div className="px-6 pb-6 space-y-5 overflow-y-scroll">
+        <div className="px-6 pb-6 space-y-5">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{t('videoInfo.originalVideo')}</p>
             <p className="font-semibold text-base text-primary">{videoDetail?.fileName || "-"}</p>
