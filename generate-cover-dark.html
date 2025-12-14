@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>这声 - 深色科技风封面</title>
+</head>
+<body style="margin: 0; padding: 20px; background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+    <canvas id="cover" width="1920" height="1080"></canvas>
+    <div style="margin-top: 20px;">
+        <button onclick="downloadPNG()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px;">下载 PNG</button>
+        <button onclick="downloadJPG()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px;">下载 JPG</button>
+        <button onclick="downloadWebM()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px;">下载 WebM 视频</button>
+        <button onclick="downloadMP4()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">下载 MP4 视频</button>
+        <span id="status" style="margin-left: 10px; color: #00d4ff;"></span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cover');
+        const ctx = canvas.getContext('2d');
+        let animationOffset = 0;
+        const particles = Array.from({length: 50}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 3
+        }));
+
+        function drawFrame(offset) {
+            // 深色背景
+            ctx.fillStyle = '#0a0e1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 扭曲网格线
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                for (let y = 0; y <= canvas.height; y += 10) {
+                    const distortion = Math.sin((y + offset * 0.5) * 0.02) * 15;
+                    const px = x + distortion;
+                    if (y === 0) ctx.moveTo(px, y);
+                    else ctx.lineTo(px, y);
+                }
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                for (let x = 0; x <= canvas.width; x += 10) {
+                    const distortion = Math.sin((x + offset * 0.5) * 0.02) * 15;
+                    const py = y + distortion;
+                    if (x === 0) ctx.moveTo(x, py);
+                    else ctx.lineTo(x, py);
+                }
+                ctx.stroke();
+            }
+
+            // 固定位置的发光粒子
+            ctx.fillStyle = '#00d4ff';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00d4ff';
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.shadowBlur = 0;
+
+            // 小logo（左上角）
+            const logoX = 100;
+            const logoY = 100;
+            const logoLayers = 5;
+            const logoRadius = 20;
+
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00d4ff';
+
+            for (let i = 0; i < logoLayers; i++) {
+                const radius = logoRadius + i * 12;
+                const sides = 6;
+                const rotation = (i * Math.PI) / 12;
+
+                ctx.beginPath();
+                for (let j = 0; j <= sides; j++) {
+                    const angle = (j * 2 * Math.PI) / sides + rotation;
+                    const x = logoX + radius * Math.cos(angle);
+                    const y = logoY + radius * Math.sin(angle);
+                    if (j === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            // logo中心发光
+            const logoGlow = ctx.createRadialGradient(logoX, logoY, 0, logoX, logoY, 30);
+            logoGlow.addColorStop(0, 'rgba(0, 212, 255, 0.5)');
+            logoGlow.addColorStop(1, 'rgba(0, 212, 255, 0)');
+            ctx.fillStyle = logoGlow;
+            ctx.beginPath();
+            ctx.arc(logoX, logoY, 30, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // 动态声波效果（震动）
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x += 10) {
+                    const amplitude = (50 + i * 30) * (1 + Math.sin(offset * 0.05 + i) * 0.3);
+                    const y = canvas.height / 2 + Math.sin((x + i * 100 + offset) * 0.01) * amplitude;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            // 产品名称
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 120px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = '#00d4ff';
+            ctx.fillText('ReVoice', canvas.width / 2, canvas.height - 280);
+
+            // 主标语
+            ctx.shadowBlur = 15;
+            ctx.font = '42px -apple-system, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillText('Your voice, every language, same emotion.', canvas.width / 2, canvas.height - 180);
+
+            // 副标语
+            ctx.shadowBlur = 10;
+            ctx.font = '32px -apple-system, sans-serif';
+            ctx.fillStyle = '#00d4ff';
+            ctx.fillText('AI-powered video translation · Translate with soul', canvas.width / 2, canvas.height - 120);
+
+            ctx.shadowBlur = 0;
+        }
+
+        function animate() {
+            animationOffset += 2;
+            drawFrame(animationOffset);
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        function downloadPNG() {
+            const link = document.createElement('a');
+            link.download = 'video-cover-dark.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadJPG() {
+            const link = document.createElement('a');
+            link.download = 'video-cover-dark.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.click();
+        }
+
+        async function downloadWebM() {
+            const status = document.getElementById('status');
+            status.textContent = '正在录制 WebM...';
+
+            const stream = canvas.captureStream(30);
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            const chunks = [];
+
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const link = document.createElement('a');
+                link.download = 'video-cover-dark.webm';
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                status.textContent = `WebM 生成完成！(${(blob.size / 1024).toFixed(0)}KB)`;
+                setTimeout(() => status.textContent = '', 3000);
+            };
+
+            recorder.start();
+            setTimeout(() => recorder.stop(), 3000);
+        }
+
+        async function downloadMP4() {
+            const status = document.getElementById('status');
+
+            try {
+                status.textContent = '正在录制 MP4...';
+                const stream = canvas.captureStream(30);
+
+                let mimeType = 'video/mp4';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm';
+                }
+
+                const recorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 2500000
+                });
+                const chunks = [];
+
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: mimeType });
+                    const link = document.createElement('a');
+                    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                    link.download = `video-cover-dark.${ext}`;
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                    status.textContent = `视频生成完成！(${(blob.size / 1024).toFixed(0)}KB)`;
+                    setTimeout(() => status.textContent = '', 3000);
+                };
+
+                recorder.start();
+                setTimeout(() => recorder.stop(), 3000);
+            } catch (err) {
+                status.textContent = '录制失败，请使用 WebM 格式';
+                setTimeout(() => status.textContent = '', 3000);
+            }
+        }
+    </script>
+</body>
+</html>

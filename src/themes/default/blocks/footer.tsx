@@ -2,7 +2,6 @@
 import { Link } from '@/core/i18n/navigation';
 import {
   BrandLogo,
-  BuiltWith,
   Copyright,
   LocaleSelector,
   ThemeToggler,

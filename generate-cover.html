@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>这声 - 视频封面生成器</title>
+</head>
+<body style="margin: 0; padding: 20px; background: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+    <canvas id="cover" width="1920" height="1080"></canvas>
+    <div style="margin-top: 20px;">
+        <button onclick="downloadPNG()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px;">下载 PNG</button>
+        <button onclick="downloadJPG()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">下载 JPG</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cover');
+        const ctx = canvas.getContext('2d');
+
+        // 渐变背景
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(0.5, '#764ba2');
+        gradient.addColorStop(1, '#f093fb');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 半透明叠加层
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 声波效果
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x += 10) {
+                const y = canvas.height / 2 + Math.sin((x + i * 100) * 0.01) * (50 + i * 30);
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // 小尺寸logo图标（左上角）
+        const logoX = 120;
+        const logoY = 120;
+        const logoLayers = 5;
+        const logoRadius = 25;
+
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00d4ff';
+
+        for (let i = 0; i < logoLayers; i++) {
+            const radius = logoRadius + i * 12;
+            const sides = 6;
+            const rotation = (i * Math.PI) / 12;
+
+            ctx.beginPath();
+            for (let j = 0; j <= sides; j++) {
+                const angle = (j * 2 * Math.PI) / sides + rotation;
+                const x = logoX + radius * Math.cos(angle);
+                const y = logoY + radius * Math.sin(angle);
+                if (j === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        ctx.shadowBlur = 0;
+
+        // 产品名称
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 180px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('这声', canvas.width / 2, canvas.height / 2 - 100);
+
+        // 英文名
+        ctx.font = '48px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillText('Voice Beyond Language', canvas.width / 2, canvas.height / 2 + 50);
+
+        // 标语
+        ctx.font = '42px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillText('你的声音，跨越语言，情感如初', canvas.width / 2, canvas.height / 2 + 150);
+
+        function downloadPNG() {
+            const link = document.createElement('a');
+            link.download = 'video-cover.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadJPG() {
+            const link = document.createElement('a');
+            link.download = 'video-cover.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.click();
+        }
+    </script>
+</body>
+</html>
