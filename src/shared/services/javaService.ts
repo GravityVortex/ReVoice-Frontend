@@ -94,5 +94,5 @@ export async function getTaskProgress(taskId: string) {
   if (backJO.code !== 200) {
     throw new Error(`Failed to get pre-signed URL: ${backJO.message}`);
   }
-  return backJO.data;
+  return backJO.data.tasks;
 }

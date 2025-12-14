@@ -299,6 +299,12 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     toast.info('调用宝python生成语音试听...')
   };
 
+  const onVideoSaveClick = () => {
+    console.log('保存按钮--->');
+    // TODO: 实现视频合成保存
+    toast.info('合成视频中，敬请期待...')
+  };
+
   // 字幕保存
   const handleSave = async (item: SubtitleComparisonData, type: string) => {
     try {
@@ -368,7 +374,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
             <Button
               variant="outline"
               size="sm"
-              onClick={loadSrtFiles}
+              onClick={onVideoSaveClick}
             >
               保存
             </Button>

@@ -1,9 +1,10 @@
-
 // 前端轮询请求接口
 import { getSystemConfigByKey, JAVA_SERVER_BASE_URL, USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
-import { findVtTaskMainById} from '@/shared/models/vt_task_main';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
+import { getTaskProgress } from '@/shared/services/javaService';
+
 import { doPost } from '../../request-proxy/route';
 
 export const runtime = 'nodejs';
@@ -22,106 +23,47 @@ export async function GET(req: Request) {
     // 1. 查询Item
     const taskItem = await findVtTaskMainById(taskId);
 
-
     let mockProgress: any = [];
     // 如果progress为true，查询进度列表
     if (progress === 'true') {
       // 2. TODO 转发java轮询获取进度列表
       if (USE_JAVA_REQUEST) {
-        const url = `${JAVA_SERVER_BASE_URL}/api/video-task/getTaskProgress?taskId=${taskId}&progress=true`;
-        const params = `{"taskId":${taskId}, "progress":${progress}}`;// json格式string
-        const headers = {
-          'Authorization': '',
-        };
-        const backJO = await doPost(url, params, headers);
-        const jsonData = await backJO.json();
-        console.log('服务器之间POST请求响应--->', JSON.stringify(jsonData));
-        mockProgress = jsonData;
-      }
-      else {
+        const taskArr = await getTaskProgress(taskId);
+        console.log('服务器之间POST请求响应--->', taskArr);
+        mockProgress = taskArr;
+      } else {
         // 模拟返回的进度数据 - 符合 TaskStep 接口
         const baseTime = Date.now() - 300000; // 5分钟前
         mockProgress = [
           {
-            id: 1,
-            startedAt: baseTime,
-            completedAt: baseTime + 15000,
-            stepName: '任务创建',
-            stepStatus: 'completed',
-            errorMessage: '',
+            stepName: 'split_audio_video',
+            status: 'completed',
+            progress: 10,
+            startedAt: '2025-12-12T10:00:00',
+            completedAt: '2025-12-12T10:05:00',
           },
           {
-            id: 2,
-            startedAt: baseTime + 15000,
-            completedAt: baseTime + 45000,
-            stepName: '音视频分离',
-            stepStatus: 'completed',
-            errorMessage: '',
+            stepName: 'split_vocal_bkground',
+            status: 'completed',
+            progress: 25,
+            startedAt: '2025-12-12T10:05:00',
+            completedAt: '2025-12-12T10:15:00',
           },
           {
-            id: 3,
-            startedAt: baseTime + 45000,
-            completedAt: baseTime + 80000,
-            stepName: '人声背景分离',
-            stepStatus: 'completed',
-            errorMessage: '',
+            stepName: 'tts',
+            status: 'processing',
+            progress: 45,
+            startedAt: '2025-12-12T10:15:00',
+            completedAt: null,
           },
-          {
-            id: 4,
-            startedAt: baseTime + 80000,
-            completedAt: baseTime + 130000,
-            stepName: '生成原始字幕',
-            stepStatus: 'completed',
-            errorMessage: '',
-          },
-          {
-            id: 5,
-            startedAt: baseTime + 130000,
-            completedAt: baseTime + 170000,
-            stepName: '翻译字幕',
-            stepStatus: 'completed',
-            errorMessage: '',
-          },
-          {
-            id: 6,
-            startedAt: baseTime + 170000,
-            completedAt: baseTime + 195000,
-            stepName: '音频切片',
-            stepStatus: 'completed',
-            errorMessage: '',
-          },
-          {
-            id: 7,
-            startedAt: baseTime + 195000,
-            completedAt: 0,
-            stepName: '语音合成',
-            stepStatus: 'processing',
-            errorMessage: '',
-          },
-          {
-            id: 8,
-            startedAt: 0,
-            completedAt: 0,
-            stepName: '音频时间对齐',
-            stepStatus: 'pending',
-            errorMessage: '',
-          },
-          {
-            id: 9,
-            startedAt: 0,
-            completedAt: 0,
-            stepName: '合并音频',
-            stepStatus: 'pending',
-            errorMessage: '',
-          },
-          {
-            id: 10,
-            startedAt: 0,
-            completedAt: 0,
-            stepName: '合并音视频',
-            stepStatus: 'pending',
-            errorMessage: '',
-          },
+          // {
+          //   id: 10,
+          //   startedAt: 0,
+          //   completedAt: 0,
+          //   stepName: '合并音视频',
+          //   stepStatus: 'pending',
+          //   errorMessage: '',
+          // },
         ];
       }
     }
@@ -136,9 +78,8 @@ export async function GET(req: Request) {
       data: {
         taskItem: taskItem,
         progressList: mockProgress,
-      }
+      },
     });
-
   } catch (e) {
     console.log('failed:', e);
     return respErr('failed');
