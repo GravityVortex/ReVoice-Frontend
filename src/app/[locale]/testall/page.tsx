@@ -8,7 +8,6 @@ import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import EncryptionUtil from '@/shared/lib/EncryptionUtil'
 import EncryptionUtilSimple from '@/shared/lib/EncryptionUtilSimple'
 import RequestUtils from '@/shared/lib/RequestUtils'
 
@@ -52,7 +51,6 @@ export default function TestFingerprintPage() {
   }));
   const [encryptedOutput, setEncryptedOutput] = useState<string>('');
   const [decryptedOutput, setDecryptedOutput] = useState<string>('');
-  const [encryptionType, setEncryptionType] = useState<'util' | 'simple'>('util');
 
   // 积分测试相关状态
   const [creditAction, setCreditAction] = useState<'consume' | 'refund'>('consume');
@@ -100,9 +98,7 @@ export default function TestFingerprintPage() {
   const handleEncrypt = () => {
     try {
       const data = JSON.parse(encryptionInput);
-      const encrypted = encryptionType === 'util'
-        ? EncryptionUtil.encryptRequest(data)
-        : EncryptionUtilSimple.encryptRequest(data);
+      const encrypted = EncryptionUtilSimple.encryptRequest(data);
       // 保存加密结果
       setEncryptedOutput(encrypted);
       // 清空解密结果
@@ -119,9 +115,7 @@ export default function TestFingerprintPage() {
         toast.error('请先加密数据');
         return;
       }
-      const decrypted = encryptionType === 'util'
-        ? EncryptionUtil.decryptRequest(encryptedOutput)
-        : EncryptionUtilSimple.decryptRequest(encryptedOutput);
+      const decrypted = EncryptionUtilSimple.decryptRequest(encryptedOutput);
       setDecryptedOutput(JSON.stringify(decrypted, null, 2));
       toast.success('解密成功！');
     } catch (error: any) {
@@ -309,18 +303,11 @@ export default function TestFingerprintPage() {
     };
 
     // 加密响应
-    const encryptedRequestData = EncryptionUtil.encryptRequest(requestDataPre);
-    console.log('加密密文--->', encryptedRequestData);
-    // 解密并验证请求
-    const requestData = EncryptionUtil.decryptRequest(encryptedRequestData);
-    console.log('解密明文--->', requestData);
-
-    // 加密响应
     const encryptedRequestData2 = EncryptionUtilSimple.encryptRequest(requestDataPre);
     console.log('加密密文--->', encryptedRequestData2);
     // 解密并验证请求
     const requestData2 = EncryptionUtilSimple.decryptRequest(encryptedRequestData2);
-    console.log('解密明文--->', requestData);
+    console.log('解密明文--->', requestData2);
 
 
   }, []);
@@ -506,25 +493,6 @@ export default function TestFingerprintPage() {
           </CardHeader>
           {expandedCards.encryption && <CardContent>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">加密类型</label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={encryptionType === 'util' ? 'default' : 'outline'}
-                    onClick={() => setEncryptionType('util')}
-                    size="sm"
-                  >
-                    EncryptionUtil
-                  </Button>
-                  <Button
-                    variant={encryptionType === 'simple' ? 'default' : 'outline'}
-                    onClick={() => setEncryptionType('simple')}
-                    size="sm"
-                  >
-                    EncryptionUtilSimple
-                  </Button>
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">输入 JSON 数据</label>

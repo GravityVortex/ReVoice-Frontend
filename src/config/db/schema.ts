@@ -6,6 +6,7 @@ import {
   text,
   varchar,
   timestamp,
+  json,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable(
@@ -658,7 +659,7 @@ export const vtTaskSubtitle = pgTable(
       .references(() => vtTaskMain.id, { onDelete: 'cascade' }),
     userId: varchar('user_id', { length: 50 }).notNull(),
     stepName: varchar('step_name', { length: 50 }).notNull(),
-    subtitleData: text('subtitle_data', { mode: 'json' }).notNull(),
+    subtitleData: json('subtitle_data').notNull(),
     subtitleFormat: varchar('subtitle_format', { length: 20 }),
     language: varchar('language', { length: 20 }),
     createdBy: varchar('created_by', { length: 64 }).notNull(),
