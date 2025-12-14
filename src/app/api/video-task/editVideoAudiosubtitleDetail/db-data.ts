@@ -89,8 +89,8 @@ export const getDBJsonData = async (taskMainId: string) => {
         { path: noSoundVideoUrl, operation: 'download', expirationMinutes: 8 * 24 * 60 }, // 背景音频
       ];
       const resUrlArr = await getPreSignedUrl(params);
-      noSoundVideoUrl = resUrlArr[0];
-      backgroundAudioUrl = resUrlArr[1];
+      noSoundVideoUrl = resUrlArr[0].url;
+      backgroundAudioUrl = resUrlArr[1].url;
     } else {
       // 调用自己的接口
       const r2KeyArr = [noSoundVideoUrl, backgroundAudioUrl];

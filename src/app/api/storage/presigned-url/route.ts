@@ -1,10 +1,14 @@
 // 前端上传file到后端，后端生成presigned url，前端直接上传到R2，绕过4.5M的限制
 import { NextRequest, NextResponse } from 'next/server';
-import { getStorageService } from '@/shared/services/storage';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { doGet, doPost } from '@/app/api/request-proxy/route';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { file } from 'zod';
 
+import { getPrivateR2UploadSignUrl } from '@/extensions/storage/privateR2Util';
+import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
+import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
+import { getStorageService } from '@/shared/services/storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +23,6 @@ export async function POST(request: NextRequest) {
     //   console.log('服务器之间GET请求响应--->', JSON.stringify(jsonData));
     //   // return NextResponse.json(jsonData);
 
-      
     //   const url2 = 'https://xbhixixxbxdfmrzkbcya.supabase.co/functions/v1/sayHello';
     //   const params2 = '{"name":"李四"}';// json格式string
     //   const headers = {
@@ -32,56 +35,70 @@ export async function POST(request: NextRequest) {
 
     // }
 
-
     if (!filename) {
       return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
     }
 
-    // TODO: 调用java接口生成presigned url
-    // ...
+    // DOEND: 调用java接口生成presigned url
+    if (USE_JAVA_REQUEST) {
+      const keyV = `uploads/${Date.now()}-${filename}`;
+      const params: SignUrlItem[] = [{ path: keyV, operation: 'upload', expirationMinutes: 2 * 60 }];
+      const resUrlArr = await getPreSignedUrl(params);
+      const { path, operation, url, expiresAt } = resUrlArr[0];
 
-    const storageService = await getStorageService();
-    // const provider = storageService.getDefaultProvider();
-    const provider = storageService.getProvider('r2');
+      // 预览URL
+      const params2: SignUrlItem[] = [
+        { path: path, operation: 'download', expirationMinutes: 240 }, // 预览视频
+      ];
+      const resUrlArr2 = await getPreSignedUrl(params2);
+      const publicUrl = resUrlArr2[0].url;
 
-    if (!provider || provider.name !== 'r2') {
-      return NextResponse.json({ error: 'R2 not configured' }, { status: 500 });
+      return NextResponse.json({ presignedUrl: url, key: keyV, publicUrl, r2Bucket: '' });
+    } else {
+      const { presignedUrl, keyV, publicUrl, bucketName } = await getPrivateR2UploadSignUrl(contentType, filename);
+      return NextResponse.json({ presignedUrl, key: keyV, publicUrl, r2Bucket: bucketName });
     }
 
-    const r2Config = (provider as any).configs;
-    const key = `uploads/${Date.now()}-${filename}`;
+    // const storageService = await getStorageService();
+    // // const provider = storageService.getDefaultProvider();
+    // const provider = storageService.getProvider('r2');
 
-    const endpoint = r2Config.endpoint || `https://${r2Config.accountId}.r2.cloudflarestorage.com`;
-
-    const s3Client = new S3Client({
-      region: r2Config.region || 'auto',
-      endpoint,
-      credentials: {
-        accessKeyId: r2Config.accessKeyId,
-        secretAccessKey: r2Config.secretAccessKey,
-      },
-    });
-
-    const command = new PutObjectCommand({
-      Bucket: r2Config.bucket,
-      Key: key,
-      ContentType: contentType || 'video/mp4',
-    });
-
-    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-
-    const publicUrl = r2Config.publicDomain
-      ? `${r2Config.publicDomain}/${key}`
-      : `${endpoint}/${r2Config.bucket}/${key}`;
-
-    // {
-    //   "presignedUrl": "https://video-store.a611f60c1436512acfe03a1efe79a50a.r2.cloudflarestorage.com/uploads/1764719912423-test2.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=f0502145157ae21bb75b13827acb0e64%2F20251202%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20251202T235832Z&X-Amz-Expires=3600&X-Amz-Signature=9881566d7f2b89da28bcc936a595df1b98e98fec90c1ce5ee84d1656da33255b&X-Amz-SignedHeaders=host&x-amz-checksum-crc32=AAAAAA%3D%3D&x-amz-sdk-checksum-algorithm=CRC32&x-id=PutObject",
-    //   "key": "uploads/1764719912423-test2.mp4",
-    //   "publicUrl": "https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/uploads/1764719912423-test2.mp4"
+    // if (!provider || provider.name !== 'r2') {
+    //   return NextResponse.json({ error: 'R2 not configured' }, { status: 500 });
     // }
-    const r2Bucket = r2Config.bucket || 'video-store';
 
-    return NextResponse.json({ presignedUrl, key, publicUrl, r2Bucket});
+    // const r2Config = (provider as any).configs;
+    // const key = `uploads/${Date.now()}-${filename}`;
+
+    // const endpoint = r2Config.endpoint || `https://${r2Config.accountId}.r2.cloudflarestorage.com`;
+
+    // const s3Client = new S3Client({
+    //   region: r2Config.region || 'auto',
+    //   endpoint,
+    //   credentials: {
+    //     accessKeyId: r2Config.accessKeyId,
+    //     secretAccessKey: r2Config.secretAccessKey,
+    //   },
+    // });
+
+    // const command = new PutObjectCommand({
+    //   Bucket: r2Config.bucket,
+    //   Key: key,
+    //   ContentType: contentType || 'video/mp4',
+    // });
+
+    // const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+    // const publicUrl = r2Config.publicDomain ? `${r2Config.publicDomain}/${key}` : `${endpoint}/${r2Config.bucket}/${key}`;
+
+    // // {
+    // //   "presignedUrl": "https://video-store.a611f60c1436512acfe03a1efe79a50a.r2.cloudflarestorage.com/uploads/1764719912423-test2.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=f0502145157ae21bb75b13827acb0e64%2F20251202%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20251202T235832Z&X-Amz-Expires=3600&X-Amz-Signature=9881566d7f2b89da28bcc936a595df1b98e98fec90c1ce5ee84d1656da33255b&X-Amz-SignedHeaders=host&x-amz-checksum-crc32=AAAAAA%3D%3D&x-amz-sdk-checksum-algorithm=CRC32&x-id=PutObject",
+    // //   "key": "uploads/1764719912423-test2.mp4",
+    // //   "publicUrl": "https://pub-df378f36240d4648afc4ca279c89cd0c.r2.dev/uploads/1764719912423-test2.mp4"
+    // // }
+    // const r2Bucket = r2Config.bucket || 'video-store';
+
+    // return NextResponse.json({ presignedUrl, key, publicUrl, r2Bucket });
   } catch (error) {
     console.error('Error generating presigned URL:', error);
     return NextResponse.json({ error: 'Failed to generate presigned URL' }, { status: 500 });

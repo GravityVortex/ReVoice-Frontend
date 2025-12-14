@@ -29,14 +29,14 @@ import { toast } from 'sonner';
 
 // 语言选项
 const LANGUAGES = [
-    { value: 'zh-CN', key: 'zh-CN' },
-    { value: 'en-US', key: 'en-US' },
+    { value: 'zh', key: 'zh' },
+    { value: 'en', key: 'en' },
 ];
 
 // 单人多人
 const PEOPLES_OPTIONS = [
-    { value: 'single', key: 'single', credits: 0 },
-    { value: 'multiple', key: 'multiple', credits: 0 },
+    { value: '1', key: 'single', credits: 0 },
+    { value: '2', key: 'multiple', credits: 0 },
 ];
 interface Config {
     maxFileSizeMB: number;
@@ -59,9 +59,9 @@ interface VideoUploadData {
 
 interface FormData {
     videoUpload: VideoUploadData;
-    sourceLanguage: string;// 源语言代码(如:zh-CN)
-    targetLanguage: string;// 目标语言代码(如:en-US)
-    peoples: string;//说话人数量:single/multiple
+    sourceLanguage: string;// 源语言代码(如:zh)
+    targetLanguage: string;// 目标语言代码(如:en)
+    peoples: string;//说话人数量:1:single/2:multiple
 }
 
 interface ProjectAddConvertModalProps {
@@ -107,9 +107,9 @@ export function ProjectAddConvertModal({
             r2Key: '',
             r2Bucket: '',
         },
-        targetLanguage: 'en-US',// 目标语言代码(如:en-US)
-        sourceLanguage: 'zh-CN',// 源语言代码(如:zh-CN)
-        peoples: 'single',// 说话人数量:single/multiple
+        targetLanguage: 'en',// 目标语言代码(如:en)
+        sourceLanguage: 'zh',// 源语言代码(如:zh)
+        peoples: '1',// 说话人数量:1:single/2:multiple
     });
     const [config, setConfig] = useState<Config>({
         maxFileSizeMB: 300 * 1024 * 1024,
@@ -231,9 +231,9 @@ export function ProjectAddConvertModal({
                 r2Key: '',
                 r2Bucket: '',
             },
-            targetLanguage: 'en-US',// 目标语言代码(如:en-US)
-            sourceLanguage: 'zh-CN',// 源语言代码(如:zh-CN)
-            peoples: 'single',// 说话人数量:single/multiple
+            targetLanguage: 'en',// 目标语言代码(如:en)
+            sourceLanguage: 'zh',// 源语言代码(如:zh)
+            peoples: '1',// 说话人数量:1:single/2:multiple
         });
     };
 
@@ -295,7 +295,7 @@ export function ProjectAddConvertModal({
                 resolve();
             };
         });
-        
+
 
         try {
 
@@ -502,9 +502,9 @@ export function ProjectAddConvertModal({
         // {
         //     "userId": "user_123456",
         //     "originalFileId": "file_id_001",
-        //     "sourceLanguage": "zh-CN",
-        //     "targetLanguage": "en-US",
-        //     "speakerCount": "single",
+        //     "sourceLanguage": "zh",
+        //     "targetLanguage": "en",
+        //     "speakerCount": "1",
         //     "status": "pending",
         //     "priority": 3,// 优先级:1=最高,4=最低
         //     "progress": 0,

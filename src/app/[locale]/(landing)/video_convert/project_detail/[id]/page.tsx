@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, getPreviewCoverUrl, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getPreviewCoverUrl, getPreviewUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -53,6 +53,7 @@ import { ThemeToggler } from "@/shared/blocks/common/theme-toggler";
 import { LeftMenuPanel } from "./LeftMenuPanel";
 import { RightContentPanel } from "./RightContentPanel";
 import { LocaleSelector, SignUser } from "@/shared/blocks/common";
+import { user } from "@/config/db/schema";
 
 //         "videoItem": {
 //             "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
@@ -210,7 +211,7 @@ export default function ProjectDetailPage() {
         setIsAddDialogOpen(true);
         break;
       case "edit":
-        setProjectItem({ ...videoDetail});
+        setProjectItem({ ...videoDetail });
         setIsEditDialogOpen(true);
         break;
       case "backList":
@@ -361,8 +362,8 @@ export default function ProjectDetailPage() {
     if (videoDetail?.coverR2Key && preUrl) {
       // const coverUrl = getPreviewUrl(videoDetail.userId, videoDetail.id, preUrl, videoDetail.coverR2Key);
       const img = new Image();
-      img.src = videoDetail?.cover;
-      img.onload = () => setLeftCoverSrc(videoDetail?.cover);
+      img.src = videoDetail?.cover || '';
+      img.onload = () => setLeftCoverSrc(videoDetail?.cover || '');
       img.onerror = () => setLeftCoverSrc('/imgs/cover_video_def.jpg');
     }
   }, [videoDetail?.coverR2Key, preUrl]);
@@ -595,7 +596,7 @@ export default function ProjectDetailPage() {
       const bucketName = videoFinalItem.r2Bucket;
 
       // 调用下载 API 获取签名 URL，60秒过期
-      const response = await fetch(`/api/video-task/download-video?bucket=${bucketName}&key=${encodeURIComponent(key)}&expiresIn=60`);
+      const response = await fetch(`/api/video-task/download-video?taskId=${taskMain.id}&bucket=${bucketName}&key=${encodeURIComponent(key)}&expiresIn=60`);
       const data = await response.json();
 
       if (data.code !== 0) {
@@ -760,7 +761,7 @@ export default function ProjectDetailPage() {
         <VideoPlayerModal
           isOpen={isPlayerOpen}
           onClose={handleClosePlayer}
-          videoUrl={playVideo}
+          videoUrl={getVideoR2PathName(videoDetail?.userId || '', taskMainId, playVideo)}
           title={playVideoTitle}
         />
       )}

@@ -28,8 +28,8 @@
     "selectPlaceholder": "Please select"
   },
   "languages": {
-    "zh-CN": "Chinese",
-    "en-US": "English"
+    "zh": "Chinese",
+    "en": "English"
   },
   "speakers": {
     "single": "Single",
