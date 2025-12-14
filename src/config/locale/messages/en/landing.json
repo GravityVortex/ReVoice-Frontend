@@ -2,10 +2,10 @@
   "header": {
     "id": "header",
     "brand": {
-      "title": "ShipAny Two",
+      "title": "ReVoice",
       "logo": {
         "src": "/logo.png",
-        "alt": "ShipAny Two"
+        "alt": "ReVoice"
       },
       "url": "/"
     },
@@ -18,47 +18,13 @@
         },
         {
           "title": "Showcases",
-          "url": "/showcases",
+          "url": "/#showcases",
           "icon": "Box"
         },
         {
           "title": "Pricing",
           "url": "/pricing",
           "icon": "DollarSign"
-        },
-        {
-          "title": "AI",
-          "icon": "RiRobot2Line",
-          "children": [
-            {
-              "title": "AI Image Generator",
-              "description": "Use AI to generate images",
-              "url": "/ai-image-generator",
-              "icon": "RiImage2Line"
-            },
-            {
-              "title": "AI Music Generator",
-              "description": "Use AI to generate music",
-              "url": "/ai-music-generator",
-              "icon": "RiMusic2Line"
-            },
-            {
-              "title": "AI Chatbot",
-              "description": "Chat with AI chatbot",
-              "url": "/chat",
-              "icon": "RiMessage2Line"
-            }
-          ]
-        },
-        {
-          "title": "Blog",
-          "url": "/blog",
-          "icon": "Newspaper"
-        },
-        {
-          "title": "Docs",
-          "url": "/docs",
-          "icon": "BookOpenText"
         }
       ]
     },
@@ -69,7 +35,7 @@
       "show_sign_out": true,
       "items": [
         {
-          "title": "video",
+          "title": "Video",
           "url": "/video_convert/myVideoList",
           "icon": "Video"
         },
@@ -91,45 +57,45 @@
   },
   "hero": {
     "id": "hero",
-    "title": "Ship AI Startups in hours, not days",
-    "highlight_text": "in hours",
-    "description": "ShipAny is a NextJS boilerplate for building AI SaaS startups.<br/>Ship Fast with a variety of templates and components.",
+    "title": "Your voice, every language, same emotion",
+    "highlight_text": "same emotion",
+    "description": "AI-powered video translation that keeps your original tone and feeling<br/>So you sound like you, in any language",
     "announcement": {
       "badge": "New",
-      "title": "🎉 ShipAny Template Two",
+      "title": "🎉 ReVoice is now live",
       "url": "/pricing"
     },
-    "tip": "🎁 Special offer for the first 1000 users",
+    "tip": "Translate with soul",
     "buttons": [
       {
-        "title": "Get Started",
-        "icon": "Zap",
-        "url": "/pricing",
+        "title": "Try ReVoice free today",
+        "icon": "Play",
+        "url": "/video_convert",
         "target": "_self",
         "variant": "default"
       },
       {
-        "title": "Read Document",
-        "icon": "BookOpenText",
-        "url": "/docs",
-        "target": "_blank",
+        "title": "View Showcases",
+        "icon": "Video",
+        "url": "/#showcases",
+        "target": "_self",
         "variant": "outline"
       }
     ],
     "show_avatars": true,
-    "avatars_tip": "999+ users are using ShipAny",
+    "avatars_tip": "1000+ creators using ReVoice",
     "show_award": false,
     "image": {
       "src": "/imgs/features/admin.png",
-      "alt": "hero"
+      "alt": "ReVoice video translation showcase"
     },
     "image_invert": {
       "src": "/imgs/features/admin-dark.png",
-      "alt": "hero"
+      "alt": "ReVoice video translation showcase"
     }
   },
   "logos": {
-    "title": "ShipAny is built on the shoulders of giants",
+    "title": "ReVoice - by Gravity Cyclone",
     "items": [
       {
         "title": "Next.js",
@@ -170,305 +136,346 @@
   },
   "introduce": {
     "id": "introduce",
-    "title": "What is ShipAny",
-    "label": "Introduce",
-    "description": "ShipAny is a NextJS boilerplate for building AI SaaS startups, including templates, components, and documentation.",
+    "title": "What is ReVoice?",
+    "label": "Product Introduction",
+    "description": "ReVoice is an AI-powered video translation tool that preserves your original voice tone and emotion, helping your voice cross language barriers.",
     "image": {
-      "src": "/imgs/features/landing-page.png",
-      "alt": "introduce"
+      "src": "/imgs/showcases/case1.jpg",
+      "alt": "ReVoice product introduction"
     },
     "items": [
       {
-        "title": "Ready-to-use Templates",
-        "description": "Choose from dozens of production-ready AI SaaS templates to quickly start your project.",
-        "icon": "RiNextjsFill",
+        "title": "Human-like Translation",
+        "description": "AI deep learning technology delivers natural, fluent voice translation that rivals professional dubbing.",
+        "icon": "Mic",
         "image": {
           "src": "/imgs/features/1.png",
-          "alt": "introduce"
+          "alt": "Voice translation"
         }
       },
       {
-        "title": "Infrastructure Setup",
-        "description": "Get instant access to scalable infrastructure with best practices built-in.",
-        "icon": "RiDatabase2Line",
+        "title": "Voice Cloning Technology",
+        "description": "Precisely clones your voice characteristics, maintaining your unique tone and speaking style.",
+        "icon": "UserVoice",
         "image": {
           "src": "/imgs/features/2.png",
-          "alt": "introduce"
+          "alt": "Voice cloning"
         }
       },
       {
-        "title": "Quick Deployment",
-        "description": "Deploy your AI SaaS application to production in hours, not days.",
-        "icon": "RiCloudyFill",
+        "title": "Multilingual Cloning",
+        "description": "Supports bidirectional translation and cloning between Chinese and English, reaching global audiences.",
+        "icon": "Languages",
         "image": {
           "src": "/imgs/features/3.png",
-          "alt": "introduce"
+          "alt": "Multilingual cloning"
         }
       },
       {
-        "title": "AI Integration",
-        "description": "Integrate AI into your project with ease using our built-in AI SDK.",
-        "icon": "RiRobot2Line",
+        "title": "Background Audio Preservation",
+        "description": "Intelligently separates voice from background audio, perfectly preserving original video music and sound effects after translation.",
+        "icon": "Music",
         "image": {
           "src": "/imgs/features/4.png",
-          "alt": "introduce"
+          "alt": "Background audio preservation"
         }
       }
     ]
   },
   "benefits": {
     "id": "benefits",
-    "title": "Why Choose ShipAny",
-    "label": "Benefits",
-    "description": "Get everything you need to launch your AI startup - from ready-to-use templates to technical support.",
+    "title": "ReVoice Use Cases",
+    "label": "Multi-scenario Applications",
+    "description": "From content creation to educational outreach, ReVoice helps industries break language barriers and reach global audiences.",
     "items": [
       {
-        "title": "Complete Framework",
-        "description": "Built on Next.js with authentication, payments, and AI integration - everything works out of the box.",
-        "icon": "RiNextjsFill",
+        "title": "Content Creators Going Global",
+        "description": "Translate Chinese videos into English, Japanese, and more with one click, preserving your unique voice to easily expand into overseas markets and grow your influence.",
+        "icon": "Video",
         "image": {
-          "src": "/imgs/features/user-billing.png",
-          "alt": "benefits"
+          "src": "/imgs/showcases/case1.jpg",
+          "alt": "Content creators"
         }
       },
       {
-        "title": "Rich Templates Library",
-        "description": "Choose from various AI SaaS templates to kickstart your project - chatbots, image generation, and more.",
-        "icon": "RiClapperboardAiLine",
+        "title": "Educational Content Localization",
+        "description": "Translate quality English educational videos like BBC into Chinese, preserving original emotion so children can learn in their native language.",
+        "icon": "Baby",
         "image": {
-          "src": "/imgs/features/admin-settings.png",
-          "alt": "benefits"
+          "src": "/imgs/showcases/case2.jpg",
+          "alt": "Educational content"
         }
       },
       {
-        "title": "Technical Guidance",
-        "description": "Get dedicated support and join our developer community to ensure your successful launch.",
-        "icon": "RiCodeFill",
+        "title": "Cross-language Online Teaching",
+        "description": "Educators can translate courses into multiple languages, allowing students to not only read subtitles but hear natural, fluent pronunciation in their native language.",
+        "icon": "GraduationCap",
         "image": {
-          "src": "/imgs/features/landing-page.png",
-          "alt": "benefits"
+          "src": "/imgs/showcases/case3.jpg",
+          "alt": "Online teaching"
         }
       }
     ]
   },
   "usage": {
     "id": "usage",
-    "title": "How to Launch with ShipAny",
-    "description": "Get your AI SaaS startup running in three simple steps:",
+    "title": "Four Steps to Video Translation",
+    "description": "Simple four-step process to help your videos cross language barriers:",
     "image": {
       "src": "/imgs/features/1.png",
-      "alt": "usage"
+      "alt": "Usage workflow"
     },
     "image_position": "left",
     "text_align": "center",
     "items": [
       {
-        "title": "Get ShipAny",
-        "description": "Buy ShipAny with a one-time payment. Check your email for the code and documentation.",
+        "title": "Upload Video",
+        "description": "Supports multiple video formats, drag and drop or click to upload your original video file.",
+        "icon": "Upload",
         "image": {
           "src": "/imgs/features/5.png",
-          "alt": "usage"
+          "alt": "Upload video"
         }
       },
       {
-        "title": "Start Your Project",
-        "description": "Read the documentation and clone the code of ShipAny. Start building your AI SaaS startup.",
+        "title": "Select Languages",
+        "description": "Choose source and target languages, supporting translation between Chinese, English, Japanese, Korean, and more.",
+        "icon": "Languages",
         "image": {
           "src": "/imgs/features/6.png",
-          "alt": "usage"
+          "alt": "Select languages"
         }
       },
       {
-        "title": "Customize Your Project",
-        "description": "Modify the template with your data and contents. Specific AI functionality needs.",
+        "title": "Start Conversion",
+        "description": "AI intelligent processing with real-time progress bar, typically completed in just a few minutes.",
+        "icon": "Loader",
         "image": {
           "src": "/imgs/features/7.png",
-          "alt": "usage"
+          "alt": "Start conversion"
         }
       },
       {
-        "title": "Deploy to Production",
-        "description": "Deploy your project to production with a few steps and start serving customers immediately.",
+        "title": "Preview and Download",
+        "description": "Preview translation results online, download high-quality video file with one click when satisfied.",
+        "icon": "Download",
         "image": {
           "src": "/imgs/features/8.png",
-          "alt": "usage"
+          "alt": "Preview and download"
         }
       }
     ]
   },
   "features": {
     "id": "features",
-    "title": "Key Features of ShipAny",
-    "description": "Everything you need to launch your AI SaaS startup quickly and efficiently.",
+    "title": "Why Choose ReVoice",
+    "description": "Leading AI technology providing the most natural cross-language video experience.",
     "items": [
       {
-        "title": "Next.js Boilerplate",
-        "description": "Production-ready Next.js templates with SEO-friendly structure and i18n support.",
-        "icon": "RiNextjsFill"
+        "title": "Voice Cloning Technology",
+        "description": "Precisely replicates your tone, intonation, and speaking habits, so the translated voice still sounds like you.",
+        "icon": "Mic"
       },
       {
-        "title": "Authentication & Payments",
-        "description": "Integrated Google OAuth, one-tap login, and Stripe payment processing.",
-        "icon": "RiKey2Fill"
+        "title": "Perfect Background Audio Preservation",
+        "description": "Intelligently separates voice from background audio, preserving original video music and sound effects after translation.",
+        "icon": "Music"
       },
       {
-        "title": "Data Infrastructure",
-        "description": "Built-in Supabase integration for reliable and scalable data storage.",
-        "icon": "RiDatabase2Line"
+        "title": "Multi-language Support",
+        "description": "Supports mainstream languages including Chinese, English, Japanese, and Korean, with more languages coming soon.",
+        "icon": "Languages"
       },
       {
-        "title": "One-Click Deployment",
-        "description": "Seamless deployment to Vercel or Cloudflare with automated setup.",
-        "icon": "RiCloudy2Fill"
+        "title": "Emotion Preservation",
+        "description": "AI deep learning captures original voice emotion, maintaining the same emotional expression after translation.",
+        "icon": "Heart"
       },
       {
-        "title": "Business Analytics",
-        "description": "Integrated Google Analytics and Search Console for tracking growth.",
-        "icon": "RiBarChart2Line"
+        "title": "Fast Processing",
+        "description": "Efficient AI algorithms typically complete video translation processing in just a few minutes.",
+        "icon": "Zap"
       },
       {
-        "title": "AI-Ready Infrastructure",
-        "description": "Pre-configured AI integration with built-in credits system and API sales.",
-        "icon": "RiRobot2Line"
+        "title": "More Possibilities Ahead",
+        "description": "Coming soon: free replacement of tone, language, emotion, and content - four key elements. Stay tuned!",
+        "icon": "Sparkles"
       }
     ]
   },
   "stats": {
     "id": "stats",
-    "title": "People Love ShipAny",
-    "description": "for it's easy to use and fast to ship.",
+    "title": "Users Trust ReVoice",
+    "description": "Because we make voices cross languages with emotions intact.",
     "items": [
       {
-        "title": "999+",
-        "description": "Customers"
+        "title": "1000+",
+        "description": "Creators"
       },
       {
-        "title": "200+",
-        "description": "Blocks"
+        "title": "10000+",
+        "description": "Video Translations"
       },
       {
-        "title": "50+",
-        "description": "Templates"
+        "title": "20+",
+        "description": "Language Support"
+      }
+    ]
+  },
+  "showcases": {
+    "id": "showcases",
+    "title": "Video Showcase",
+    "description": "See how other creators use ReVoice to break language barriers",
+    "items": [
+      {
+        "title": "Content Creator Going Global",
+        "description": "Chinese food video translated to English, preserving original voice tone, successfully expanding overseas market with 300% follower growth",
+        "image": {
+          "src": "/imgs/showcases/case1.jpg",
+          "alt": "Content creator showcase"
+        },
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "title": "Educational Content Localization",
+        "description": "BBC English science videos translated to Chinese, preserving original emotion for children to learn in their native language",
+        "image": {
+          "src": "/imgs/showcases/case2.jpg",
+          "alt": "Educational content showcase"
+        },
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "title": "Multilingual Online Courses",
+        "description": "Programming tutorial videos generated in Chinese, English, Japanese, and Korean with one click, reaching students worldwide",
+        "image": {
+          "src": "/imgs/showcases/case3.jpg",
+          "alt": "Online course showcase"
+        },
+        "url": "#",
+        "target": "_self"
       }
     ]
   },
   "testimonials": {
     "id": "testimonials",
-    "title": "What Users Say About ShipAny",
-    "description": "Hear from developers and founders who launched their AI startups with ShipAny.",
+    "title": "What Users Say About ReVoice",
+    "description": "Hear from creators and educators on how ReVoice helps them break language barriers and reach global audiences.",
     "items": [
       {
-        "name": "David Chen",
-        "role": "Founder of AIWallpaper.shop",
-        "quote": "ShipAny saved us months of development time. We launched our AI wallpaper business in just 2 days and got our first paying customer within a week!",
+        "name": "Li Wei",
+        "role": "Food Vlogger",
+        "quote": "ReVoice changed everything for me. I can now share my Chinese cooking videos with English-speaking audiences while keeping my authentic voice. My international followers grew 300% in just 2 months!",
         "image": {
           "src": "/imgs/avatars/1.png",
-          "alt": "david"
+          "alt": "Li Wei"
         }
       },
       {
-        "name": "Rachel Kim",
-        "role": "CTO at HeyBeauty.ai",
-        "quote": "The pre-built AI infrastructure is a game-changer. We didn't have to worry about architecture - just focused on our AI beauty tech and went live fast.",
+        "name": "Sarah Johnson",
+        "role": "Educational Content Creator",
+        "quote": "As a parent, I wanted my kids to watch quality English educational content in Chinese. ReVoice preserves the original emotion and tone perfectly - it's like the narrator is speaking Chinese naturally!",
         "image": {
           "src": "/imgs/avatars/2.png",
-          "alt": "rachel"
+          "alt": "Sarah"
         }
       },
       {
-        "name": "Marcus Thompson",
-        "role": "Solo Developer",
-        "quote": "As a solo developer, ShipAny gave me everything I needed - auth, payments, AI integration, and beautiful UI. Launched my SaaS in a weekend!",
+        "name": "Takeshi Yamamoto",
+        "role": "Online Course Instructor",
+        "quote": "I teach programming in Japanese, but wanted to reach global students. ReVoice lets me create English, Chinese, and Korean versions in minutes. My student base expanded 5x!",
         "image": {
           "src": "/imgs/avatars/3.png",
-          "alt": "marcus"
+          "alt": "Takeshi"
         }
       },
       {
-        "name": "Sofia Garcia",
-        "role": "CEO of Melodisco",
-        "quote": "The templates are production-ready and highly customizable. We built our AI music platform in hours instead of months. Incredible time-to-market!",
+        "name": "Maria Garcia",
+        "role": "Travel Vlogger",
+        "quote": "The voice cloning is incredible - it really sounds like me speaking different languages! My Spanish travel vlogs now reach audiences in China, Japan, and Korea. Game changer!",
         "image": {
           "src": "/imgs/avatars/4.png",
-          "alt": "sofia"
+          "alt": "Maria"
         }
       },
       {
-        "name": "James Wilson",
-        "role": "Tech Lead at GPTs.works",
-        "quote": "ShipAny's infrastructure is rock-solid. We scaled from 0 to 10k users without touching the backend. Best investment for our AI startup.",
+        "name": "Chen Ming",
+        "role": "Tech Reviewer",
+        "quote": "I review gadgets in Chinese, and ReVoice helps me reach English-speaking tech enthusiasts. The background music preservation is perfect - my production quality stays intact!",
         "image": {
           "src": "/imgs/avatars/5.png",
-          "alt": "james"
+          "alt": "Chen Ming"
         }
       },
       {
-        "name": "Anna Zhang",
-        "role": "Startup Founder",
-        "quote": "From idea to launch in 3 days! ShipAny's templates and deployment tools made it possible to test our AI business concept incredibly fast.",
+        "name": "Emma Thompson",
+        "role": "Language Teacher",
+        "quote": "ReVoice is a breakthrough for language education. I can show students how the same content sounds in different languages while maintaining emotional context. Absolutely brilliant!",
         "image": {
           "src": "/imgs/avatars/6.png",
-          "alt": "anna"
+          "alt": "Emma"
         }
       }
     ]
   },
   "faq": {
     "id": "faq",
-    "title": "Frequently Asked Questions About ShipAny",
-    "description": "Have another question? Contact us on Discord or by email.",
-    "tip": "Can't find what you're looking for? Contact our <a href='https://discord.gg/HQNnrzjZQS' target='_blank' class='text-primary font-medium hover:underline'>customer support team</a>",
+    "title": "Frequently Asked Questions About ReVoice",
+    "description": "Have more questions? Feel free to contact our customer support team.",
+    "tip": "Can't find what you're looking for? Contact <a href='mailto:support@revoice.com' class='text-primary font-medium hover:underline'>our customer support team</a>",
     "items": [
       {
-        "question": "What exactly is ShipAny and how does it work?",
-        "answer": "ShipAny is a comprehensive NextJS boilerplate designed specifically for building AI SaaS startups. It provides ready-to-use templates, infrastructure setup, and deployment tools that help you launch your AI business in hours instead of days."
+        "question": "What is ReVoice and what can it do for me?",
+        "answer": "ReVoice is an AI-powered video translation tool that translates your videos into multiple languages while preserving your original voice tone and emotional expression, so you sound like yourself in any language."
       },
       {
-        "question": "Do I need advanced technical skills to use ShipAny?",
-        "answer": "While basic programming knowledge is helpful, ShipAny is designed to be developer-friendly. Our templates and documentation make it easy to get started, even if you're not an expert in AI or cloud infrastructure."
+        "question": "Can the translated voice really preserve my tone?",
+        "answer": "Yes! We use advanced AI voice cloning technology that precisely replicates your tone, intonation, and speaking habits, making the translated voice sound authentically like you."
       },
       {
-        "question": "What types of AI SaaS can I build with ShipAny?",
-        "answer": "ShipAny supports a wide range of AI applications, from content generation to data analysis tools. Our templates cover popular use cases like AI chatbots, content generators, image processing apps, and more."
+        "question": "Which languages are supported for translation?",
+        "answer": "Currently supports translation between mainstream languages including Chinese, English, Japanese, and Korean. We're continuously expanding our language support range."
       },
       {
-        "question": "How long does it typically take to launch with ShipAny?",
-        "answer": "With ShipAny, you can have a working prototype in hours and a production-ready application in hours. Our one-click deployment and pre-configured infrastructure significantly reduce the traditional months-long development cycle."
+        "question": "How long does video translation take?",
+        "answer": "Processing time depends on video length. Typically, a 5-10 minute video takes just a few minutes to complete. We provide real-time progress updates so you can track the processing status."
       },
       {
-        "question": "What's included in the ShipAny infrastructure?",
-        "answer": "ShipAny provides a complete infrastructure stack including authentication, database setup, API integration, payment processing, and scalable cloud deployment. Everything is pre-configured following industry best practices."
+        "question": "Will background music be preserved?",
+        "answer": "Yes! Our AI technology intelligently separates voice from background audio, perfectly preserving the original video's background music and sound effects after translation for a natural, seamless result."
       },
       {
-        "question": "Can I customize the templates to match my brand?",
-        "answer": "Absolutely! All ShipAny templates are fully customizable. You can modify the design, features, and functionality to match your brand identity and specific business requirements while maintaining the robust underlying infrastructure."
+        "question": "What new features are coming?",
+        "answer": "We're developing the ability to freely replace four key elements: tone, language, emotion, and content, giving you more flexibility in customizing your video content. Stay tuned!"
       }
     ]
   },
   "cta": {
     "id": "cta",
-    "title": "Ship your first AI SaaS Startup",
-    "description": "Start from here, ship with ShipAny.",
+    "title": "Let Your Voice Cross Language Barriers",
+    "description": "Start using ReVoice today and let global audiences hear your voice.",
     "buttons": [
       {
-        "title": "Get ShipAny",
-        "url": "https://shipany.ai",
-        "target": "_blank",
-        "icon": "Zap"
+        "title": "Try ReVoice Free",
+        "url": "/video_convert",
+        "target": "_self",
+        "icon": "Play"
       },
       {
-        "title": "Read Document",
-        "url": "/docs",
-        "target": "_blank",
+        "title": "View Pricing",
+        "url": "/pricing",
+        "target": "_self",
         "variant": "outline",
-        "icon": "BookOpenText"
+        "icon": "DollarSign"
       }
     ]
   },
   "subscribe": {
     "id": "subscribe",
-    "title": "Subscribe to our newsletter",
-    "description": "Get the latest news and updates from ShipAny.",
+    "title": "Subscribe to Our Newsletter",
+    "description": "Get the latest ReVoice feature updates and usage tips.",
     "submit": {
       "input": {
         "placeholder": "Enter your email"
@@ -482,18 +489,18 @@
   "footer": {
     "id": "footer",
     "brand": {
-      "title": "ShipAny Two",
-      "description": "ShipAny is a NextJS boilerplate for building AI SaaS startups. Ship Fast with a variety of templates and components.",
+      "title": "ReVoice",
+      "description": "ReVoice - AI-powered video translation tool that preserves your original voice and emotion, so you sound like yourself in any language. By Gravity Cyclone.",
       "logo": {
         "src": "/logo.png",
-        "alt": "ShipAny Two"
+        "alt": "ReVoice"
       },
       "url": "/"
     },
     "nav": {
       "items": [
         {
-          "title": "About",
+          "title": "About Us",
           "children": [
             {
               "title": "Features",
@@ -516,7 +523,7 @@
           "title": "Resources",
           "children": [
             {
-              "title": "Documents",
+              "title": "Documentation",
               "url": "/docs",
               "target": "_self"
             },
@@ -528,12 +535,12 @@
             {
               "title": "Chat",
               "url": "/chat",
-              "target": "_self"
+              "target": "_blank"
             }
           ]
         },
         {
-          "title": "Friends",
+          "title": "Partners",
           "children": [
             {
               "title": "ShipAny",

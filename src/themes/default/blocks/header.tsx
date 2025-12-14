@@ -136,11 +136,10 @@ export function Header({ header }: { header: HeaderType }) {
                   <Link
                     href={item.url || ''}
                     target={item.target || '_self'}
-                    className={`flex flex-row items-center gap-2 text-sm ${
-                      item.is_active || pathname.endsWith(item.url as string)
+                    className={`flex flex-row items-center gap-2 text-sm ${item.is_active || pathname.endsWith(item.url as string)
                         ? 'bg-muted text-muted-foreground'
                         : ''
-                    }`}
+                      }`}
                   >
                     {item.icon && <SmartIcon name={item.icon as string} />}
                     {item.title}

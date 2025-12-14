@@ -8,6 +8,7 @@ import {
   FeaturesStep,
   Hero,
   Logos,
+  Showcases,
   Stats,
   Subscribe,
   Testimonials,
@@ -29,6 +30,7 @@ export default async function LandingPage({
       {page.usage && <FeaturesStep features={page.usage} />}
       {page.features && <Features features={page.features} />}
       {page.stats && <Stats stats={page.stats} className="bg-muted" />}
+      {page.showcases && <Showcases showcases={page.showcases} />}
       {page.testimonials && <Testimonials testimonials={page.testimonials} />}
       {page.subscribe && (
         <Subscribe subscribe={page.subscribe} className="bg-muted" />

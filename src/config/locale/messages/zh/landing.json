@@ -18,47 +18,13 @@
         },
         {
           "title": "案例展示",
-          "url": "/showcases",
+          "url": "/#showcases",
           "icon": "Box"
         },
         {
           "title": "价格",
           "url": "/pricing",
           "icon": "DollarSign"
-        },
-        {
-          "title": "AI",
-          "icon": "RiRobot2Line",
-          "children": [
-            {
-              "title": "AI 图片生成器",
-              "description": "使用 AI 生成图片",
-              "url": "/ai-image-generator",
-              "icon": "RiImage2Line"
-            },
-            {
-              "title": "AI 音乐生成器",
-              "description": "使用 AI 生成美妙的音乐",
-              "url": "/ai-music-generator",
-              "icon": "RiMusic2Line"
-            },
-            {
-              "title": "AI 聊天机器人",
-              "description": "与 AI 聊天机器人对话",
-              "url": "/chat",
-              "icon": "RiMessage2Line"
-            }
-          ]
-        },
-        {
-          "title": "博客",
-          "url": "/blog",
-          "icon": "Newspaper"
-        },
-        {
-          "title": "文档",
-          "url": "/docs",
-          "icon": "BookOpenText"
         }
       ]
     },
@@ -91,45 +57,45 @@
   },
   "hero": {
     "id": "hero",
-    "title": "一小时快速上线你的 AI 创业项目",
-    "highlight_text": "一小时",
-    "description": "ShipAny 是用于构建 AI SaaS 创业项目的 NextJS 项目模板。<br/>集成常用功能，快速上线你的产品。",
+    "title": "你的声音，跨越语言，情感如初",
+    "highlight_text": "情感如初",
+    "description": "AI驱动的视频翻译，保留你的原声与情感<br/>让你在任何语言中依然是自己",
     "announcement": {
       "badge": "全新",
-      "title": "🎉 ShipAny 模板二已发布",
+      "title": "🎉 这声 ReVoice 正式上线",
       "url": "/pricing"
     },
-    "tip": "🎁 前 1000 名用户特价优惠",
+    "tip": "感受这就是你要的声音",
     "buttons": [
       {
-        "title": "立即开始",
-        "icon": "Zap",
-        "url": "/pricing",
+        "title": "今天就免费试用这声",
+        "icon": "Play",
+        "url": "/video_convert",
         "target": "_self",
         "variant": "default"
       },
       {
-        "title": "阅读文档",
-        "icon": "BookOpenText",
-        "url": "/docs",
-        "target": "_blank",
+        "title": "查看案例",
+        "icon": "Video",
+        "url": "/#showcases",
+        "target": "_self",
         "variant": "outline"
       }
     ],
     "show_avatars": true,
-    "avatars_tip": "999+ 用户在使用 ShipAny 上站",
+    "avatars_tip": "1000+ 创作者正在使用这声",
     "show_award": false,
     "image": {
       "src": "/imgs/features/admin.png",
-      "alt": "hero"
+      "alt": "这声视频翻译案例"
     },
     "image_invert": {
       "src": "/imgs/features/admin-dark.png",
-      "alt": "hero"
+      "alt": "这声视频翻译案例"
     }
   },
   "logos": {
-    "title": "ShipAny 使用以下技术栈构建",
+    "title": "这声 - 引力旋风出品",
     "items": [
       {
         "title": "Next.js",
@@ -170,305 +136,346 @@
   },
   "introduce": {
     "id": "introduce",
-    "title": "ShipAny 是什么？",
+    "title": "什么是【这声】？",
     "label": "产品简介",
-    "description": "ShipAny 是专为 AI SaaS 创业项目打造的 NextJS 脚手架，包括丰富模板、组件及文档。",
+    "description": "这声是AI驱动的视频翻译工具，保留原声音色与情感，让你的声音跨越语言障碍。",
     "image": {
-      "src": "/imgs/features/landing-page.png",
-      "alt": "introduce"
+      "src": "/imgs/showcases/case1.jpg",
+      "alt": "这声产品介绍"
     },
     "items": [
       {
-        "title": "开箱即用的模板",
-        "description": "从数十款生产级 AI SaaS 模板中选择，快速开启你的项目。",
-        "icon": "RiNextjsFill",
+        "title": "媲美人声翻译",
+        "description": "AI深度学习技术，翻译后的声音自然流畅，媲美真人配音效果。",
+        "icon": "Mic",
         "image": {
           "src": "/imgs/features/1.png",
-          "alt": "introduce"
+          "alt": "人声翻译"
         }
       },
       {
-        "title": "基础设施搭建",
-        "description": "内置最佳实践，即刻拥有可扩展的基础设施。",
-        "icon": "RiDatabase2Line",
+        "title": "人声克隆技术",
+        "description": "精准克隆你的声音特征，保持独特的音色和说话风格。",
+        "icon": "UserVoice",
         "image": {
           "src": "/imgs/features/2.png",
-          "alt": "introduce"
+          "alt": "人声克隆"
         }
       },
       {
-        "title": "极速部署",
-        "description": "AI SaaS 产品快速上线，助力小时级交付。",
-        "icon": "RiCloudyFill",
+        "title": "中英文克隆",
+        "description": "支持中英文双向翻译克隆，让你的内容触达全球观众。",
+        "icon": "Languages",
         "image": {
           "src": "/imgs/features/3.png",
-          "alt": "introduce"
+          "alt": "中英文克隆"
         }
       },
       {
-        "title": "AI 集成",
-        "description": "通过内置的 AI SDK，轻松为你的项目集成 AI 能力。",
-        "icon": "RiRobot2Line",
+        "title": "背景音保留",
+        "description": "智能分离人声与背景音，翻译后完美保留原视频的背景音乐和音效。",
+        "icon": "Music",
         "image": {
           "src": "/imgs/features/4.png",
-          "alt": "introduce"
+          "alt": "背景音保留"
         }
       }
     ]
   },
   "benefits": {
     "id": "benefits",
-    "title": "为何选择 ShipAny",
-    "label": "产品优势",
-    "description": "你获得一切 AI 创业所需——从开箱即用的模板到专业技术支持。",
+    "title": "【这声】应用案例",
+    "label": "多场景应用",
+    "description": "从内容创作到教育传播，这声帮助各行业打破语言壁垒，触达全球观众。",
     "items": [
       {
-        "title": "全栈解决方案",
-        "description": "基于 Next.js，集成认证、支付、AI，一站式开箱即用。",
-        "icon": "RiNextjsFill",
+        "title": "短视频创作者出海",
+        "description": "一键将中文视频翻译成英文、日文等多语种，保留你的独特声音，轻松开拓海外市场，扩大影响力。",
+        "icon": "Video",
         "image": {
-          "src": "/imgs/features/user-billing.png",
-          "alt": "benefits"
+          "src": "/imgs/showcases/case1.jpg",
+          "alt": "短视频创作者"
         }
       },
       {
-        "title": "丰富模板库",
-        "description": "多样的 AI SaaS 模板，点击即用，涵盖聊天、图像生成等多场景。",
-        "icon": "RiClapperboardAiLine",
+        "title": "儿童教育内容本地化",
+        "description": "将BBC等优质英文教育视频翻译成中文，保留原声情感，让孩子在熟悉的语言中学习成长。",
+        "icon": "Baby",
         "image": {
-          "src": "/imgs/features/admin-settings.png",
-          "alt": "benefits"
+          "src": "/imgs/showcases/case2.jpg",
+          "alt": "儿童教育"
         }
       },
       {
-        "title": "专属技术指导",
-        "description": "享受专属技术支持与开发者社区，为你的成功保驾护航。",
-        "icon": "RiCodeFill",
+        "title": "跨语种在线教学",
+        "description": "教育工作者可将课程翻译成多种语言，学生不仅能看字幕，更能听到自然流畅的母语发音。",
+        "icon": "GraduationCap",
         "image": {
-          "src": "/imgs/features/landing-page.png",
-          "alt": "benefits"
+          "src": "/imgs/showcases/case3.jpg",
+          "alt": "在线教学"
         }
       }
     ]
   },
   "usage": {
     "id": "usage",
-    "title": "三步使用 ShipAny 极速上线",
-    "description": "只需三步，快速开启你的 AI SaaS 创业之路：",
+    "title": "四步完成视频翻译",
+    "description": "简单四步，让你的视频跨越语言障碍：",
     "image": {
       "src": "/imgs/features/1.png",
-      "alt": "usage"
+      "alt": "使用流程"
     },
     "image_position": "left",
     "text_align": "center",
     "items": [
       {
-        "title": "获取 ShipAny",
-        "description": "一次性购买 ShipAny，查收邮件获取代码与文档。",
+        "title": "上传视频",
+        "description": "支持多种视频格式，拖拽或点击上传你的原始视频文件。",
+        "icon": "Upload",
         "image": {
           "src": "/imgs/features/5.png",
-          "alt": "usage"
+          "alt": "上传视频"
         }
       },
       {
-        "title": "启动你的项目",
-        "description": "阅读说明文档，克隆 ShipAny 代码，开始开发你的 AI SaaS 项目。",
+        "title": "选择语言",
+        "description": "选择源语言和目标语言，支持中英日韩等多种语言互译。",
+        "icon": "Languages",
         "image": {
           "src": "/imgs/features/6.png",
-          "alt": "usage"
+          "alt": "选择语言"
         }
       },
       {
-        "title": "个性化定制",
-        "description": "根据需求修改模板内容和数据，配置专属 AI 能力。",
+        "title": "开始转换",
+        "description": "AI智能处理中，实时进度条显示，通常几分钟即可完成。",
+        "icon": "Loader",
         "image": {
           "src": "/imgs/features/7.png",
-          "alt": "usage"
+          "alt": "开始转换"
         }
       },
       {
-        "title": "部署上线",
-        "description": "简单几步将你的项目推向生产环境，立刻为客户提供服务。",
+        "title": "预览和下载",
+        "description": "在线预览翻译效果，满意后一键下载高清视频文件。",
+        "icon": "Download",
         "image": {
           "src": "/imgs/features/8.png",
-          "alt": "usage"
+          "alt": "预览下载"
         }
       }
     ]
   },
   "features": {
     "id": "features",
-    "title": "ShipAny 核心功能",
-    "description": "一切你需要的工具，助力 AI SaaS 项目高效上线。",
+    "title": "为什么选择【这声】",
+    "description": "领先的AI技术，为你提供最自然的跨语言视频体验。",
     "items": [
       {
-        "title": "Next.js 项目模板",
-        "description": "生产就绪、支持 SEO 与多语言的 Next.js 脚手架。",
-        "icon": "RiNextjsFill"
+        "title": "声音克隆技术",
+        "description": "精准复刻你的音色、语调和说话习惯，让翻译后的声音依然是你。",
+        "icon": "Mic"
       },
       {
-        "title": "身份认证与支付",
-        "description": "集成谷歌 OAuth、一键登录，以及 Stripe 支付。",
-        "icon": "RiKey2Fill"
+        "title": "背景音完美保留",
+        "description": "智能分离人声与背景音，翻译后保留原视频的音乐和音效。",
+        "icon": "Music"
       },
       {
-        "title": "数据基础设施",
-        "description": "内置 Supabase，稳定可靠的数据存储。",
-        "icon": "RiDatabase2Line"
+        "title": "多语种支持",
+        "description": "支持中英日韩等主流语言，未来将支持更多语种。",
+        "icon": "Languages"
       },
       {
-        "title": "一键部署",
-        "description": "自动化部署到 Vercel 或 Cloudflare，极速上线。",
-        "icon": "RiCloudy2Fill"
+        "title": "情感保留",
+        "description": "AI深度学习原声情感，翻译后保持相同的情绪表达。",
+        "icon": "Heart"
       },
       {
-        "title": "商业分析",
-        "description": "集成 Google Analytics、Search Console，助力业务增长。",
-        "icon": "RiBarChart2Line"
+        "title": "快速处理",
+        "description": "高效的AI算法，通常几分钟即可完成视频翻译处理。",
+        "icon": "Zap"
       },
       {
-        "title": "AI 原生基础设施",
-        "description": "预置 AI 集成、积分系统和 API 售卖能力。",
-        "icon": "RiRobot2Line"
+        "title": "未来更多可能",
+        "description": "即将支持音色、语种、情感、内容四要素的自由替换，敬请期待。",
+        "icon": "Sparkles"
       }
     ]
   },
   "stats": {
     "id": "stats",
-    "title": "用户喜爱 ShipAny",
-    "description": "因其易用且上线飞快。",
+    "title": "用户信赖【这声】",
+    "description": "因为我们让声音跨越语言，情感如初。",
     "items": [
       {
-        "title": "999+",
-        "description": "位用户"
+        "title": "1000+",
+        "description": "位创作者"
       },
       {
-        "title": "200+",
-        "description": "组件块"
+        "title": "10000+",
+        "description": "个视频翻译"
       },
       {
-        "title": "50+",
-        "description": "专业模板"
+        "title": "20+",
+        "description": "种语言支持"
+      }
+    ]
+  },
+  "showcases": {
+    "id": "showcases",
+    "title": "视频案例展示",
+    "description": "看看其他创作者如何使用这声打破语言壁垒",
+    "items": [
+      {
+        "title": "短视频创作者出海案例",
+        "description": "中文美食视频翻译成英文，保留原声音色，成功开拓海外市场，粉丝增长300%",
+        "image": {
+          "src": "/imgs/showcases/case1.jpg",
+          "alt": "短视频出海案例"
+        },
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "title": "儿童教育视频本地化",
+        "description": "BBC英文科普视频翻译成中文，保留原声情感，让孩子在母语环境中学习",
+        "image": {
+          "src": "/imgs/showcases/case2.jpg",
+          "alt": "儿童教育案例"
+        },
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "title": "在线课程多语言版本",
+        "description": "编程教学视频一键生成中英日韩四个语言版本，学员覆盖全球",
+        "image": {
+          "src": "/imgs/showcases/case3.jpg",
+          "alt": "在线课程案例"
+        },
+        "url": "#",
+        "target": "_self"
       }
     ]
   },
   "testimonials": {
     "id": "testimonials",
-    "title": "用户对 ShipAny 的评价",
-    "description": "听听开发者与创始人用 ShipAny 快速上线 AI 创业项目的故事。",
+    "title": "用户对【这声】的评价",
+    "description": "听听创作者和教育工作者如何用这声打破语言壁垒，触达全球观众。",
     "items": [
       {
-        "name": "David Chen",
-        "role": "AIWallpaper.shop 创始人",
-        "quote": "ShipAny 为我们节省了数月开发时间。2 天上线 AI 壁纸业务，一周内就收到了第一笔付费订单！",
+        "name": "李伟",
+        "role": "美食视频博主",
+        "quote": "这声彻底改变了我的创作方式。现在我可以用保留原声的方式将中文美食视频分享给英语观众。短短2个月，国际粉丝增长了300%！",
         "image": {
           "src": "/imgs/avatars/1.png",
-          "alt": "david"
+          "alt": "李伟"
         }
       },
       {
-        "name": "Rachel Kim",
-        "role": "HeyBeauty.ai CTO",
-        "quote": "内置 AI 基础设施颠覆了开发体验，无需担心架构，只需专注核心功能，极快落地。",
+        "name": "Sarah Johnson",
+        "role": "教育内容创作者",
+        "quote": "作为家长，我想让孩子看优质的英文教育内容的中文版。这声完美保留了原声的情感和语调，就像讲述者在自然地说中文！",
         "image": {
           "src": "/imgs/avatars/2.png",
-          "alt": "rachel"
+          "alt": "Sarah"
         }
       },
       {
-        "name": "Marcus Thompson",
-        "role": "独立开发者",
-        "quote": "作为独立开发者，ShipAny 满足了全部需求——认证、支付、AI 集成、美观界面，一个周末上线 SaaS！",
+        "name": "山本武",
+        "role": "在线课程讲师",
+        "quote": "我用日语教编程，但想触达全球学生。这声让我在几分钟内就能创建英文、中文和韩文版本。我的学生基数扩大了5倍！",
         "image": {
           "src": "/imgs/avatars/3.png",
-          "alt": "marcus"
+          "alt": "山本武"
         }
       },
       {
-        "name": "Sofia Garcia",
-        "role": "Melodisco CEO",
-        "quote": "模板高度可定制且生产级。我们几小时内搭建出了 AI 音乐平台，上市周期大大缩短！",
+        "name": "Maria Garcia",
+        "role": "旅行视频博主",
+        "quote": "声音克隆太不可思议了——听起来真的像我在说不同的语言！我的西班牙语旅行视频现在能触达中国、日本和韩国的观众。改变游戏规则！",
         "image": {
           "src": "/imgs/avatars/4.png",
-          "alt": "sofia"
+          "alt": "Maria"
         }
       },
       {
-        "name": "James Wilson",
-        "role": "GPTs.works 技术负责人",
-        "quote": "ShipAny 基础设施极其稳定。我们从 0 到 1 万用户，无需关心后端维护，是最棒的 AI 创业投资。",
+        "name": "陈明",
+        "role": "科技评测博主",
+        "quote": "我用中文评测数码产品，这声帮我触达英语科技爱好者。背景音乐保留得完美——我的制作质量丝毫不减！",
         "image": {
           "src": "/imgs/avatars/5.png",
-          "alt": "james"
+          "alt": "陈明"
         }
       },
       {
-        "name": "Anna Zhang",
-        "role": "创业者",
-        "quote": "从想法到上线，仅用 3 天！ShipAny 模板和部署工具让我们极快验证 AI 商业创意。",
+        "name": "Emma Thompson",
+        "role": "语言教师",
+        "quote": "这声是语言教育的突破。我可以向学生展示同样的内容在不同语言中的声音，同时保持情感语境。绝对精彩！",
         "image": {
           "src": "/imgs/avatars/6.png",
-          "alt": "anna"
+          "alt": "Emma"
         }
       }
     ]
   },
   "faq": {
     "id": "faq",
-    "title": "关于 ShipAny 的常见问题",
-    "description": "还有其他问题？欢迎加入 Discord 或发邮件联系我们。",
-    "tip": "没有找到想要的答案？请联系 <a href='https://discord.gg/HQNnrzjZQS' target='_blank' class='text-primary font-medium hover:underline'>我们的客服团队</a>",
+    "title": "关于【这声】的常见问题",
+    "description": "还有其他问题？欢迎联系我们的客服团队。",
+    "tip": "没有找到想要的答案？请联系 <a href='mailto:support@revoice.com' class='text-primary font-medium hover:underline'>我们的客服团队</a>",
     "items": [
       {
-        "question": "ShipAny 是什么？怎么帮到我？",
-        "answer": "ShipAny 是专为 AI SaaS 创业设计的 NextJS 全套脚手架，内含开箱即用的模板、基础设施搭建和部署工具，让你数小时内上线 AI 产品。"
+        "question": "【这声】是什么？能帮我做什么？",
+        "answer": "这声是AI驱动的视频翻译工具，能够将你的视频翻译成多种语言，同时保留你的原声音色和情感表达，让你在任何语言中依然是自己。"
       },
       {
-        "question": "使用 ShipAny 需要很高的技术水平吗？",
-        "answer": "有基础编程知识即可上手。ShipAny 面向开发者友好，详细文档和模板让初学者也能轻松起步，不需深厚 AI 或云计算背景。"
+        "question": "翻译后的声音真的能保留我的音色吗？",
+        "answer": "是的！我们使用先进的AI声音克隆技术，能够精准复刻你的音色、语调和说话习惯，让翻译后的声音听起来依然是你。"
       },
       {
-        "question": "ShipAny 支持哪些类型的 AI SaaS 项目？",
-        "answer": "ShipAny 支持内容生成、数据分析、AI 聊天机器人、图片/内容生成器等多种主流 AI 应用场景。"
+        "question": "支持哪些语言的翻译？",
+        "answer": "目前支持中文、英文、日文、韩文等主流语言的互译，未来将支持更多语种。我们会持续扩展语言支持范围。"
       },
       {
-        "question": "用 ShipAny 一般多久能上线？",
-        "answer": "借助 ShipAny，可在数小时内拿到产品原型并上线生产环境，预配置的一键部署大幅缩短开发周期。"
+        "question": "视频翻译需要多长时间？",
+        "answer": "处理时间取决于视频长度，通常一个5-10分钟的视频只需几分钟即可完成翻译。我们提供实时进度显示，让你随时了解处理状态。"
       },
       {
-        "question": "ShipAny 的基础设施包括哪些内容？",
-        "answer": "包含认证、数据库、API 集成、支付、云端部署等全栈解决方案，全部遵循业界最佳实践预配置。"
+        "question": "背景音乐会被保留吗？",
+        "answer": "会的！我们的AI技术能够智能分离人声和背景音，翻译后会完美保留原视频的背景音乐和音效，确保整体效果自然流畅。"
       },
       {
-        "question": "模板是否支持定制自己的品牌？",
-        "answer": "当然支持！所有模板均可自定义设计、功能和品牌，既保持基础架构稳定，又能满足个性扩展需求。"
+        "question": "未来会有哪些新功能？",
+        "answer": "我们正在开发音色、语种、情感、内容四要素的自由替换功能，让你能够更灵活地定制视频内容。敬请期待！"
       }
     ]
   },
   "cta": {
     "id": "cta",
-    "title": "发布你的第一个 AI SaaS 项目",
-    "description": "从这里出发，用 ShipAny 极速交付。",
+    "title": "让你的声音跨越语言障碍",
+    "description": "今天就开始使用这声，让全球观众听到你的声音。",
     "buttons": [
       {
-        "title": "获取 ShipAny",
-        "url": "https://shipany.ai",
-        "target": "_blank",
-        "icon": "Zap"
+        "title": "免费试用这声",
+        "url": "/video_convert",
+        "target": "_self",
+        "icon": "Play"
       },
       {
-        "title": "阅读文档",
-        "url": "/docs",
-        "target": "_blank",
+        "title": "查看定价",
+        "url": "/pricing",
+        "target": "_self",
         "variant": "outline",
-        "icon": "BookOpenText"
+        "icon": "DollarSign"
       }
     ]
   },
   "subscribe": {
     "id": "subscribe",
     "title": "订阅我们的邮件通知",
-    "description": "获取 ShipAny 最新资讯与产品动态。",
+    "description": "获取这声最新功能更新与使用技巧。",
     "submit": {
       "input": {
         "placeholder": "输入邮箱"
@@ -483,7 +490,7 @@
     "id": "footer",
     "brand": {
       "title": "这声",
-      "description": "ShipAny 是专为 AI SaaS 创业项目打造的 NextJS 模板。丰富模板与组件，极速交付你的产品。",
+      "description": "这声 - AI驱动的视频翻译工具，保留你的原声与情感，让你在任何语言中依然是自己。引力旋风出品。",
       "logo": {
         "src": "/logo.png",
         "alt": "这声"

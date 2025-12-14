@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Play } from 'lucide-react';
 
 import { Link } from '@/core/i18n/navigation';
 import { LazyImage, SmartIcon } from '@/shared/blocks/common';
@@ -38,6 +39,7 @@ export function Hero({
   hero: HeroType;
   className?: string;
 }) {
+  const [isPlaying, setIsPlaying] = useState(false);
   const highlightText = hero.highlight_text ?? '';
   let texts = null;
   if (highlightText) {
@@ -156,11 +158,35 @@ export function Hero({
                 aria-hidden
                 className="h-3 w-full bg-[repeating-linear-gradient(-45deg,var(--color-foreground),var(--color-foreground)_1px,transparent_1px,transparent_4px)] opacity-5"
               />
-              <LazyImage
-                className="border-border/25 relative z-2 hidden border dark:block"
-                src={hero.image_invert?.src || hero.image?.src || ''}
-                alt={hero.image_invert?.alt || hero.image?.alt || ''}
-              />
+              <div className="relative hidden dark:block">
+                <video
+                  className="w-full object-cover aspect-video border-border/25 border"
+                  src="https://pub-9e01d229159844cfbe7379d010d2fb61.r2.dev/dev/example.mp4"
+                  poster="/imgs/cover_video_def.jpg"
+                  controls={isPlaying}
+                  onClick={(e) => {
+                    if (!isPlaying) {
+                      e.currentTarget.play();
+                      setIsPlaying(true);
+                    }
+                  }}
+                />
+                {!isPlaying && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const video = e.currentTarget.previousElementSibling as HTMLVideoElement;
+                      video.play();
+                      setIsPlaying(true);
+                    }}
+                    className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors cursor-pointer"
+                  >
+                    <div className="bg-white/90 hover:bg-white rounded-full p-6 transition-colors">
+                      <Play className="w-12 h-12 text-black fill-black" />
+                    </div>
+                  </button>
+                )}
+              </div>
               <LazyImage
                 className="border-border/25 relative z-2 border dark:hidden"
                 src={hero.image?.src || hero.image_invert?.src || ''}
@@ -168,8 +194,9 @@ export function Hero({
               />
             </div>
           </div>
-        </motion.section>
-      )}
+        </motion.section >
+      )
+      }
 
       <AnimatedGridPattern
         numSquares={30}

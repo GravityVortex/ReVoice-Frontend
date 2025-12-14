@@ -23,6 +23,7 @@ export default async function LandingPage({
     usage: t.raw('usage'),
     features: t.raw('features'),
     stats: t.raw('stats'),
+    showcases: t.raw('showcases'),
     subscribe: t.raw('subscribe'),
     testimonials: t.raw('testimonials'),
     faq: t.raw('faq'),
