@@ -640,10 +640,9 @@ export default function ProjectDetailPage() {
       if (stepName === 'double_srt') {
         downloadUrl = `/api/video-task/download-double-srt?taskId=${taskMainId}&stepName=${stepName}`;
       } else {
-        downloadUrl = `/api/video-task/download-srt?taskId=${taskMainId}&stepName=${stepName}`;
+        downloadUrl = `/api/video-task/download-one-srt?taskId=${taskMainId}&stepName=${stepName}`;
       }
       const response = await fetch(downloadUrl);
-      // const response = await fetch(`/api/video-task/download-srt?taskId=${tempId}&stepName=${name}&fileName=${videoName}`);
       if (!response.ok) {
         const error = await response.json();
         toast.error(error.message || "下载字幕失败");
