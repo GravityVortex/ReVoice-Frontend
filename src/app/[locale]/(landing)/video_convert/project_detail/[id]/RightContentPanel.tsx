@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatDate, getLanguageConvertStr, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getLanguageConvertStr, getLanguageMapStr, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion } from "motion/react"
 import {
@@ -35,6 +35,7 @@ interface RightContentPanelProps {
   onProgressClick: (taskMainId: string, tabIdx: string) => void;
   onDevelopClick: () => void;
   onDownloadSrtClick: (e: any, stepName: string) => void;
+  onAudioClick: (item: any, type: string) => void;
   onCompareClick: () => void;
   t: (key: string) => string;
   locale: string;
@@ -65,6 +66,7 @@ export function RightContentPanel({
   onSonItemEditClick,
   onProgressClick,
   onDevelopClick,
+  onAudioClick,
   onDownloadSrtClick,
   onCompareClick,
   t,
@@ -320,7 +322,7 @@ export function RightContentPanel({
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">{t('conversion.targetLanguage')}</p>
-                        <p className="font-medium">英语</p>
+                        <p className="font-medium">{getLanguageMapStr(taskMain.targetLanguage, locale)}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">{t('conversion.targetDuration')}</p>
@@ -348,15 +350,30 @@ export function RightContentPanel({
                         <div className="flex justify-around mt-2 gap-2">
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
-                            onClick={onDevelopClick}>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAudioClick(taskMain, 'preview');
+                            }}>
                             <Share2 className="size-4" />
                             {t('audio.preview')}
                           </Button>
                           <Button variant="outline" size="sm"
                             disabled={taskMain?.status !== "completed"}
-                            onClick={onDevelopClick}>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAudioClick(taskMain, 'subtitle');
+                            }}>
                             <Download className="size-4" />
                             {t('audio.download')}
+                          </Button>
+                          <Button variant="outline" size="sm"
+                            disabled={taskMain?.status !== "completed"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAudioClick(taskMain, 'background');
+                            }}>
+                            <Download className="size-4" />
+                            {t('audio.downloadBg')}
                           </Button>
                         </div>
                       </div>

@@ -12,7 +12,7 @@ import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-p
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
 import { envConfigs } from "@/config";
-import { getPreviewCoverUrl } from "@/shared/lib/utils";
+import { getPreviewCoverUrl, getVideoR2PathName } from "@/shared/lib/utils";
 
 // import { Pagination } from "@/shared/types/blocks/pagination";
 
@@ -44,6 +44,15 @@ export default function VideoConvertPage() {
   const [preUrl, setPreUrl] = useState<string>("");
 
   const handlePlayVideo = (item: VideoListItem) => {
+    console.log("点击播放视频，handlePlayVideo--->", item);
+    const len = item.tasks?.length || 0;
+    if (item.status === "completed" && len > 0) {
+      // 列表中最后一个task的final视频地址
+      item.videoUrl = getVideoR2PathName(
+        user?.id || "", item.tasks?.[len - 1].id || '', 'merge_audio_video/video/video_new.mp4'
+      )
+    }
+
     setSelectedVideo(item);
     setIsPlayerOpen(true);
   };

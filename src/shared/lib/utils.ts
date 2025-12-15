@@ -12,23 +12,23 @@ export function cn(...inputs: ClassValue[]) {
 //  "targetLanguage": "zh",
 export const LanguageMap: any = {
   'zh-CN': '中文',
-  'zh': '中文',
+  zh: '中文',
   'en-US': '英文',
-  'en': '英文',
-  'auto': '',
+  en: '英文',
+  auto: '',
 
-  '中文': 'zh',
-  '中文简体': 'zh',
-  '英文': 'en',
+  中文: 'zh',
+  中文简体: 'zh',
+  英文: 'en',
 };
 export const LanguageMapEn: any = {
   'zh-CN': 'chinese',
-  'zh': 'chinese',
+  zh: 'chinese',
   'en-US': 'english',
-  'auto': '',
+  auto: '',
 
-  'chinese': 'zh',
-  'english': 'en',
+  chinese: 'zh',
+  english: 'en',
 };
 
 // const statusMap: any = {
@@ -39,6 +39,12 @@ export const LanguageMapEn: any = {
 //   'cancelled': {label: '已取消', color: 'text-gray-500'},
 // };
 
+export function getLanguageMapStr(key: string, locale = 'zh') {
+  if (locale === 'zh') {
+    return `${LanguageMap[key] || '未知'}`;
+  }
+  return `${LanguageMapEn[key] || '未知'}`;
+}
 /**
  * 语种转换
  * @param item {"sourceLanguage": "auto", "targetLanguage": "zh"}
@@ -99,9 +105,9 @@ export function getPreviewUrl(userId: string, fileId: string, r2PreUrl: string, 
 
 /**
  * 公桶中获取完整的视频封面图片
- * @param videoItem 
- * @param r2PreUrl 
- * @returns 
+ * @param videoItem
+ * @param r2PreUrl
+ * @returns
  */
 export function getPreviewCoverUrl(videoItem: any, r2PreUrl: string) {
   if (!videoItem || !videoItem?.coverR2Key) return '';
@@ -111,7 +117,18 @@ export function getPreviewCoverUrl(videoItem: any, r2PreUrl: string) {
   // 封面地址：{env}/{userId}/{fileId}/frame_img/image/xxx.jpg
   return `${videoItem.r2PreUrl || r2PreUrl}/${env}/${videoItem.userId}/${videoItem.id}/${videoItem.coverR2Key}`;
   // return `${videoItem.r2PreUrl || r2PreUrl}/${env}/${videoItem.userId}/frame_img/image/${videoItem.coverR2Key}.jpg`;
-   
+}
+
+/**
+ * 获取音频文件地址
+ * @param userId 
+ * @param taskId 
+ * @param r2Key 
+ * @returns 
+ */
+export function getAudioR2PathName(userId: string, taskId: string, r2Key: string) {
+  let env = process.env.ENV || 'dev';
+  return `${env}/${userId}/${taskId}/${r2Key}`;
 }
 
 export function getVideoR2PathName(userId: string, taskId: string, r2Key: string) {

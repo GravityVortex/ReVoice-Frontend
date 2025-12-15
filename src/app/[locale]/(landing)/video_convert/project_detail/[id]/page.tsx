@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getAudioR2PathName, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -46,6 +46,7 @@ import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-p
 import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { CompareSrtModal } from "@/shared/blocks/video-convert/compare-srt-modal";
+import { AudioPlayModal } from "@/shared/blocks/video-convert/Audio-play-modal";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { envConfigs } from "@/config";
@@ -147,6 +148,10 @@ export default function ProjectDetailPage() {
   const [preUrl, setPreUrl] = useState<string>("");
   // 字幕对比弹框
   const [isCompareDialogOpen, setIsCompareDialogOpen] = useState(false);
+  // 音频播放弹框
+  const [isAudioPlayOpen, setIsAudioPlayOpen] = useState(false);
+  const [subtitleAudioUrl, setSubtitleAudioUrl] = useState('');
+  const [backgroundAudioUrl, setBackgroundAudioUrl] = useState('');
   // 轮询定时器ID
   const pollingTimerDetailRef = useRef<NodeJS.Timeout | null>(null);
   // 测试用视频列表数据
@@ -235,6 +240,101 @@ export default function ProjectDetailPage() {
   const onDevelopClick = () => {
     // toast.info("新建功能正在开发中，敬请期待！");
     toast.success("新建功能正在开发中，敬请期待！");
+  };
+
+  /**
+   * 音频相关试听、下载
+   * @param item
+   * @param type
+   */
+  const onAudioClick = async (item: any, type: string) => {
+    // e.stopPropagation();
+    console.log('onAudioClick----->', item)
+    if (!item) return;
+
+    // 试听
+    if (type === 'preview') {
+      if (!item.audio_bg_url || !item.audio_new_url) {
+        // setLoading(true);
+        try {
+          if (!item.audio_bg_url) {
+            const bgAudio = getAudioR2PathName(videoDetail?.userId || '', item.id, 'split_vocal_bkground/audio/audio_bkground.wav');
+            const res = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(bgAudio)}`);
+            const data = await res.json();
+            if (data.code === 0) {
+              console.log('获取私桶预览地址--bgAudio--->', data.data.url)
+              item.audio_bg_url = data.data.url;
+              setBackgroundAudioUrl(data.data.url);
+            }
+          }
+          if (!item.audio_new_url) {
+            const audioNew = getAudioR2PathName(videoDetail?.userId || '', item.id, 'merge_audios/audio/audio_new.wav');
+            const res2 = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(audioNew)}`);
+            const data2 = await res2.json();
+            if (data2.code === 0) {
+              console.log('获取私桶预览地址--audioNew--->', data2.data.url)
+              item.audio_new_url = data2.data.url;
+              setSubtitleAudioUrl(data2.data.url);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch video URL:", error);
+        } finally {
+          // setLoading(false);
+        }
+      }
+      setIsAudioPlayOpen(true);
+    }
+    // 音频下载
+    else if (type === 'download') {
+
+    }
+    else if (type === 'subtitle') {
+      const audioNew = getAudioR2PathName(videoDetail?.userId || '', item.id, 'merge_audios/audio/audio_new.wav');
+      doDownloadAudio(item, audioNew);
+    }
+    // 背景音频下载
+    else if (type === 'background') {
+      const bgAudio = getAudioR2PathName(videoDetail?.userId || '', item.id, 'split_vocal_bkground/audio/audio_bkground.wav');
+      doDownloadAudio(item, bgAudio);
+    }
+
+  };
+
+  // 下载按钮点击
+  const doDownloadAudio = async (taskMain: any, key: string) => {
+
+    console.log('onDownLoadClick---taskMain--->', taskMain)
+    try {
+      // 调用下载 API 获取签名 URL，60秒过期
+      const response = await fetch(`/api/video-task/download-audio?taskId=${taskMain.id}&key=${encodeURIComponent(key)}&expiresIn=60`);
+      const data = await response.json();
+
+      if (data.code !== 0) {
+        toast.error(data.message || "获取下载链接失败");
+        return;
+      }
+
+      console.log("[Download audio] 获取下载链接成功:", {
+        url: data.data.url,
+        expiresIn: data.data.expiresIn,
+        currentTime: new Date().toISOString(),
+      });
+
+      // 创建隐藏的 a 标签触发下载
+      const link = document.createElement('a');
+      link.href = data.data.url;
+      link.download = taskMain.fileName || 'taskMain.mp4';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log("[Download audio] 下载已触发");
+    } catch (error) {
+      console.error("[Download] 下载失败:", error);
+      toast.error("下载失败，请稍后重试");
+    }
   };
 
   // 防止父页面滚动
@@ -609,7 +709,7 @@ export default function ProjectDetailPage() {
       console.log("[Download] 获取下载链接成功:", {
         url: data.data.url,
         expiresIn: data.data.expiresIn,
-        expiresAt: data.data.expiresAt,
+        // expiresAt: data.data.expiresAt,
         currentTime: new Date().toISOString(),
       });
 
@@ -751,6 +851,7 @@ export default function ProjectDetailPage() {
             setIsProgressDialogOpen(true);
           }}
           onDevelopClick={onDevelopClick}
+          onAudioClick={onAudioClick}
           onDownloadSrtClick={onDownloadSrtClick}
           onCompareClick={() => setIsCompareDialogOpen(true)}
         />
@@ -797,6 +898,14 @@ export default function ProjectDetailPage() {
         onDownBtnsClick={onDownloadSrtClick}
         onClose={() => setIsCompareDialogOpen(false)}
         taskId={taskMainId}
+      />
+
+      {/* 音频播放弹框 */}
+      <AudioPlayModal
+        isOpen={isAudioPlayOpen}
+        onClose={() => setIsAudioPlayOpen(false)}
+        subtitleAudioUrl={subtitleAudioUrl}
+        backgroundAudioUrl={backgroundAudioUrl}
       />
     </div>
   );

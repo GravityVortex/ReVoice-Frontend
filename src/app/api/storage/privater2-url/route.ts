@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     // temp_test/test3.mp4
     const key = searchParams.get('key');
+    const timeOut = parseInt(searchParams.get("timeOut") || '3600');
 
     if (!key) {
       return respErr('key is required');
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
       // 获得r2的配置信息
       // const r2Config = (provider as any).configs;
       // 多个存储桶公用一个
-      url = await getPrivateR2SignUrl(key, 3600);
+      url = await getPrivateR2SignUrl(key, timeOut);
       // console.log('Generated presigned URL--->', url);
     }
 

@@ -46,7 +46,8 @@
     "title": "Audio",
     "description": "After successful conversion, audio can be downloaded separately. We recommend previewing before downloading.",
     "preview": "Preview",
-    "download": "Download"
+    "download": "Download Subtitle",
+    "downloadBg": "Download Background"
   },
   "subtitle": {
     "title": "Subtitle",

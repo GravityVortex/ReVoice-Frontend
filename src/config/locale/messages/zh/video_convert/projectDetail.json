@@ -46,7 +46,8 @@
     "title": "音频",
     "description": "视频转换成功后，音频也可以单独下载，在下载前，建议您先试听一下。",
     "preview": "试听",
-    "download": "下载"
+    "download": "字幕音频",
+    "downloadBg": "背景音频"
   },
   "subtitle": {
     "title": "字幕",
