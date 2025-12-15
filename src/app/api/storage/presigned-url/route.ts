@@ -9,6 +9,8 @@ import { getPrivateR2UploadSignUrl } from '@/extensions/storage/privateR2Util';
 import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
 import { getStorageService } from '@/shared/services/storage';
+import { getUuid } from '@/shared/lib/hash';
+import { getUserInfo } from '@/shared/models/user';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +43,11 @@ export async function POST(request: NextRequest) {
 
     // DOEND: 调用java接口生成presigned url
     if (USE_JAVA_REQUEST) {
-      const keyV = `uploads/${Date.now()}-${filename}`;
+      const fileId = getUuid();
+      const user = await getUserInfo();
+      // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+      let env = process.env.ENV || 'dev';
+      const keyV = `${env}/${user?.id}/${fileId}/original/video/video_original.mp4`;
       const params: SignUrlItem[] = [{ path: keyV, operation: 'upload', expirationMinutes: 2 * 60 }];
       const resUrlArr = await getPreSignedUrl(params);
       const { path, operation, url, expiresAt } = resUrlArr[0];
@@ -53,10 +59,10 @@ export async function POST(request: NextRequest) {
       const resUrlArr2 = await getPreSignedUrl(params2);
       const publicUrl = resUrlArr2[0].url;
 
-      return NextResponse.json({ presignedUrl: url, key: keyV, publicUrl, r2Bucket: '' });
+      return NextResponse.json({ presignedUrl: url, key: keyV, publicUrl, r2Bucket: '', fileId });
     } else {
-      const { presignedUrl, keyV, publicUrl, bucketName } = await getPrivateR2UploadSignUrl(contentType, filename);
-      return NextResponse.json({ presignedUrl, key: keyV, publicUrl, r2Bucket: bucketName });
+      const { presignedUrl, keyV, publicUrl, bucketName, fileId } = await getPrivateR2UploadSignUrl(contentType, filename);
+      return NextResponse.json({ presignedUrl, key: keyV, publicUrl, r2Bucket: bucketName, fileId });
     }
 
     // const storageService = await getStorageService();

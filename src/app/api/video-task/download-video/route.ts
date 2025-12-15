@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
 
     // DOEND: 调用java获取视频下载签名地址
     if (USE_JAVA_REQUEST) {
-      let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+      // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+      let env = process.env.ENV || 'dev';
       // 合成的原视频
       const keyTemp = `${env}/${user?.id}/${taskId}/merge_audio_video/video/video_new.mp4`;
       const params: SignUrlItem[] = [

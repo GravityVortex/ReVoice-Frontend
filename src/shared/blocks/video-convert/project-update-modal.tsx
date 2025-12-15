@@ -157,6 +157,7 @@ export function ProjectUpdateModal({
                                         maxImages={1}
                                         maxSizeMB={3}
                                         title=""
+                                        fileId={projectItem.id}
                                         emptyHint={t('fields.coverUploadHint')}
                                         defaultPreviews={formData.cover_url ? [formData.cover_url] : []}
                                         imageClassName="w-full"

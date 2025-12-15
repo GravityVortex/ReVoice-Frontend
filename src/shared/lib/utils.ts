@@ -12,22 +12,23 @@ export function cn(...inputs: ClassValue[]) {
 //  "targetLanguage": "zh",
 export const LanguageMap: any = {
   'zh-CN': '中文',
-  zh: '中文',
+  'zh': '中文',
   'en-US': '英文',
-  auto: '',
+  'en': '英文',
+  'auto': '',
 
-  中文: 'zh-CN',
-  中文简体: 'zh-CN',
-  英文: 'en-US',
+  '中文': 'zh',
+  '中文简体': 'zh',
+  '英文': 'en',
 };
 export const LanguageMapEn: any = {
   'zh-CN': 'chinese',
-  zh: 'chinese',
+  'zh': 'chinese',
   'en-US': 'english',
-  auto: '',
+  'auto': '',
 
-  chinese: 'zh-CN',
-  english: 'en-US',
+  'chinese': 'zh',
+  'english': 'en',
 };
 
 // const statusMap: any = {
@@ -91,16 +92,26 @@ export function formatDate(dateStr: string) {
 export function getPreviewUrl(userId: string, fileId: string, r2PreUrl: string, url: string) {
   // 生产环境和测试环境
   // 封面地址：{env}/{userId}/{fileId}/frame_img/image/xxx.jpg
-  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  let env = process.env.ENV || 'dev';
   return `${r2PreUrl}/${env}/${userId}/${fileId}/${url}`;
 }
 
+/**
+ * 公桶中获取完整的视频封面图片
+ * @param videoItem 
+ * @param r2PreUrl 
+ * @returns 
+ */
 export function getPreviewCoverUrl(videoItem: any, r2PreUrl: string) {
   if (!videoItem || !videoItem?.coverR2Key) return '';
 
-  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  let env = process.env.ENV || 'dev';
   // 封面地址：{env}/{userId}/{fileId}/frame_img/image/xxx.jpg
   return `${videoItem.r2PreUrl || r2PreUrl}/${env}/${videoItem.userId}/${videoItem.id}/${videoItem.coverR2Key}`;
+  // return `${videoItem.r2PreUrl || r2PreUrl}/${env}/${videoItem.userId}/frame_img/image/${videoItem.coverR2Key}.jpg`;
+   
 }
 
 export function getVideoR2PathName(userId: string, taskId: string, r2Key: string) {
@@ -108,6 +119,7 @@ export function getVideoR2PathName(userId: string, taskId: string, r2Key: string
   // 原视频地址：{env}/{userId}/{taskId}/original/video/video_original.mp4
   // 预览视频地址：{env}/{userId}/{taskId}/preview/video/video_new_preview.mp4
   // 最终视频地址：{env}/{userId}/{taskId}/merge_audio_video/video/video_new.mp4
-  let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  let env = process.env.ENV || 'dev';
   return `${env}/${userId}/${taskId}/${r2Key}`;
 }

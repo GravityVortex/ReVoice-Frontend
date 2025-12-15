@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from 'sonner';
-import { cn, formatDate, getPreviewCoverUrl, getPreviewUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion, Variants } from "motion/react"
 import {
@@ -171,12 +171,14 @@ export default function ProjectDetailPage() {
   // 修改项目后更新列表数据
   const onItemUpdateEvent = (changeItem: Record<string, any>) => {
     console.log("VideoConvertPage 接收到的 onItemUpdateEvent changeItem--->", changeItem);
+    // 更新封面
+    setLeftCoverSrc(changeItem.cover || '')
     setVideoDetail((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         fileName: changeItem.fileName,
-        cover_url: changeItem.cover,
+        cover: changeItem.cover,// + "?v=" + new Date().getTime(),
         content: changeItem.content,
       };
     });
@@ -761,7 +763,7 @@ export default function ProjectDetailPage() {
         <VideoPlayerModal
           isOpen={isPlayerOpen}
           onClose={handleClosePlayer}
-          videoUrl={getVideoR2PathName(videoDetail?.userId || '', taskMainId, playVideo)}
+          videoUrl={playVideo}
           title={playVideoTitle}
         />
       )}

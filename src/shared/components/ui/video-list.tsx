@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { Play, Edit, Clock, Calendar, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/shared/lib/utils";
+import { cn, getPreviewCoverUrl } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useRouter } from "next/navigation";
 
@@ -156,6 +156,7 @@ function VideoCard({
   onStatusClick,
 }: VideoCardProps) {
   const { fileName, cover, status, duration, convertedAt, videoSize } = item;
+  // const coverImg = getPreviewCoverUrl(item, r2P)
   const colors = statusColors[status];
   const [imgSrc, setImgSrc] = React.useState('/imgs/cover_video_def.jpg');
 

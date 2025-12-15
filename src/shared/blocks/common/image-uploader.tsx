@@ -24,6 +24,7 @@ interface ImageUploaderProps {
   maxImages?: number;
   maxSizeMB?: number;
   title?: string;
+  fileId?: string; // vt_file_original表fileId
   emptyHint?: string;
   className?: string;
   defaultPreviews?: string[];
@@ -45,9 +46,10 @@ const formatBytes = (bytes?: number) => {
   return `${mb.toFixed(2)} MB`;
 };
 
-const uploadImageFile = async (file: File) => {
+const uploadImageFile = async (file: File, fileId: string) => {
   const formData = new FormData();
   formData.append('files', file);
+  formData.append('fileId', fileId);
 
   const response = await fetch('/api/storage/upload-image', {
     method: 'POST',
@@ -72,6 +74,7 @@ export function ImageUploader({
   maxImages = 1,
   maxSizeMB = 10,
   title,
+  fileId = 'unKnow',
   emptyHint,
   className,
   defaultPreviews,
@@ -235,7 +238,7 @@ export function ImageUploader({
     Promise.all(
       newItems.map(async (item) => {
         try {
-          const itemJO = await uploadImageFile(item.file as File);
+          const itemJO = await uploadImageFile(item.file as File, fileId);
           // console.log('IU--接口获取了--->', itemJO)
 
           setItems((prev) => {

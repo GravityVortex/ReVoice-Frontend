@@ -1,12 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import { respData, respErr } from '@/shared/lib/resp';
+import { getUserInfo } from '@/shared/models/user';
 import { getStorageService } from '@/shared/services/storage';
+import { getUuid } from '@/shared/lib/hash';
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
+    const fileId = formData.get('fileId') as string;
 
     console.log('[API] Received files:', files.length);
     files.forEach((file, i) => {
@@ -23,6 +26,10 @@ export async function POST(req: Request) {
 
     const uploadResults = [];
 
+    const user = await getUserInfo();
+    // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+    let env = process.env.ENV || 'dev';
+
     for (const file of files) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
@@ -32,7 +39,14 @@ export async function POST(req: Request) {
       // Generate unique key
       const ext = file.name.split('.').pop();
       // const key = `uploads/${Date.now()}-${uuidv4()}.${ext}`;
-      const key = `images/${Date.now()}-${uuidv4()}.${ext}`;
+      // const key = `images/${Date.now()}-${uuidv4()}.${ext}`;
+
+      // DOEND: 封面图片融入视频Id困难，上传组件业务不相关
+      const key = `frame_img/image/${file.name}`;
+      // const imgId = getUuid();
+      // const pathName = `${env}/${user?.id}/frame_img/image/${imgId}.jpg`;
+      const pathName = `${env}/${user?.id}/${fileId}/` + key;
+
 
       // Convert file to buffer
       const arrayBuffer = await file.arrayBuffer();
@@ -43,7 +57,7 @@ export async function POST(req: Request) {
       // Upload to storage
       const result = await storageService.uploadFile({
         body: buffer,
-        key: key,
+        key: pathName,
         contentType: file.type,
         disposition: 'inline',
       });
@@ -58,7 +72,7 @@ export async function POST(req: Request) {
       uploadResults.push({
         status: 'uploaded',
         url: result.url,
-        key: result.key,
+        key: key,
         filename: file.name,
       });
     }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+import { respErr } from '@/shared/lib/resp';
 import { getVtTaskSubtitleListByTaskIdAndStepName } from '@/shared/models/vt_task_subtitle';
-
-
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,28 +11,32 @@ export async function GET(request: NextRequest) {
     const fileName = searchParams.get('fileName') || '';
 
     if (!taskId || !stepName) {
-      return NextResponse.json(
-        { code: -1, message: '缺少 taskId 或 stepName 参数' },
-        { status: 400 }
-      );
+      return respErr('缺少 taskId 或 stepName 参数');
+      // return NextResponse.json(
+      //   { code: -1, message: '缺少 taskId 或 stepName 参数' },
+      //   { status: 400 }
+      // );
     }
 
     const subtitleData = await getVtTaskSubtitleListByTaskIdAndStepName(taskId, [stepName]);
+    console.log('subtitleData--->', subtitleData);
 
     if (!subtitleData || subtitleData.length === 0) {
-      return NextResponse.json(
-        { code: -1, message: '未找到字幕数据' },
-        { status: 404 }
-      );
+      return respErr('未找到字幕数据');
+      // return NextResponse.json(
+      //   { code: -1, message: '未找到字幕数据' },
+      //   { status: 404 }
+      // );
     }
 
     const list = (subtitleData[0].subtitleData as unknown as any[]) || [];
-
+    console.log('list--->', list);
     if (list.length === 0) {
-      return NextResponse.json(
-        { code: -1, message: '字幕列表为空' },
-        { status: 404 }
-      );
+      return respErr('字幕列表为空');
+      // return NextResponse.json(
+      //   { code: -1, message: '字幕列表为空' },
+      //   { status: 404 }
+      // );
     }
 
     const filteredList = list.map(({ file_path, ...rest }: any) => rest);
@@ -49,10 +53,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[SRT Download API] 失败:', error);
-    return NextResponse.json(
-      { code: -1, message: error instanceof Error ? error.message : '下载失败' },
-      { status: 500 }
-    );
+    return respErr(error instanceof Error ? error.message : '下载失败');
+    // return NextResponse.json(
+    //   { code: -1, message: error instanceof Error ? error.message : '下载失败' },
+    //   { status: 500 }
+    // );
   }
 }
 
@@ -62,9 +67,9 @@ export async function GET(request: NextRequest) {
  * @returns
  */
 function convertToSrt(subtitleList: any[]): string {
-  return subtitleList.map((item, index) => {
-    return `${item.seq || index + 1}\n${item.start} --> ${item.end}\n${item.txt}\n`;
-  }).join('\n');
+  return subtitleList
+    .map((item, index) => {
+      return `${item.seq || index + 1}\n${item.start} --> ${item.end}\n${item.txt}\n`;
+    })
+    .join('\n');
 }
-
-

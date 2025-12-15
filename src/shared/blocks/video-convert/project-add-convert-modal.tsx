@@ -55,6 +55,7 @@ interface VideoUploadData {
     fileType: string;
     r2Key: string;
     r2Bucket: string;
+    fileId: string;
 }
 
 interface FormData {
@@ -106,6 +107,7 @@ export function ProjectAddConvertModal({
             fileType: '',
             r2Key: '',
             r2Bucket: '',
+            fileId: '',
         },
         targetLanguage: 'en',// 目标语言代码(如:en)
         sourceLanguage: 'zh',// 源语言代码(如:zh)
@@ -230,6 +232,7 @@ export function ProjectAddConvertModal({
                 fileType: '',
                 r2Key: '',
                 r2Bucket: '',
+                fileId: '',
             },
             targetLanguage: 'en',// 目标语言代码(如:en)
             sourceLanguage: 'zh',// 源语言代码(如:zh)
@@ -311,7 +314,7 @@ export function ProjectAddConvertModal({
             }
 
             // 获取上传签名url
-            const { presignedUrl, key, publicUrl, r2Bucket } = await res.json();
+            const { presignedUrl, key, publicUrl, r2Bucket, fileId } = await res.json();
 
             // 前端直接上传
             const xhr = new XMLHttpRequest();
@@ -403,6 +406,7 @@ export function ProjectAddConvertModal({
                     fileType: file.type,
                     r2Key: key,
                     r2Bucket: r2Bucket, // || 'video-store',
+                    fileId: fileId,
                 },
             }));
             toast.success(t('upload.uploadSuccess'));
@@ -437,6 +441,7 @@ export function ProjectAddConvertModal({
                 fileType: '',
                 r2Key: '',
                 r2Bucket: '',
+                fileId: '',
             },
         }));
         showTip && toast.success(t('upload.videoDeleted'));
@@ -525,6 +530,7 @@ export function ProjectAddConvertModal({
         fd.append("targetLanguage", formData.targetLanguage); // 
         fd.append("speakerCount", formData.peoples); // 
         fd.append("userType", config.userType); // 'guest' : 'registered'
+        fd.append("fileId", formData.videoUpload.fileId); // 文件Id
 
         // fd.append("prefix", "video-convert"); // 可选：自定义存储前缀
         // fd.append("user_uuid", user?.id || "");

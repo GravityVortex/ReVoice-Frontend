@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatDate, getLanguageConvertStr, getPreviewCoverUrl, getPreviewUrl, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getLanguageConvertStr, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { motion } from "motion/react"
 import {
@@ -52,10 +52,7 @@ const shape: React.CSSProperties = {
   fill: "transparent",
 }
 
-const getPreviewVideoUrl = (taskMain: any, type: string) => {
-  // console.log('getPreviewVideoUrl---taskMain--->', taskMain)
-  return taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
-}
+
 
 export function RightContentPanel({
   taskMainList,
@@ -92,6 +89,13 @@ export function RightContentPanel({
     { name: t('steps.mergeAudio'), range: [78, 88] },
     { name: t('steps.mergeVideo'), range: [89, 100] },
   ];
+
+  const getPreviewVideoUrl = (taskMain: any, type: string) => {
+  // console.log('getPreviewVideoUrl---taskMain--->', taskMain)
+  const r2Key = taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
+  return getVideoR2PathName(videoDetail.userId, taskMain.id, r2Key)
+}
+
   return (
     <main className="flex-1 overflow-auto p-6">
       {/* 转换视频列表页面 */}

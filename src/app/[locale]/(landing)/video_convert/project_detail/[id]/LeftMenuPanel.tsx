@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatDate, miao2Hms } from "@/shared/lib/utils";
+import { cn, formatDate, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
 import { Play, Video, Coins, Trash2 } from "lucide-react";
 
 interface LeftMenuPanelProps {
@@ -22,6 +22,13 @@ export function LeftMenuPanel({
   handlePlayVideo,
   t,
 }: LeftMenuPanelProps) {
+
+  const getPreviewVideoUrl = (videoFile: any) => {
+    // console.log('getPreviewVideoUrl---taskMain--->', videoFile)
+    return getVideoR2PathName(videoFile.userId, videoFile.id, videoFile.r2Key)
+    // return videoDetail.r2Key;
+  }
+
   return (
     <aside className="flex flex-col border-r w-96 shrink-0 bg-muted/30">
       {/* 超出隐藏*/}
@@ -40,7 +47,7 @@ export function LeftMenuPanel({
                   className="h-full w-full object-cover"
                 />
                 <button
-                  onClick={() => handlePlayVideo(videoDetail.r2Key, videoDetail.fileName)}
+                  onClick={() => handlePlayVideo(getPreviewVideoUrl(videoDetail), videoDetail.fileName)}
                   className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all hover:bg-black/40"
                 >
                   <div className="flex size-16 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform hover:scale-110">

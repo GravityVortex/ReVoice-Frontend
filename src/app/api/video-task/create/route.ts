@@ -26,6 +26,7 @@ export async function POST(req: Request) {
     const sourceLanguage = formData.get('sourceLanguage') as string;
     const targetLanguage = formData.get('targetLanguage') as string;
     const speakerCount = formData.get('speakerCount') as string;
+    const fileId = formData.get('fileId') as string;
 
     if (!userId || !fileName || !fileSizeBytes || !fileType || !r2Key || !credits
       || !r2Bucket || !sourceLanguage || !targetLanguage || !speakerCount) {
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
 
     // 2. 插入vt_file_original表
     const fileOriginal = await insertVtFileOriginal({
-      id: getUuid(),
+      id: fileId, //getUuid(),
       userId,
       fileName,
       fileSizeBytes,

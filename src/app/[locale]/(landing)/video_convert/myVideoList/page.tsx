@@ -12,7 +12,7 @@ import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-p
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
 import { envConfigs } from "@/config";
-import { getPreviewCoverUrl, getPreviewUrl } from "@/shared/lib/utils";
+import { getPreviewCoverUrl } from "@/shared/lib/utils";
 
 // import { Pagination } from "@/shared/types/blocks/pagination";
 
@@ -203,7 +203,7 @@ export default function VideoConvertPage() {
             // coverSize: item.coverSizeBytes,
             // ("https://picsum.photos/seed/" + item.id + "/640/360")
             // cover: item.coverR2Key? (responseData.preUrl + '/' + item.coverR2Key) : '',
-            cover: getPreviewCoverUrl(item.userId, responseData.preUrl),
+            cover: getPreviewCoverUrl(item, responseData.preUrl),
             videoUrl: item.r2Key || "",
             status,
             duration,

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+import { getUuid } from '@/shared/lib/hash';
+import { getUserInfo } from '@/shared/models/user';
+
 const endpoint = process.env.R2_ENDPOINT!;
 const bucketName = process.env.R2_BUCKET_NAME!;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID!;
@@ -24,26 +27,39 @@ export async function getPrivateR2UploadSignUrl(contentType: string, filename: s
     },
     forcePathStyle: false,
   });
-
-  const keyV = `uploads/${Date.now()}-${filename}`;
+  const fileId = getUuid();
+  const user = await getUserInfo();
+  // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
+  let env = process.env.ENV || 'dev';
+  const keyV = 'original/video/video_original.mp4';
+  const pathName = `${env}/${user?.id}/${fileId}/`;
+  // const keyV = `uploads/${Date.now()}-${filename}`;
 
   const command = new PutObjectCommand({
     Bucket: bucketName,
-    Key: keyV,
+    Key: pathName,
     ContentType: contentType || 'video/mp4',
   });
-
+  // 签名上传mp4地址，供前端直接上传
   const presignedUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
 
-  // const publicUrl = r2Config.publicDomain
-  //     ? `${r2Config.publicDomain}/${key}`
-  //     : `${endpoint}/${bucketName}/${key}`;
+  // 获取mp4预览地址
+  const command2 = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: pathName,
+    ResponseContentDisposition: 'attachment',
+  });
+  // 私桶临时访问点
+  const publicUrl = await getSignedUrl(client, command2, {
+    expiresIn: 3600,
+    signableHeaders: new Set(['host']),
+  });
 
   // 私桶临时访问点
-  const publicUrl = `${endpoint}/${bucketName}/${keyV}`;
+  // const publicUrl = `${endpoint}/${bucketName}/${keyV}`;
 
   //   return NextResponse.json({ presignedUrl, keyV, publicUrl, bucketName });
-  return { presignedUrl, keyV, publicUrl, bucketName };
+  return { presignedUrl, keyV, publicUrl, bucketName, fileId };
 }
 
 /**
