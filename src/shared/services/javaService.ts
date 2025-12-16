@@ -21,13 +21,16 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   };
 
   // 加密响应
+  // console.log('加密明文--->', requestDataPre)
   const encryptedRequestData = EncryptionUtil.encryptRequest(requestDataPre);
   console.log('加密密文--->', encryptedRequestData);
   // 解密并验证请求
   // const requestData = EncryptionUtil.decryptRequest(encryptedRequestData);
   // console.log('解密明文--->', requestData);
   // 请求java服务器
-  const response = await fetch(`${JAVA_SERVER_BASE_URL}/api/getPreSignedUrl`, {
+  const url = `${JAVA_SERVER_BASE_URL}/api/nextjs/presigned-urls`;
+  console.log('请求java服务器--->', url);
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain',
@@ -36,7 +39,7 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to get pre-signed URL: ${response.status}`);
+    throw new Error(`Failed to get pre-signed URL: ${response}`);
   }
   // {
   //   "code": 200,
@@ -59,10 +62,12 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   //   }
   // }
   const backJO = await response.json();
+  console.log('java服务器返回--->', backJO);
   if (backJO.code !== 200) {
     throw new Error(`Failed to get pre-signed URL: ${backJO.message}`);
   }
   const urls = backJO.data.urls;
+  console.log('java服务器返回urls--->', urls)
   return urls;
 }
 
@@ -94,5 +99,9 @@ export async function getTaskProgress(taskId: string) {
   if (backJO.code !== 200) {
     throw new Error(`Failed to get pre-signed URL: ${backJO.message}`);
   }
-  return backJO.data.tasks;
+  const tasks = backJO.data.tasks
+  if (tasks.length === 0) {
+    throw new Error(`Failed to get tasks length is 0`);
+  }
+  return backJO.data.tasks[0].steps;
 }

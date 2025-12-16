@@ -315,7 +315,8 @@ export function ProjectAddConvertModal({
 
             // 获取上传签名url
             const { presignedUrl, key, publicUrl, r2Bucket, fileId } = await res.json();
-
+            console.log('上传视频key--->', key)
+            
             // 前端直接上传
             const xhr = new XMLHttpRequest();
             xhr.upload.addEventListener('progress', (e) => {

@@ -125,7 +125,7 @@ export async function generatePrivateR2SignUrl(r2KeyArr: any[] = [], expiresIn: 
       },
       forcePathStyle: false,
     });
-
+    let env = process.env.ENV || 'dev';
     const urlList: string[] = [];
     for (const r2Key of r2KeyArr) {
       if (!r2Key) {
@@ -133,7 +133,7 @@ export async function generatePrivateR2SignUrl(r2KeyArr: any[] = [], expiresIn: 
       }
       const command = new GetObjectCommand({
         Bucket: bucketName, // 存储桶名称
-        Key: r2Key,
+        Key: `${env}/${r2Key}`,
       });
       // 获取访问预览url
       const url = await getSignedUrl(client, command, { expiresIn: expiresIn });

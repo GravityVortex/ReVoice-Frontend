@@ -128,7 +128,7 @@ export function getPreviewCoverUrl(videoItem: any, r2PreUrl: string) {
  */
 export function getAudioR2PathName(userId: string, taskId: string, r2Key: string) {
   let env = process.env.ENV || 'dev';
-  return `${env}/${userId}/${taskId}/${r2Key}`;
+  return `${userId}/${taskId}/${r2Key}`;
 }
 
 export function getVideoR2PathName(userId: string, taskId: string, r2Key: string) {
@@ -138,5 +138,5 @@ export function getVideoR2PathName(userId: string, taskId: string, r2Key: string
   // 最终视频地址：{env}/{userId}/{taskId}/merge_audio_video/video/video_new.mp4
   // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
   let env = process.env.ENV || 'dev';
-  return `${env}/${userId}/${taskId}/${r2Key}`;
+  return `${userId}/${taskId}/${r2Key}`;
 }

@@ -77,9 +77,9 @@ export const getDBJsonData = async (taskMainId: string) => {
     // {env}/{userId}/{taskId}/split_vocal_bkground/audio/audio_bkground.wav
     // {env}/{userId}/{taskId}/split_audio_video/video/video_nosound.mp4
     // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
-    let env = process.env.ENV || 'dev';
-    let backgroundAudioUrl = `${env}/${taskMainItem.userId}/${taskMainId}/split_vocal_bkground/audio/audio_bkground.wav`;
-    let noSoundVideoUrl = `${env}/${taskMainItem.userId}/${taskMainId}/split_audio_video/video/video_nosound.mp4`;
+    // let env = process.env.ENV || 'dev';
+    let backgroundAudioUrl = `${taskMainItem.userId}/${taskMainId}/split_vocal_bkground/audio/audio_bkground.wav`;
+    let noSoundVideoUrl = `${taskMainItem.userId}/${taskMainId}/split_audio_video/video/video_nosound.mp4`;
     // if (!backgroundAudioFile) {
     //   return { error: '背景音频不存在' };
     // }

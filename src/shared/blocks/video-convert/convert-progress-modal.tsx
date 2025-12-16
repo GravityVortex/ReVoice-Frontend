@@ -25,7 +25,7 @@ interface TaskStep {
     completedAt: number;
     stepName: string;
     // pending/processing/completed/failed/cancelled'
-    status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+    stepStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
     errorMessage: string;
 }
 
@@ -196,13 +196,14 @@ export function ConversionProgressModal({
         if (status === 'adj_audio_time') return tSteps('audioAlignment');
         if (status === 'merge_audios') return tSteps('mergeAudio');
         if (status === 'merge_audio_video') return tSteps('mergeVideo');
-        return t('progressModal.loading');
+        // return t('progressModal.loading');
+        return status;
     };
 
     // 滚动到首个 processing 状态的步骤
     const scrollToProcessingStep = (progressList: TaskStep[]) => {
         // 找到首个 processing 状态的步骤
-        const processingStep = progressList.find(step => step.status === 'processing');
+        const processingStep = progressList.find(step => step.stepStatus === 'processing');
 
         if (processingStep) {
             // 使用 setTimeout 确保 DOM 已更新
@@ -314,8 +315,10 @@ export function ConversionProgressModal({
                                                         { name: tSteps('mergeAudio'), range: [78, 88] },
                                                         { name: tSteps('mergeVideo'), range: [89, 100] },
                                                     ].map((step, index) => {
+                                                        // 状态
+                                                        const status = (taskMainInfo?.status === "processing" || taskMainInfo?.status === "pending");
                                                         const progress = taskMainInfo?.progress || 0;
-                                                        const isActive = progress >= step.range[0] && progress < step.range[1];
+                                                        const isActive = status && progress >= step.range[0] && progress < step.range[1];
                                                         const isCompleted = progress >= step.range[1];
 
                                                         return (
@@ -418,16 +421,16 @@ export function ConversionProgressModal({
                                                         >
                                                             {/* 状态图标 */}
                                                             <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 bg-background">
-                                                                {task.status === 'completed' && (
+                                                                {task.stepStatus === 'completed' && (
                                                                     <CheckCircle2 className="size-5 text-green-600" />
                                                                 )}
-                                                                {task.status === 'processing' && (
+                                                                {task.stepStatus === 'processing' && (
                                                                     <Loader2 className="size-5 animate-spin text-orange-500" />
                                                                 )}
-                                                                {task.status === 'pending' && (
+                                                                {task.stepStatus === 'pending' && (
                                                                     <Clock className="size-5 text-gray-400" />
                                                                 )}
-                                                                {task.status === 'failed' && (
+                                                                {task.stepStatus === 'failed' && (
                                                                     <CheckCircle2 className="size-5 text-red-600" />
                                                                 )}
                                                             </div>
@@ -437,10 +440,10 @@ export function ConversionProgressModal({
                                                                 <div
                                                                     className={cn(
                                                                         'rounded-lg border p-4 transition-all',
-                                                                        task.status === 'completed' && 'border-green-300',
-                                                                        task.status === 'processing' && 'border-orange-300',
-                                                                        task.status === 'pending' && 'border-gray-300',
-                                                                        task.status === 'failed' && 'border-red-300'
+                                                                        task.stepStatus === 'completed' && 'border-green-300',
+                                                                        task.stepStatus === 'processing' && 'border-orange-300',
+                                                                        task.stepStatus === 'pending' && 'border-gray-300',
+                                                                        task.stepStatus === 'failed' && 'border-red-300'
                                                                     )}
                                                                 >
                                                                     <div className="flex items-start justify-between gap-4">
@@ -450,32 +453,32 @@ export function ConversionProgressModal({
                                                                                 <span
                                                                                     className={cn(
                                                                                         'rounded-full px-2 py-0.5 text-xs font-medium',
-                                                                                        task.status === 'completed' &&
+                                                                                        task.stepStatus === 'completed' &&
                                                                                         'bg-green-100 text-green-700',
-                                                                                        task.status === 'processing' &&
+                                                                                        task.stepStatus === 'processing' &&
                                                                                         'bg-orange-100 text-orange-700',
-                                                                                        task.status === 'pending' && 'bg-gray-100 text-gray-600',
-                                                                                        task.status === 'failed' && 'bg-red-100 text-red-700'
+                                                                                        task.stepStatus === 'pending' && 'bg-gray-100 text-gray-600',
+                                                                                        task.stepStatus === 'failed' && 'bg-red-100 text-red-700'
                                                                                     )}
                                                                                 >
-                                                                                    {task.status === 'completed' && t('progressModal.logs.statusCompleted')}
-                                                                                    {task.status === 'processing' && t('progressModal.logs.statusProcessing')}
-                                                                                    {task.status === 'pending' && t('progressModal.logs.statusPending')}
-                                                                                    {task.status === 'failed' && t('progressModal.logs.statusFailed')}
+                                                                                    {task.stepStatus === 'completed' && t('progressModal.logs.statusCompleted')}
+                                                                                    {task.stepStatus === 'processing' && t('progressModal.logs.statusProcessing')}
+                                                                                    {task.stepStatus === 'pending' && t('progressModal.logs.statusPending')}
+                                                                                    {task.stepStatus === 'failed' && t('progressModal.logs.statusFailed')}
                                                                                 </span>
                                                                             </div>
                                                                             <p className="mt-1 text-sm text-muted-foreground">
-                                                                                {task.status === 'completed' && `${getProgressStatus(task.stepName)}${t('progressModal.logs.completedDesc')}`}
-                                                                                {task.status === 'processing' && `${getProgressStatus(task.stepName)}${t('progressModal.logs.processingDesc')}`}
-                                                                                {task.status === 'pending' && `${t('progressModal.logs.pendingDesc')}${task.stepName}`}
-                                                                                {task.status === 'failed' && `${getProgressStatus(task.errorMessage)}`}
+                                                                                {task.stepStatus === 'completed' && `${getProgressStatus(task.stepName)}${t('progressModal.logs.completedDesc')}`}
+                                                                                {task.stepStatus === 'processing' && `${getProgressStatus(task.stepName)}${t('progressModal.logs.processingDesc')}`}
+                                                                                {task.stepStatus === 'pending' && `${t('progressModal.logs.pendingDesc')}${task.stepName}`}
+                                                                                {task.stepStatus === 'failed' && `${task.errorMessage || getProgressStatus(task.stepName) + ' failed'}`}
                                                                             </p>
-                                                                            {task.status === 'failed' && task.errorMessage && (
+                                                                            {task.stepStatus === 'failed' && task.errorMessage && (
                                                                                 <p className="mt-2 text-xs text-red-600">
                                                                                     {t('progressModal.logs.errorLabel')}: {task.errorMessage}
                                                                                 </p>
                                                                             )}
-                                                                            {task.status === 'completed' && task.completedAt && (
+                                                                            {task.completedAt && (
                                                                                 <p className="mt-2 text-xs text-muted-foreground">
                                                                                     {t('progressModal.logs.completedTime')}: {formatTime(task.completedAt)}
                                                                                 </p>

@@ -1,3 +1,4 @@
+import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { getUuid } from '@/shared/lib/hash';
 import { respData, respErr } from '@/shared/lib/resp';
 import { consumeCredits, getRemainingCredits } from '@/shared/models/credit';
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     const fileSizeBytes = parseInt(formData.get('fileSizeBytes') as string);
     const fileType = formData.get('fileType') as string;
     const r2Key = formData.get('r2Key') as string;
-    const r2Bucket = formData.get('r2Bucket') as string;
+    let r2Bucket = formData.get('r2Bucket') as string;
     const videoDurationSeconds = Math.round(parseFloat(formData.get('videoDurationSeconds') as string));
     const credits = parseInt(formData.get('credits') as string);
     const checksumSha256 = (formData.get('checksumSha256') as string) || '';
@@ -28,8 +29,12 @@ export async function POST(req: Request) {
     const speakerCount = formData.get('speakerCount') as string;
     const fileId = formData.get('fileId') as string;
 
-    if (!userId || !fileName || !fileSizeBytes || !fileType || !r2Key || !credits
-      || !r2Bucket || !sourceLanguage || !targetLanguage || !speakerCount) {
+    // 获取私桶R2地址
+    if (!r2Bucket) {
+      r2Bucket = (await getSystemConfigByKey('r2.bucket.private')) || 'zhesheng';
+    }
+
+    if (!userId || !fileName || !fileSizeBytes || !fileType || !r2Key || !credits || !sourceLanguage || !targetLanguage || !speakerCount) {
       return respErr('Missing required fields');
     }
 
@@ -41,7 +46,7 @@ export async function POST(req: Request) {
     // 积分不足，按2积分/分钟计算可处理时长
     if (remainingCredits < credits) {
       finalCredits = remainingCredits;
-      finalHandlerTime = finalCredits / 2 * 60; // 按2积分/分钟计算可处理时长
+      finalHandlerTime = (finalCredits / 2) * 60; // 按2积分/分钟计算可处理时长
     }
 
     let creditRecord;
@@ -73,7 +78,7 @@ export async function POST(req: Request) {
       updatedBy: userId,
     });
 
-    // DOEND 未区分包月和包年用户，设置任务优先级（注册用户registered）或 4（匿名用户guest）. 
+    // DOEND 未区分包月和包年用户，设置任务优先级（注册用户registered）或 4（匿名用户guest）.
     let priorityV = 4;
     if (userType === 'registered') {
       const { type } = await getUserSubscriptionType(userId);
@@ -82,7 +87,7 @@ export async function POST(req: Request) {
       } else if (type === 'year') {
         priorityV = 1;
       }
-    } 
+    }
     // 匿名用户
     else {
       priorityV = 4;
@@ -98,7 +103,7 @@ export async function POST(req: Request) {
       sourceLanguage,
       targetLanguage,
       speakerCount,
-      processDurationSeconds: finalHandlerTime,// 根据积分消耗调整
+      processDurationSeconds: finalHandlerTime, // 根据积分消耗调整
       creditId: creditRecord.id,
       creditsConsumed: finalCredits,
       createdBy: userId,

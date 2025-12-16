@@ -53,7 +53,8 @@ export async function getSystemLimitByConfigKeyArr(keyArr = [
     'limit.yearly.file_size_mb',
     
     'credit.points_per_minute',
-    'r2.public.base_url'
+    'r2.public.base_url',
+    'r2.bucket.private'
   ]) {
 
   return await db()

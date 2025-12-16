@@ -134,6 +134,7 @@ class EncryptionUtil {
 
       // 解密数据
       const decryptedData = this.decrypt(encryptedData, finalKey);
+      // console.log('解密明文--->', decryptedData);
 
       // 验证哈希
       const calculatedHash = this.generateMD5(decryptedData);

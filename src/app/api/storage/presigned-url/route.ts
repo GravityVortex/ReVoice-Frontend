@@ -46,9 +46,10 @@ export async function POST(request: NextRequest) {
       const fileId = getUuid();
       const user = await getUserInfo();
       // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
-      let env = process.env.ENV || 'dev';
-      const keyV = `${env}/${user?.id}/${fileId}/original/video/video_original.mp4`;
-      const params: SignUrlItem[] = [{ path: keyV, operation: 'upload', expirationMinutes: 2 * 60 }];
+      // let env = process.env.ENV || 'dev';
+      const keyV = 'original/video/video_original.mp4';
+      const pathName = `${user?.id}/${fileId}/${keyV}`;
+      const params: SignUrlItem[] = [{ path: pathName, operation: 'upload', expirationMinutes: 2 * 60 }];
       const resUrlArr = await getPreSignedUrl(params);
       const { path, operation, url, expiresAt } = resUrlArr[0];
 

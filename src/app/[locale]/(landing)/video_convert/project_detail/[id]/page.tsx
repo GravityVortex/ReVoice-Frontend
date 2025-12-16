@@ -1,17 +1,41 @@
-"use client";
+'use client';
 
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { toast } from 'sonner';
-import { cn, formatDate, getAudioR2PathName, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from "@/shared/lib/utils";
-import { Card, CardContent } from "@/shared/components/ui/card";
-import { motion, Variants } from "motion/react"
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/components/ui/collapsible";
+  BadgeDollarSign,
+  BookmarkX,
+  ChevronDown,
+  CircleEllipsis,
+  Coins,
+  Download,
+  Edit,
+  Edit2,
+  Home,
+  ListOrdered,
+  ListOrderedIcon,
+  Loader2,
+  Play,
+  Plus,
+  Settings,
+  Share2,
+  Trash2,
+  Video,
+} from 'lucide-react';
+import { motion, Variants } from 'motion/react';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+
+import { envConfigs } from '@/config';
+import { user } from '@/config/db/schema';
+import { LocaleSelector, SignUser } from '@/shared/blocks/common';
+import { ThemeToggler } from '@/shared/blocks/common/theme-toggler';
+import { AudioPlayModal } from '@/shared/blocks/video-convert/Audio-play-modal';
+import { CompareSrtModal } from '@/shared/blocks/video-convert/compare-srt-modal';
+import { ConvertAddModal } from '@/shared/blocks/video-convert/convert-add-modal';
+import { ConversionProgressModal } from '@/shared/blocks/video-convert/convert-progress-modal';
+import { ProjectUpdateModal } from '@/shared/blocks/video-convert/project-update-modal';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,42 +43,15 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/shared/components/ui/breadcrumb";
-import { Button } from "@/shared/components/ui/button";
-import {
-  ChevronDown,
-  Video,
-  CircleEllipsis,
-  Settings,
-  Share2,
-  ListOrdered,
-  Trash2,
-  Home,
-  Play,
-  Edit,
-  Plus,
-  Download,
-  Edit2,
-  Loader2,
-  BookmarkX,
-  Coins,
-  ListOrderedIcon,
-  BadgeDollarSign,
-} from "lucide-react";
-import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
-import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
-import { ConvertAddModal } from "@/shared/blocks/video-convert/convert-add-modal";
-import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
-import { CompareSrtModal } from "@/shared/blocks/video-convert/compare-srt-modal";
-import { AudioPlayModal } from "@/shared/blocks/video-convert/Audio-play-modal";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { envConfigs } from "@/config";
-import { ThemeToggler } from "@/shared/blocks/common/theme-toggler";
-import { LeftMenuPanel } from "./LeftMenuPanel";
-import { RightContentPanel } from "./RightContentPanel";
-import { LocaleSelector, SignUser } from "@/shared/blocks/common";
-import { user } from "@/config/db/schema";
+} from '@/shared/components/ui/breadcrumb';
+import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
+import VideoPlayerModal from '@/shared/components/ui/video-player-modal';
+import { cn, formatDate, getAudioR2PathName, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from '@/shared/lib/utils';
+
+import { LeftMenuPanel } from './LeftMenuPanel';
+import { RightContentPanel } from './RightContentPanel';
 
 //         "videoItem": {
 //             "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
@@ -110,46 +107,43 @@ interface VideoDetail {
 //   { icon: BadgeDollarSign, label: "限时订阅优惠", id: "pricing" },
 // ];
 
-
-
-
-
 export default function ProjectDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const locale = (params.locale as string) || "zh";
+  const locale = (params.locale as string) || 'zh';
   const t = useTranslations('video_convert.projectDetail');
   const t2 = useTranslations('landing');
   const header = t2.raw('header');
   // console.log('header', header)
   const router = useRouter();
 
-
-  const [activeMenu, setActiveMenu] = useState("list");
+  const [activeMenu, setActiveMenu] = useState('list');
   // const [isExpanded, setIsExpanded] = useState(false);
   const [videoDetail, setVideoDetail] = useState<VideoDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [isAudioModalLoading, setIsAudioModalLoading] = useState(true);
+  const [error, setError] = useState('');
   const [descExpanded, setDescExpanded] = useState(false);
-  const [playVideo, setPlayVideo] = useState<string>("");
-  const [playVideoTitle, setPlayVideoTitle] = useState<string>("");
+  const [playVideo, setPlayVideo] = useState<string>('');
+  const [playVideoTitle, setPlayVideoTitle] = useState<string>('');
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
   // 转换进度弹框状态
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   const [taskMainId, setTaskMainId] = useState<string>(id);
-  const [activeTabIdx, setActiveTabIdx] = useState<string>("0");
+  const [activeTabIdx, setActiveTabIdx] = useState<string>('0');
   // 新建转换弹框状态
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [projectSourceId, setProjectSourceId] = useState<string>(id);
   // 修改弹框
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [preUrl, setPreUrl] = useState<string>("");
+  const [preUrl, setPreUrl] = useState<string>('');
   // 字幕对比弹框
   const [isCompareDialogOpen, setIsCompareDialogOpen] = useState(false);
   // 音频播放弹框
-  const [isAudioPlayOpen, setIsAudioPlayOpen] = useState(false);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [subtitleAudioUrl, setSubtitleAudioUrl] = useState('');
   const [backgroundAudioUrl, setBackgroundAudioUrl] = useState('');
   // 轮询定时器ID
@@ -160,34 +154,31 @@ export default function ProjectDetailPage() {
   // 左侧封面图片状态
   const [leftCoverSrc, setLeftCoverSrc] = useState('/imgs/cover_video_def.jpg');
 
-
   const menuItems = [
-    { icon: Share2, label: t('menu.editInfo'), id: "edit" },
-    { icon: ListOrdered, label: t('menu.progress'), id: "progress" },
-    { icon: BadgeDollarSign, label: t('menu.pricing'), id: "pricing" },
+    { icon: Share2, label: t('menu.editInfo'), id: 'edit' },
+    { icon: ListOrdered, label: t('menu.progress'), id: 'progress' },
+    { icon: BadgeDollarSign, label: t('menu.pricing'), id: 'pricing' },
   ];
 
-
   const onSonItemEditClick = (taskMainId: string) => {
-    console.log("编辑视频转换，onSonItemEditClick--->", taskMainId);
+    console.log('编辑视频转换，onSonItemEditClick--->', taskMainId);
     router.push(`/${locale}/video_convert/video-editor/${taskMainId}`);
   };
 
   // 修改项目后更新列表数据
   const onItemUpdateEvent = (changeItem: Record<string, any>) => {
-    console.log("VideoConvertPage 接收到的 onItemUpdateEvent changeItem--->", changeItem);
+    console.log('VideoConvertPage 接收到的 onItemUpdateEvent changeItem--->', changeItem);
     // 更新封面
-    setLeftCoverSrc(changeItem.cover || '')
+    setLeftCoverSrc(changeItem.cover || '');
     setVideoDetail((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         fileName: changeItem.fileName,
-        cover: changeItem.cover,// + "?v=" + new Date().getTime(),
+        cover: changeItem.cover, // + "?v=" + new Date().getTime(),
         content: changeItem.content,
       };
     });
-
   };
 
   const handlePlayVideo = (url: string, title: string) => {
@@ -198,39 +189,39 @@ export default function ProjectDetailPage() {
 
   const handleClosePlayer = () => {
     setIsPlayerOpen(false);
-    setPlayVideoTitle("");
-    setPlayVideo("");
+    setPlayVideoTitle('');
+    setPlayVideo('');
   };
   const handlMenuClick = (item: any) => {
-    console.log("[ProjectDetailPage] 点击菜单:", item.label);
+    console.log('[ProjectDetailPage] 点击菜单:', item.label);
     switch (item.id) {
-      case "list":
+      case 'list':
         // setActiveMenu("list");
         break;
-      case "progress":
+      case 'progress':
         // 切换到进度条页面
-        setActiveTabIdx("0");
+        setActiveTabIdx('0');
         // 打开进度弹框
         setIsProgressDialogOpen(true);
         break;
-      case "create":
-        setProjectSourceId("xxx");
+      case 'create':
+        setProjectSourceId('xxx');
         setIsAddDialogOpen(true);
         break;
-      case "edit":
+      case 'edit':
         setProjectItem({ ...videoDetail });
         setIsEditDialogOpen(true);
         break;
-      case "backList":
+      case 'backList':
         router.push(`/${locale}/video_convert/myVideoList`);
         break;
-      case "credits":
+      case 'credits':
         router.push(`/${locale}/settings/credits`);
         break;
-      case "pricing":
+      case 'pricing':
         router.push(`/${locale}/pricing`);
         break;
-      case "delete":
+      case 'delete':
         onDevelopClick();
         break;
       default:
@@ -239,7 +230,7 @@ export default function ProjectDetailPage() {
   };
   const onDevelopClick = () => {
     // toast.info("新建功能正在开发中，敬请期待！");
-    toast.success("新建功能正在开发中，敬请期待！");
+    toast.success('新建功能正在开发中，敬请期待！');
   };
 
   /**
@@ -249,20 +240,21 @@ export default function ProjectDetailPage() {
    */
   const onAudioClick = async (item: any, type: string) => {
     // e.stopPropagation();
-    console.log('onAudioClick----->', item)
+    console.log('onAudioClick----->', item);
     if (!item) return;
 
     // 试听
     if (type === 'preview') {
+      setShowAudioModal(true);
       if (!item.audio_bg_url || !item.audio_new_url) {
-        // setLoading(true);
+        setIsAudioModalLoading(true);
         try {
           if (!item.audio_bg_url) {
             const bgAudio = getAudioR2PathName(videoDetail?.userId || '', item.id, 'split_vocal_bkground/audio/audio_bkground.wav');
             const res = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(bgAudio)}`);
             const data = await res.json();
             if (data.code === 0) {
-              console.log('获取私桶预览地址--bgAudio--->', data.data.url)
+              console.log('获取私桶预览地址--bgAudio--->', data.data.url);
               item.audio_bg_url = data.data.url;
               setBackgroundAudioUrl(data.data.url);
             }
@@ -272,24 +264,22 @@ export default function ProjectDetailPage() {
             const res2 = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(audioNew)}`);
             const data2 = await res2.json();
             if (data2.code === 0) {
-              console.log('获取私桶预览地址--audioNew--->', data2.data.url)
+              console.log('获取私桶预览地址--audioNew--->', data2.data.url);
               item.audio_new_url = data2.data.url;
               setSubtitleAudioUrl(data2.data.url);
             }
           }
         } catch (error) {
-          console.error("Failed to fetch video URL:", error);
+          console.error('Failed to fetch video URL:', error);
         } finally {
-          // setLoading(false);
+          setIsAudioModalLoading(false);
         }
       }
-      setIsAudioPlayOpen(true);
+      
     }
     // 音频下载
     else if (type === 'download') {
-
-    }
-    else if (type === 'subtitle') {
+    } else if (type === 'subtitle') {
       const audioNew = getAudioR2PathName(videoDetail?.userId || '', item.id, 'merge_audios/audio/audio_new.wav');
       doDownloadAudio(item, audioNew);
     }
@@ -298,24 +288,22 @@ export default function ProjectDetailPage() {
       const bgAudio = getAudioR2PathName(videoDetail?.userId || '', item.id, 'split_vocal_bkground/audio/audio_bkground.wav');
       doDownloadAudio(item, bgAudio);
     }
-
   };
 
   // 下载按钮点击
   const doDownloadAudio = async (taskMain: any, key: string) => {
-
-    console.log('onDownLoadClick---taskMain--->', taskMain)
+    console.log('onDownLoadClick---taskMain--->', taskMain);
     try {
       // 调用下载 API 获取签名 URL，60秒过期
       const response = await fetch(`/api/video-task/download-audio?taskId=${taskMain.id}&key=${encodeURIComponent(key)}&expiresIn=60`);
       const data = await response.json();
 
       if (data.code !== 0) {
-        toast.error(data.message || "获取下载链接失败");
+        toast.error(data.message || '获取下载链接失败');
         return;
       }
 
-      console.log("[Download audio] 获取下载链接成功:", {
+      console.log('[Download audio] 获取下载链接成功:', {
         url: data.data.url,
         expiresIn: data.data.expiresIn,
         currentTime: new Date().toISOString(),
@@ -330,10 +318,10 @@ export default function ProjectDetailPage() {
       link.click();
       document.body.removeChild(link);
 
-      console.log("[Download audio] 下载已触发");
+      console.log('[Download audio] 下载已触发');
     } catch (error) {
-      console.error("[Download] 下载失败:", error);
-      toast.error("下载失败，请稍后重试");
+      console.error('[Download] 下载失败:', error);
+      toast.error('下载失败，请稍后重试');
     }
   };
 
@@ -352,15 +340,15 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     const fetchVideoDetail = async () => {
       if (!id) {
-        setError("缺少视频ID");
+        setError('缺少视频ID');
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        setError("");
-        console.log("[ProjectDetailPage] 页面加载，项目ID:", id);
+        setError('');
+        console.log('[ProjectDetailPage] 页面加载，项目ID:', id);
 
         const response = await fetch(`/api/video-task/detail?fileId=${id}`);
         const backJO = await response.json();
@@ -417,11 +405,11 @@ export default function ProjectDetailPage() {
         // }
 
         if (backJO?.code !== 0) {
-          setError(backJO?.message || "获取视频详情失败");
+          setError(backJO?.message || '获取视频详情失败');
           return;
         }
 
-        console.log("[ProjectDetailPage] 获取视频详情成功--->", backJO);
+        console.log('[ProjectDetailPage] 获取视频详情成功--->', backJO);
         const tempItem = backJO.data.videoItem;
         setVideoDetail({
           ...tempItem,
@@ -445,12 +433,12 @@ export default function ProjectDetailPage() {
         // taskMainList.push({ id: 1 });
         // 创建新对象来触发状态更新
         setExpandedMap({
-          "id_row_0": true,
+          id_row_0: true,
           // "id_row_1": false,
         });
       } catch (err) {
-        console.error("[ProjectDetailPage] 获取视频详情失败:", err);
-        setError("获取视频详情失败");
+        console.error('[ProjectDetailPage] 获取视频详情失败:', err);
+        setError('获取视频详情失败');
       } finally {
         setLoading(false);
       }
@@ -480,7 +468,7 @@ export default function ProjectDetailPage() {
 
       if (result.code === 0 && result.data) {
         const { taskItem } = result.data;
-        console.log('详情页轮询请求结果--->', taskItem)
+        console.log('详情页轮询请求结果--->', taskItem);
         // 更新任务信息
         setTaskMainList([taskItem]);
       }
@@ -513,14 +501,14 @@ export default function ProjectDetailPage() {
     if (!taskMainList.length) return;
 
     const status = taskMainList[0]?.status;
-    const shouldStop = status === "completed" || status === "failed" || status === "cancelled";
+    const shouldStop = status === 'completed' || status === 'failed' || status === 'cancelled';
 
     if (shouldStop) {
       clearPolling();
       return;
     }
 
-    if (status === "processing" && !isProgressDialogOpen) {
+    if (status === 'processing' && !isProgressDialogOpen) {
       startPolling();
     } else {
       clearPolling();
@@ -528,10 +516,6 @@ export default function ProjectDetailPage() {
 
     return clearPolling;
   }, [taskMainList[0]?.status, isProgressDialogOpen, startPolling, clearPolling]);
-
-
-
-
 
   // 格式化时间
   // const formatDate = (dateStr: string) => {
@@ -546,101 +530,101 @@ export default function ProjectDetailPage() {
   // 加载中
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
+      <div className="bg-background fixed inset-0 z-50 flex flex-col overflow-hidden">
         {/* 面包屑骨架 */}
-        <div className="shrink-0 border-b bg-background px-6 py-3">
-          <div className="h-5 w-64 bg-muted rounded animate-pulse"></div>
+        <div className="bg-background shrink-0 border-b px-6 py-3">
+          <div className="bg-muted h-5 w-64 animate-pulse rounded"></div>
         </div>
 
         {/* 主体内容 */}
         <div className="flex flex-1 overflow-hidden">
           {/* 左侧菜单栏骨架 */}
-          <aside className="flex flex-col border-r w-96 shrink-0 bg-muted/30">
-            <div className="flex flex-col flex-1 pb-0 overflow-y-hidden">
+          <aside className="bg-muted/30 flex w-96 shrink-0 flex-col border-r">
+            <div className="flex flex-1 flex-col overflow-y-hidden pb-0">
               {/* 视频播放器骨架 */}
               <div className="p-4">
-                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted animate-pulse"></div>
+                <div className="bg-muted relative aspect-video w-full animate-pulse overflow-hidden rounded-lg"></div>
               </div>
 
               {/* 基本信息骨架 */}
-              <div className="px-4 pb-4 space-y-3">
-                <div className="h-6 w-3/4 bg-muted rounded animate-pulse"></div>
+              <div className="space-y-3 px-4 pb-4">
+                <div className="bg-muted h-6 w-3/4 animate-pulse rounded"></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="h-16 bg-muted rounded animate-pulse"></div>
-                  <div className="h-16 bg-muted rounded animate-pulse"></div>
+                  <div className="bg-muted h-16 animate-pulse rounded"></div>
+                  <div className="bg-muted h-16 animate-pulse rounded"></div>
                 </div>
-                <div className="h-12 bg-muted rounded animate-pulse"></div>
+                <div className="bg-muted h-12 animate-pulse rounded"></div>
               </div>
             </div>
 
             {/* 底部按钮骨架 */}
             <div className="shrink-0">
-              <div className="h-px bg-muted"></div>
-              <div className="px-2 mt-2 pb-2 space-y-2">
+              <div className="bg-muted h-px"></div>
+              <div className="mt-2 space-y-2 px-2 pb-2">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-10 bg-muted rounded-lg animate-pulse"></div>
+                  <div key={i} className="bg-muted h-10 animate-pulse rounded-lg"></div>
                 ))}
               </div>
-              <div className="flex flex-row shrink-0 border-t">
-                <div className="flex-1 h-12 bg-muted/50 animate-pulse"></div>
-                <div className="flex-1 h-12 bg-muted/50 border-l animate-pulse"></div>
+              <div className="flex shrink-0 flex-row border-t">
+                <div className="bg-muted/50 h-12 flex-1 animate-pulse"></div>
+                <div className="bg-muted/50 h-12 flex-1 animate-pulse border-l"></div>
               </div>
             </div>
           </aside>
 
           {/* 右侧内容区域骨架 */}
           <main className="flex-1 overflow-auto p-6">
-            <div className="border-2 rounded-lg bg-card">
-              <div className="p-6 space-y-4">
+            <div className="bg-card rounded-lg border-2">
+              <div className="space-y-4 p-6">
                 {/* 折叠时显示的内容 */}
-                <div className="flex gap-6 animate-pulse">
-                  <div className="h-30 aspect-video bg-muted rounded-lg border-2"></div>
+                <div className="flex animate-pulse gap-6">
+                  <div className="bg-muted aspect-video h-30 rounded-lg border-2"></div>
                   <div className="flex-1 space-y-3">
-                    <div className="h-6 w-3/4 bg-muted rounded border"></div>
-                    <div className="h-6 w-1/3 bg-muted rounded border mt-5"></div>
-                    <div className="h-6 w-1/4 bg-muted rounded border mt-5 mb-0"></div>
-                    <div className="flex justify-end gap-2 -mt-6">
-                      <div className="h-8 w-16 bg-muted rounded border"></div>
-                      <div className="h-8 w-16 bg-muted rounded border"></div>
-                      <div className="h-8 w-16 bg-muted rounded border"></div>
-                      <div className="h-8 w-16 bg-muted rounded border"></div>
+                    <div className="bg-muted h-6 w-3/4 rounded border"></div>
+                    <div className="bg-muted mt-5 h-6 w-1/3 rounded border"></div>
+                    <div className="bg-muted mt-5 mb-0 h-6 w-1/4 rounded border"></div>
+                    <div className="-mt-6 flex justify-end gap-2">
+                      <div className="bg-muted h-8 w-16 rounded border"></div>
+                      <div className="bg-muted h-8 w-16 rounded border"></div>
+                      <div className="bg-muted h-8 w-16 rounded border"></div>
+                      <div className="bg-muted h-8 w-16 rounded border"></div>
                     </div>
                   </div>
                 </div>
 
                 {/* 展开时显示的详细信息骨架 */}
-                <div className="space-y-4 pt-4 border-t-2 animate-pulse">
-                  <div className="h-6 w-32 bg-muted rounded border"></div>
+                <div className="animate-pulse space-y-4 border-t-2 pt-4">
+                  <div className="bg-muted h-6 w-32 rounded border"></div>
                   {/* 进度条 */}
-                  <div className="h-20 w-full bg-muted rounded-lg border"></div>
+                  <div className="bg-muted h-20 w-full rounded-lg border"></div>
                   <div className="grid grid-cols-9 gap-2">
                     {[...Array(9)].map((_, i) => (
-                      <div key={i} className="h-8 bg-muted rounded"></div>
+                      <div key={i} className="bg-muted h-8 rounded"></div>
                     ))}
                   </div>
 
-                  <div className="h-6 w-32 bg-muted rounded border mt-6"></div>
+                  <div className="bg-muted mt-6 h-6 w-32 rounded border"></div>
                   <div className="grid grid-cols-2 gap-4">
                     {[...Array(4)].map((_, i) => (
-                      <div key={i} className="h-16 bg-muted rounded border"></div>
+                      <div key={i} className="bg-muted h-16 rounded border"></div>
                     ))}
                   </div>
 
-                  <div className="flex gap-6 mt-6">
-                    <div className="flex-1 space-y-3 border-2 rounded-lg p-4">
-                      <div className="h-6 w-24 bg-muted rounded mx-auto"></div>
-                      <div className="h-12 bg-muted rounded"></div>
+                  <div className="mt-6 flex gap-6">
+                    <div className="flex-1 space-y-3 rounded-lg border-2 p-4">
+                      <div className="bg-muted mx-auto h-6 w-24 rounded"></div>
+                      <div className="bg-muted h-12 rounded"></div>
                       <div className="flex justify-around">
-                        <div className="h-8 w-20 bg-muted rounded border"></div>
-                        <div className="h-8 w-20 bg-muted rounded border"></div>
+                        <div className="bg-muted h-8 w-20 rounded border"></div>
+                        <div className="bg-muted h-8 w-20 rounded border"></div>
                       </div>
                     </div>
-                    <div className="flex-1 space-y-3 border-2 rounded-lg p-4">
-                      <div className="h-6 w-24 bg-muted rounded mx-auto"></div>
-                      <div className="h-12 bg-muted rounded"></div>
+                    <div className="flex-1 space-y-3 rounded-lg border-2 p-4">
+                      <div className="bg-muted mx-auto h-6 w-24 rounded"></div>
+                      <div className="bg-muted h-12 rounded"></div>
                       <div className="flex justify-around">
-                        <div className="h-8 w-20 bg-muted rounded border"></div>
-                        <div className="h-8 w-20 bg-muted rounded border"></div>
+                        <div className="bg-muted h-8 w-20 rounded border"></div>
+                        <div className="bg-muted h-8 w-20 rounded border"></div>
                       </div>
                     </div>
                   </div>
@@ -656,27 +640,25 @@ export default function ProjectDetailPage() {
   // 错误
   if (error) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <div className="bg-background fixed inset-0 z-50 flex items-center justify-center">
         <div className="text-lg text-red-500">{error}</div>
       </div>
     );
   }
 
-
-
   // 下载按钮点击
   const onDownLoadClick = async (e: any, taskMain: any) => {
     e.stopPropagation();
-    console.log('onDownLoadClick---taskMain--->', taskMain)
+    console.log('onDownLoadClick---taskMain--->', taskMain);
     const finalFileList = taskMain?.finalFileList;
     if (!finalFileList || finalFileList?.length === 0) {
-      toast.error("暂无可下载的视频链接");
+      toast.error('暂无可下载的视频链接');
       return;
     }
     // preview、video、subtitle
     const videoFinalItem = finalFileList.find((itm: any) => itm.fileType === 'video');
     if (!videoFinalItem) {
-      toast.error("暂无可下载的视频链接");
+      toast.error('暂无可下载的视频链接');
       return;
     }
 
@@ -698,15 +680,17 @@ export default function ProjectDetailPage() {
       const bucketName = videoFinalItem.r2Bucket;
 
       // 调用下载 API 获取签名 URL，60秒过期
-      const response = await fetch(`/api/video-task/download-video?taskId=${taskMain.id}&bucket=${bucketName}&key=${encodeURIComponent(key)}&expiresIn=60`);
+      const response = await fetch(
+        `/api/video-task/download-video?taskId=${taskMain.id}&bucket=${bucketName}&key=${encodeURIComponent(key)}&expiresIn=60`
+      );
       const data = await response.json();
 
       if (data.code !== 0) {
-        toast.error(data.message || "获取下载链接失败");
+        toast.error(data.message || '获取下载链接失败');
         return;
       }
 
-      console.log("[Download] 获取下载链接成功:", {
+      console.log('[Download] 获取下载链接成功:', {
         url: data.data.url,
         expiresIn: data.data.expiresIn,
         // expiresAt: data.data.expiresAt,
@@ -722,10 +706,10 @@ export default function ProjectDetailPage() {
       link.click();
       document.body.removeChild(link);
 
-      console.log("[Download] 下载已触发");
+      console.log('[Download] 下载已触发');
     } catch (error) {
-      console.error("[Download] 下载失败:", error);
-      toast.error("下载失败，请稍后重试");
+      console.error('[Download] 下载失败:', error);
+      toast.error('下载失败，请稍后重试');
     }
   };
 
@@ -745,7 +729,7 @@ export default function ProjectDetailPage() {
       const response = await fetch(downloadUrl);
       if (!response.ok) {
         const error = await response.json();
-        toast.error(error.message || "下载字幕失败");
+        toast.error(error.message || '下载字幕失败');
         return;
       }
       const blob = await response.blob();
@@ -758,30 +742,30 @@ export default function ProjectDetailPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("[SRT Download] 失败:", error);
-      toast.error("下载字幕失败，请稍后重试");
+      console.error('[SRT Download] 失败:', error);
+      toast.error('下载字幕失败，请稍后重试');
     }
   };
 
   const getPreviewVideoUrl = (taskMain: any, type: string) => {
     return taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
-  }
+  };
 
   const image: React.CSSProperties = {
-    width: "100%",
-    height: "100%",
-  }
+    width: '100%',
+    height: '100%',
+  };
 
   const shape: React.CSSProperties = {
     strokeWidth: 6,
-    strokeLinecap: "round",
-    fill: "transparent",
-  }
+    strokeLinecap: 'round',
+    fill: 'transparent',
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
+    <div className="bg-background fixed inset-0 z-50 flex flex-col overflow-hidden">
       {/* 面包屑导航 */}
-      <div className="shrink-0 border-b bg-background px-6 py-3 flex items-center justify-between">
+      <div className="bg-background flex shrink-0 items-center justify-between border-b px-6 py-3">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -795,19 +779,17 @@ export default function ProjectDetailPage() {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href={`/${locale}/video_convert/myVideoList`}>
-                  {t('breadcrumb.myVideos')}
-                </Link>
+                <Link href={`/${locale}/video_convert/myVideoList`}>{t('breadcrumb.myVideos')}</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{videoDetail?.fileName || "项目详情"}</BreadcrumbPage>
+              <BreadcrumbPage>{videoDetail?.fileName || '项目详情'}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="flex flex-row gap-6 items-center mr-2">
+        <div className="mr-2 flex flex-row items-center gap-6">
           <LocaleSelector type="button" />
           <ThemeToggler type="toggle" />
           {/* <SignUser userNav={header.user_nav} /> */}
@@ -857,16 +839,8 @@ export default function ProjectDetailPage() {
         />
       </div>
 
-
       {/* 视频播放器模态框 */}
-      {playVideo && (
-        <VideoPlayerModal
-          isOpen={isPlayerOpen}
-          onClose={handleClosePlayer}
-          videoUrl={playVideo}
-          title={playVideoTitle}
-        />
-      )}
+      {playVideo && <VideoPlayerModal isOpen={isPlayerOpen} onClose={handleClosePlayer} videoUrl={playVideo} title={playVideoTitle} />}
 
       {/* 转换进度弹框 */}
       <ConversionProgressModal
@@ -876,13 +850,11 @@ export default function ProjectDetailPage() {
         activeTabIdx={activeTabIdx}
       />
 
-
       {/* 转换进度弹框 */}
       <ConvertAddModal
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        projectSourceId={projectSourceId}
-      />
+        projectSourceId={projectSourceId} />
 
       {/* 修改视频转换弹框 */}
       <ProjectUpdateModal
@@ -900,10 +872,14 @@ export default function ProjectDetailPage() {
         taskId={taskMainId}
       />
 
+      <audio ref={audioRef} className="hidden" />
+
       {/* 音频播放弹框 */}
       <AudioPlayModal
-        isOpen={isAudioPlayOpen}
-        onClose={() => setIsAudioPlayOpen(false)}
+        audioRef={audioRef}
+        isLoading={isAudioModalLoading}
+        isOpen={showAudioModal}
+        onClose={() => setShowAudioModal(false)}
         subtitleAudioUrl={subtitleAudioUrl}
         backgroundAudioUrl={backgroundAudioUrl}
       />

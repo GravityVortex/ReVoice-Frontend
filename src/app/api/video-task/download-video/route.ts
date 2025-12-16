@@ -3,7 +3,7 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { R2Provider } from '@/extensions/storage';
-import { getPrivateR2DownLoadSignUrl, getPrivateR2SignUrl } from '@/extensions/storage/privateR2Util';
+import { getPrivateR2DownLoadSignUrl } from '@/extensions/storage/privateR2Util';
 import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { getUserInfo } from '@/shared/models/user';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
     // DOEND: 调用java获取视频下载签名地址
     if (USE_JAVA_REQUEST) {
       // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
-      let env = process.env.ENV || 'dev';
+      // let env = process.env.ENV || 'dev';
       // 合成的原视频
-      const keyTemp = `${env}/${user?.id}/${taskId}/merge_audio_video/video/video_new.mp4`;
+      const keyTemp = `${user?.id}/${taskId}/merge_audio_video/video/video_new.mp4`;
       const params: SignUrlItem[] = [
         { path: keyTemp, operation: 'download', expirationMinutes: expiresIn / 60 }, // 无声视频
       ];

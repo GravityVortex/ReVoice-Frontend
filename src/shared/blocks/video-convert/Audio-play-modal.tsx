@@ -1,41 +1,40 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
-import { Slider } from '@/shared/components/ui/slider';
-import { Button } from '@/shared/components/ui/button';
-import { Play, Pause } from 'lucide-react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
+import { Pause, Play, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { iso } from 'zod';
+
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Slider } from '@/shared/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 
 interface AudioPlayModalProps {
   isOpen: boolean;
   onClose: () => void;
   subtitleAudioUrl: string;
   backgroundAudioUrl: string;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+  isLoading: boolean;
 }
 
-export function AudioPlayModal({
-  isOpen,
-  onClose,
-  subtitleAudioUrl,
+const AudioPlayModal = forwardRef<HTMLAudioElement, AudioPlayModalProps>(({ 
+  isOpen, 
+  onClose, 
+  subtitleAudioUrl, 
   backgroundAudioUrl,
-}: AudioPlayModalProps) {
+  audioRef,
+  isLoading = true
+}, ref) => {
   const t = useTranslations('video_convert.projectDetail.audio');
   const [activeTab, setActiveTab] = useState('subtitle');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  // const [isLoading, setIsLoading] = useState(isLoading);
   const animationRef = useRef<number>(0);
 
-  const currentUrl = activeTab === 'subtitle' ? subtitleAudioUrl : backgroundAudioUrl;
+  
 
   // 更新进度条动画
   const updateProgress = () => {
@@ -56,10 +55,19 @@ export function AudioPlayModal({
 
   // tab切换或URL变化时重头播放并绑定事件
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentUrl) return;
+    if (!isOpen || isLoading) return;
 
-    const updateDuration = () => setDuration(audio.duration);
+    // setCurrentUrl(currentUrl);
+
+    const audio = audioRef.current;
+    console.log('audio--->', audio);
+    if (!audio) return;
+
+    const updateDuration = () => {
+      console.log('audio.duration--->', audio.duration);
+      setDuration(audio.duration || 0);
+    };
+
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
@@ -68,11 +76,20 @@ export function AudioPlayModal({
     // 重置状态
     setCurrentTime(0);
     setIsPlaying(false);
-    
-    // 加载新音频
+
+    const currentUrl = activeTab === 'subtitle' ? subtitleAudioUrl : backgroundAudioUrl;
+    // 设置音频源并加载
+    audio.src = currentUrl;
     audio.load();
-    audio.addEventListener('loadedmetadata', updateDuration);
+
+    // 添加事件监听器
+    audio.addEventListener('loadedmetadata', updateDuration, { once: true });
     audio.addEventListener('ended', handleEnded);
+
+    // 如果音频已经可以播放，直接更新时长
+    if (audio.readyState > 0) {
+      updateDuration();
+    }
 
     return () => {
       audio.pause();
@@ -82,7 +99,7 @@ export function AudioPlayModal({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [currentUrl]);
+  }, [activeTab, isOpen, audioRef.current, isLoading]);
 
   // 处理播放/暂停
   useEffect(() => {
@@ -91,6 +108,9 @@ export function AudioPlayModal({
     if (isPlaying) {
       audioRef.current.play().then(() => {
         animationRef.current = requestAnimationFrame(updateProgress);
+      }).catch(error => {
+        console.error('播放失败:', error);
+        setIsPlaying(false);
       });
     } else {
       audioRef.current.pause();
@@ -123,17 +143,20 @@ export function AudioPlayModal({
 
   const togglePlay = () => {
     if (!audioRef.current) return;
-    
+
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-        updateProgress();
-      }).catch(error => {
-        console.error('播放失败:', error);
-      });
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          updateProgress();
+        })
+        .catch((error) => {
+          console.error('播放失败:', error);
+        });
     }
   };
 
@@ -142,7 +165,7 @@ export function AudioPlayModal({
     const newTime = value[0];
     audioRef.current.currentTime = newTime;
     setCurrentTime(newTime);
-    
+
     // 如果正在播放，确保进度条继续更新
     if (isPlaying && !animationRef.current) {
       updateProgress();
@@ -162,55 +185,78 @@ export function AudioPlayModal({
           <DialogTitle>{t('preview')}</DialogTitle>
         </DialogHeader>
 
-        <audio ref={audioRef} src={currentUrl} className="hidden" />
+        {/* Audio element is now in the parent component */}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="subtitle">{t('download')}</TabsTrigger>
-            <TabsTrigger value="background">{t('downloadBg')}</TabsTrigger>
+            <TabsTrigger value="subtitle" disabled={isLoading}>{t('download')}</TabsTrigger>
+            <TabsTrigger value="background" disabled={isLoading}>{t('downloadBg')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="subtitle" className="space-y-4">
-            <div className="flex items-center gap-4 mt-6">
-              <Button size="icon" variant="outline" onClick={togglePlay}>
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <div className="flex-1 space-y-2">
-                <Slider
-                  value={[currentTime]}
-                  max={duration || 100}
-                  step={0.1}
-                  onValueChange={handleSliderChange}
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
+            {isLoading ? (
+              <div className="mt-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center animate-pulse">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-2 w-full rounded-full bg-muted animate-pulse" />
+                  <div className="flex justify-between">
+                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-6 flex items-center gap-4">
+                <Button size="icon" variant="outline" onClick={togglePlay}>
+                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </Button>
+                <div className="flex-1 space-y-2">
+                  <Slider value={[currentTime]} max={duration || 100} step={0.1} onValueChange={handleSliderChange} />
+                  <div className="text-muted-foreground flex justify-between text-xs">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="background" className="space-y-4">
-            <div className="flex items-center gap-4 mt-6">
-              <Button size="icon" variant="outline" onClick={togglePlay}>
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <div className="flex-1 space-y-2">
-                <Slider
-                  value={[currentTime]}
-                  max={duration || 100}
-                  step={0.1}
-                  onValueChange={handleSliderChange}
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
+            {isLoading ? (
+              <div className="mt-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center animate-pulse">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-2 w-full rounded-full bg-muted animate-pulse" />
+                  <div className="flex justify-between">
+                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-6 flex items-center gap-4">
+                <Button size="icon" variant="outline" onClick={togglePlay}>
+                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </Button>
+                <div className="flex-1 space-y-2">
+                  <Slider value={[currentTime]} max={duration || 100} step={0.1} onValueChange={handleSliderChange} />
+                  <div className="text-muted-foreground flex justify-between text-xs">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+AudioPlayModal.displayName = 'AudioPlayModal';
+export { AudioPlayModal };

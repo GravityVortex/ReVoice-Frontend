@@ -93,10 +93,11 @@ export function RightContentPanel({
   ];
 
   const getPreviewVideoUrl = (taskMain: any, type: string) => {
-  // console.log('getPreviewVideoUrl---taskMain--->', taskMain)
-  const r2Key = taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
-  return getVideoR2PathName(videoDetail.userId, taskMain.id, r2Key)
-}
+    // console.log('getPreviewVideoUrl---taskMain--->', taskMain)
+    const r2Key = taskMain?.finalFileList?.find((finalFile: any) => finalFile.fileType === type)?.r2Key;
+    if (!r2Key) return '';
+    return getVideoR2PathName(videoDetail.userId, taskMain.id, r2Key)
+  }
 
   return (
     <main className="flex-1 overflow-auto p-6">
@@ -275,7 +276,7 @@ export function RightContentPanel({
                         className="h-full rounded-full bg-primary"
                         style={{ width: `${taskMain?.progress}%`, opacity: taskMain?.progress >= 100 ? 1 : 0.5 }} />
 
-                      {taskMain?.progress < 100 && (
+                      {(taskMain?.status === "processing" || taskMain?.status === "pending") && taskMain?.progress < 100 && (
                         <motion.div
                           className="absolute top-0 h-full rounded-full bg-primary"
                           initial={{ width: 0 }}
@@ -287,25 +288,31 @@ export function RightContentPanel({
 
                     {/* 步骤展示 */}
                     <div className="pt-1 flex flex-row justify-between gap-2">
-                      {steps.map((step, index) => {
-                        const progress = taskMain?.progress || 0;
-                        const isActive = progress >= step.range[0] && progress < step.range[1];
-                        const isCompleted = progress >= step.range[1];
 
-                        return (
-                          <div key={index} className="text-center">
-                            <p className={cn(
-                              "flex flex-row items-center gap-1 text-xs font-medium transition-colors",
-                              isActive && "text-cyan-600 font-semibold",
-                              isCompleted && "text-green-600",
-                              !isActive && !isCompleted && "text-gray-400"
-                            )}>
-                              {step.name}
-                              {isActive && (<Loader2 className="size-4 animate-spin text-cyan-600" />)}
-                            </p>
-                          </div>
-                        );
-                      })}
+                      {(() => {
+                        // 状态
+                        const status = (taskMain?.status === "processing" || taskMain?.status === "pending");
+                        // 遍历
+                        return steps.map((step, index) => {
+                          const progress = taskMain?.progress || 0;
+                          const isActive = status && progress >= step.range[0] && progress < step.range[1];
+                          const isCompleted = progress >= step.range[1];
+
+                          return (
+                            <div key={index} className="text-center">
+                              <p className={cn(
+                                "flex flex-row items-center gap-1 text-xs font-medium transition-colors",
+                                isActive && "text-cyan-600 font-semibold",
+                                isCompleted && "text-green-600",
+                                !isActive && !isCompleted && "text-gray-400"
+                              )}>
+                                {step.name}
+                                {isActive && (<Loader2 className="size-4 animate-spin text-cyan-600" />)}
+                              </p>
+                            </div>
+                          );
+                        })
+                      })()}
                     </div>
                   </div>
 
