@@ -39,7 +39,9 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to get pre-signed URL: ${response}`);
+    // console.log('java服务器返回--->', response.statusText);
+    console.log('java服务器返回--->', await response.text());
+    throw new Error(`Failed to get pre-signed URL`);
   }
   // {
   //   "code": 200,
@@ -64,7 +66,8 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   const backJO = await response.json();
   console.log('java服务器返回--->', backJO);
   if (backJO.code !== 200) {
-    throw new Error(`Failed to get pre-signed URL: ${backJO.message}`);
+    console.log('java服务器返回--->', await response.text());
+    throw new Error(`Failed to get pre-signed URL`);
   }
   const urls = backJO.data.urls;
   console.log('java服务器返回urls--->', urls)

@@ -63,6 +63,12 @@
     "progress": "Progress",
     "cancel": "Cancel"
   },
+  "deleteDialog": {
+    "title": "Confirm Delete",
+    "description": "Are you sure you want to delete this video? This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
   "progressModal": {
     "title": "Conversion Progress",
     "loading": "Loading...",

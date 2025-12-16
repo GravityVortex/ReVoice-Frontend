@@ -47,6 +47,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import VideoPlayerModal from '@/shared/components/ui/video-player-modal';
 import { cn, formatDate, getAudioR2PathName, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from '@/shared/lib/utils';
 
@@ -146,6 +147,8 @@ export default function ProjectDetailPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [subtitleAudioUrl, setSubtitleAudioUrl] = useState('');
   const [backgroundAudioUrl, setBackgroundAudioUrl] = useState('');
+  // 删除确认弹框
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   // 轮询定时器ID
   const pollingTimerDetailRef = useRef<NodeJS.Timeout | null>(null);
   // 测试用视频列表数据
@@ -222,7 +225,7 @@ export default function ProjectDetailPage() {
         router.push(`/${locale}/pricing`);
         break;
       case 'delete':
-        onDevelopClick();
+        setShowDeleteDialog(true);
         break;
       default:
         break;
@@ -231,6 +234,29 @@ export default function ProjectDetailPage() {
   const onDevelopClick = () => {
     // toast.info("新建功能正在开发中，敬请期待！");
     toast.success('新建功能正在开发中，敬请期待！');
+  };
+
+  // 删除视频
+  const handleDelete = async () => {
+    setShowDeleteDialog(false);
+    try {
+      const response = await fetch('/api/video-task/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskMainId: id }),
+      });
+
+      const result = await response.json();
+      if (result.code === 0) {
+        toast.success('删除成功');
+        router.push(`/${locale}/video_convert/myVideoList`);
+      } else {
+        toast.error(result.message || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除失败:', error);
+      toast.error('删除失败，请稍后重试');
+    }
   };
 
   /**
@@ -883,6 +909,20 @@ export default function ProjectDetailPage() {
         subtitleAudioUrl={subtitleAudioUrl}
         backgroundAudioUrl={backgroundAudioUrl}
       />
+
+      {/* 删除确认弹框 */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
+            <DialogDescription>{t('deleteDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>{t('deleteDialog.cancel')}</Button>
+            <Button variant="destructive" onClick={handleDelete}>{t('deleteDialog.confirm')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
