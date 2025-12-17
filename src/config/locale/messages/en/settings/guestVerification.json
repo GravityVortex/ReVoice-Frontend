@@ -1,0 +1,39 @@
+{
+  "title": "Guest Account Verification",
+  "description": "After verification, your account will be upgraded to a full account with permanent data storage.",
+  "fields": {
+    "email": "Email Address",
+    "verificationCode": "Verification Code",
+    "password": "Password",
+    "confirmPassword": "Confirm Password"
+  },
+  "placeholders": {
+    "email": "Enter your email address",
+    "verificationCode": "Enter verification code",
+    "password": "At least 8 characters with uppercase and lowercase",
+    "confirmPassword": "Re-enter your password"
+  },
+  "buttons": {
+    "sendCode": "Send Code",
+    "sending": "Sending",
+    "resend": "s to resend",
+    "cancel": "Cancel",
+    "submit": "Verify",
+    "submitting": "Verifying..."
+  },
+  "errors": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Please enter a valid email address",
+    "emailExists": "This email is already registered, please use another one",
+    "codeRequired": "Verification code is required",
+    "passwordRequired": "Password is required",
+    "passwordInvalid": "Password must be at least 8 characters with uppercase and lowercase",
+    "confirmPasswordRequired": "Please confirm your password",
+    "passwordMismatch": "Passwords do not match",
+    "sendCodeFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed, please try again"
+  },
+  "success": {
+    "codeSent": "Verification code sent to your email"
+  }
+}

@@ -57,6 +57,7 @@ interface ConversionProgressModalProps {
     isOpen: boolean;
     activeTabIdx: string;
     onClose: () => void;
+    onStatusUpdateEvent?: (taskItem: any) => void;
     taskMainId: string;
 }
 
@@ -65,6 +66,7 @@ export function ConversionProgressModal({
     activeTabIdx,
     onClose,
     taskMainId,
+    onStatusUpdateEvent,
 }: ConversionProgressModalProps) {
     // console.log('ConversionProgressModal activeTabIdx--->', activeTabIdx);
     const [activeTab, setActiveTab] = useState(activeTabIdx === '1' ? 'tab_progress' : 'tab_detail');
@@ -115,7 +117,7 @@ export function ConversionProgressModal({
         pollingTimerRef.current = setInterval(() => {
             console.log('轮询查询进度--->', taskMainId);
             fetchConversionProgress();
-        }, 15000);
+        }, 10000);
 
         console.log('轮询已启动，间隔5秒');
     };
@@ -240,6 +242,8 @@ export function ConversionProgressModal({
                 if (taskItem.status === 'completed' || taskItem.status === 'failed' || taskItem.status === 'cancelled') {
                     clearPolling();
                 }
+                // 回调通知主界面更新界面
+                onStatusUpdateEvent?.(taskItem);
             }
         } catch (error) {
             console.error('获取转换进度失败:', error);

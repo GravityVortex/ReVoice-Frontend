@@ -12,9 +12,7 @@ export type Credit = typeof credit.$inferSelect & {
   user?: User;
 };
 export type NewCredit = typeof credit.$inferInsert;
-export type UpdateCredit = Partial<
-  Omit<NewCredit, 'id' | 'transactionNo' | 'createdAt'>
->;
+export type UpdateCredit = Partial<Omit<NewCredit, 'id' | 'transactionNo' | 'createdAt'>>;
 
 export enum CreditStatus {
   ACTIVE = 'active',
@@ -100,9 +98,7 @@ export async function getCredits({
       and(
         userId ? eq(credit.userId, userId) : undefined,
         status ? eq(credit.status, status) : undefined,
-        transactionType
-          ? eq(credit.transactionType, transactionType)
-          : undefined
+        transactionType ? eq(credit.transactionType, transactionType) : undefined
       )
     )
     .orderBy(desc(credit.createdAt))
@@ -133,9 +129,7 @@ export async function getCreditsCount({
       and(
         userId ? eq(credit.userId, userId) : undefined,
         status ? eq(credit.status, status) : undefined,
-        transactionType
-          ? eq(credit.transactionType, transactionType)
-          : undefined
+        transactionType ? eq(credit.transactionType, transactionType) : undefined
       )
     );
 
@@ -149,7 +143,7 @@ export async function getCreditsCount({
  * @param scene 场景，如：convert_video
  * @param description 描述，如：视频转换任务消耗积分
  * @param metadata 其他元信息 如：{"type":"test"}
- * @returns 
+ * @returns
  */
 export async function consumeCredits({
   userId,
@@ -171,7 +165,7 @@ export async function consumeCredits({
     // 1. check credits balance
     const [creditsBalance] = await tx
       .select({
-        total: sum(credit.remainingCredits),// 剩余积分额度
+        total: sum(credit.remainingCredits), // 剩余积分额度
       })
       .from(credit)
       .where(
@@ -188,14 +182,8 @@ export async function consumeCredits({
       );
 
     // balance is not enough
-    if (
-      !creditsBalance ||
-      !creditsBalance.total ||
-      parseInt(creditsBalance.total) < credits
-    ) {
-      throw new Error(
-        `Insufficient credits, ${creditsBalance?.total || 0} < ${credits}`
-      );
+    if (!creditsBalance || !creditsBalance.total || parseInt(creditsBalance.total) < credits) {
+      throw new Error(`Insufficient credits, ${creditsBalance?.total || 0} < ${credits}`);
     }
 
     // 2. get available credits, FIFO queue with expiresAt, batch query
@@ -298,16 +286,13 @@ export async function consumeCredits({
 
 /**
  * 退还积分业务
- * @param creditId 消费记录ID 
- * @returns 
+ * @param creditId 消费记录ID
+ * @returns
  */
 export async function refundCredits({ creditId }: { creditId: string }) {
   const result = await db().transaction(async (tx) => {
     // 查到此条消费记录，其中consumedDetail字段记录了关联的所有增加记录和消耗数量
-    const [consumedCredit] = await tx
-      .select()
-      .from(credit)
-      .where(eq(credit.id, creditId));
+    const [consumedCredit] = await tx.select().from(credit).where(eq(credit.id, creditId));
 
     if (!consumedCredit || consumedCredit.status !== CreditStatus.ACTIVE) {
       throw new Error('Credit record not found or already refunded');
@@ -369,3 +354,42 @@ export async function getRemainingCredits(userId: string): Promise<number> {
 
   return parseInt(result?.total || '0');
 }
+
+/**
+ * 查询是否已赠送积分
+ * @param userId 
+ * @param transactionScene 
+ * @returns 
+ */
+export async function findCreditsByUserId(userId: string, transactionScene: string) {
+  const result = await db()
+    .select()
+    .from(credit)
+    .where(and(eq(credit.userId, userId), eq(credit.transactionScene, transactionScene)));
+
+  return result;
+}
+/**
+ * 管理后台删除积分
+ * @param id 
+ * @returns 
+ */
+export async function deleteCredit(id: string) {
+  const [creditRecord] = await db().select().from(credit).where(eq(credit.id, id));
+
+  if (!creditRecord) {
+    throw new Error('Credit record not found');
+  }
+  // 不想等说明已经被消费了
+  if (creditRecord.credits !== creditRecord.remainingCredits) {
+    const consumed = creditRecord.credits - creditRecord.remainingCredits;
+    await db().update(credit).set({ status: CreditStatus.DELETED }).where(eq(credit.id, id));
+    return { canDelete: false, consumed };
+  }
+
+  await db().delete(credit).where(eq(credit.id, id));
+  return { canDelete: true };
+}
+
+
+

@@ -1,4 +1,4 @@
-import { JAVA_SERVER_BASE_URL } from '@/shared/cache/system-config';
+import { JAVA_EMAIL_URL, JAVA_SERVER_BASE_URL, SECRET_EMAIL } from '@/shared/cache/system-config';
 
 import EncryptionUtil from '../lib/EncryptionUtil';
 
@@ -70,7 +70,7 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
     throw new Error(`Failed to get pre-signed URL`);
   }
   const urls = backJO.data.urls;
-  console.log('java服务器返回urls--->', urls)
+  console.log('java服务器返回urls--->', urls);
   return urls;
 }
 
@@ -102,9 +102,46 @@ export async function getTaskProgress(taskId: string) {
   if (backJO.code !== 200) {
     throw new Error(`Failed to get pre-signed URL: ${backJO.message}`);
   }
-  const tasks = backJO.data.tasks
+  const tasks = backJO.data.tasks;
   if (tasks.length === 0) {
     throw new Error(`Failed to get tasks length is 0`);
   }
   return backJO.data.tasks[0].steps;
+}
+
+/**
+ * 发送邮件
+ * @param toEmail recipient@example.com
+ * @param title 测试邮件
+ * @param htmlContent <h1>欢迎使用邮件服务</h1><p>这是一封测试邮件。</p>
+ * @returns 
+ */
+export async function sendEmail(toEmail: string, title: string, htmlContent: string) {
+  const params = {
+    to: toEmail,
+    subject: title,
+    html: htmlContent,
+  };
+  // 发送
+  const response = await fetch(`${JAVA_EMAIL_URL}/api/v1/emails/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': SECRET_EMAIL,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorJO = await response.text();
+    console.log('java服务器返回--->', errorJO);
+    return errorJO;
+  }
+
+  const backJO = await response.json();
+  // if (backJO.code !== 1000) {
+  //   console.log('java服务器返回--->', backJO);
+    // throw new Error(`Failed to send email`);
+  // }
+  return backJO;
 }

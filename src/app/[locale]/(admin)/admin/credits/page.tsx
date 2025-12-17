@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { PERMISSIONS, requirePermission } from '@/core/rbac';
-import { Header, Main, MainHeader } from '@/shared/blocks/dashboard';
+import { Header, Main } from '@/shared/blocks/dashboard';
 import { TableCard } from '@/shared/blocks/table';
 import {
   CreditStatus,
@@ -11,6 +11,8 @@ import {
 } from '@/shared/models/credit';
 import { Crumb, Tab } from '@/shared/types/blocks/common';
 import { type Table } from '@/shared/types/blocks/table';
+import { CreditsActions } from './credits-client';
+import { DeleteCreditButton } from '@/shared/blocks/admin/delete-credit-button';
 
 export default async function CreditsPage({
   params,
@@ -116,6 +118,11 @@ export default async function CreditsPage({
         type: 'json_preview',
         placeholder: '-',
       },
+      {
+        name: 'actions',
+        title: '操作',
+        callback: (item) => <DeleteCreditButton id={item.id} />,
+      },
     ],
     data: credits,
     pagination: {
@@ -129,7 +136,31 @@ export default async function CreditsPage({
     <>
       <Header crumbs={crumbs} />
       <Main>
-        <MainHeader title={t('list.title')} tabs={tabs} />
+        <div className="mb-6 flex items-start justify-between">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold tracking-tight">{t('list.title')}</h2>
+          </div>
+          <CreditsActions />
+        </div>
+        {tabs && tabs.length > 0 && (
+          <div className="mb-6">
+            <div className="flex gap-2">
+              {tabs.map((tab) => (
+                <a
+                  key={tab.name}
+                  href={tab.url}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    tab.is_active
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {tab.title}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
         <TableCard table={table} />
       </Main>
     </>

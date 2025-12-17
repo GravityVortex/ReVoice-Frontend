@@ -23,6 +23,7 @@ export const localeMessagesPaths = [
   'pricing',
   'settings/sidebar',
   'settings/profile',
+  'settings/guestVerification',
   'settings/security',
   'settings/billing',
   'settings/payments',

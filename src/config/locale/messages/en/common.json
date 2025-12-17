@@ -30,7 +30,16 @@
     "name_title": "Name",
     "name_placeholder": "Input your name here",
     "admin_title": "Admin System",
-    "credits_title": "Credits: {credits}"
+    "credits_title": "Credits: {credits}",
+    "verification_code_title": "Verification Code",
+    "verification_code_placeholder": "Enter verification code",
+    "send_code": "Send Code",
+    "resend_code": "Resend ({countdown}s)",
+    "code_sent": "Verification code sent",
+    "enter_email_first": "Please enter email first",
+    "enter_code": "Please enter verification code",
+    "invalid_code": "Invalid verification code",
+    "send_code_failed": "Failed to send code"
   },
   "payment": {
     "choose_payment_method": "Choose Payment Method",

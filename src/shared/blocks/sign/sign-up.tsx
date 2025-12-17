@@ -36,6 +36,9 @@ export function SignUp({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [serverCode, setServerCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const isGoogleAuthEnabled = configs.google_auth_enabled === 'true';
@@ -77,6 +80,44 @@ export function SignUp({
     }
   };
 
+  const handleSendCode = async () => {
+    if (!email) {
+      toast.error(t('enter_email_first'));
+      return;
+    }
+
+    if (countdown > 0) return;
+
+    try {
+      const res = await fetch('/api/user/send-verification-code-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setServerCode(data.code);
+        setCountdown(120);
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        toast.success(t('code_sent'));
+      } else {
+        toast.error(data.error || t('send_code_failed'));
+      }
+    } catch (error) {
+      toast.error(t('send_code_failed'));
+    }
+  };
+
   const handleSignUp = async () => {
     if (loading) {
       return;
@@ -84,6 +125,16 @@ export function SignUp({
 
     if (!email || !password || !name) {
       toast.error('email, password and name are required');
+      return;
+    }
+
+    if (!verificationCode) {
+      toast.error(t('enter_code'));
+      return;
+    }
+
+    if (verificationCode !== serverCode) {
+      toast.error(t('invalid_code'));
       return;
     }
 
@@ -100,12 +151,26 @@ export function SignUp({
         onResponse: (ctx) => {
           setLoading(false);
         },
-        onSuccess: (ctx) => {
+        onSuccess: async (ctx) => {
+          console.log('sign up success--->', ctx);
+
+          // Grant credits for email registration
+          try {
+            await fetch('/api/user/signup-email-credits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email }),
+            });
+          } catch (error) {
+            console.error('Failed to grant credits:', error);
+          }
+
           // report affiliate
           reportAffiliate({ userEmail: email });
           router.push(callbackUrl);
         },
         onError: (e: any) => {
+          console.log('sign up error--->', e);
           toast.error(e?.error?.message || 'sign up failed');
           setLoading(false);
         },
@@ -156,10 +221,32 @@ export function SignUp({
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="code">{t('verification_code_title')}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder={t('verification_code_placeholder')}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={countdown > 0 || !email}
+                    onClick={handleSendCode}
+                    className="whitespace-nowrap"
+                  >
+                    {countdown > 0 ? t('resend_code', { countdown }) : t('send_code')}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="password">{t('password_title')}</Label>
                 <Input
                   id="password"
-                  type="password"
+                  type="text"
                   placeholder={t('password_placeholder')}
                   autoComplete="password"
                   value={password}

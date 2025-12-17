@@ -14,5 +14,22 @@
     "buttons": {
       "submit": "保存"
     }
+  },
+  "guest": {
+    "tip": "当前为访客邮箱，建议完成账号认证",
+    "banner": {
+      "title": "访客账号提示",
+      "description": "您当前使用的是访客账号，建议完成账号认证以获得完整功能和数据安全保障。",
+      "button": "立即认证"
+    },
+    "success": "账号认证成功！"
+  },
+  "errors": {
+    "noAuth": "未授权",
+    "nameRequired": "名称不能为空",
+    "updateFailed": "更新失败"
+  },
+  "success": {
+    "updated": "个人资料已更新"
   }
 }

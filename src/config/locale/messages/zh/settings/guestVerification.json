@@ -1,0 +1,39 @@
+{
+  "title": "访客账号认证",
+  "description": "完成认证后，您的账号将升级为正式账号，数据将永久保存。",
+  "fields": {
+    "email": "邮箱地址",
+    "verificationCode": "邮箱验证码",
+    "password": "登录密码",
+    "confirmPassword": "确认密码"
+  },
+  "placeholders": {
+    "email": "请输入您的邮箱地址",
+    "verificationCode": "请输入验证码",
+    "password": "至少8位，包含大小写字母",
+    "confirmPassword": "请再次输入密码"
+  },
+  "buttons": {
+    "sendCode": "发送验证码",
+    "sending": "发送中",
+    "resend": "秒后重试",
+    "cancel": "取消",
+    "submit": "确认认证",
+    "submitting": "认证中..."
+  },
+  "errors": {
+    "emailRequired": "请输入邮箱地址",
+    "emailInvalid": "请输入有效的邮箱地址",
+    "emailExists": "该邮箱已被注册使用，请使用其他邮箱",
+    "codeRequired": "请输入验证码",
+    "passwordRequired": "请输入密码",
+    "passwordInvalid": "密码至少8位，包含大小写字母",
+    "confirmPasswordRequired": "请确认密码",
+    "passwordMismatch": "两次输入的密码不一致",
+    "sendCodeFailed": "发送验证码失败",
+    "verifyFailed": "认证失败，请重试"
+  },
+  "success": {
+    "codeSent": "验证码已发送到您的邮箱"
+  }
+}

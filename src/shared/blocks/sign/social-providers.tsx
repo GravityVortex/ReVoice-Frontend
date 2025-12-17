@@ -53,7 +53,17 @@ export function SocialProviders({
           setLoading(false);
           setIsShowSignModal(false);
         },
-        onSuccess: (ctx) => {},
+        onSuccess: async (ctx) => {
+          // Grant credits for social registration (only for new users)
+          try {
+            await fetch('/api/user/signup-social-credits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+          } catch (error) {
+            console.error('Failed to grant credits:', error);
+          }
+        },
         onError: (e: any) => {
           toast.error(e?.error?.message || 'sign in failed');
           setLoading(false);

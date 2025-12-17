@@ -8,6 +8,10 @@ const CACHE_TTL = 5 * 60 * 1000; // 5分钟
 export const JAVA_SERVER_BASE_URL = process.env.JAVA_SERVER_BASE_URL || 'http://localhost:8080';
 // 调用java接口秘钥
 export const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'xxxsecret_zhesheng_!@#$%Bsjaldffads';
+// 发送邮件地址
+export const JAVA_EMAIL_URL = process.env.JAVA_EMAIL_URL || '';
+// 发送邮件秘钥
+export const SECRET_EMAIL = process.env.SECRET_EMAIL || '';
 
 // 全局配置：签名URL开关 - true: 调用Java服务器, false: 调用自己的接口
 export const USE_JAVA_REQUEST = process.env.USE_JAVA_REQUEST === 'true' || false;

@@ -25,6 +25,23 @@ export default async function ProfilePage() {
       description: t('edit.description'),
       submit: t('edit.buttons.submit'),
     },
+    guest: {
+      tip: t('guest.tip'),
+      banner: {
+        title: t('guest.banner.title'),
+        description: t('guest.banner.description'),
+        button: t('guest.banner.button'),
+      },
+      success: t('guest.success'),
+    },
+    errors: {
+      noAuth: t('errors.noAuth'),
+      nameRequired: t('errors.nameRequired'),
+      updateFailed: t('errors.updateFailed'),
+    },
+    success: {
+      updated: t('success.updated'),
+    },
   };
 
   return <ProfileClient user={user} translations={translations} />;

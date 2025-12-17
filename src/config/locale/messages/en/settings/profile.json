@@ -14,5 +14,22 @@
     "buttons": {
       "submit": "Save"
     }
+  },
+  "guest": {
+    "tip": "Guest email, please verify your account",
+    "banner": {
+      "title": "Guest Account Notice",
+      "description": "You are currently using a guest account. Please verify your account to access full features and ensure data security.",
+      "button": "Verify Now"
+    },
+    "success": "Account verified successfully!"
+  },
+  "errors": {
+    "noAuth": "Unauthorized",
+    "nameRequired": "Name is required",
+    "updateFailed": "Failed to update profile"
+  },
+  "success": {
+    "updated": "Profile updated successfully"
   }
 }

@@ -23,6 +23,23 @@ interface ProfileClientProps {
       description: string;
       submit: string;
     };
+    guest: {
+      tip: string;
+      banner: {
+        title: string;
+        description: string;
+        button: string;
+      };
+      success: string;
+    };
+    errors: {
+      noAuth: string;
+      nameRequired: string;
+      updateFailed: string;
+    };
+    success: {
+      updated: string;
+    };
   };
 }
 
@@ -36,7 +53,7 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
     setIsVerificationModalOpen(false);
     
     // 显示成功提示
-    toast.success('账号认证成功！');
+    toast.success(translations.guest.success);
     
     // 重新获取用户信息并更新状态
     try {
@@ -68,7 +85,7 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
           title: translations.fields.email,
           type: 'email',
           attributes: { disabled: true },
-          tip: isGuest ? '当前为访客邮箱，建议完成账号认证' : undefined,
+          tip: isGuest ? translations.guest.tip : undefined,
         },
       { name: 'name', title: translations.fields.name, type: 'text' },
       {
@@ -88,12 +105,12 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
       handler: async (data: FormData, passby: any) => {
         const { user } = passby;
         if (!user) {
-          throw new Error('no auth');
+          throw new Error(translations.errors.noAuth);
         }
 
         const name = data.get('name') as string;
         if (!name?.trim()) {
-          throw new Error('name is required');
+          throw new Error(translations.errors.nameRequired);
         }
 
         const image = data.get('image');
@@ -110,16 +127,16 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
           });
 
           if (!response.ok) {
-            throw new Error('Failed to update profile');
+            throw new Error(translations.errors.updateFailed);
           }
 
           return {
             status: 'success',
-            message: 'Profile updated',
+            message: translations.success.updated,
             redirect_url: '/settings/profile',
           };
         } catch (error) {
-          throw new Error('Failed to update profile');
+          throw new Error(translations.errors.updateFailed);
         }
       },
       button: {
@@ -140,9 +157,9 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
           <div className="flex items-start gap-3">
             <Mail className="size-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-medium text-yellow-900 dark:text-yellow-100">访客账号提示</h3>
+              <h3 className="font-medium text-yellow-900 dark:text-yellow-100">{translations.guest.banner.title}</h3>
               <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                您当前使用的是访客账号，建议完成账号认证以获得完整功能和数据安全保障。
+                {translations.guest.banner.description}
               </p>
               <Button
                 variant="outline"
@@ -151,7 +168,7 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
                 className="mt-3 border-yellow-600 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-400 dark:text-yellow-300"
               >
                 <Shield className="size-4 mr-1" />
-                立即认证
+                {translations.guest.banner.button}
               </Button>
             </div>
           </div>

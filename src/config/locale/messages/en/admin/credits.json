@@ -2,7 +2,7 @@
   "fields": {
     "transaction_no": "Transaction No",
     "user": "User",
-    "amount": "Amount",
+    "amount": "credit",
     "remaining": "Remaining",
     "type": "Type",
     "scene": "Scene",

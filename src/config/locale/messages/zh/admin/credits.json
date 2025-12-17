@@ -2,7 +2,7 @@
   "fields": {
     "transaction_no": "交易单号",
     "user": "用户",
-    "amount": "金额",
+    "amount": "积分",
     "remaining": "剩余",
     "type": "类型",
     "scene": "场景",

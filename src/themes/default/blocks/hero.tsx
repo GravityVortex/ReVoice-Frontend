@@ -9,6 +9,7 @@ import { LazyImage, SmartIcon } from '@/shared/blocks/common';
 import { AnimatedGridPattern } from '@/shared/components/ui/animated-grid-pattern';
 import { Button } from '@/shared/components/ui/button';
 import { Highlighter } from '@/shared/components/ui/highlighter';
+import { useAppContext } from '@/shared/contexts/app';
 import { cn } from '@/shared/lib/utils';
 import { Hero as HeroType } from '@/shared/types/blocks/landing';
 
@@ -40,11 +41,19 @@ export function Hero({
   className?: string;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const { user, setIsShowSignModal } = useAppContext();
   const highlightText = hero.highlight_text ?? '';
   let texts = null;
   if (highlightText) {
     texts = hero.title?.split(highlightText, 2);
   }
+
+  const handleButtonClick = (e: React.MouseEvent, url: string) => {
+    if (url === '/video_convert' && !user) {
+      e.preventDefault();
+      setIsShowSignModal(true);
+    }
+  };
 
   return (
     <>
@@ -117,6 +126,7 @@ export function Hero({
                   <Link
                     href={button.url ?? ''}
                     target={button.target ?? '_self'}
+                    onClick={(e) => handleButtonClick(e, button.url ?? '')}
                   >
                     {button.icon && <SmartIcon name={button.icon as string} />}
                     <span>{button.title}</span>

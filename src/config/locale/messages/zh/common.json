@@ -30,7 +30,16 @@
     "name_title": "姓名",
     "name_placeholder": "请输入您的姓名",
     "admin_title": "管理后台",
-    "credits_title": "积分: {credits}"
+    "credits_title": "积分: {credits}",
+    "verification_code_title": "验证码",
+    "verification_code_placeholder": "请输入验证码",
+    "send_code": "发送验证码",
+    "resend_code": "重新发送 ({countdown}s)",
+    "code_sent": "验证码已发送",
+    "enter_email_first": "请先输入邮箱",
+    "enter_code": "请输入验证码",
+    "invalid_code": "验证码错误",
+    "send_code_failed": "发送验证码失败"
   },
   "payment": {
     "choose_payment_method": "选择支付方式",

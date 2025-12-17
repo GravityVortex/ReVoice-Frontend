@@ -5,8 +5,9 @@ import bcrypt from 'bcryptjs';
 import { db } from '@/core/db';
 import { envConfigs } from '@/config';
 import * as schema from '@/config/db/schema';
-import { getUuid } from '@/shared/lib/hash';
+import { getUuid, getShortUUID } from '@/shared/lib/hash';
 import { getAllConfigs } from '@/shared/models/config';
+import { createCredit, CreditStatus, CreditTransactionType } from '@/shared/models/credit';
 
 // Static auth options - NO database connection
 // This ensures zero database calls during build time

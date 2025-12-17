@@ -68,8 +68,8 @@
     "tip": "感受这就是你要的声音",
     "buttons": [
       {
-        "title": "今天就免费试用这声",
-        "icon": "Play",
+        "title": "免费试用这声",
+        "icon": "Grid2x2Plus",
         "url": "/video_convert",
         "target": "_self",
         "variant": "default"

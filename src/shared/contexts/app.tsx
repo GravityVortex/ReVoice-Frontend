@@ -48,6 +48,9 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   // show payment modal
   const [isShowPaymentModal, setIsShowPaymentModal] = useState(false);
 
+  // 记录上次请求时间
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+
   const fetchConfigs = async function () {
     try {
       const resp = await fetch('/api/config/get-configs', {
@@ -91,7 +94,14 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const fetchUserInfo = async function () {
+    const now = Date.now();
+    if (now - lastFetchTime < 10000) {
+      console.log('get-user-info 请求过于频繁，已过滤');
+      return;
+    }
+
     try {
+      setLastFetchTime(now);
       const resp = await fetch('/api/user/get-user-info', {
         method: 'POST',
       });

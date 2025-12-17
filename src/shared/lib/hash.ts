@@ -40,3 +40,12 @@ export function getSnowId(): string {
 
   return `${snowId}${suffix}`;
 }
+
+/**
+ * get short 8-character unique ID
+ */
+export function getShortUUID(): string {
+  const timestamp = Date.now().toString(36).slice(-4);
+  const random = Math.random().toString(36).substring(2, 6);
+  return (timestamp + random).toUpperCase();
+}

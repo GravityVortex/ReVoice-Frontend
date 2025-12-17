@@ -301,7 +301,7 @@ export default function ProjectDetailPage() {
           setIsAudioModalLoading(false);
         }
       }
-      
+
     }
     // 音频下载
     else if (type === 'download') {
@@ -484,6 +484,21 @@ export default function ProjectDetailPage() {
     }
   }, [videoDetail?.coverR2Key, preUrl]);
 
+  /**
+   * 弹框中轮询结果回调回来
+   * @param taskItem 
+   */
+  function onStatusUpdateEvent(taskItem: any) {
+    // 如果任务已结束，至少掉一次接口更新界面
+    if (taskItem.status === 'completed' || taskItem.status === 'failed' || taskItem.status === 'cancelled') {
+      fetchTaskProgress();
+    } 
+    // 更新进度条等信息
+    else {
+      setTaskMainList([taskItem]);
+    }
+  }
+
   // API请求
   const fetchTaskProgress = useCallback(async () => {
     // setLoading(true);
@@ -528,6 +543,8 @@ export default function ProjectDetailPage() {
 
     const status = taskMainList[0]?.status;
     const shouldStop = status === 'completed' || status === 'failed' || status === 'cancelled';
+
+    console.log('status, shouldStop, isProgressDialogOpen-->', status, shouldStop, isProgressDialogOpen)
 
     if (shouldStop) {
       clearPolling();
@@ -872,6 +889,7 @@ export default function ProjectDetailPage() {
       <ConversionProgressModal
         isOpen={isProgressDialogOpen}
         onClose={() => setIsProgressDialogOpen(false)}
+        onStatusUpdateEvent={onStatusUpdateEvent}
         taskMainId={taskMainId}
         activeTabIdx={activeTabIdx}
       />
