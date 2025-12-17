@@ -190,7 +190,7 @@ export function GrantCreditsModal({
                     head_cell: "w-8 text-muted-foreground text-center text-xs font-normal",
                     row: "flex w-full justify-between",
                     cell: "w-8 h-8 text-center text-sm p-0 relative flex items-center justify-center",
-                    day: "h-8 w-8 p-0 font-normal aria-selected:opacity-100",
+                    day: "text-center h-8 w-8 p-0 font-normal aria-selected:opacity-100",
                     day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
                     day_today: "bg-accent text-accent-foreground",
                     day_outside: "text-muted-foreground opacity-50",
