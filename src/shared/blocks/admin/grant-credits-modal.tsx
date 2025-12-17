@@ -180,10 +180,10 @@ export function GrantCreditsModal({
                   locale={zhCN}
                   className="w-full"
                   classNames={{
-                    months: "w-full",
+                    months: "w-[220px] relative",
                     caption: "flex justify-between items-center mb-2",
                     caption_label: "text-sm font-medium",
-                    nav: "flex items-center gap-1",
+                    nav: "flex items-center gap-1 absolute right-0 ",
                     nav_button: "h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 border rounded",
                     table: "w-full border-collapse",
                     head_row: "flex w-full justify-between",
