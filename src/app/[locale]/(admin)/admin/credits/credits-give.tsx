@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { GrantCreditsModal } from '@/shared/blocks/admin/grant-credits-modal';
 
-export function CreditsActions() {
+export function CreditsGive() {
   const [showModal, setShowModal] = useState(false);
 
   return (

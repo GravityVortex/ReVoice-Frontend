@@ -28,6 +28,7 @@ export default async function LandingLayout({
 
   return (
     <Layout header={header} footer={footer}>
+      {/* 语言检测，不匹配提示用户切换 */}
       <LocaleDetector />
       {children}
     </Layout>

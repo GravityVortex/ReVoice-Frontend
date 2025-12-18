@@ -7,9 +7,9 @@ import { DashboardLayout } from '@/shared/blocks/dashboard/layout';
 import { Sidebar as SidebarType } from '@/shared/types/blocks/dashboard';
 
 /**
- * Admin layout to manage datas
+ * test layout to manage datas
  */
-export default async function AdminLayout({
+export default async function TestLayout({
   children,
   params,
 }: {
@@ -19,13 +19,12 @@ export default async function AdminLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  // Check if user has admin access permission
   await requireAdminAccess({
     redirectUrl: `/no-permission`,
     locale: locale || '',
   });
 
-  const t = await getTranslations('admin');
+  const t = await getTranslations('test');
 
   const sidebar: SidebarType = t.raw('sidebar');
 

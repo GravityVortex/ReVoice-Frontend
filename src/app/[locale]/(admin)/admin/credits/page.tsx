@@ -11,20 +11,20 @@ import {
 } from '@/shared/models/credit';
 import { Crumb, Tab } from '@/shared/types/blocks/common';
 import { type Table } from '@/shared/types/blocks/table';
-import { CreditsActions } from './credits-client';
+import { CreditsGive } from './credits-give';
 import { DeleteCreditButton } from '@/shared/blocks/admin/delete-credit-button';
+import { CreditsTabs } from './credits-tabs';
 
 export default async function CreditsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ page?: number; pageSize?: number; type?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  // Check if user has permission to read credits
   await requirePermission({
     code: PERMISSIONS.CREDITS_READ,
     redirectUrl: '/admin/no-permission',
@@ -33,9 +33,10 @@ export default async function CreditsPage({
 
   const t = await getTranslations('admin.credits');
 
-  const { page: pageNum, pageSize, type } = await searchParams;
-  const page = pageNum || 1;
-  const limit = pageSize || 30;
+  const resolvedSearchParams = await searchParams;
+  const page = Number(resolvedSearchParams.page) || 1;
+  const limit = Number(resolvedSearchParams.pageSize) || 30;
+  const type = typeof resolvedSearchParams.type === 'string' ? resolvedSearchParams.type : undefined;
 
   const crumbs: Crumb[] = [
     { title: t('list.crumbs.admin'), url: '/admin' },
@@ -140,28 +141,12 @@ export default async function CreditsPage({
           <div className="flex-1">
             <h2 className="text-2xl font-bold tracking-tight">{t('list.title')}</h2>
           </div>
-          <CreditsActions />
+          {/* 赠送按钮 */}
+          <CreditsGive />
         </div>
-        {tabs && tabs.length > 0 && (
-          <div className="mb-6">
-            <div className="flex gap-2">
-              {tabs.map((tab) => (
-                <a
-                  key={tab.name}
-                  href={tab.url}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    tab.is_active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  {tab.title}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-        <TableCard table={table} />
+        {/* tabs切换 */}
+        {tabs && tabs.length > 0 && <CreditsTabs tabs={tabs} />}
+        <TableCard key={type || 'all'} table={table} />
       </Main>
     </>
   );

@@ -111,12 +111,16 @@ export async function getUserCredits(userId: string) {
 }
 
 export async function getSignUser() {
-  const auth = await getAuth();
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  try {
+    const auth = await getAuth();
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
-  return session?.user;
+    return session?.user;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function appendUserToResult(result: any) {

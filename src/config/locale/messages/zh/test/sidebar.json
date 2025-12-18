@@ -1,0 +1,110 @@
+{
+  "header": {
+    "brand": {
+      "title": "这声测试中心",
+      "logo": {
+        "src": "/logo.png",
+        "alt": "这声"
+      },
+      "url": "/test"
+    },
+    "show_trigger": false
+  },
+  "main_navs": [
+    {
+      "title": "系统测试",
+      "items": [
+        {
+          "title": "接口请求测试",
+          "icon": "User",
+          "is_expand": true,
+          "children": [
+            {
+              "title": "接口请求",
+              "url": "/test/request",
+              "icon": "User"
+            }
+          ]
+        },
+        {
+          "title": "GuestID指纹生成",
+          "icon": "FileText",
+          "children": [
+            {
+              "title": "guestID生成",
+              "icon": "Folder",
+              "url": "/test/guest-id-create"
+            },
+            {
+              "title": "浏览器测试",
+              "icon": "FileText",
+              "url": "/test/xxx0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "综合业务测试",
+      "items": [
+        {
+          "title": "积分消耗测试",
+          "url": "/test/xxx1",
+          "icon": "Brain"
+        },
+        {
+          "title": "积分退还测试",
+          "url": "/test/xxx2",
+          "icon": "MessageCircle"
+        }
+      ]
+    }
+  ],
+  "bottom_nav": {
+    "items": [
+      
+    ]
+  },
+  "user": {
+    "nav": {
+      "items": [
+        {
+          "title": "个人资料",
+          "url": "/settings/profile",
+          "icon": "User",
+          "target": "_blank"
+        }
+      ]
+    },
+    "show_email": true,
+    "show_signout": true,
+    "signout_callback": "/"
+  },
+  "footer": {
+    "nav": {
+      "items": [
+        {
+          "title": "首页",
+          "url": "/",
+          "icon": "Home",
+          "target": "_blank"
+        },
+        {
+          "title": "管理后台",
+          "url": "/admin",
+          "icon": "Settings",
+          "target": "_blank"
+        },
+        {
+          "title": "邮箱",
+          "url": "mailto:support@your-domain.com",
+          "icon": "Mail",
+          "target": "_blank"
+        }
+      ]
+    },
+    "show_theme": true,
+    "show_locale": true
+  },
+  "variant": "sidebar"
+}

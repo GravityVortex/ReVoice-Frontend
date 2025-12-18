@@ -30,7 +30,7 @@ export default async function LandingPage({
     cta: t.raw('cta'),
   };
 
-  // load page component
+  // 实际加载src/themes/default/pages/landing.tsx，内含若干行page（相当于div）
   const Page = await getThemePage('landing');
 
   return <Page locale={locale} page={page} />;

@@ -16,14 +16,16 @@ export function DashboardLayout({
     <SidebarProvider
       style={
         {
-          '--sidebar-width': 'calc(var(--spacing) * 72)',
+          '--sidebar-width': 'calc(var(--spacing) * 72)',// 菜单宽度
           '--header-height': 'calc(var(--spacing) * 14)',
         } as React.CSSProperties
       }
     >
+      {/* 左侧面板菜单 */}
       {sidebar && (
         <Sidebar variant={sidebar.variant || 'inset'} sidebar={sidebar} />
       )}
+      {/* 右侧面板内容 */}
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
   );
