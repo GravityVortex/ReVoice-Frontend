@@ -5,37 +5,39 @@ import { Play, Pause, RefreshCw, Save, ArrowDownToDot, Sparkles, Wand2, Zap, Sta
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/lib/utils';
 
-export interface SubtitleComparisonData {
+export interface SubtitleRowData {
     id: string;
     startTime_source: string;
     endTime_source: string;
     text_source: string;
     audioUrl_source: string;
+    audioUrl_source_custom?: string;// 调用python临时生成的音频
 
     startTime_convert: string;
     endTime_convert: string;
     text_convert: string;
     audioUrl_convert: string;
+    audioUrl_convert_custom?: string;// 调用python临时生成的音频
 }
 
-interface SubtitleComparisonItemProps {
-    item: SubtitleComparisonData;
+interface SubtitleRowItemProps {
+    item: SubtitleRowData;
     isSelected: boolean;
     isPlayingSource: boolean;
     isDoubleClick?: boolean;
     isPlayingConvert: boolean;
     isPlayingFromVideo?: boolean; // 左侧视频编辑器正在播放此字幕
     onSelect: () => void;
-    onUpdate: (item: SubtitleComparisonData) => void;
+    onUpdate: (item: SubtitleRowData) => void;
     onPlayPauseSource: () => void;
     onPlayPauseConvert: () => void;
     onPointerToPlaceClick?: () => void;
-    onConvert: () => void;
+    onConvert: (item: SubtitleRowData, type: string) => void;
     onSave: (type: string) => void;
 }
 
-export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleComparisonItemProps>(
-    function SubtitleComparisonItem(
+export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
+    function SubtitleRowItem(
         {
             item,
             isSelected,
@@ -59,7 +61,7 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
             setLocalItem(item);
         }, [item]);
 
-        const handleFieldChange = (field: keyof SubtitleComparisonData, value: string) => {
+        const handleFieldChange = (field: keyof SubtitleRowData, value: string) => {
             // console.log('handleFieldChange--->', field, value);
             const updatedItem = { ...localItem, [field]: value };
             setLocalItem(updatedItem);
@@ -112,17 +114,20 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                 </div>
                                 <div
                                     onClick={(e) => {
+                                        if (!localItem.audioUrl_source_custom) return;
                                         e.stopPropagation();
                                         onSave('gen_srt');
-                                        // 原字幕: gen_srt; 翻译字幕: translate_srt
-                                        // 点击后左侧面板红色指针定位到该字幕开始位置
-                                        // onPointerToPlaceClick?.();
                                     }}
-                                    className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
+                                    className={cn(
+                                        "p-1.5",
+                                        localItem.audioUrl_source_custom
+                                            ? "cursor-pointer hover:bg-accent rounded bg-background/80 border border-border transition-colors"
+                                            : "opacity-50 cursor-not-allowed"
+                                    )}
                                     title="保存字幕语音"
                                 >
                                     {/* <ArrowDownToDot className="w-4 h-4" /> */}
-                                    <Save className="w-4 h-4" />
+                                    {localItem.audioUrl_source_custom && (<Save className="w-4 h-4" />)}
                                 </div>
                             </div>
                         </div>
@@ -143,13 +148,13 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onConvert();
+                                        onConvert(localItem, 'gen_srt');
                                     }}
                                     className="cursor-pointer p-1.5 rounded bg-background/10 hover:bg-accent transition-colors"
                                     title="更新字幕语音"
                                 >
-                                    {/* <RefreshCw className="w-4 h-4" /> */}
-                                    <Sparkles className="w-4 h-4" />
+                                    <RefreshCw className="w-4 h-4" />
+                                    {/* <Sparkles className="w-4 h-4" /> */}
                                 </div>
 
                             </div>
@@ -183,13 +188,19 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                             </div>
                             <div
                                 onClick={(e) => {
+                                    if (!localItem.audioUrl_convert_custom) return;
                                     e.stopPropagation();
                                     onSave('translate_srt');
                                 }}
-                                className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent border border-border transition-colors"
+                                className={cn(
+                                    "p-1.5 min-w-7",
+                                    localItem.audioUrl_convert_custom
+                                        ? "rounded bg-background/80 border border-border transition-colors cursor-pointer hover:bg-accent"
+                                        : "opacity-50 cursor-not-allowed"
+                                )}
                                 title="保存字幕语音"
                             >
-                                <Save className="w-4 h-4" />
+                                {localItem.audioUrl_convert_custom && (<Save className="w-4 h-4" />)}
                             </div>
 
                         </div>
@@ -209,14 +220,14 @@ export const SubtitleComparisonItem = forwardRef<HTMLDivElement, SubtitleCompari
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onConvert();
+                                        onConvert(localItem, 'translate_srt');
                                     }}
                                     className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent transition-colors"
                                     title="更新字幕语音"
                                 >
-                                    {/* <RefreshCw className="w-4 h-4" /> */}
-                                    <Sparkles className="w-4 h-4" />
-                                    
+                                    <RefreshCw className="w-4 h-4" />
+                                    {/* <Sparkles className="w-4 h-4" /> */}
+
                                 </div>
 
                             </div>

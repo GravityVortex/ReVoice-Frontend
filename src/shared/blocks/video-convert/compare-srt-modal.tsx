@@ -29,6 +29,7 @@ export function CompareSrtModal({ isOpen, onClose, taskId, onDownBtnsClick }: Co
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const onDownBtnsClickRef = useRef(onDownBtnsClick);
   const [preUrl, setPreUrl] = useState<string>();
+  const [env, setEnv] = useState<string>();
 
   useEffect(() => {
     if (isOpen && taskId) {
@@ -46,6 +47,7 @@ export function CompareSrtModal({ isOpen, onClose, taskId, onDownBtnsClick }: Co
       if (result.code === 0) {
         setSubtitles(result.data.list || []);
         setPreUrl(result.data.preUrl);
+        setEnv(result.data.env);
       }
     } catch (error) {
       console.error('获取字幕失败:', error);
@@ -62,7 +64,7 @@ export function CompareSrtModal({ isOpen, onClose, taskId, onDownBtnsClick }: Co
   const handlePlayAudio = (id: string, type: 'gen' | 'tra') => {
     const userId = user?.id || '';
     const folder = type === 'gen' ? 'split_audio/audio' : 'adj_audio_time';
-    const audioUrl =  `${preUrl}/dev/${userId}/${taskId}/${folder}/${id}.wav`;
+    const audioUrl =  `${preUrl}/${env}/${userId}/${taskId}/${folder}/${id}.wav`;
     console.log('audioUrl--->', audioUrl)
 
     if (playingAudio?.id === id && playingAudio?.type === type) {

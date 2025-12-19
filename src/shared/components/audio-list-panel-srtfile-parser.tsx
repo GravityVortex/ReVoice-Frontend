@@ -2,7 +2,7 @@
 
 // // 右侧字幕音频对照表
 // import React, { useState, useRef, useEffect } from 'react';
-// import { SubtitleComparisonItem, SubtitleComparisonData } from './subtitle-comparison-item';
+// import { SubtitleComparisonItem, SubtitleRowData } from './subtitle-comparison-item';
 // import { Button } from '@/shared/components/ui/button';
 // import { RefreshCw, Loader2, Headphones, HeadphoneOff } from 'lucide-react';
 // import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -30,7 +30,7 @@
 // }
 
 // export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle }: AudioListPanelProps) {
-//   const [subtitleItems, setSubtitleItems] = useState<SubtitleComparisonData[]>([]);
+//   const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
 //   const [selectedId, setSelectedId] = useState<string | null>(null);
 //   const [playingIndex, setPlayingIndex] = useState<number>(-1);
 //   const [playingType, setPlayingType] = useState<'source' | 'convert' | null>(null);
@@ -138,7 +138,7 @@
 
 //       // 合并两个SRT文件的数据
 //       const maxLength = Math.max(sourceEntries.length, convertEntries.length);
-//       const items: SubtitleComparisonData[] = [];
+//       const items: SubtitleRowData[] = [];
 
 //       for (let i = 0; i < maxLength; i++) {
 //         const sourceEntry = sourceEntries[i] || { index: i + 1, startTime: '00:00:00', endTime: '00:00:00', text: '', text2: null };
@@ -289,20 +289,20 @@
 //   };
 
 //   // 更新字幕项
-//   const handleUpdateItem = (updatedItem: SubtitleComparisonData) => {
+//   const handleUpdateItem = (updatedItem: SubtitleRowData) => {
 //     setSubtitleItems((prev) =>
 //       prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
 //     );
 //   };
 
 //   // 转换处理
-//   const handleConvert = (item: SubtitleComparisonData) => {
+//   const handleConvert = (item: SubtitleRowData) => {
 //     console.log('转换字幕:', item);
 //     // TODO: 实现字幕转语音逻辑
 //   };
 
 //   // 保存处理
-//   const handleSave = (item: SubtitleComparisonData, type: string) => {
+//   const handleSave = (item: SubtitleRowData, type: string) => {
 //     console.log(`保存${type}字幕--->`, item);
 //     // TODO: 实现字幕保存逻辑
 //   };

@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     const preUrl = await getSystemConfigByKey('r2.public.base_url');
     return respData({
       list,
-      preUrl
+      preUrl,
+      env: process.env.ENV || 'dev'
     });
     // }
     // 模拟

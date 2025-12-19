@@ -5,16 +5,15 @@ import { PYTHON_SECRET, PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-con
  * @param param
  * @returns
  */
-export async function originalTxt2Voice(param: any) {
+export async function pyOriginalTxtGenerateVoice(param: any) {
   // 请求数据测试
   const params = {
-    ...param,
-    text: '很高兴大家来听我的节目',
-    prev_text: 'Hi，又和大家见面了',
-    theme_desc: '动画电影，疯狂动物城2',
-    subtitle_name: '0001_00-00-00-000_00-00-04-000',
-    language_target: '',
-    taskId: 'task-uuid-123',
+    text: param.text,
+    prev_text: param.prev_text, // 上一个原语种字幕段的文本，除了第一个字幕段，其他字幕段都要传此参数
+    theme_desc: '',
+    subtitle_name: param.subtitleName,// '0001_00-00-00-000_00-00-04-000',
+    language_target: param.languageTarget,// zh，en
+    taskId: param.taskId,
   };
 
   // console.log('解密明文--->', requestData);
@@ -48,11 +47,12 @@ export async function originalTxt2Voice(param: any) {
  * @param params
  * @returns
  */
-export async function covertTxt2Voice(taskId: string, txt: string, subtitleName: string) {
+export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, subtitleName: string, languageTarget: string) {
   // 请求数据测试
   const params = {
     text: txt,
     subtitle_name: subtitleName,// 0001_00-00-00-000_00-00-04-000
+    language_target: languageTarget,
     taskId: taskId,
   };
 
@@ -82,7 +82,12 @@ export async function covertTxt2Voice(taskId: string, txt: string, subtitleName:
 }
 
 
-export async function mergeVideo(taskId: string) {
+/**
+ * 合成视频
+ * @param taskId 
+ * @returns 
+ */
+export async function pyMergeVideo(taskId: string) {
   // 请求数据测试
   const params = {
     taskId: taskId,

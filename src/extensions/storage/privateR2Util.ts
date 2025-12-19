@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { getUuid } from '@/shared/lib/hash';
@@ -16,6 +16,13 @@ const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY!;
  */
 export async function getConfig(){
   return {bucketName, endpoint}
+}
+/**
+ * 获取私桶名字
+ * @returns 
+ */
+export async function getBucketName(){
+  return bucketName;
 }
 
 /**
@@ -243,3 +250,56 @@ export async function deletePathAndFiles(path: string) {
 
   return res;
 }
+
+/**
+ * 移动文件到另一个目录，如果重名则覆盖
+ * @param sourcePath 源文件路径
+ * @param targetPath 目标文件路径
+ */
+export async function r2MoveFile(sourcePath: string, targetPath: string) {
+  try {
+    const client = new S3Client({
+      region: 'auto',
+      endpoint,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+      forcePathStyle: false,
+    });
+    // 环境变量
+    const env = process.env.ENV || 'dev';
+    // 复制
+    await client.send(
+      new CopyObjectCommand({
+        Bucket: bucketName,
+        CopySource: `${env}/${sourcePath}`,
+        Key: `${env}/${targetPath}`,
+      })
+    );
+    // 删除
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: sourcePath,
+      })
+    );
+
+    return {
+      code: 200,
+      message: 'Success',
+      data: {
+        sourcePath,
+        targetPath,
+      },
+    };
+  } catch (error) {
+    console.error('[r2MoveFile] 移动文件失败:', error);
+    return {
+      code: 500,
+      message: error instanceof Error ? error.message : '移动文件失败',
+      data: null,
+    };
+  }
+}
+

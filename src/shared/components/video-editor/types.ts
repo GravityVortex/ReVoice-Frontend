@@ -60,6 +60,7 @@ export interface ConvertObj {
 
   srt_double_arr: any[];// 两个字幕合成的字段
   r2preUrl?:string; // 组装进来的，公桶前缀
+  env?:string; // 组装进来的，dev、pro
 
   // convertId: string;
   // video_nosound: string;

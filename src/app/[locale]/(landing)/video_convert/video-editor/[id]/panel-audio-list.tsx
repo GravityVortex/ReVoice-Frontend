@@ -2,25 +2,28 @@
 
 // 右侧字幕音频对照表
 import React, { useState, useRef, useEffect } from 'react';
-import { SubtitleComparisonItem, SubtitleComparisonData } from './subtitle-comparison-item';
+import { SubtitleRowItem, SubtitleRowData } from './subtitle-row-item';
 import { Button } from '@/shared/components/ui/button';
 import { Loader2, Headphones, HeadphoneOff } from 'lucide-react';
 import { Play, Pause, RefreshCw, Save, ArrowDownToDot, Sparkles, Wand2, Zap, Stars, Cpu, Bot, Rocket, Lightbulb, Pencil, Layers, Package } from 'lucide-react';
 
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { ConvertObj } from './video-editor';
-import { useAppContext } from '../contexts/app';
+import { ConvertObj } from '../../../../../../shared/components/video-editor';
+import { useAppContext } from '../../../../../../shared/contexts/app';
 
 interface AudioListPanelProps {
   onPlayingIndexChange?: (index: number) => void;
   convertObj: ConvertObj;
   playingSubtitleIndex?: number; // 左侧视频编辑器当前播放的字幕索引
   onSeekToSubtitle?: (time: number) => void; // 请求左侧定位到指定时间
+  onShowTip?: () => void; // 触发提示弹框
 }
 
-export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle }: AudioListPanelProps) {
-  const [subtitleItems, setSubtitleItems] = useState<SubtitleComparisonData[]>([]);
+export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip }: AudioListPanelProps) {
+  const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
+  // 记录修改的字幕音频列表集合
+  const [updateItemList, setUpdateItemList] = useState<SubtitleRowData[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playingIndex, setPlayingIndex] = useState<number>(-1);
   const [playingType, setPlayingType] = useState<'source' | 'convert' | null>(null);
@@ -128,7 +131,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
 
       // 合并两个JSON数组
       const maxLength = Math.max(sourceArr.length, convertArr.length);
-      const items: SubtitleComparisonData[] = [];
+      const items: SubtitleRowData[] = [];
 
       for (let i = 0; i < maxLength; i++) {
         const sourceItem = sourceArr[i];
@@ -214,8 +217,18 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     // const audioUrl = type === 'source' ? item.audioUrl_source : item.audioUrl_convert;
 
     const userId = user?.id || '';
-    const folder = type === 'source' ? 'split_audio/audio' : 'adj_audio_time';
-    const audioUrl = `${convertObj.r2preUrl}/dev/${userId}/${convertObj.id}/${folder}/${item.id}.wav`;
+    // let folder = type === 'source' ? 'split_audio/audio' : 'adj_audio_time';
+    let folder = '';
+    // 视频原字幕
+    if (type === 'source') {
+      folder = item.audioUrl_source_custom ? 'split_audio/audio_temp' : 'split_audio/audio';
+    }
+    // 翻译后的字幕
+    else {
+      folder = item.audioUrl_convert_custom ? 'adj_audio_time_temp' : 'adj_audio_time';
+    }
+
+    const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folder}/${item.id}.wav`;
     console.log('audioUrl--->', audioUrl)
 
 
@@ -246,6 +259,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     }
   };
 
+
   // 音频播放结束时自动播放下一个
   const handleAudioEnded = () => {
     setIsAudioPlayEnded(true);
@@ -257,7 +271,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   const handlePlayPauseSource = (index: number) => {
     if (!audioRef.current) return;
 
-    if (playingIndex === index && playingType === 'source') {
+    if (playingIndex === index && playingType === 'source' && !isAudioPlayEnded) {
       // 当前正在播放，暂停
       audioRef.current.pause();
       setPlayingIndex(-1);
@@ -271,9 +285,10 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
 
   // 切换播放/暂停（转换后字幕）
   const handlePlayPauseConvert = (index: number) => {
+    // debugger
     if (!audioRef.current) return;
 
-    if (playingIndex === index && playingType === 'convert') {
+    if (playingIndex === index && playingType === 'convert' && !isAudioPlayEnded) {
       // 当前正在播放，暂停
       audioRef.current.pause();
       setPlayingIndex(-1);
@@ -286,27 +301,73 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   };
 
   // 更新字幕项
-  const handleUpdateItem = (updatedItem: SubtitleComparisonData) => {
+  const handleUpdateItem = (updatedItem: SubtitleRowData) => {
     setSubtitleItems((prev) =>
       prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
     );
   };
 
   // 转换处理
-  const handleConvert = (item: SubtitleComparisonData) => {
+  const handleConvert = async (item: SubtitleRowData, type: string, index: number) => {
     console.log('转换字幕:', item);
-    // TODO: 实现字幕转语音逻辑
-    toast.info('调用宝python生成语音试听...')
+    // DOEND: 实现字幕转语音逻辑
+    // toast.info('调用宝python生成语音试听...')
+    let preText = '';
+    if (index > 0) {
+      const preItem = subtitleItems[index - 1];
+      preText = type === 'gen_srt' ? preItem.text_source : preItem.text_convert;
+    }
+    // debugger
+    const url = `/api/video-task/generate-subtitle-voice`
+    const params = {
+      // gen_srt、translate_srt
+      text: type === 'gen_srt' ? item.text_source : item.text_convert,
+      preText: preText,
+      type: type,
+      subtitleName: item.id,
+      taskId: convertObj.id,
+      languageTarget: convertObj.targetLanguage,
+    }
+    const resp = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(params)
+    });
+    const { code, message, data } = await resp.json();
+    if (code === 0) {
+      console.log('生成语音成功--->', data.path_name)
+      toast.success('生成语音成功，可以点击试听！')
+      // 更新数组中音频地址，触发保存按钮渲染
+      setSubtitleItems((prev) =>
+        prev.map((itm) =>
+          itm.id === item.id
+            ? {
+              ...itm,
+              ...(type === 'gen_srt'
+                ? { audioUrl_source_custom: data.path_name }
+                : { audioUrl_convert_custom: data.path_name }),
+            }
+            : itm
+        )
+      );
+    } else {
+      toast.error(message || '生成语音失败')
+    }
   };
 
-  const onVideoSaveClick = () => {
+  const onVideoSaveClick = async () => {
     console.log('保存按钮--->');
-    // TODO: 实现视频合成保存
-    toast.info('合成视频中，敬请期待...')
+    // DOEND: 实现视频合成保存
+    const resp = await fetch('/api/video-task/generate-video?taskId=' + convertObj.id);
+    const { code, message } = await resp.json();
+    if (code === 0) {
+      toast.success('合成视频成功');
+    } else {
+      toast.error('合成视频失败');
+    }
   };
 
   // 字幕保存
-  const handleSave = async (item: SubtitleComparisonData, type: string) => {
+  const handleSave = async (item: SubtitleRowData, type: string) => {
     try {
       const sourceArr = convertObj.srt_source_arr || [];
       const convertArr = convertObj.srt_convert_arr || [];
@@ -328,10 +389,11 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
         toast.error('未找到要更新的字幕项');
         return;
       }
-
+      // 保存json表数据，同时调java移动文件
       const resp = await fetch('/api/video-task/update-subtitle-item', {
         method: 'POST',
         body: JSON.stringify({
+          userId: convertObj.userId,
           taskId: convertObj.id,
           type: type,
           seq: targetItem.seq,
@@ -346,7 +408,34 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       const { code, message } = await resp.json();
 
       if (code === 0) {
+        // 更新数组中音频地址，触发保存按钮渲染
+        setSubtitleItems((prev) =>
+          prev.map((itm) =>
+            itm.id === item.id
+              ? {
+                ...itm,
+                ...(type === 'gen_srt'
+                  ? { audioUrl_source_custom: '' }
+                  : { audioUrl_convert_custom: '' }),
+              }
+              : itm
+          )
+        );
+        // 添加item到updateItemList集合
+        setUpdateItemList((prev) => {
+          const updatedList = [...prev];
+          const existingIndex = updatedList.findIndex((i) => i.id === item.id);
+          if (existingIndex !== -1) {
+            updatedList[existingIndex] = item;
+          } else {
+            updatedList.push(item);
+          }
+          console.log('updateItemList--->', updatedList);
+          return updatedList;
+        })
+
         toast.success('保存成功！');
+        onShowTip?.();
       } else {
         toast.error(message || '保存失败！');
       }
@@ -373,7 +462,9 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           <div className='flex flex-row gap-0 text-white'>
             <Button
               variant="outline"
+              disabled={updateItemList.length === 0}
               size="sm"
+              title="重新合成视频"
               onClick={onVideoSaveClick}
             >
               保存
@@ -404,7 +495,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           )}
 
           {!isLoading && !error && subtitleItems.map((item, index) => (
-            <SubtitleComparisonItem
+            <SubtitleRowItem
               key={item.id}
               ref={(el) => { itemRefs.current[index] = el; }}
               item={item}
@@ -418,7 +509,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               onPlayPauseSource={() => handlePlayPauseSource(index)}
               onPlayPauseConvert={() => handlePlayPauseConvert(index)}
               onPointerToPlaceClick={() => letPointerToPlace(index)}
-              onConvert={() => handleConvert(item)}
+              onConvert={(itm, type) => handleConvert(item, type, index)}
               onSave={(type) => handleSave(item, type)}
             />
           ))}

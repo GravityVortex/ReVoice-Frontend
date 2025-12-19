@@ -1,23 +1,56 @@
-import { respData, respErr } from "@/shared/lib/resp";
-import { updateSingleSubtitleItem } from "@/shared/models/vt_task_subtitle";
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { getBucketName, r2MoveFile } from '@/extensions/storage/privateR2Util';
+import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
+import { respData, respErr } from '@/shared/lib/resp';
+import { updateSingleSubtitleItem } from '@/shared/models/vt_task_subtitle';
+import { javaR2MoveFile } from '@/shared/services/javaService';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { taskId, type, seq, item } = body;
+    const { userId, taskId, type, seq, item } = body;
 
-    if (!taskId || !type || !seq || !item) {
-      return respErr("missing required parameters");
+    if (!userId || !taskId || !type || !seq || !item) {
+      return respErr('missing required parameters');
+    }
+    // 保存单条json数据
+    await updateSingleSubtitleItem(taskId, type, seq, item);
+    
+    // 移动r2中文件到新路径
+    let sourcePath = '';
+    let targetPath = '';
+    // 原字幕
+    if (type === 'gen_srt') {
+      sourcePath = `${userId}/${taskId}/split_audio/audio_temp/${item.id}.wav`;
+      targetPath = `${userId}/${taskId}/split_audio/audio/${item.id}.wav`;
+    }
+    // 翻译字幕
+    else if (type === 'translate_srt') {
+      sourcePath = `${userId}/${taskId}/adj_audio_time_temp/${item.id}.wav`;
+      targetPath = `${userId}/${taskId}/adj_audio_time/${item.id}.wav`;
     }
 
-    await updateSingleSubtitleItem(taskId, type, seq, item);
+    let backJO = {code:'200'};
+    // java接口
+    if (USE_JAVA_REQUEST) {
+      const bucketName = await getBucketName();
+      // backJO = await javaR2MoveFile(sourcePath, targetPath, bucketName);
+    }
+    // next接口
+    else {
+      // backJO = await r2MoveFile(sourcePath, targetPath);
+    }
+    // 失败
+    if (backJO.code !== '200') {
+      return respErr('r2 file move save failed');
+    }
 
     return respData({ taskId, type, seq, message: '保存成功' });
   } catch (e) {
-    console.log("update subtitle item failed:", e);
-    return respErr("update subtitle item failed");
+    console.log('update subtitle item failed:', e);
+    return respErr('update subtitle item failed');
   }
 }

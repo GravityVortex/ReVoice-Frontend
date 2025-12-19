@@ -145,3 +145,48 @@ export async function sendEmail(toEmail: string, title: string, htmlContent: str
   // }
   return backJO;
 }
+
+
+
+/**
+ * 调用java接口实现文件移动
+ * @param sourcePath 
+ * @param targetPath 
+ * @param bucket 
+ * @returns 
+ */
+export async function javaR2MoveFile(sourcePath: string, targetPath: string, bucket: string) {
+  const params = {
+    sourcePath: sourcePath,
+    targetPath: targetPath,
+    bucket: bucket,
+  };
+  // 加密响应
+  const encryptedRequestData = EncryptionUtil.encryptRequest(params);
+  console.log('加密密文--->', encryptedRequestData);
+  const response = await fetch(`${JAVA_SERVER_BASE_URL}/api/nextjs/move-file`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain',
+    },
+    body: encryptedRequestData,
+  });
+
+  if (!response.ok) {
+    const errorJO = await response.text();
+    console.log('java服务器返回--->', errorJO);
+    return errorJO;
+  }
+
+  const backJO = await response.json();
+// {
+//     "code": 200,
+//     "message": "Success",
+//     "data": {
+//         "sourcePath": "user-123/task-456/split_audio_video/video/video_nosound.mp4",
+//         "targetPath": "user-123/archive/2025-12-19/video_nosound.mp4",
+//         "success": true
+//     }
+// }
+  return backJO;
+}

@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import VideoEditor, { ConvertObj } from '@/shared/components/video-editor';
+import { ConvertObj } from '@/shared/components/video-editor';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb';
 import { Home, Loader2 } from 'lucide-react';
 import Link from "next/link";
 import { useParams } from 'next/navigation';
 import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
-import { AudioListPanel } from '@/shared/components/audio-list-panel';
+import { AudioListPanel } from '@/app/[locale]/(landing)/video_convert/video-editor/[id]/panel-audio-list';
 import { getLanguageConvertStr } from '@/shared/lib/utils';
-
+import PanelVideoEditor from './panel-video-editor';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 
 
 export default function VideoEditorPage() {
@@ -24,6 +26,9 @@ export default function VideoEditorPage() {
   const [videoSource, setVideoSource] = useState<Record<string, any> | null>(null);
   const seekToTimeCallbackRef = useRef<((time: number) => void) | null>(null);
   // const [r2PreUrl, setR2PreUrl] = useState<string>('');
+  // 删除确认弹框
+  const [showTipDialog, setShowTipDialog] = useState(false);
+
   // 获取转换详情
   useEffect(() => {
     const fetchConvertDetail = async () => {
@@ -48,7 +53,8 @@ export default function VideoEditorPage() {
           if (result.taskMainItem) {
             setConvertObj({
               ...result.taskMainItem,
-              r2preUrl: result.publicBaseUrl
+              r2preUrl: result.publicBaseUrl,
+              env: result.env
             });
           }
           console.log('成功加载转换详情:', result.taskMainItem);
@@ -85,6 +91,20 @@ export default function VideoEditorPage() {
       seekToTimeCallbackRef.current(time);
     }
   };
+  // 提示
+  const handleBtnClick = async (type: string) => {
+    if (type === 'stopTip') {
+      localStorage.setItem('showTip', 'false');
+    }
+    setShowTipDialog(false);
+  }
+
+  const handleShowTip = () => {
+    const showTip = localStorage.getItem('showTip');
+    if (showTip !== 'false') {
+      setShowTipDialog(true);
+    }
+  }
 
   // 防止父页面滚动
   useEffect(() => {
@@ -171,7 +191,7 @@ export default function VideoEditorPage() {
             </div>
 
             {/* 左侧视频编辑区 */}
-            <VideoEditor
+            <PanelVideoEditor
               onExport={handleExport}
               convertObj={convertObj}
               onPlayingSubtitleChange={setPlayingSubtitleIndex}
@@ -194,9 +214,25 @@ export default function VideoEditorPage() {
             convertObj={convertObj}
             playingSubtitleIndex={playingSubtitleIndex}
             onSeekToSubtitle={handleSeekToSubtitle}
+            onShowTip={handleShowTip}
           />
         }
       />
+
+      {/* 提示弹框 */}
+      <Dialog open={showTipDialog} onOpenChange={setShowTipDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>提示</DialogTitle>
+            <DialogDescription>所有局部字幕音频保存成功后需点击屏幕右上角“保存”按钮进行视频重新合成，局部修改才能生效。</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleBtnClick('stopTip')}>不在提示</Button>
+            <Button variant="destructive" onClick={() => handleBtnClick('know')}>知道了</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

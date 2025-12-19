@@ -5,15 +5,15 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download, ZoomIn,
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { cn } from '@/shared/lib/utils';
-import { Timeline } from './timeline';
-import { Track } from './track-new';
-import { SubtitleTrack } from './subtitle-track';
-import { TrackItem, SubtitleTrackItem, VideoEditorProps, ExportData } from './types';
+import { Timeline } from '../../../../../../shared/components/video-editor/timeline';
+import { Track } from '../../../../../../shared/components/video-editor/track-new';
+import { SubtitleTrack } from '../../../../../../shared/components/video-editor/subtitle-track';
+import { TrackItem, SubtitleTrackItem, VideoEditorProps, ExportData } from '../../../../../../shared/components/video-editor/types';
 import { loadSrtViaProxy } from '@/shared/lib/srt-parser';
 import { toast } from 'sonner';
 
 
-export function VideoEditor({ className, onExport, initialVideo, convertObj, onPlayingSubtitleChange, onSeekToTime }: VideoEditorProps) {
+export function PanelVideoEditor({ className, onExport, initialVideo, convertObj, onPlayingSubtitleChange, onSeekToTime }: VideoEditorProps) {
   // 基础状态
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -737,7 +737,7 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
             }
 
             const userId = convertObj.userId || '';
-            const audioUrl = `${convertObj.r2preUrl}/dev/${userId}/${convertObj.id}/adj_audio_time/${entry.id}.wav`;
+            const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/adj_audio_time/${entry.id}.wav`;
 
             return {
               id: entry.id,
@@ -1386,4 +1386,4 @@ export function VideoEditor({ className, onExport, initialVideo, convertObj, onP
   );
 }
 
-export default VideoEditor;
+export default PanelVideoEditor;

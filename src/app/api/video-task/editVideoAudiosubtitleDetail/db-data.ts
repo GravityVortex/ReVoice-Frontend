@@ -168,6 +168,7 @@ export const getDBJsonData = async (taskMainId: string) => {
     return {
       code: '0',
       publicBaseUrl,
+      env: process.env.ENV || 'dev',
       videoItem,
       taskMainItem: {
         id: taskMainItem.id,
