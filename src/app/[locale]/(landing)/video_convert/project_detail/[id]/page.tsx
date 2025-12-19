@@ -532,6 +532,7 @@ export default function ProjectDetailPage() {
   // 启动轮询
   const startPolling = useCallback(() => {
     if (pollingTimerDetailRef.current) return;
+    console.log('详情页轮询已启动--->', taskMainId);
     fetchTaskProgress();
     pollingTimerDetailRef.current = setInterval(fetchTaskProgress, 15000);
     console.log('详情页轮询已启动');
@@ -551,7 +552,7 @@ export default function ProjectDetailPage() {
       return;
     }
 
-    if (status === 'processing' && !isProgressDialogOpen) {
+    if ((status === 'processing' || status === 'pending') && !isProgressDialogOpen) {
       startPolling();
     } else {
       clearPolling();

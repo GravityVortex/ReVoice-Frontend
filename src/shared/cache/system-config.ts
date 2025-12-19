@@ -12,6 +12,10 @@ export const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'xxxsecret_zhe
 export const JAVA_EMAIL_URL = process.env.JAVA_EMAIL_URL || '';
 // 发送邮件秘钥
 export const SECRET_EMAIL = process.env.SECRET_EMAIL || '';
+// python服务地址
+export const PYTHON_SERVER_BASE_URL = process.env.PYTHON_SERVER_BASE_URL || '';
+// python秘钥
+export const PYTHON_SECRET = process.env.PYTHON_SECRET || '';
 
 // 全局配置：签名URL开关 - true: 调用Java服务器, false: 调用自己的接口
 export const USE_JAVA_REQUEST = process.env.USE_JAVA_REQUEST === 'true' || false;

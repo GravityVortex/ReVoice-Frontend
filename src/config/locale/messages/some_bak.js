@@ -81,3 +81,15 @@
 //     "url": "/docs",
 //     "icon": "BookOpenText"
 //   }
+
+// {
+// "title": "API 密钥",
+// "url": "/settings/apikeys",
+// "icon": "RiKeyLine"
+// }
+
+//   {
+//     "title": "API Keys",
+//     "url": "/settings/apikeys",
+//     "icon": "RiKeyLine"
+//   }

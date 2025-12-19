@@ -29,6 +29,7 @@
         {
           "title": "GuestID指纹生成",
           "icon": "FileText",
+          "is_expand": true,
           "children": [
             {
               "title": "guestID生成",
@@ -39,6 +40,18 @@
               "title": "浏览器测试",
               "icon": "FileText",
               "url": "/test/xxx0"
+            }
+          ]
+        },
+        {
+          "title": "R2文件管理器",
+          "icon": "FileText",
+          "is_expand": true,
+          "children": [
+            {
+              "title": "文件管理",
+              "icon": "Folder",
+              "url": "/test/file-manager"
             }
           ]
         }

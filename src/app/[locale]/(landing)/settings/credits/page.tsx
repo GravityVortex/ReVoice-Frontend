@@ -70,8 +70,19 @@ export default async function CreditsPage({
       {
         name: 'credits',
         title: t('fields.credits'),
-        type: 'label',
-        metadata: { variant: 'outline' },
+        callback: (item) => {
+          if (item.credits > 0) {
+            return <div className="text-green-500">
+              +{item.credits}
+              {`/${item.remainingCredits}`}
+            </div>;
+          } else {
+            return <div className="text-red-500">
+              {item.credits}
+              {item.status === 'deleted' ? <span className='text-green-500'>(已退)</span> : ''}
+            </div>;
+          }
+        },
       },
       {
         name: 'expiresAt',

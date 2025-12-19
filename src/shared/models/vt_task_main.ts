@@ -93,3 +93,7 @@ export async function getVtTaskMainListWithOriginalByUserId(userId: string) {
     .where(and(eq(vtTaskMain.userId, userId), eq(vtTaskMain.delStatus, 0)))
     .orderBy(desc(vtTaskMain.createdAt));
 }
+
+export async function deleteByOriginalFileId(originalFileId: string) {
+  await db().delete(vtTaskMain).where(eq(vtTaskMain.originalFileId, originalFileId));
+}

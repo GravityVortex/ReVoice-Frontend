@@ -28,6 +28,20 @@ const nextConfig = {
   async redirects() {
     return [];
   },
+  compiler: {
+    // 生产环境移出打印日志
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // 过滤掉test路径下文件不参与打包
+        'src/app/[locale]/(test)': false,
+      };
+    }
+    return config;
+  },
   turbopack: {
     resolveAlias: {
       // fs: {

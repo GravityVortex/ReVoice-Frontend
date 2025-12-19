@@ -289,7 +289,7 @@ export function RightContentPanel({
                     {/* 步骤展示 */}
                     <div className="pt-1 flex flex-row justify-between gap-2">
 
-                      {(() => {
+                      {/* {(() => {
                         // 状态
                         const status = (taskMain?.status === "processing" || taskMain?.status === "pending");
                         // 遍历
@@ -312,7 +312,7 @@ export function RightContentPanel({
                             </div>
                           );
                         })
-                      })()}
+                      })()} */}
                     </div>
                   </div>
 

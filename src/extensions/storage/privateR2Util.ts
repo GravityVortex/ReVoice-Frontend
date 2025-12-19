@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { getUuid } from '@/shared/lib/hash';
@@ -9,6 +9,14 @@ const endpoint = process.env.R2_ENDPOINT!;
 const bucketName = process.env.R2_BUCKET_NAME!;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID!;
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY!;
+
+/**
+ * 获取私桶配置
+ * @returns 
+ */
+export async function getConfig(){
+  return {bucketName, endpoint}
+}
 
 /**
  * 获得上传R2的签名地址
@@ -32,7 +40,7 @@ export async function getPrivateR2UploadSignUrl(contentType: string, filename: s
   // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
   let env = process.env.ENV || 'dev';
   const keyV = 'original/video/video_original.mp4';
-  const pathName = `${env}/${user?.id}/${fileId}/`;
+  const pathName = `${env}/${user?.id}/${fileId}/${keyV}`;
   // const keyV = `uploads/${Date.now()}-${filename}`;
 
   const command = new PutObjectCommand({
@@ -145,4 +153,93 @@ export async function generatePrivateR2SignUrl(r2KeyArr: any[] = [], expiresIn: 
     console.error('[generatePrivateR2SignUrl] 生成签名URL失败:', error);
     return [];
   }
+}
+
+/**
+ * 获取指定路径下的文件列表
+ * @param r2Path R2路径
+ */
+export async function getFileList(r2Path: string) {
+  const client = new S3Client({
+    region: 'auto',
+    endpoint,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    forcePathStyle: false,
+  });
+
+  const listCommand = new ListObjectsV2Command({
+    Bucket: bucketName,
+    Prefix: r2Path,
+    Delimiter: '/',
+  });
+
+  const { Contents, CommonPrefixes } = await client.send(listCommand);
+
+  const folders = (CommonPrefixes || []).map((prefix) => ({
+    name: prefix.Prefix?.replace(r2Path, '').replace('/', '') || '',
+    path: prefix.Prefix || '',
+    type: 'folder',
+  }));
+
+  const files = (Contents || [])
+    .filter((obj) => obj.Key !== r2Path)
+    .map((obj) => ({
+      name: obj.Key?.split('/').pop() || '',
+      path: obj.Key || '',
+      type: 'file',
+      size: obj.Size || 0,
+      lastModified: obj.LastModified,
+    }));
+
+  return [...folders, ...files];
+}
+
+/**
+ * 删除指定路径及其下所有文件
+ * @param path R2路径
+ */
+export async function deletePathAndFiles(path: string) {
+  const client = new S3Client({
+    region: 'auto',
+    endpoint,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    forcePathStyle: false,
+  });
+
+  // 查询所有文件列表命令
+  const listCommand = new ListObjectsV2Command({
+    Bucket: bucketName,
+    Prefix: path,
+  });
+  // 查询所有文件列表
+  const { Contents } = await client.send(listCommand);
+
+  // 所有文件，批量删除
+  if (Contents && Contents.length > 0) {
+    await Promise.all(
+      Contents.map((obj) =>
+        client.send(
+          new DeleteObjectCommand({
+            Bucket: bucketName,
+            Key: obj.Key,
+          })
+        )
+      )
+    );
+  }
+
+  const res = await client.send(
+    new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: path,
+    })
+  );
+
+  return res;
 }

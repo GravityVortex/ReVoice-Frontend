@@ -56,22 +56,30 @@ export async function updateVtFileOriginalCoverTitle(id: string, title: string, 
   return result;
 }
 
-export async function getVtFileOriginalList(userId: string, page = 1, limit = 50) {
+export async function getVtFileOriginalList(userId: string, page = 1, limit = 50, delFlag: 'all' | 'noDel' = 'noDel') {
   const offset = (page - 1) * limit;
+  const whereConditions = delFlag === 'all'
+    ? eq(vtFileOriginal.userId, userId)
+    : and(eq(vtFileOriginal.userId, userId), eq(vtFileOriginal.delStatus, 0));
+
   return await db()
     .select()
     .from(vtFileOriginal)
-    .where(and(eq(vtFileOriginal.userId, userId), eq(vtFileOriginal.delStatus, 0)))
+    .where(whereConditions)
     .orderBy(desc(vtFileOriginal.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getVtFileOriginalTotal(userId: string) {
+export async function getVtFileOriginalTotal(userId: string, delFlag: 'all' | 'noDel' = 'noDel') {
+  const whereConditions = delFlag === 'all'
+    ? eq(vtFileOriginal.userId, userId)
+    : and(eq(vtFileOriginal.userId, userId), eq(vtFileOriginal.delStatus, 0));
+
   const [result] = await db()
     .select({ count: count() })
     .from(vtFileOriginal)
-    .where(and(eq(vtFileOriginal.userId, userId), eq(vtFileOriginal.delStatus, 0)));
+    .where(whereConditions);
   return result?.count || 0;
 }
 
@@ -80,4 +88,8 @@ export async function deleteFileOriginalById(taskMainId: string) {
   await db().update(vtFileOriginal)
   .set({ delStatus: 1 })
   .where(eq(vtFileOriginal.id, taskMainId));
+}
+
+export async function deleteById(id: string) {
+  await db().delete(vtFileOriginal).where(eq(vtFileOriginal.id, id));
 }

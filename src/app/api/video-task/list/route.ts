@@ -12,18 +12,19 @@ export async function GET(req: Request) {
     const {searchParams} = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    // const userId = searchParams.get('userId') || '';
+    const paramUserId = searchParams.get('userId') || '';
+    const delFlag = (searchParams.get('delFlag') || 'all') as 'all' | 'noDel';
 
     const user = await getUserInfo();
-    const userId = user?.id;
+    const userId = paramUserId || user?.id;
 
     if (!userId) {
       return respErr('userId is required');
     }
 
     // 1. 查询用户的视频列表
-    const videoList = await getVtFileOriginalList(userId, page, limit);
-    const totalCount = await getVtFileOriginalTotal(userId);
+    const videoList = await getVtFileOriginalList(userId, page, limit, delFlag);
+    const totalCount = await getVtFileOriginalTotal(userId, delFlag);
     const totalPages = Math.ceil(totalCount / limit);
 
     // 2. 生成视频ID数组
