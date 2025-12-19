@@ -50,6 +50,10 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
   const [isTimelineDragging, setIsTimelineDragging] = useState(false);
   // 红指针拖拽结束，和时间轴点击后重新定位后，播放需要加载第一条字幕音频
   const [needLoadFirstAudio, setNeedLoadFirstAudio] = useState(true);
+  // 字幕位置
+  const [subtitlePosition, setSubtitlePosition] = useState({ x: 50, y: 95 });
+  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
 
   // 引用
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -904,6 +908,42 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, videoTrack]);
 
+  // 字幕拖动
+  useEffect(() => {
+    if (!isDraggingSubtitle) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!videoRef.current) return;
+
+      const videoRect = videoRef.current.getBoundingClientRect();
+
+      // 计算鼠标相对于视频容器的位置百分比
+      const mouseX = ((e.clientX - videoRect.left) / videoRect.width) * 100;
+      const mouseY = ((e.clientY - videoRect.top) / videoRect.height) * 100;
+
+      requestAnimationFrame(() => {
+        setSubtitlePosition({
+          x: Math.max(2, Math.min(98, mouseX)),
+          y: Math.max(1, Math.min(105, mouseY))
+          // x: mouseX,
+          // y: mouseY
+        });
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingSubtitle(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingSubtitle]);
+
   // console.log('maxTrackWidth-->', maxTrackWidth);  
   // 智能扩展时间轴函数 - 不改变刻度比例，只记录日志
   const expandTimelineIfNeeded = useCallback((itemEndTime: number) => {
@@ -957,7 +997,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
     <div className={cn("w-full h-screen bg-gray-900 text-white flex flex-col overflow-hidden", className)}>
       {/* 视频预览区域 - 占据更多空间 */}
       <div className="flex-1 p-4 min-h-0">
-        <Card className="bg-black h-full">
+        <Card className="bg-black h-full py-0">
           <CardContent className="p-0 relative h-full">
             <video
               ref={videoRef}
@@ -1011,26 +1051,32 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   <div
                     key={subtitle.id}
                     className={cn(
-                      "absolute cursor-pointer px-3 py-1 rounded backdrop-blur-sm transition-all duration-200",
+                      "absolute cursor-move px-3 py-1 rounded backdrop-blur-sm",
                       selectedSubtitle === subtitle.id && "ring-2 ring-yellow-400",
-                      isEditing ? "bg-black/90" : "bg-black/70"
+                      isEditing ? "bg-black/90" : "bg-black/70",
+                      !isDraggingSubtitle && "transition-all duration-200"
                     )}
                     style={{
-                      left: '50%',
-                      top: '5%',
-                      transform: 'translateX(-50%)',
+                      left: `${subtitlePosition.x}%`,
+                      top: `${subtitlePosition.y}%`,
+                      minWidth: '200px',
+                      transform: 'translate(-50%, -50%)',
                       fontSize: `${subtitle.fontSize || 16}px`,
                       color: subtitle.color || '#ffffff',
-                      display: isVideoTextShow ? 'block' : 'none'
+                      display: isVideoTextShow ? 'block' : 'none',
+                      willChange: isDraggingSubtitle ? 'transform' : 'auto'
                     }}
-                    // onClick={() => setSelectedSubtitle(subtitle.id)}
-                    // onDoubleClick={() => {
-                    //   if (!isEditing) {
-                    //     setEditingSubtitle(subtitle.id);
-                    //     setEditingText(subtitle.text);
-                    //   }
-                    // }}
-                    title="单击选择，双击编辑字幕内容"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setIsDraggingSubtitle(true);
+                      dragStartPos.current = {
+                        x: e.clientX,
+                        y: e.clientY,
+                        startX: subtitlePosition.x,
+                        startY: subtitlePosition.y
+                      };
+                    }}
+                    title="拖动调整字幕位置"
                   >
                     {/* 视频中字幕可编辑和展示 */}
                     {isEditing ? (
@@ -1158,7 +1204,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
-            <span className="text-xs text-gray-400 min-w-[32px] text-center">{zoom.toFixed(1)}x</span>
+            <span className="text-xs text-gray-400 min-w-8 text-center">{zoom.toFixed(1)}x</span>
             <Button
               variant="ghost"
               size="sm"
