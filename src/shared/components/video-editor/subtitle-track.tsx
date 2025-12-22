@@ -213,9 +213,9 @@ export function SubtitleTrack({
 
   // 只显示轨道内容，不显示标签
   return (
-    <div className={cn("h-16 bg-gray-800 border-b border-gray-700 relative", className)} style={{ zIndex: 1 }}>
+    <div className={cn("h-16 bg-muted border-y border-muted-foreground relative", className)} style={{ zIndex: 1 }}>
       <div
-        className="relative h-full bg-gray-850 bg-gray-800"
+        className="relative h-full bg-muted/90"
         style={{
           width: `${Math.max(100 * zoom, 100)}%`,
           minWidth: '100%'

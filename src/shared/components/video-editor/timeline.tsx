@@ -139,6 +139,7 @@ export function Timeline({
     let mainStep: number;
     let showAllSecondLabels = false; // 是否显示所有秒数标签
 
+
     if (zoom >= 4) {
       step = 1;    // 1秒间隔（最小刻度）
       mainStep = 1;  // 每1秒显示时间标签
@@ -150,8 +151,8 @@ export function Timeline({
       step = 1;    // 1秒间隔（最小刻度）
       mainStep = 5;  // 每5秒显示时间标签
     } else if (zoom >= 1) {
-      step = 2;    // 2秒间隔
-      mainStep = 10; // 每10秒显示时间标签
+      step = 1;    // 2秒间隔
+      mainStep = 5; // 每10秒显示时间标签
     } else {
       step = 5;    // 5秒间隔
       mainStep = 15; // 每15秒显示时间标签
@@ -180,8 +181,8 @@ export function Timeline({
             <span className={cn(
               "absolute top-1 left-1 text-xs whitespace-nowrap font-medium",
               showAllSecondLabels && step === 1
-                ? "text-gray-100" // 高缩放时的秒数标签更亮
-                : "text-gray-200"
+                ? "font-medium" // 高缩放时的秒数标签更亮
+                : "font-medium"
             )}>
               {showAllSecondLabels && step === 1
                 ? `${i}s` // 显示秒数格式如 "1s", "2s"
@@ -198,7 +199,7 @@ export function Timeline({
 
   // 只显示时间轴内容，不显示左侧标签
   return (
-    <div className={cn("h-full bg-gray-850 relative", className)} style={{ zIndex: 40 }}>
+    <div className={cn("h-full bg-background relative", className)} style={{ zIndex: 40 }}>
       <div
         ref={timelineRef}
         className="h-full cursor-pointer relative select-none"

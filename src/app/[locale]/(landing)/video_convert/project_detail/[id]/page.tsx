@@ -583,7 +583,7 @@ export default function ProjectDetailPage() {
         {/* 主体内容 */}
         <div className="flex flex-1 overflow-hidden">
           {/* 左侧菜单栏骨架 */}
-          <aside className="bg-muted/30 flex w-96 shrink-0 flex-col border-r">
+          <aside className="bg-card flex w-96 shrink-0 flex-col border-r">
             <div className="flex flex-1 flex-col overflow-y-hidden pb-0">
               {/* 视频播放器骨架 */}
               <div className="p-4">
@@ -809,7 +809,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="bg-background fixed inset-0 z-50 flex flex-col overflow-hidden">
       {/* 面包屑导航 */}
-      <div className="bg-background flex shrink-0 items-center justify-between border-b px-6 py-3">
+      <div className="bg-card flex shrink-0 items-center justify-between border-b px-6 py-3">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>

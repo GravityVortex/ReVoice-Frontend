@@ -994,7 +994,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
   }, [videoTrack, bgmTrack, subtitleTrack, totalDuration, maxTrackWidth]);// audioTrack, 
 
   return (
-    <div className={cn("w-full h-screen bg-gray-900 text-white flex flex-col overflow-hidden", className)}>
+    <div className={cn("w-full h-screen bg-background flex flex-col overflow-hidden", className)}>
       {/* 视频预览区域 - 占据更多空间 */}
       <div className="flex-1 p-4 min-h-0">
         <Card className="bg-black h-full py-0">
@@ -1124,7 +1124,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
 
             {/* 如果没有视频，显示提示 */}
             {videoTrack.length === 0 && (
-              <div className="absolute top-1/3 bottom-1/3 inset-0 flex items-center justify-center text-gray-400 text-lg">
+              <div className="absolute top-1/3 bottom-1/3 inset-0 flex items-center justify-center text-muted-foreground text-lg">
                 请在视频轨道中添加视频文件
               </div>
             )}
@@ -1133,7 +1133,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
       </div>
 
       {/* 综合控制栏 - 包含所有功能 */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700 shrink-0">
+      <div className="flex items-center justify-between p-4 bg-muted/90 border-b shrink-0">
         <div className="flex items-center gap-3">
           {/* 播放控制组 */}
           <div className="flex items-center gap-2">
@@ -1141,7 +1141,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={togglePlay}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
@@ -1149,7 +1149,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={() => skipTime(-5)}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
             >
               <SkipBack className="w-4 h-4" />
             </Button>
@@ -1157,14 +1157,14 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={() => skipTime(5)}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
             >
               <SkipForward className="w-4 h-4" />
             </Button>
           </div>
 
           {/* 分隔线 */}
-          <div className="w-px h-6 bg-gray-600"></div>
+          <div className="w-px h-6 bg-border"></div>
 
           {/* 音量控制组 */}
           <div className="flex items-center gap-2">
@@ -1175,19 +1175,19 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               max="100"
               value={volume}
               onChange={handleVolumeChange}
-              className="w-20 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb"
+              className="w-20 h-2 bg-muted rounded-lg appearance-none cursor-pointer slider-thumb"
               style={{
                 background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume}%, #4b5563 ${volume}%, #4b5563 100%)`
               }}
             />
-            <span className="text-xs text-gray-300 w-8">{volume}%</span>
+            <span className="text-xs font-medium text-muted-foreground w-8">{volume}%</span>
           </div>
 
           {/* 分隔线 */}
-          <div className="w-px h-6 bg-gray-600"></div>
+          <div className="w-px h-6 bg-border"></div>
 
           {/* 时间显示 */}
-          <span className="text-sm text-gray-300">
+          <span className="text-sm font-medium text-muted-foreground">
             {formatTime(currentTime)} / {formatTime(totalDuration)}
           </span>
         </div>
@@ -1199,17 +1199,17 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={() => handleZoom('out')}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
               title="缩小时间轴"
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
-            <span className="text-xs text-gray-400 min-w-8 text-center">{zoom.toFixed(1)}x</span>
+            <span className="text-xs text-muted-foreground min-w-8 text-center">{zoom.toFixed(1)}x</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => handleZoom('in')}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
               title="放大时间轴"
             >
               <ZoomIn className="w-4 h-4" />
@@ -1217,7 +1217,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
           </div>
 
           {/* 分隔线 */}
-          <div className="w-px h-6 bg-gray-600"></div>
+          <div className="w-px h-6 bg-border"></div>
 
           {/* 编辑工具组 addSubtitle*/}
           <div className="flex items-center gap-2">
@@ -1225,7 +1225,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={toggleVideoTextClick}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
               title="添加字幕"
             >
               <Type className="w-4 h-4" />
@@ -1235,7 +1235,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={togglePointerBarFollow}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
               title="播放指针可见"
             >
               {isPointerBarFollow ? <FoldHorizontal className="w-4 h-4" /> :
@@ -1248,7 +1248,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               variant="ghost"
               size="sm"
               onClick={handleExport}
-              className="text-white hover:bg-gray-700"
+              className="hover:bg-muted"
               title="导出项目"
             >
               <Download className="w-4 h-4" />
@@ -1258,19 +1258,19 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
       </div>
 
       {/* 底部四轨制编辑区域 - 固定高度，底部对齐 */}
-      <div className="h-80 flex flex-col bg-gray-850 shrink-0 relative" style={{ zIndex: 10 }}>
+      <div className="h-80 flex flex-col bg-muted/50 shrink-0 relative" style={{ zIndex: 10 }}>
         {/* 统一滚动布局：左侧固定标签，右侧整体滚动内容 */}
         <div className="flex-1 flex">
           {/* 左侧固定标签区域 - 包含时间轴标签和轨道标签 */}
-          <div className="w-32 flex flex-col bg-gray-750 border-r border-gray-700 shrink-0">
+          <div className="w-32 flex flex-col bg-background border-r shrink-0">
             {/* 时间轴标签 */}
-            <div className="h-12 flex items-center justify-center border-b border-gray-700">
-              <span className="text-xs text-gray-400 font-medium">时间轴</span>
+            <div className="h-12 flex items-center justify-center border-b">
+              <span className="text-xs text-muted-foreground font-medium">时间轴</span>
             </div>
             {/* 字幕轨道标签 */}
-            <div className="h-16 flex items-center justify-between px-3 bg-gray-750 border-b border-gray-700">
+            <div className="h-16 flex items-center justify-between px-3 border-b">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white">字幕</span>
+                <span className="text-sm font-medium">字幕</span>
                 {/* <Type className="w-3 h-3 text-gray-400" /> */}
               </div>
               <div className="flex items-center gap-1">
@@ -1280,7 +1280,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   size="sm"
                   // onClick={addSubtitle}
                   onClick={toggleVideoTextClick}
-                  className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
+                  className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title="添加字幕"
                 >
                   {/* <Plus className="w-3 h-3" /> */}
@@ -1296,7 +1296,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsSubtitleMuted(!isSubtitleMuted)}
-                  className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
+                  className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title={isSubtitleMuted ? "取消静音" : "静音"}
                 >
                   {isSubtitleMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
@@ -1306,9 +1306,9 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             </div>
 
             {/* 背景音乐轨道标签 */}
-            <div className="h-16 flex items-center justify-between px-3 bg-gray-750 border-b border-gray-700">
+            <div className="h-16 flex items-center justify-between px-3 border-b">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white">背景音乐</span>
+                <span className="text-sm font-medium">背景音乐</span>
                 {/* <Volume2 className="w-3 h-3 text-gray-400" /> */}
               </div>
               <div className="flex items-center gap-1">
@@ -1316,7 +1316,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsBgmMuted(!isBgmMuted)}
-                  className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
+                  className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title={isBgmMuted ? "取消静音" : "静音"}
                 >
                   {isBgmMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
@@ -1325,7 +1325,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   variant="ghost"
                   size="sm"
                   onClick={() => addTrackItem('bgm')}
-                  className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
+                  className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title="添加背景音乐"
                 >
                   <Plus className="w-3 h-3" />
@@ -1334,20 +1334,20 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             </div>
 
             {/* 视频轨道标签 */}
-            <div className="h-16 flex items-center justify-between px-3 bg-gray-750 border-b border-gray-700">
+            <div className="h-16 flex items-center justify-between px-3 border-b">
 
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white">背景视频</span>
+                <span className="text-sm font-medium">背景视频</span>
               </div>
 
               {/* title="添加视频" onClick={() => addTrackItem('video')} */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-6 h-6 p-0 text-gray-400 hover:text-white hover:bg-gray-600"
+                className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 {/* <Plus className="w-3 h-3" /> */}
-                <Video className="w-4 h-4 text-gray-400" />
+                <Video className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -1369,7 +1369,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               }}
             >
               {/* 时间轴内容 */}
-              <div className="h-12 bg-gray-850 relative">
+              <div className="h-12 bg-muted relative">
                 <Timeline
                   currentTime={currentTime}
                   totalDuration={maxTrackWidth}

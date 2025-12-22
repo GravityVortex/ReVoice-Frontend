@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, forwardRef } from 'react';
-import { Play, Pause, RefreshCw, Save, ArrowDownToDot, Sparkles, Wand2, Zap, Stars, Cpu, Bot, Rocket, Lightbulb, Pencil, Layers, Package } from 'lucide-react';
+import { Play, Pause, RefreshCw, Save, ArrowDownToDot, Sparkles, Wand2, Zap, Stars, Cpu, Bot, Rocket, Lightbulb, Pencil, Layers, Package, RedoDot, MoveRight } from 'lucide-react';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/lib/utils';
 
@@ -78,7 +78,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                     onPointerToPlaceClick?.();
                 }}
                 className={cn(
-                    "border rounded-lg p-4 cursor-pointer transition-all",
+                    "border rounded-lg p-4 cursor-pointer transition-all bg-card",
                     (isDoubleClick || isPlayingFromVideo)
                         ? "border-red-500 bg-primary/50 shadow-lg ring-2 ring-red-500/50"
                         : isSelected
@@ -86,7 +86,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                             : "border-border hover:border-primary/50 hover:bg-accent/50"
                 )}
             >
-                <div className="flex gap-4">
+                <div className="flex gap-1 items-center">
                     {/* 左侧：原字幕 */}
                     <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-1 justify-between">
@@ -112,23 +112,6 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                     {/* <div>原字幕</div> */}
                                     <div>{localItem.startTime_source} - {localItem.endTime_source}</div>
                                 </div>
-                                <div
-                                    onClick={(e) => {
-                                        if (!localItem.audioUrl_source_custom) return;
-                                        e.stopPropagation();
-                                        onSave('gen_srt');
-                                    }}
-                                    className={cn(
-                                        "p-1.5",
-                                        localItem.audioUrl_source_custom
-                                            ? "cursor-pointer hover:bg-accent rounded bg-background/80 border border-border transition-colors"
-                                            : "opacity-50 cursor-not-allowed"
-                                    )}
-                                    title="保存字幕语音"
-                                >
-                                    {/* <ArrowDownToDot className="w-4 h-4" /> */}
-                                    {localItem.audioUrl_source_custom && (<Save className="w-4 h-4" />)}
-                                </div>
                             </div>
                         </div>
 
@@ -143,21 +126,25 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                 className="resize-none bg-muted/50 cursor-default"
                                 onClick={(e) => e.stopPropagation()}
                             />
-                            {/* 右下角悬浮图标 */}
-                            <div className="absolute bottom-1 right-1 flex gap-1">
-                                <div
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onConvert(localItem, 'gen_srt');
-                                    }}
-                                    className="cursor-pointer p-1.5 rounded bg-background/10 hover:bg-accent transition-colors"
-                                    title="更新字幕语音"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    {/* <Sparkles className="w-4 h-4" /> */}
-                                </div>
+                        </div>
+                    </div>
 
-                            </div>
+                    {/* 中间翻译按钮 */}
+                    <div className='mt-8'>
+                        <div
+                            className="ml-0.5 text-center align-middle h-7 cursor-pointer transition-colors p-1 rounded hover:bg-accent"
+                            title="重新翻译字幕">
+                            <MoveRight className="w-4 h-4" />
+
+                        </div>
+                        <div
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onConvert(localItem, 'gen_srt');
+                            }}
+                            className="align-middle h-7 cursor-pointer transition-colors p-1 rounded hover:bg-accent border border-border"
+                            title="重新翻译字幕">
+                            <RedoDot className="w-4 h-4" />
                         </div>
                     </div>
 

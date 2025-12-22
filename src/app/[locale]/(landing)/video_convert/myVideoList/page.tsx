@@ -272,7 +272,7 @@ export default function VideoConvertPage() {
 
 
   return (
-    <div className="container mx-auto py-0">
+    <div className="container mx-auto py-0 bg-background">
       <div className="mb-8 flex justify-between">
         <h1 className="text-3xl font-bold">{t('title')}</h1>
         {/* <Button className="mask-add color-" onClick={goAddClick}>{t('buttons.upload')}</Button> */}
@@ -285,7 +285,7 @@ export default function VideoConvertPage() {
           {[...Array(6)].map((_, index) => (
             <div key={index} className="border-2 rounded-lg overflow-hidden bg-card">
               {/* 视频封面骨架 */}
-              <div className="aspect-video bg-muted border-b-2"></div>
+              <div className="aspect-video bg-card border-b-2"></div>
 
               {/* 内容区域骨架 */}
               <div className="px-4 py-4 pt-2 space-y-3 mt-2">

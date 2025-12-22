@@ -152,7 +152,7 @@ export default function VideoEditorPage() {
         leftPanel={
           <div className="h-full flex flex-col relative">
             {/* 面包屑导航 */}
-            <div className="shrink-0 border-b bg-background px-6 py-3">
+            <div className="shrink-0 border-b bg-card px-6 py-3">
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>

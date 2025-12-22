@@ -30,7 +30,7 @@ export function LeftMenuPanel({
   }
 
   return (
-    <aside className="flex flex-col border-r w-96 shrink-0 bg-muted/30">
+    <aside className="flex flex-col border-r w-96 shrink-0 bg-card">
       {/* 超出隐藏*/}
       <div className="flex flex-col flex-1 pb-0 overflow-y-hidden">
         {/* 视频播放器 */}
@@ -113,11 +113,11 @@ export function LeftMenuPanel({
           ))}
         </nav>
         {/* 底部水平两个按钮 */}
-        <div className="flex flex-row shrink-0 border-t bg-black/40">
+        <div className="flex flex-row shrink-0 border-t bg-muted">
           <button
             onClick={handlMenuClick.bind(null, { id: "credits" })}
             className={cn(
-              "flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white",
+              "flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-medium",
               "hover:bg-primary/90 transition-colors"
             )}>
             <Coins className="size-4" />
@@ -126,7 +126,7 @@ export function LeftMenuPanel({
           <button
             onClick={handlMenuClick.bind(null, { id: "delete" })}
             className={cn(
-              "flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white",
+              "flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-medium",
               "border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors"
             )}>
             <Trash2 className="size-4" />

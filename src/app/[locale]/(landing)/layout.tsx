@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { getThemeLayout } from '@/core/theme';
 import { LocaleDetector } from '@/shared/blocks/common';
+import { SocialCreditsHandler } from '@/shared/blocks/sign/social-credits-handler';
 import {
   Footer as FooterType,
   Header as HeaderType,
@@ -28,8 +29,8 @@ export default async function LandingLayout({
 
   return (
     <Layout header={header} footer={footer}>
-      {/* 语言检测，不匹配提示用户切换 */}
       <LocaleDetector />
+      <SocialCreditsHandler />
       {children}
     </Layout>
   );

@@ -12,6 +12,8 @@ export const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'xxxsecret_zhe
 export const JAVA_EMAIL_URL = process.env.JAVA_EMAIL_URL || '';
 // 发送邮件秘钥
 export const SECRET_EMAIL = process.env.SECRET_EMAIL || '';
+// 开启python服务器请求
+export const USE_PYTHON_REQUEST = process.env.USE_PYTHON_REQUEST || '';
 // python服务地址
 export const PYTHON_SERVER_BASE_URL = process.env.PYTHON_SERVER_BASE_URL || '';
 // python秘钥

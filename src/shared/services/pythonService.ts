@@ -5,20 +5,18 @@ import { PYTHON_SECRET, PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-con
  * @param param
  * @returns
  */
-export async function pyOriginalTxtGenerateVoice(param: any) {
+export async function pyOriginalTxtTranslate(param: any) {
   // 请求数据测试
   const params = {
     text: param.text,
     prev_text: param.prev_text, // 上一个原语种字幕段的文本，除了第一个字幕段，其他字幕段都要传此参数
     theme_desc: '',
-    subtitle_name: param.subtitleName,// '0001_00-00-00-000_00-00-04-000',
     language_target: param.languageTarget,// zh，en
-    taskId: param.taskId,
   };
 
   // console.log('解密明文--->', requestData);
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitles/original/tts`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitle/single/translate`;
   console.log('请求python服务器--->', url);
   const response = await fetch(url, {
     method: 'POST',
@@ -28,9 +26,9 @@ export async function pyOriginalTxtGenerateVoice(param: any) {
     body: JSON.stringify(params),
   });
   // {
-  //   "url_download_vocal_clip": "https://r2.cloudflare.com/xxxx.dev/abc/xyz/11-22.wav",
+  //   "code": 200,
+  //   "message": "xxxxx",
   //   "text_translated": "Hello World",
-  //   "duration": 2.34,
   // }
   if (!response.ok) {
     // console.log('python服务器返回--->', response.statusText);
@@ -43,7 +41,7 @@ export async function pyOriginalTxtGenerateVoice(param: any) {
 }
 
 /**
- * 翻译后的字幕文字转语音tts
+ * 1.2、翻译后的字幕文字转语音tts
  * @param params
  * @returns
  */
@@ -68,8 +66,10 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
     body: JSON.stringify(params),
   });
   // {
-  //   "url_download_vocal_clip": "https://r2.cloudflare.com/xxxx.dev/abc/xyz/11-22.wav",
-  //   "duration": 2.34,
+  //   "code": 200,
+  //   "message": "xxxxx",
+  //   "path_name": "adj_audio_time_temp/0001_00-00-00-000_00-00-04-000.wav",
+  //   "duration": 2.34
   // }
   if (!response.ok) {
     // console.log('python服务器返回--->', response.statusText);

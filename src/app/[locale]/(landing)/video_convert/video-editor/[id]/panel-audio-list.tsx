@@ -343,7 +343,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
             ? {
               ...itm,
               ...(type === 'gen_srt'
-                ? { audioUrl_source_custom: data.path_name }
+                ? { text_convert: data.text_translated }
                 : { audioUrl_convert_custom: data.path_name }),
             }
             : itm
@@ -446,7 +446,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   };
 
   return (
-    <div className="h-full gap-2 pb-1 flex flex-col bg-background">
+    <div className="h-full gap-2 pb-1 flex flex-col bg-muted/30">
       {/* 隐藏的音频播放器 */}
       <audio
         ref={audioRef}
@@ -455,23 +455,24 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       />
 
       {/* 头部 */}
-      <div className="px-4 pt-4 pb-2 border-b">
+      <div className="px-4 pt-4 pb-2 border-b bg-card">
         <div className="flex items-center justify-between pl-4">
           <h2 className="text-lg font-semibold"
             onClick={() => { }}>字幕音频对照表</h2>
-          <div className='flex flex-row gap-0 text-white'>
+          <div className='flex flex-row gap-0 text-sm font-semibold'>
             <Button
-              variant="outline"
+              variant="destructive"
               disabled={updateItemList.length === 0}
               size="sm"
               title="重新合成视频"
               onClick={onVideoSaveClick}
             >
+              <Save className="size-4" />
               保存
             </Button>
           </div>
         </div>
-        <div className="flex items-center justify-around p-1 text-sm font-bold">
+        <div className="flex items-center justify-around p-1 text-sm font-bold mt-2">
           <div>原字幕</div>
           <div>转换后字幕</div>
         </div>
@@ -479,7 +480,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
 
       {/* 字幕列表 */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 bg-muted/90">
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -517,7 +518,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       </ScrollArea>
 
       {/* 底部状态栏 */}
-      <div className="flex flex-row justify-between p-3 border-t bg-muted/30">
+      <div className="bg-card flex flex-row justify-between p-3 border-t">
         <div className="text-sm text-muted-foreground">
           共 {subtitleItems.length} 条字幕
           {playingIndex >= 0 && playingType && (
