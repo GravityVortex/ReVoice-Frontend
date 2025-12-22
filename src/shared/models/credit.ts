@@ -362,7 +362,7 @@ export async function getRemainingCredits(userId: string): Promise<number> {
  * @returns 
  */
 export async function findCreditsByUserId(userId: string, transactionScene: string) {
-  const result = await db()
+  const [result] = await db()
     .select()
     .from(credit)
     .where(and(eq(credit.userId, userId), eq(credit.transactionScene, transactionScene)));
