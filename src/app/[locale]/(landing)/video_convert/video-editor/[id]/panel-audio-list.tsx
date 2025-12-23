@@ -218,17 +218,19 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
 
     const userId = user?.id || '';
     // let folder = type === 'source' ? 'split_audio/audio' : 'adj_audio_time';
-    let folder = '';
+    let folderName = '';
     // 视频原字幕
     if (type === 'source') {
-      folder = item.audioUrl_source_custom ? 'split_audio/audio_temp' : 'split_audio/audio';
+      folderName = `split_audio/audio/${item.id}.wav`;
     }
     // 翻译后的字幕
     else {
-      folder = item.audioUrl_convert_custom ? 'adj_audio_time_temp' : 'adj_audio_time';
+      folderName = item.audioUrl_convert_custom ? item.audioUrl_convert_custom : `adj_audio_time/${item.id}.wav`;
     }
+    
 
-    const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folder}/${item.id}.wav`;
+
+    const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folderName}`;
     console.log('audioUrl--->', audioUrl)
 
 
@@ -334,6 +336,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     });
     const { code, message, data } = await resp.json();
     if (code === 0) {
+      // console.log('生成语音成功--->', data)
       console.log('生成语音成功--->', data.path_name)
       toast.success('生成语音成功，可以点击试听！')
       // 更新数组中音频地址，触发保存按钮渲染
@@ -344,7 +347,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               ...itm,
               ...(type === 'gen_srt'
                 ? { text_convert: data.text_translated }
-                : { audioUrl_convert_custom: data.path_name }),
+                : { audioUrl_convert_custom: data.path_name + '?v=' + new Date().getTime() }),
             }
             : itm
         )
@@ -361,6 +364,8 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     const { code, message } = await resp.json();
     if (code === 0) {
       toast.success('合成视频成功');
+      // 保存按钮不可重复点击
+      setUpdateItemList([]);
     } else {
       toast.error('合成视频失败');
     }
@@ -502,9 +507,10 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               item={item}
               isSelected={selectedId === item.id}
               isDoubleClick={doubleClickIdx === index}
+              // 优先显示双击的背景着色
+              isPlayingFromVideo={doubleClickIdx === -1 && playingSubtitleIndex === index}
               isPlayingSource={playingIndex === index && playingType === 'source' && !isAudioPlayEnded}
               isPlayingConvert={playingIndex === index && playingType === 'convert' && !isAudioPlayEnded}
-              isPlayingFromVideo={playingSubtitleIndex === index}
               onSelect={() => setSelectedId(item.id)}
               onUpdate={handleUpdateItem}
               onPlayPauseSource={() => handlePlayPauseSource(index)}

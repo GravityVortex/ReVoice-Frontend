@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { respData, respErr } from '@/shared/lib/resp';
+import { getVtTaskSubtitleListByTaskIdAndStepName } from '@/shared/models/vt_task_subtitle';
 import { pyMergeVideo } from '@/shared/services/pythonService';
 
 /**
@@ -15,8 +16,18 @@ export async function GET(request: NextRequest) {
       return respErr('缺少参数taskId');
     }
 
+    const stepNameArr2 = ['translate_srt'];
+    const allSubtitleList = await getVtTaskSubtitleListByTaskIdAndStepName(taskId, stepNameArr2);
+    const translatedSubtitleItem = allSubtitleList.find((item) => item.stepName === 'translate_srt');
+    const subtitleArray: any = translatedSubtitleItem?.subtitleData || [];
+    if(!subtitleArray || subtitleArray.length === 0) {
+      return respErr('没有合成的字幕数据');
+    }
+    const nameArray = subtitleArray.map((item: any) => item.id);
+    console.log('nameArray--->', nameArray);
+
     // 调用python生成视频
-    const backJO = await pyMergeVideo(taskId);
+    const backJO = await pyMergeVideo(taskId, nameArray);
     if (backJO.code === 200) {
       return respData('合成成功');
     } else {

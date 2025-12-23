@@ -1,7 +1,7 @@
 import { PYTHON_SECRET, PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-config';
 
 /**
- * 原视频字幕文字转语音tts
+ * 1.1、原视频字幕文字翻译
  * @param param
  * @returns
  */
@@ -16,7 +16,7 @@ export async function pyOriginalTxtTranslate(param: any) {
 
   // console.log('解密明文--->', requestData);
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitle/single/translate`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/v1/internal/subtitle/single/translate`;
   console.log('请求python服务器--->', url);
   const response = await fetch(url, {
     method: 'POST',
@@ -32,8 +32,9 @@ export async function pyOriginalTxtTranslate(param: any) {
   // }
   if (!response.ok) {
     // console.log('python服务器返回--->', response.statusText);
-    console.log('python服务器返回--->', await response.text());
-    throw new Error(`Failed tts`);
+    const msg = await response.text();
+    console.log('python服务器返回--->', msg);
+    throw new Error(`原字幕文本翻译失败${msg}`);
   }
   const backJO = await response.json();
   console.log('python服务器返回--->', backJO);
@@ -45,19 +46,21 @@ export async function pyOriginalTxtTranslate(param: any) {
  * @param params
  * @returns
  */
-export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, subtitleName: string, languageTarget: string) {
+export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, subtitleName: string) {
   // 请求数据测试
   const params = {
     text: txt,
     subtitle_name: subtitleName,// 0001_00-00-00-000_00-00-04-000
-    language_target: languageTarget,
-    taskId: taskId,
+    // language_target: languageTarget,
+    task_id: taskId,
   };
 
   // console.log('解密明文--->', requestData);
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitles/translated/tts`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/v1/internal/subtitles/translated/tts`;
   console.log('请求python服务器--->', url);
+  console.log('请求python服务器--params--->', params);
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -73,8 +76,9 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
   // }
   if (!response.ok) {
     // console.log('python服务器返回--->', response.statusText);
-    console.log('python服务器返回--->', await response.text());
-    throw new Error(`Failed tts`);
+    const msg = await response.text();
+    console.log('python服务器返回--->', msg);
+    throw new Error(`翻译字幕转语音失败${msg}`);
   }
   const backJO = await response.json();
   console.log('python服务器返回--->', backJO);
@@ -83,18 +87,21 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
 
 
 /**
- * 合成视频
+ * 1.3、合成视频
  * @param taskId 
  * @returns 
  */
-export async function pyMergeVideo(taskId: string) {
+export async function pyMergeVideo(taskId: string, nameArray: any) {
   // 请求数据测试
   const params = {
-    taskId: taskId,
+    task_id: taskId,
+    audio_clips: nameArray,
   };
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/audios/video/merge`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/v1/internal/audios/video/merge`;
   console.log('请求python服务器--->', url);
+  console.log('请求python服务器--params--->', params);
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {

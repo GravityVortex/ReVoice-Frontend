@@ -199,7 +199,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                 onChange={(e) => handleFieldChange('text_convert', e.target.value)}
                                 placeholder="转换后字幕内容"
                                 rows={3}
-                                className="resize-none pr-16"
+                                className="resize-none pr-5"
                                 onClick={(e) => e.stopPropagation()}
                             />
                             {/* 右下角悬浮图标 */}
