@@ -18,9 +18,10 @@ interface AudioListPanelProps {
   playingSubtitleIndex?: number; // 左侧视频编辑器当前播放的字幕索引
   onSeekToSubtitle?: (time: number) => void; // 请求左侧定位到指定时间
   onShowTip?: () => void; // 触发提示弹框
+  onUpdateSubtitleAudioUrl?: (id: string, audioUrl: string) => void; // 更新字幕音频URL
 }
 
-export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip }: AudioListPanelProps) {
+export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }: AudioListPanelProps) {
   const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
   // 记录修改的字幕音频列表集合
   const [updateItemList, setUpdateItemList] = useState<SubtitleRowData[]>([]);
@@ -225,15 +226,12 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     }
     // 翻译后的字幕
     else {
-      folderName = item.audioUrl_convert_custom ? item.audioUrl_convert_custom : `adj_audio_time/${item.id}.wav`;
+      folderName = item.audioUrl_convert_custom ? item.audioUrl_convert_custom : `adj_audio_time/${item.id}.wav?t=${item.newTime}`;
     }
-    
-
+    console.log('folderName--->', folderName)
 
     const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folderName}`;
     console.log('audioUrl--->', audioUrl)
-
-
 
     audioRef.current.src = audioUrl;
     audioRef.current.play().catch((error) => {
@@ -312,6 +310,9 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   // 转换处理
   const handleConvert = async (item: SubtitleRowData, type: string, index: number) => {
     console.log('转换字幕:', item);
+    if (type === 'gen_srt') {
+      return;
+    }
     // DOEND: 实现字幕转语音逻辑
     // toast.info('调用宝python生成语音试听...')
     let preText = '';
@@ -339,6 +340,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       // console.log('生成语音成功--->', data)
       console.log('生成语音成功--->', data.path_name)
       toast.success('生成语音成功，可以点击试听！')
+      const newTime = new Date().getTime();
       // 更新数组中音频地址，触发保存按钮渲染
       setSubtitleItems((prev) =>
         prev.map((itm) =>
@@ -347,11 +349,18 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               ...itm,
               ...(type === 'gen_srt'
                 ? { text_convert: data.text_translated }
-                : { audioUrl_convert_custom: data.path_name + '?v=' + new Date().getTime() }),
+                : { audioUrl_convert_custom: data.path_name + '?t=' + newTime }),
             }
             : itm
         )
       );
+      // 此处更新panel-video-editor页面中字幕音频轨道数据
+      if (type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
+        const userId = user?.id || '';
+        const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${data.path_name}?t=${newTime}`;
+        onUpdateSubtitleAudioUrl(item.id, audioUrl);
+      }
+
     } else {
       toast.error(message || '生成语音失败')
     }
@@ -374,26 +383,28 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   // 字幕保存
   const handleSave = async (item: SubtitleRowData, type: string) => {
     try {
-      const sourceArr = convertObj.srt_source_arr || [];
+      // const sourceArr = convertObj.srt_source_arr || [];
       const convertArr = convertObj.srt_convert_arr || [];
 
       let targetItem;
-      if (type === 'gen_srt') {
-        targetItem = sourceArr.find((itm: any) => itm.id === item.id);
-        if (targetItem) {
-          targetItem.txt = item.text_source;
-        }
-      } else if (type === 'translate_srt') {
-        targetItem = convertArr.find((itm: any) => itm.id === item.id);
-        if (targetItem) {
-          targetItem.txt = item.text_convert;
-        }
+      if (type !== 'translate_srt') {
+        return;
+      }
+      targetItem = convertArr.find((itm: any) => itm.id === item.id);
+      if (targetItem) {
+        targetItem.txt = item.text_convert;
       }
 
       if (!targetItem) {
         toast.error('未找到要更新的字幕项');
         return;
       }
+
+      const tempArr = item.audioUrl_convert_custom?.split('?') || [];
+      const pathName = tempArr?.length > 0 ? tempArr[0] : item.audioUrl_convert_custom;
+      console.log('pathName--->', pathName)
+
+
       // 保存json表数据，同时调java移动文件
       const resp = await fetch('/api/video-task/update-subtitle-item', {
         method: 'POST',
@@ -402,7 +413,8 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           taskId: convertObj.id,
           type: type,
           seq: targetItem.seq,
-          item: targetItem
+          pathName: pathName,
+          item: targetItem// 数据库表中json格式
         }),
       });
 
@@ -415,17 +427,27 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       if (code === 0) {
         // 更新数组中音频地址，触发保存按钮渲染
         setSubtitleItems((prev) =>
-          prev.map((itm) =>
-            itm.id === item.id
-              ? {
+          prev.map((itm) => {
+            if (itm.id === item.id) {
+              return {
                 ...itm,
-                ...(type === 'gen_srt'
-                  ? { audioUrl_source_custom: '' }
-                  : { audioUrl_convert_custom: '' }),
+                ...({
+                  newTime: '' + new Date().getTime(),
+                  audioUrl_convert_custom: ''
+                }),
               }
-              : itm
-          )
+            } else {
+              return itm;
+            }
+          })
         );
+        // 此处更新panel-video-editor页面中字幕音频轨道数据
+        if (onUpdateSubtitleAudioUrl) {
+          const newTime = new Date().getTime();
+          const userId = user?.id || '';
+          const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/adj_audio_time/${item.id}.wav?t=${newTime}`;
+          onUpdateSubtitleAudioUrl(item.id, audioUrl);
+        }
         // 添加item到updateItemList集合
         setUpdateItemList((prev) => {
           const updatedList = [...prev];

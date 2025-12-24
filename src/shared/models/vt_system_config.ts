@@ -54,6 +54,7 @@ export async function getSystemLimitByConfigKeyArr(keyArr = [
     
     'credit.points_per_minute',
     'r2.public.base_url',
+    'r2.bucket.public',
     'r2.bucket.private'
   ]) {
 

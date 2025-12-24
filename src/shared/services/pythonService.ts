@@ -119,6 +119,7 @@ export async function pyMergeVideo(taskId: string, nameArray: any) {
     throw new Error(`Failed tts`);
   }
   const backJO = await response.json();
+  // { code: 200, message: '任务已触发，正在分析处理中' }
   console.log('python服务器返回--->', backJO);
   return backJO;
 }

@@ -13,7 +13,7 @@ import { loadSrtViaProxy } from '@/shared/lib/srt-parser';
 import { toast } from 'sonner';
 
 
-export function PanelVideoEditor({ className, onExport, initialVideo, convertObj, onPlayingSubtitleChange, onSeekToTime }: VideoEditorProps) {
+export function PanelVideoEditor({ className, onExport, initialVideo, convertObj, onPlayingSubtitleChange, onSeekToTime, onRegisterUpdateAudioUrl }: VideoEditorProps) {
   // 基础状态
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -672,6 +672,20 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
     }
   };
 
+  // 接收panel-audio-list页面传递过来的字幕Item
+  const updateSubtitleAudioUrl = useCallback((id: string, audioUrl: string) => {
+    // const newTime = new Date().getTime();
+    // const tempArr = audioUrl.split('?') || [];
+    // const newUrl = tempArr?.length > 0 ? tempArr[0] : audioUrl;
+    // console.log('newUrl--->', newUrl)
+    setSubtitleTrack(prev => prev.map(item => item.id === id ? {
+      ...item,
+      audioUrl
+      // newTime: '' + newTime,
+      // audioUrl: newUrl + '?t=' + newTime
+    } : item));
+  }, []);
+
   // 初始化视频
   useEffect(() => {
     if (initialVideo && videoRef.current) {
@@ -730,6 +744,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
 
         // 3. 加载SRT字幕并生成字幕轨道
         if (convertObj.srt_convert_arr && convertObj.srt_convert_arr.length > 0) {
+          const newTime = new Date().getTime();
           const subtitleItems: SubtitleTrackItem[] = convertObj.srt_convert_arr.map((entry, index) => {
             // 将SRT时间转换为秒
             const startTime = parseTimeToSeconds(entry.start);
@@ -752,7 +767,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               text: entry.txt,
               fontSize: 16,
               color: '#ffffff',
-              audioUrl
+              audioUrl: audioUrl + '?t=' + newTime
             };
           });
           setSubtitleTrack(subtitleItems);
@@ -830,6 +845,12 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
       scrollPointer2VisibleByRightPanel(time);
     });
   }, [onSeekToTime, scrollPointer2VisibleByRightPanel]);
+
+  // 注册更新字幕音频URL回调
+  useEffect(() => {
+    console.log('注册更新字幕音频URL回调--->', updateSubtitleAudioUrl);
+    onRegisterUpdateAudioUrl?.(updateSubtitleAudioUrl);
+  }, [onRegisterUpdateAudioUrl, updateSubtitleAudioUrl]);
 
   // 监听字幕播放索引变化，自动滚动到可见区域
   useEffect(() => {

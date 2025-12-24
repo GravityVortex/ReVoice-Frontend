@@ -25,6 +25,7 @@ export default function VideoEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [videoSource, setVideoSource] = useState<Record<string, any> | null>(null);
   const seekToTimeCallbackRef = useRef<((time: number) => void) | null>(null);
+  const updateAudioUrlCallbackRef = useRef<((id: string, audioUrl: string) => void) | null>(null);
   // const [r2PreUrl, setR2PreUrl] = useState<string>('');
   // 删除确认弹框
   const [showTipDialog, setShowTipDialog] = useState(false);
@@ -89,6 +90,18 @@ export default function VideoEditorPage() {
   const handleSeekToSubtitle = (time: number) => {
     if (seekToTimeCallbackRef.current) {
       seekToTimeCallbackRef.current(time);
+    }
+  };
+
+  // 注册更新字幕音频URL回调
+  const handleRegisterUpdateAudioUrl = (callback: (id: string, audioUrl: string) => void) => {
+    updateAudioUrlCallbackRef.current = callback;
+  };
+
+  // 右侧面板更新字幕音频URL时调用
+  const handleUpdateSubtitleAudioUrl = (id: string, audioUrl: string) => {
+    if (updateAudioUrlCallbackRef.current) {
+      updateAudioUrlCallbackRef.current(id, audioUrl);
     }
   };
   // 提示
@@ -196,6 +209,7 @@ export default function VideoEditorPage() {
               convertObj={convertObj}
               onPlayingSubtitleChange={setPlayingSubtitleIndex}
               onSeekToTime={handleRegisterSeekCallback}
+              onRegisterUpdateAudioUrl={handleRegisterUpdateAudioUrl}
             />
 
             {/* playingAudioIndex >= 0 */}
@@ -215,6 +229,7 @@ export default function VideoEditorPage() {
             playingSubtitleIndex={playingSubtitleIndex}
             onSeekToSubtitle={handleSeekToSubtitle}
             onShowTip={handleShowTip}
+            onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudioUrl}
           />
         }
       />

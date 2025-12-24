@@ -18,6 +18,7 @@ export interface SubtitleRowData {
     text_convert: string;
     audioUrl_convert: string;
     audioUrl_convert_custom?: string;// 调用python临时生成的音频
+    newTime: string;// 保存后添加时间戳，以便获取同url新音频
 }
 
 interface SubtitleRowItemProps {

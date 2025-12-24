@@ -190,3 +190,52 @@ export async function javaR2MoveFile(sourcePath: string, targetPath: string, buc
 // }
   return backJO;
 }
+
+
+
+/**
+ * 覆盖接口
+ * @param sourcePath 
+ * @param targetPath 
+ * @param bucket 
+ * @returns 
+ */
+export async function javaR2CoverWriteFile(sourcePath: string, targetPath: string, bucket: string) {
+  const params = {
+    sourcePath: sourcePath,
+    targetPath: targetPath,
+    bucket: bucket,
+  };
+  // 加密响应
+  const encryptedRequestData = EncryptionUtil.encryptRequest(params);
+  // console.log('加密密文--->', encryptedRequestData);
+  const url = `${JAVA_SERVER_BASE_URL}/api/nextjs/overwrite-file`;
+  console.log('请求java服务器--->', url);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain',
+    },
+    body: encryptedRequestData,
+  });
+
+  if (!response.ok) {
+    const errorJO = await response.text();
+    console.log('java服务器返回错误--->', errorJO);
+    return errorJO;
+  }
+
+  const backJO = await response.json();
+  console.log('java服务器返回--->', backJO);
+
+// {
+//     "code": 200,
+//     "message": "Success",
+//     "data": {
+//         "sourcePath": "user-123/task-456/split_audio_video/video/video_nosound.mp4",
+//         "targetPath": "user-123/archive/2025-12-19/video_nosound.mp4",
+//         "success": true
+//     }
+// }
+  return backJO;
+}

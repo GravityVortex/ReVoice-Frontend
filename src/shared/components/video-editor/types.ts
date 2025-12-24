@@ -79,6 +79,7 @@ export interface VideoEditorProps {
   convertObj?: ConvertObj;
   onPlayingSubtitleChange?: (index: number) => void; // 字幕播放索引变化回调，右侧面板联动
   onSeekToTime?: (callback: (time: number) => void) => void; // 注册外部定位回调
+  onRegisterUpdateAudioUrl?: (callback: (id: string, audioUrl: string) => void) => void; // 注册更新字幕音频URL回调
 }
 
 // 导出数据接口

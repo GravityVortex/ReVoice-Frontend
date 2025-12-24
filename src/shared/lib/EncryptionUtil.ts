@@ -97,6 +97,7 @@ class EncryptionUtil {
     try {
       // 添加时间戳
       data.time = Math.floor(Date.now() / 1000);
+      console.log('java请求加密前params--->', data);
 
       const jsonData = JSON.stringify(data);
       const randomKey = this.generateRandomKey(8);
