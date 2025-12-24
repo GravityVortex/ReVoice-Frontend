@@ -28,6 +28,7 @@ interface SubtitleRowItemProps {
     isDoubleClick?: boolean;
     isPlayingConvert: boolean;
     isPlayingFromVideo?: boolean; // 左侧视频编辑器正在播放此字幕
+    isConverting?: boolean; // 正在生成语音
     onSelect: () => void;
     onUpdate: (item: SubtitleRowData) => void;
     onPlayPauseSource: () => void;
@@ -46,6 +47,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
             isPlayingSource,
             isPlayingConvert,
             isPlayingFromVideo = false,
+            isConverting = false,
             onSelect,
             onUpdate,
             onPlayPauseSource,
@@ -207,17 +209,18 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                             <div className="absolute bottom-2 right-2 flex gap-1">
                                 <div
                                     onClick={(e) => {
+                                        if (isConverting) return;
                                         e.stopPropagation();
                                         onConvert(localItem, 'translate_srt');
                                     }}
-                                    className="cursor-pointer p-1.5 rounded bg-background/80 hover:bg-accent transition-colors"
+                                    className={cn(
+                                        "p-1.5 rounded bg-background/80 transition-colors",
+                                        isConverting ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-accent"
+                                    )}
                                     title="更新字幕语音"
                                 >
-                                    <RefreshCw className="w-4 h-4" />
-                                    {/* <Sparkles className="w-4 h-4" /> */}
-
+                                    <RefreshCw className={cn("w-4 h-4", isConverting && "animate-spin")} />
                                 </div>
-
                             </div>
                         </div>
                     </div>

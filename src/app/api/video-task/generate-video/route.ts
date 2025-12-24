@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
     // 调用python生成视频
     const backJO = await pyMergeVideo(taskId, nameArray);
     if (backJO.code === 200) {
-      return respData('合成成功');
+      return respData('视频合成任务已生成，较耗时请耐心等候。');
     } else {
-      return respErr('合成失败');
+      return respErr('视频合成任务失败！');
     }
   } catch (error) {
     console.error('合成视频失败:', error);

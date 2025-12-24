@@ -34,6 +34,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   // 单条播放结束
   const [isAudioPlayEnded, setIsAudioPlayEnded] = useState(false);
   const [doubleClickIdx, setDoubleClickIdx] = useState(-1);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -315,54 +316,57 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     }
     // DOEND: 实现字幕转语音逻辑
     // toast.info('调用宝python生成语音试听...')
-    let preText = '';
-    if (index > 0) {
-      const preItem = subtitleItems[index - 1];
-      preText = type === 'gen_srt' ? preItem.text_source : preItem.text_convert;
-    }
-    // debugger
-    const url = `/api/video-task/generate-subtitle-voice`
-    const params = {
-      // gen_srt、translate_srt
-      text: type === 'gen_srt' ? item.text_source : item.text_convert,
-      preText: preText,
-      type: type,
-      subtitleName: item.id,
-      taskId: convertObj.id,
-      languageTarget: convertObj.targetLanguage,
-    }
-    const resp = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(params)
-    });
-    const { code, message, data } = await resp.json();
-    if (code === 0) {
-      // console.log('生成语音成功--->', data)
-      console.log('生成语音成功--->', data.path_name)
-      toast.success('生成语音成功，可以点击试听！')
-      const newTime = new Date().getTime();
-      // 更新数组中音频地址，触发保存按钮渲染
-      setSubtitleItems((prev) =>
-        prev.map((itm) =>
-          itm.id === item.id
-            ? {
-              ...itm,
-              ...(type === 'gen_srt'
-                ? { text_convert: data.text_translated }
-                : { audioUrl_convert_custom: data.path_name + '?t=' + newTime }),
-            }
-            : itm
-        )
-      );
-      // 此处更新panel-video-editor页面中字幕音频轨道数据
-      if (type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
-        const userId = user?.id || '';
-        const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${data.path_name}?t=${newTime}`;
-        onUpdateSubtitleAudioUrl(item.id, audioUrl);
+    setConvertingId(item.id);
+    try {
+      let preText = '';
+      if (index > 0) {
+        const preItem = subtitleItems[index - 1];
+        preText = type === 'gen_srt' ? preItem.text_source : preItem.text_convert;
       }
-
-    } else {
-      toast.error(message || '生成语音失败')
+      const url = `/api/video-task/generate-subtitle-voice`
+      const params = {
+        // gen_srt、translate_srt
+        text: type === 'gen_srt' ? item.text_source : item.text_convert,
+        preText: preText,
+        type: type,
+        subtitleName: item.id,
+        taskId: convertObj.id,
+        languageTarget: convertObj.targetLanguage,
+      }
+      const resp = await fetch(url, {
+        method: "POST",
+        body: JSON.stringify(params)
+      });
+      const { code, message, data } = await resp.json();
+      if (code === 0) {
+        // console.log('生成语音成功--->', data)
+        console.log('生成语音成功--->', data.path_name)
+        toast.success('生成语音成功，可以点击试听！')
+        const newTime = new Date().getTime();
+        // 更新数组中音频地址，触发保存按钮渲染
+        setSubtitleItems((prev) =>
+          prev.map((itm) =>
+            itm.id === item.id
+              ? {
+                ...itm,
+                ...(type === 'gen_srt'
+                  ? { text_convert: data.text_translated }
+                  : { audioUrl_convert_custom: data.path_name + '?t=' + newTime }),
+              }
+              : itm
+          )
+        );
+        // 此处更新panel-video-editor页面中字幕音频轨道数据
+        if (type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
+          const userId = user?.id || '';
+          const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${data.path_name}?t=${newTime}`;
+          onUpdateSubtitleAudioUrl(item.id, audioUrl);
+        }
+      } else {
+        toast.error(message || '生成语音失败')
+      }
+    } finally {
+      setConvertingId(null);
     }
   };
 
@@ -533,6 +537,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               isPlayingFromVideo={doubleClickIdx === -1 && playingSubtitleIndex === index}
               isPlayingSource={playingIndex === index && playingType === 'source' && !isAudioPlayEnded}
               isPlayingConvert={playingIndex === index && playingType === 'convert' && !isAudioPlayEnded}
+              isConverting={convertingId === item.id}
               onSelect={() => setSelectedId(item.id)}
               onUpdate={handleUpdateItem}
               onPlayPauseSource={() => handlePlayPauseSource(index)}
