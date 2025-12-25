@@ -35,15 +35,17 @@ export async function GET(request: NextRequest) {
       // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
       // let env = process.env.ENV || 'dev';
       // 合成的原视频
-      const keyTemp = `${user?.id}/${taskId}/merge_audio_video/video/video_new.mp4`;
+      // const keyTemp = `${user?.id}/${taskId}/merge_audio_video/video/video_new.mp4`;
       const params: SignUrlItem[] = [
-        { path: keyTemp, operation: 'download', expirationMinutes: expiresIn / 60 }, // 无声视频
+        { path: key, operation: 'download', expirationMinutes: expiresIn / 60 }, // 无声视频
       ];
       const resUrlArr = await getPreSignedUrl(params);
       downloadUrl = resUrlArr[0].url;
     } else {
+      let env = process.env.ENV || 'dev';
+      const keyTemp = `${env}/${key}`;
       // 从zhesheng私有桶获取下载地址
-      downloadUrl = await getPrivateR2DownLoadSignUrl(key, expiresIn);
+      downloadUrl = await getPrivateR2DownLoadSignUrl(keyTemp, expiresIn);
     }
 
     return NextResponse.json({

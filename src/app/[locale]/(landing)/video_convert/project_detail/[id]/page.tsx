@@ -736,15 +736,19 @@ export default function ProjectDetailPage() {
 
       console.log('[Download] 获取下载链接成功:', {
         url: data.data.url,
+        taskMain,
+        videoDetail,
         expiresIn: data.data.expiresIn,
         // expiresAt: data.data.expiresAt,
         currentTime: new Date().toISOString(),
       });
+      
 
       // 创建隐藏的 a 标签触发下载
       const link = document.createElement('a');
       link.href = data.data.url;
-      link.download = taskMain.fileName || 'taskMain.mp4';
+      // 跨域限制（最常见的原因）download 属性要求文件与页面同源（相同协议、域名、端口）。
+      link.download = videoDetail?.fileName || 'taskMain.mp4';
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();

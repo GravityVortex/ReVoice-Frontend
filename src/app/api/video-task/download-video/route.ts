@@ -55,8 +55,10 @@ export async function GET(request: NextRequest) {
       const resUrlArr = await getPreSignedUrl(params);
       downloadUrl = resUrlArr[0].url;
     } else {
+      let env = process.env.ENV || 'dev';
+      const keyTemp = `${env}/${user?.id}/${taskId}/merge_audio_video/video/video_new.mp4`;
       // 从zhesheng私有桶获取下载地址
-      downloadUrl = await getPrivateR2DownLoadSignUrl(key, expiresIn);
+      downloadUrl = await getPrivateR2DownLoadSignUrl(keyTemp, expiresIn);
 
       // 解析 URL 检查过期参数
       // const urlObj = new URL(downloadUrl);
