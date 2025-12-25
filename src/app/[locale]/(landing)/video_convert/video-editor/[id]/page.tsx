@@ -5,6 +5,7 @@ import { ConvertObj } from '@/shared/components/video-editor';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/shared/components/ui/breadcrumb';
 import { Home, Loader2 } from 'lucide-react';
 import Link from "next/link";
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useParams } from 'next/navigation';
 import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
 import { AudioListPanel } from '@/app/[locale]/(landing)/video_convert/video-editor/[id]/panel-audio-list';
@@ -12,12 +13,15 @@ import { getLanguageConvertStr } from '@/shared/lib/utils';
 import PanelVideoEditor from './panel-video-editor';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { useTranslations } from 'next-intl';
 
 
 export default function VideoEditorPage() {
   const params = useParams();
   const convertId = params.id as string;
+  // console.log('params--->', params)
   const locale = (params.locale as string) || "zh";
+  const t = useTranslations('video_convert.videoEditor');
   const [playingAudioIndex, setPlayingAudioIndex] = useState<number>(-1);
   const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
   const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
@@ -133,10 +137,24 @@ export default function VideoEditorPage() {
   // 加载中状态
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          <p className="text-lg text-muted-foreground">正在加载转换详情...</p>
+      <div className="fixed inset-0 z-50 flex bg-background">
+        <div className="flex-1 flex flex-col p-4 gap-4">
+          {/* 面包屑骨架 */}
+          <Skeleton className="h-10 w-full" />
+          {/* 视频预览骨架 */}
+          <Skeleton className="flex-1 w-full" />
+          {/* 控制栏骨架 */}
+          <Skeleton className="h-16 w-full" />
+          {/* 时间轴骨架 */}
+          <Skeleton className="h-64 w-full" />
+        </div>
+        <div className="w-96 border-l flex flex-col p-4 gap-3">
+          {/* 右侧标题骨架 */}
+          <Skeleton className="h-12 w-full" />
+          {/* 字幕列表骨架 */}
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
         </div>
       </div>
     );
@@ -147,8 +165,8 @@ export default function VideoEditorPage() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="max-w-md p-6 bg-destructive/10 border border-destructive rounded-lg">
-          <h2 className="text-xl font-bold text-destructive mb-2">加载失败</h2>
-          <p className="text-destructive">{error || '未能获取转换详情'}</p>
+          <h2 className="text-xl font-bold text-destructive mb-2">{t('error.loadFailed')}</h2>
+          <p className="text-destructive">{error || t('error.noData')}</p>
         </div>
       </div>
     );
@@ -172,7 +190,7 @@ export default function VideoEditorPage() {
                     <BreadcrumbLink asChild>
                       <Link href={`/${locale}`} className="flex items-center gap-1">
                         <Home className="size-4" />
-                        首页
+                        {t('breadcrumb.home')}
                       </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
@@ -180,7 +198,7 @@ export default function VideoEditorPage() {
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
                       <Link href={`/${locale}/video_convert/myVideoList`}>
-                        视频列表
+                        {t('breadcrumb.videoList')}
                       </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
@@ -189,15 +207,13 @@ export default function VideoEditorPage() {
                     <BreadcrumbLink asChild>
                       <Link href={`/${locale}/video_convert/project_detail/${videoSource?.id}`}>
                         {videoSource?.fileName || '视频详情'}
-                        {/* <span className='text-fd-success'> */}
-                        {`【${getLanguageConvertStr(convertObj)}】`}
-                        {/* </span> */}
+                        {`【${getLanguageConvertStr(convertObj, locale)}】`}
                       </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{"视频编辑"}</BreadcrumbPage>
+                    <BreadcrumbPage>{t('breadcrumb.videoEditor')}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -216,7 +232,7 @@ export default function VideoEditorPage() {
             {playingAudioIndex >= 0 && (
               <div className="absolute bottom-0 left-0 right-0 h-20 border-t bg-muted/50 px-4 py-2">
                 <div className="text-sm text-center font-medium text-primary">
-                  正在播放音频列表第 {playingAudioIndex + 1} 项
+                  {t('playingAudio', { index: playingAudioIndex + 1 })}
                 </div>
               </div>
             )}

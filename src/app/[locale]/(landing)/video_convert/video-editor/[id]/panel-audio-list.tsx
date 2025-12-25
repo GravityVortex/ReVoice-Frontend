@@ -11,6 +11,7 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { ConvertObj } from '../../../../../../shared/components/video-editor';
 import { useAppContext } from '../../../../../../shared/contexts/app';
+import { useTranslations } from 'next-intl';
 
 interface AudioListPanelProps {
   onPlayingIndexChange?: (index: number) => void;
@@ -22,6 +23,7 @@ interface AudioListPanelProps {
 }
 
 export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }: AudioListPanelProps) {
+  const t = useTranslations('video_convert.videoEditor.audioList');
   const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
   // 记录修改的字幕音频列表集合
   const [updateItemList, setUpdateItemList] = useState<SubtitleRowData[]>([]);
@@ -120,7 +122,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
   // 加载SRT文件
   const loadSrtFiles = async () => {
     if (!convertObj) {
-      setError('缺少转换对象数据');
+      setError(t('error.missingData', { ns: 'video_convert.videoEditor' }));
       return;
     }
 
@@ -150,6 +152,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           endTime_convert: convertItem?.end || '00:00:00,000',
           text_convert: convertItem?.txt || '',
           audioUrl_convert: convertItem?.audio_url || '',
+          newTime: '',
         });
       }
       // 合成双语字幕实体列表
@@ -158,7 +161,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       setSubtitleItems(items);
       console.log(`成功加载 ${items.length} 条字幕对照`);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '加载失败';
+      const errorMessage = err instanceof Error ? err.message : t('loadError');
       setError(errorMessage);
       console.error('加载SRT文件失败:', err);
     } finally {
@@ -239,7 +242,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       console.error('播放音频失败:', error);
       // 重置播放按钮状态
       setIsAudioPlayEnded(true);
-      toast.error('播放音频失败，请重试！');
+      toast.error(t('toast.playFailed'));
     });
 
     setPlayingIndex(index);
@@ -341,7 +344,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       if (code === 0) {
         // console.log('生成语音成功--->', data)
         console.log('生成语音成功--->', data.path_name)
-        toast.success('生成语音成功，可以点击试听！')
+        toast.success(t('toast.generateSuccess'))
         const newTime = new Date().getTime();
         // 更新数组中音频地址，触发保存按钮渲染
         setSubtitleItems((prev) =>
@@ -363,7 +366,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           onUpdateSubtitleAudioUrl(item.id, audioUrl);
         }
       } else {
-        toast.error(message || '生成语音失败')
+        toast.error(message || t('toast.generateFailed'))
       }
     } finally {
       setConvertingId(null);
@@ -376,11 +379,11 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     const resp = await fetch('/api/video-task/generate-video?taskId=' + convertObj.id);
     const { code, message } = await resp.json();
     if (code === 0) {
-      toast.success('合成视频成功');
+      toast.success(t('toast.videoSaveSuccess'));
       // 保存按钮不可重复点击
       setUpdateItemList([]);
     } else {
-      toast.error('合成视频失败');
+      toast.error(t('toast.videoSaveFailed'));
     }
   };
 
@@ -400,7 +403,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       }
 
       if (!targetItem) {
-        toast.error('未找到要更新的字幕项');
+        toast.error(t('toast.itemNotFound'));
         return;
       }
 
@@ -465,14 +468,14 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           return updatedList;
         })
 
-        toast.success('保存成功！');
+        toast.success(t('toast.saveSuccess'));
         onShowTip?.();
       } else {
-        toast.error(message || '保存失败！');
+        toast.error(message || t('toast.saveFailed'));
       }
     } catch (error) {
       console.error('保存字幕失败:', error);
-      toast.error('保存失败！');
+      toast.error(t('toast.saveFailed'));
     }
   };
 
@@ -489,7 +492,7 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       <div className="px-4 pt-4 pb-2 border-b bg-card">
         <div className="flex items-center justify-between pl-4">
           <h2 className="text-lg font-semibold"
-            onClick={() => { }}>字幕音频对照表</h2>
+            onClick={() => { }}>{t('title')}</h2>
           <div className='flex flex-row gap-0 text-sm font-semibold'>
             <Button
               variant="destructive"
@@ -499,13 +502,13 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               onClick={onVideoSaveClick}
             >
               <Save className="size-4" />
-              保存
+              {t('save')}
             </Button>
           </div>
         </div>
         <div className="flex items-center justify-around p-1 text-sm font-bold mt-2">
-          <div>原字幕</div>
-          <div>转换后字幕</div>
+          <div>{t('originalSubtitle')}</div>
+          <div>{t('convertedSubtitle')}</div>
         </div>
       </div>
 
@@ -515,13 +518,13 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">正在加载字幕文件...</span>
+              <span className="ml-2 text-muted-foreground">{t('loading')}</span>
             </div>
           )}
 
           {error && (
             <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded">
-              <p className="font-medium">加载失败</p>
+              <p className="font-medium">{t('loadError')}</p>
               <p className="text-sm">{error}</p>
             </div>
           )}
@@ -553,10 +556,13 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       {/* 底部状态栏 */}
       <div className="bg-card flex flex-row justify-between p-3 border-t">
         <div className="text-sm text-muted-foreground">
-          共 {subtitleItems.length} 条字幕
+          {t('totalItems', { count: subtitleItems.length })}
           {playingIndex >= 0 && playingType && (
             <span className="ml-2 text-primary font-medium">
-              正在播放: {playingType === 'source' ? '原字幕' : '转换后字幕'}第 {playingIndex + 1} 项
+              {t('playing', {
+                type: playingType === 'source' ? t('playingSource') : t('playingConvert'),
+                index: playingIndex + 1
+              })}
             </span>
           )}
         </div>

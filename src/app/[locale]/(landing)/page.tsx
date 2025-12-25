@@ -29,6 +29,8 @@ export default async function LandingPage({
     faq: t.raw('faq'),
     cta: t.raw('cta'),
   };
+  // 应用案例：src/themes/default/blocks/features-accordion.tsx
+  // 步骤板块：src/themes/default/blocks/features-step.tsx
 
   // 实际加载src/themes/default/pages/landing.tsx，内含若干行page（相当于div）
   const Page = await getThemePage('landing');

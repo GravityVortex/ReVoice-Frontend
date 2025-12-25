@@ -52,7 +52,7 @@ export function getLanguageMapStr(key: string, locale = 'zh') {
  * @returns
  */
 export function getLanguageConvertStr(item: any, locale = 'zh') {
-  // console.log('getLanguageConvertStr-->', item)
+  // console.log('getLanguageConvertStr-->', locale, item)
   if (locale === 'zh') {
     return `${LanguageMap[item?.sourceLanguage] || ''}转${LanguageMap[item?.targetLanguage] || '未知语种'}`;
   }

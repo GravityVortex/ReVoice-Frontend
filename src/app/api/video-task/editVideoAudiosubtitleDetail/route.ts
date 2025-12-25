@@ -23,10 +23,14 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // TODO 本地模拟（宝20251205修复后）
+    // DOEND 本地模拟（宝20251205修复后）
     // const resData = getMockJsonData(convertId, 'local_001');
     // xuww上传的（宝20251205修复后）
     // const resData = getMockJsonData(taskMainId, 'upload_001');
+
+    // 延迟测试
+    // await new Promise(resolve => setTimeout(resolve, 55500));
+
     const resDataReal = await getDBJsonData(taskMainId);
     console.log('真实请求resData--->', resDataReal);
 

@@ -11,9 +11,12 @@ import { SubtitleTrack } from '../../../../../../shared/components/video-editor/
 import { TrackItem, SubtitleTrackItem, VideoEditorProps, ExportData } from '../../../../../../shared/components/video-editor/types';
 import { loadSrtViaProxy } from '@/shared/lib/srt-parser';
 import { toast } from 'sonner';
+import { useTranslations, useLocale } from 'next-intl';
 
 
 export function PanelVideoEditor({ className, onExport, initialVideo, convertObj, onPlayingSubtitleChange, onSeekToTime, onRegisterUpdateAudioUrl }: VideoEditorProps) {
+  const t = useTranslations('video_convert.videoEditor.videoEditor');
+  const locale = useLocale();
   // 基础状态
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -119,8 +122,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
 
     // 检查是否有视频轨道
     if (videoTrack.length === 0) {
-      // alert('请先添加视频到视频轨道');
-      toast.error('请先添加视频到视频轨道');
+      toast.error(t('toast.addVideoFirst'));
       return;
     }
 
@@ -153,14 +155,14 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
           console.log('设置视频源:', firstVideo.url);
           videoRef.current.src = firstVideo.url;
           await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('视频加载超时')), 10000);
+            const timeout = setTimeout(() => reject(new Error(t('toast.videoLoadTimeout'))), 10000);
             videoRef.current!.onloadedmetadata = () => {
               clearTimeout(timeout);
               resolve(true);
             };
             videoRef.current!.onerror = () => {
               clearTimeout(timeout);
-              reject(new Error('视频加载失败'));
+              reject(new Error(t('toast.videoLoadFailed')));
             };
             videoRef.current!.load();
           });
@@ -186,9 +188,8 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
       }
     } catch (error) {
       console.error('播放失败:', error);
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      // alert(`播放失败: ${errorMessage}`);
-      toast.error(`播放失败: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : t('toast.unknownError');
+      toast.error(t('toast.playFailed', { error: errorMessage }));
       setIsPlaying(false);
     }
   };
@@ -291,7 +292,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
   // 播放指针可见跟随
   const togglePointerBarFollow = () => {
     setIsPointerBarFollow(!isPointerBarFollow);
-    !isPointerBarFollow && toast.info('播放指针可见跟随');
+    !isPointerBarFollow && toast.info(t('toast.pointerFollow'));
   };
 
 
@@ -334,7 +335,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
       totalDuration
     };
     onExport?.(exportData);
-    toast.info('开发中，敬请期待！');
+    toast.info(t('toast.exportPending'));
   };
 
 
@@ -707,7 +708,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
           const videoItem: TrackItem = {
             id: 'video-main',
             type: 'video',
-            name: '主视频',
+            name: t('tracks.mainVideo'),
             url: convertObj.noSoundVideoUrl,
             startTime: 0,
             duration: convertObj.processDurationSeconds, // 默认60秒，实际加载后会更新
@@ -727,7 +728,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
           const bgmItem: TrackItem = {
             id: 'bgm-main',
             type: 'bgm',
-            name: '背景音乐',
+            name: t('tracks.bgm'),
             url: convertObj.backgroundAudioUrl,
             startTime: 0,
             duration: convertObj.processDurationSeconds, // 默认60秒，实际加载后会更新
@@ -1097,7 +1098,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                         startY: subtitlePosition.y
                       };
                     }}
-                    title="拖动调整字幕位置"
+                    title={t('tooltips.dragSubtitle')}
                   >
                     {/* 视频中字幕可编辑和展示 */}
                     {isEditing ? (
@@ -1146,7 +1147,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             {/* 如果没有视频，显示提示 */}
             {videoTrack.length === 0 && (
               <div className="absolute top-1/3 bottom-1/3 inset-0 flex items-center justify-center text-muted-foreground text-lg">
-                请在视频轨道中添加视频文件
+                {t('placeholder.addVideoToTrack')}
               </div>
             )}
           </CardContent>
@@ -1221,7 +1222,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               size="sm"
               onClick={() => handleZoom('out')}
               className="hover:bg-muted"
-              title="缩小时间轴"
+              title={t('tooltips.zoomOut')}
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
@@ -1231,7 +1232,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               size="sm"
               onClick={() => handleZoom('in')}
               className="hover:bg-muted"
-              title="放大时间轴"
+              title={t('tooltips.zoomIn')}
             >
               <ZoomIn className="w-4 h-4" />
             </Button>
@@ -1247,7 +1248,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               size="sm"
               onClick={toggleVideoTextClick}
               className="hover:bg-muted"
-              title="添加字幕"
+              title={t('tooltips.addSubtitle')}
             >
               <Type className="w-4 h-4" />
             </Button>
@@ -1257,7 +1258,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               size="sm"
               onClick={togglePointerBarFollow}
               className="hover:bg-muted"
-              title="播放指针可见"
+              title={t('tooltips.pointerVisible')}
             >
               {isPointerBarFollow ? <FoldHorizontal className="w-4 h-4" /> :
                 <FlipVertical className="w-4 h-4" />
@@ -1265,15 +1266,15 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
 
             </Button>
 
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={handleExport}
               className="hover:bg-muted"
-              title="导出项目"
+              title={t('tooltips.export')}
             >
               <Download className="w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
@@ -1283,7 +1284,9 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
         {/* 统一滚动布局：左侧固定标签，右侧整体滚动内容 */}
         <div className="flex-1 flex">
           {/* 左侧固定标签区域 - 包含时间轴标签和轨道标签 */}
-          <div className="w-32 flex flex-col bg-background border-r shrink-0">
+          <div className={cn('flex flex-col bg-background border-r shrink-0',
+            locale === 'zh'? 'w-32': 'w-36'
+          )}>
             {/* 时间轴标签 */}
             <div className="h-12 flex items-center justify-center border-b">
               <span className="text-xs text-muted-foreground font-medium">时间轴</span>
@@ -1291,18 +1294,16 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             {/* 字幕轨道标签 */}
             <div className="h-16 flex items-center justify-between px-3 border-b">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">字幕</span>
-                {/* <Type className="w-3 h-3 text-gray-400" /> */}
+                <span className="text-sm font-medium">{t('tracks.subtitle')}</span>
               </div>
               <div className="flex items-center gap-1">
                 {/* 轨道开关，隐藏视频中字幕 */}
                 <Button
                   variant="ghost"
                   size="sm"
-                  // onClick={addSubtitle}
                   onClick={toggleVideoTextClick}
                   className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-                  title="添加字幕"
+                  title={t('tooltips.addSubtitle')}
                 >
                   {/* <Plus className="w-3 h-3" /> */}
                   {isVideoTextShow ? (
@@ -1317,8 +1318,8 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsSubtitleMuted(!isSubtitleMuted)}
-                  className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-                  title={isSubtitleMuted ? "取消静音" : "静音"}
+                  className="w-6 h-6 p-0  text-muted-foreground hover:text-foreground hover:bg-muted"
+                  title={isSubtitleMuted ? t('tooltips.unmute') : t('tooltips.mute')}
                 >
                   {isSubtitleMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 </Button>
@@ -1329,8 +1330,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             {/* 背景音乐轨道标签 */}
             <div className="h-16 flex items-center justify-between px-3 border-b">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">背景音乐</span>
-                {/* <Volume2 className="w-3 h-3 text-gray-400" /> */}
+                <span className="text-sm font-medium">{t('tracks.bgm')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Button
@@ -1338,7 +1338,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                   size="sm"
                   onClick={() => setIsBgmMuted(!isBgmMuted)}
                   className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-                  title={isBgmMuted ? "取消静音" : "静音"}
+                  title={isBgmMuted ? t('tooltips.unmute') : t('tooltips.mute')}
                 >
                   {isBgmMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 </Button>
@@ -1358,10 +1358,9 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
             <div className="h-16 flex items-center justify-between px-3 border-b">
 
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">背景视频</span>
+                <span className="text-sm font-medium">{t('tracks.backgroundVideo')}</span>
               </div>
 
-              {/* title="添加视频" onClick={() => addTrackItem('video')} */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -1416,34 +1415,26 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                 playingIndex={playingSubtitleIndex}
               />
 
-              {/* 
-                背景音乐轨道内容 
-                onAddItem={() => addTrackItem('bgm')}
+              {/*
+                背景音乐轨道内容
               */}
               <Track
-                title="背景音乐"
+                title={t('tracks.bgm')}
                 items={bgmTrack}
                 totalDuration={maxTrackWidth}
                 zoom={zoom}
                 selectedItem={selectedItem || undefined}
-              // onSelectItem={setSelectedItem}
-              // onUpdateItem={(id, updates) => updateTrackItem('bgm', id, updates)}
-              // onDeleteItem={(id) => deleteTrackItem('bgm', id)}
               />
 
-              {/* 
-                视频轨道内容 
-                onAddItem={() => addTrackItem('video')}
+              {/*
+                视频轨道内容
               */}
               <Track
-                title="视频"
+                title={t('tracks.mainVideo')}
                 items={videoTrack}
                 totalDuration={maxTrackWidth}
                 zoom={zoom}
                 selectedItem={selectedItem || undefined}
-              // onSelectItem={setSelectedItem}
-              // onUpdateItem={(id, updates) => updateTrackItem('video', id, updates)}
-              // onDeleteItem={(id) => deleteTrackItem('video', id)}
               />
             </div>
           </div>

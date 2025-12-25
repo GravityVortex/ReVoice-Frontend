@@ -26,3 +26,5 @@ export function Copyright({ brand }: { brand: BrandType }) {
     </div>
   );
 }
+
+export default Copyright;

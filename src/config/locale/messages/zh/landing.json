@@ -138,9 +138,9 @@
     "id": "introduce",
     "title": "什么是【这声】？",
     "label": "产品简介",
-    "description": "这声是AI驱动的视频翻译工具，保留原声音色与情感，让你的声音跨越语言障碍。",
+    "description": "这声是AI驱动的视频翻译工具，保留原声音色与情感，让你的声音跨越语言障碍，翻译后支持字幕音频编辑，试听满意后重新合成视频，支持字幕、双语、字幕音频、背景音频、高清视频下载。",
     "image": {
-      "src": "/imgs/showcases/case1.jpg",
+      "src": "/imgs/cover_video_def.jpg",
       "alt": "这声产品介绍"
     },
     "items": [
@@ -219,8 +219,8 @@
   },
   "usage": {
     "id": "usage",
-    "title": "四步完成视频翻译",
-    "description": "简单四步，让你的视频跨越语言障碍：",
+    "title": "三步完成视频翻译，支持剪辑",
+    "description": "简单三步，让你的视频跨越语言障碍，翻译后支持字幕剪辑、字幕语音合成等修改",
     "image": {
       "src": "/imgs/features/1.png",
       "alt": "使用流程"
@@ -233,7 +233,7 @@
         "description": "支持多种视频格式，拖拽或点击上传你的原始视频文件。",
         "icon": "Upload",
         "image": {
-          "src": "/imgs/features/5.png",
+          "src": "/imgs/steps/step1.png",
           "alt": "上传视频"
         }
       },
@@ -242,26 +242,35 @@
         "description": "选择源语言和目标语言，支持中英日韩等多种语言互译。",
         "icon": "Languages",
         "image": {
-          "src": "/imgs/features/6.png",
+          "src": "/imgs/steps/step2.png",
           "alt": "选择语言"
         }
       },
       {
-        "title": "开始转换",
-        "description": "AI智能处理中，实时进度条显示，通常几分钟即可完成。",
+        "title": "视频翻译",
+        "description": "保留视频原生音色，先进的AI处理翻译，实时进度条显示，通常几分钟即可完成。",
         "icon": "Loader",
         "image": {
-          "src": "/imgs/features/7.png",
-          "alt": "开始转换"
+          "src": "/imgs/steps/step3.png",
+          "alt": "视频翻译"
         }
       },
       {
         "title": "预览和下载",
-        "description": "在线预览翻译效果，满意后一键下载高清视频文件。",
+        "description": "在线预览翻译效果，满意后一键下载高清视频文件，同时支持字幕和双语字幕下载。",
         "icon": "Download",
         "image": {
-          "src": "/imgs/features/8.png",
+          "src": "/imgs/steps/step4.png",
           "alt": "预览下载"
+        }
+      },
+      {
+        "title": "字幕编辑合成",
+        "description": "视频翻译成功后，可以对任意一段字幕进行自定义修改语音合成，最终重新合成视频下载。",
+        "icon": "Edit",
+        "image": {
+          "src": "/imgs/steps/step5.png",
+          "alt": "字幕编辑合成"
         }
       }
     ]
@@ -363,62 +372,7 @@
     "id": "testimonials",
     "title": "用户对【这声】的评价",
     "description": "听听创作者和教育工作者如何用这声打破语言壁垒，触达全球观众。",
-    "items": [
-      {
-        "name": "李伟",
-        "role": "美食视频博主",
-        "quote": "这声彻底改变了我的创作方式。现在我可以用保留原声的方式将中文美食视频分享给英语观众。短短2个月，国际粉丝增长了300%！",
-        "image": {
-          "src": "/imgs/avatars/1.png",
-          "alt": "李伟"
-        }
-      },
-      {
-        "name": "Sarah Johnson",
-        "role": "教育内容创作者",
-        "quote": "作为家长，我想让孩子看优质的英文教育内容的中文版。这声完美保留了原声的情感和语调，就像讲述者在自然地说中文！",
-        "image": {
-          "src": "/imgs/avatars/2.png",
-          "alt": "Sarah"
-        }
-      },
-      {
-        "name": "山本武",
-        "role": "在线课程讲师",
-        "quote": "我用日语教编程，但想触达全球学生。这声让我在几分钟内就能创建英文、中文和韩文版本。我的学生基数扩大了5倍！",
-        "image": {
-          "src": "/imgs/avatars/3.png",
-          "alt": "山本武"
-        }
-      },
-      {
-        "name": "Maria Garcia",
-        "role": "旅行视频博主",
-        "quote": "声音克隆太不可思议了——听起来真的像我在说不同的语言！我的西班牙语旅行视频现在能触达中国、日本和韩国的观众。改变游戏规则！",
-        "image": {
-          "src": "/imgs/avatars/4.png",
-          "alt": "Maria"
-        }
-      },
-      {
-        "name": "陈明",
-        "role": "科技评测博主",
-        "quote": "我用中文评测数码产品，这声帮我触达英语科技爱好者。背景音乐保留得完美——我的制作质量丝毫不减！",
-        "image": {
-          "src": "/imgs/avatars/5.png",
-          "alt": "陈明"
-        }
-      },
-      {
-        "name": "Emma Thompson",
-        "role": "语言教师",
-        "quote": "这声是语言教育的突破。我可以向学生展示同样的内容在不同语言中的声音，同时保持情感语境。绝对精彩！",
-        "image": {
-          "src": "/imgs/avatars/6.png",
-          "alt": "Emma"
-        }
-      }
-    ]
+    "items": []
   },
   "faq": {
     "id": "faq",

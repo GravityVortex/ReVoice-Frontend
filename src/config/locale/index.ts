@@ -53,6 +53,7 @@ export const localeMessagesPaths = [
   'video_convert/projectDetail',
   'video_convert/projectAddConvertModal',
   'video_convert/projectUpdateModal',
+  'video_convert/videoEditor',
   
   'test/sidebar',
 ];

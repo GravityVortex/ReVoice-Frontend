@@ -219,7 +219,7 @@ export function RightContentPanel({
                             <Download className="size-4" />
                             {t('buttons.download')}
                           </Button>
-                          <Button
+                          {/* <Button
                             variant="outline"
                             size="sm"
                             disabled={taskMain?.status !== "completed"}
@@ -229,7 +229,7 @@ export function RightContentPanel({
                             }}>
                             <Edit2 className="size-4" />
                             {t('buttons.edit')}
-                          </Button>
+                          </Button> */}
                           <Button variant="outline" size="sm" onClick={(e) => {
                             e.stopPropagation();
                             onProgressClick(taskMain?.id, "1");
@@ -238,12 +238,15 @@ export function RightContentPanel({
                             {t('buttons.progress')}
                           </Button>
                           <Button variant="destructive" size="sm"
+                            disabled={taskMain?.status !== "completed"}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDevelopClick();
+                              onSonItemEditClick(taskMain?.id);
+                              // onDevelopClick();
                             }}>
-                            <BookmarkX className="size-4" />
-                            {t('buttons.cancel')}
+                            {/* <BookmarkX className="size-4" /> */}
+                            <Edit2 className="size-4" />
+                            {t('buttons.edit')}
                           </Button>
                         </div>
                       </div>

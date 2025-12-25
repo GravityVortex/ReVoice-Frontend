@@ -1,0 +1,83 @@
+{
+  "breadcrumb": {
+    "home": "首页",
+    "videoList": "视频列表",
+    "videoEditor": "视频编辑",
+    "videoDetail": "视频详情"
+  },
+  "loading": "正在加载转换详情...",
+  "error": {
+    "loadFailed": "加载失败",
+    "noData": "未能获取转换详情",
+    "fetchFailed": "获取转换详情失败",
+    "dataFormatError": "数据格式错误",
+    "missingData": "缺少转换对象数据"
+  },
+  "playingAudio": "正在播放音频列表第 {index} 项",
+  "audioList": {
+    "title": "字幕音频对照表",
+    "save": "保存",
+    "originalSubtitle": "原字幕",
+    "convertedSubtitle": "转换后字幕",
+    "totalItems": "共 {count} 条字幕",
+    "playing": "正在播放: {type}第 {index} 项",
+    "playingSource": "原字幕",
+    "playingConvert": "转换后字幕",
+    "loading": "正在加载字幕文件...",
+    "loadError": "加载失败",
+    "toast": {
+      "playFailed": "播放音频失败，请重试！",
+      "generateSuccess": "生成语音成功，可以点击试听！",
+      "generateFailed": "生成语音失败",
+      "videoSaveSuccess": "合成视频成功",
+      "videoSaveFailed": "合成视频失败",
+      "itemNotFound": "未找到要更新的字幕项",
+      "saveSuccess": "保存成功！",
+      "saveFailed": "保存失败！"
+    }
+  },
+  "videoEditor": {
+    "toast": {
+      "addVideoFirst": "请先添加视频到视频轨道",
+      "videoLoadTimeout": "视频加载超时",
+      "videoLoadFailed": "视频加载失败",
+      "playFailed": "播放失败: {error}",
+      "unknownError": "未知错误",
+      "pointerFollow": "播放指针可见跟随",
+      "exportPending": "开发中，敬请期待！"
+    },
+    "tracks": {
+      "mainVideo": "主视频",
+      "bgm": "背景音乐",
+      "subtitle": "字幕",
+      "backgroundVideo": "背景视频"
+    },
+    "tooltips": {
+      "dragSubtitle": "拖动调整字幕位置",
+      "zoomOut": "缩小时间轴",
+      "zoomIn": "放大时间轴",
+      "addSubtitle": "添加字幕",
+      "pointerVisible": "播放指针可见",
+      "export": "导出项目",
+      "mute": "静音",
+      "unmute": "取消静音",
+      "addBgm": "添加背景音乐",
+      "addVideo": "添加视频",
+      "regenerateVideo": "重新合成视频"
+    },
+    "placeholder": {
+      "addVideoToTrack": "请在视频轨道中添加视频文件"
+    }
+  },
+  "subtitleRow": {
+    "placeholder": {
+      "original": "原字幕内容",
+      "converted": "转换后字幕内容"
+    },
+    "tooltips": {
+      "retranslate": "重新翻译字幕",
+      "saveVoice": "保存字幕语音",
+      "updateVoice": "更新字幕语音"
+    }
+  }
+}

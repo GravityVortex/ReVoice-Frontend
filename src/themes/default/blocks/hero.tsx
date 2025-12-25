@@ -41,12 +41,26 @@ export function Hero({
   className?: string;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageScale, setImageScale] = useState(1);
   const { user, setIsShowSignModal } = useAppContext();
   const highlightText = hero.highlight_text ?? '';
   let texts = null;
   if (highlightText) {
     texts = hero.title?.split(highlightText, 2);
   }
+
+  const videos = [
+    'https://pub-9e01d229159844cfbe7379d010d2fb61.r2.dev/dev/landing/fanren-1.mp4',
+    'https://pub-9e01d229159844cfbe7379d010d2fb61.r2.dev/dev/landing/fanren-2.mp4',
+    'https://pub-9e01d229159844cfbe7379d010d2fb61.r2.dev/dev/landing/fanren-3.mp4',
+  ];
+  const covers = [
+    '/imgs/landing/fanren-1-cover.png',
+    '/imgs/landing/fanren-2-cover.png',
+    '/imgs/landing/fanren-3-cover.png',
+  ];
 
   const handleButtonClick = (e: React.MouseEvent, url: string) => {
     if (url === '/video_convert' && !user) {
@@ -168,11 +182,34 @@ export function Hero({
                 aria-hidden
                 className="h-3 w-full bg-[repeating-linear-gradient(-45deg,var(--color-foreground),var(--color-foreground)_1px,transparent_1px,transparent_4px)] opacity-5"
               />
+              <div className="flex gap-2 p-4 border-b justify-center">
+                {['案例一', '案例二', '案例三'].map((label, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setActiveTab(idx);
+                      setIsPlaying(false);
+                    }}
+                    className={cn(
+                      'px-4 py-2 rounded-lg transition-colors',
+                      activeTab === idx
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="relative hidden dark:block">
                 <video
-                  className="w-full object-cover aspect-video border-border/25 border"
-                  src="https://pub-9e01d229159844cfbe7379d010d2fb61.r2.dev/dev/example.mp4"
-                  poster="/imgs/cover_video_def.jpg"
+                  key={activeTab}
+                  className="w-full h-auto border-border/25 border"
+                  style={{ aspectRatio: '1882/526' }}
+                  src={videos[activeTab]}
+                  // poster="/imgs/cover_video_def.jpg"
+                  // poster="/imgs/landing/fanren-1-cover.png"
+                  poster={covers[activeTab]}
                   controls={isPlaying}
                   onClick={(e) => {
                     if (!isPlaying) {
@@ -194,6 +231,18 @@ export function Hero({
                     <div className="bg-white/90 hover:bg-white rounded-full p-6 transition-colors">
                       <Play className="w-12 h-12 text-black fill-black" />
                     </div>
+                  </button>
+                )}
+                {false && !isPlaying && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowImageModal(true);
+                      setImageScale(1);
+                    }}
+                    className="absolute top-2 right-2 z-20 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded text-sm transition-colors"
+                  >
+                    查看大图
                   </button>
                 )}
               </div>
@@ -218,6 +267,56 @@ export function Hero({
           'inset-x-0 inset-y-[-30%] h-[200%] skew-y-12'
         )}
       />
+
+      {showImageModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setShowImageModal(false)}
+        >
+          <button
+            onClick={() => setShowImageModal(false)}
+            className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
+          >
+            ✕
+          </button>
+          <div className="flex gap-2 absolute top-4 left-1/2 -translate-x-1/2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setImageScale(s => Math.max(0.5, s - 0.25));
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
+            >
+              缩小
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setImageScale(1);
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
+            >
+              重置
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setImageScale(s => Math.min(3, s + 0.25));
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
+            >
+              放大
+            </button>
+          </div>
+          <img
+            src={covers[activeTab]}
+            alt="预览图"
+            className="max-w-[90vw] max-h-[90vh] object-contain transition-transform"
+            style={{ transform: `scale(${imageScale})` }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 }

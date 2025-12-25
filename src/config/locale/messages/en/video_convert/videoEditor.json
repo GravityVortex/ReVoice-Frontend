@@ -1,0 +1,83 @@
+{
+  "breadcrumb": {
+    "home": "Home",
+    "videoList": "Video List",
+    "videoEditor": "Video Editor",
+    "videoDetail": "Video Detail"
+  },
+  "loading": "Loading conversion details...",
+  "error": {
+    "loadFailed": "Load Failed",
+    "noData": "Failed to get conversion details",
+    "fetchFailed": "Failed to fetch conversion details",
+    "dataFormatError": "Data format error",
+    "missingData": "Missing conversion object data"
+  },
+  "playingAudio": "Playing audio list item {index}",
+  "audioList": {
+    "title": "Subtitle Audio Comparison",
+    "save": "Save",
+    "originalSubtitle": "Original Subtitle",
+    "convertedSubtitle": "Converted Subtitle",
+    "totalItems": "Total {count} subtitles",
+    "playing": "Playing: {type} item {index}",
+    "playingSource": "Original subtitle",
+    "playingConvert": "Converted subtitle",
+    "loading": "Loading subtitle files...",
+    "loadError": "Load failed",
+    "toast": {
+      "playFailed": "Failed to play audio, please try again!",
+      "generateSuccess": "Voice generated successfully, click to preview!",
+      "generateFailed": "Failed to generate voice",
+      "videoSaveSuccess": "Video synthesis successful",
+      "videoSaveFailed": "Video synthesis failed",
+      "itemNotFound": "Subtitle item not found",
+      "saveSuccess": "Saved successfully!",
+      "saveFailed": "Save failed!"
+    }
+  },
+  "videoEditor": {
+    "toast": {
+      "addVideoFirst": "Please add video to video track first",
+      "videoLoadTimeout": "Video load timeout",
+      "videoLoadFailed": "Video load failed",
+      "playFailed": "Play failed: {error}",
+      "unknownError": "Unknown error",
+      "pointerFollow": "Playback pointer visible follow",
+      "exportPending": "Under development, stay tuned!"
+    },
+    "tracks": {
+      "mainVideo": "Main Video",
+      "bgm": "Background Music",
+      "subtitle": "Subtitle",
+      "backgroundVideo": "Background Video"
+    },
+    "tooltips": {
+      "dragSubtitle": "Drag to adjust subtitle position",
+      "zoomOut": "Zoom out timeline",
+      "zoomIn": "Zoom in timeline",
+      "addSubtitle": "Add subtitle",
+      "pointerVisible": "Playback pointer visible",
+      "export": "Export project",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "addBgm": "Add background music",
+      "addVideo": "Add video",
+      "regenerateVideo": "Regenerate video"
+    },
+    "placeholder": {
+      "addVideoToTrack": "Please add video file to video track"
+    }
+  },
+  "subtitleRow": {
+    "placeholder": {
+      "original": "Original subtitle content",
+      "converted": "Converted subtitle content"
+    },
+    "tooltips": {
+      "retranslate": "Retranslate subtitle",
+      "saveVoice": "Save subtitle voice",
+      "updateVoice": "Update subtitle voice"
+    }
+  }
+}

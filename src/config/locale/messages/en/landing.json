@@ -65,11 +65,11 @@
       "title": "🎉 ReVoice is now live",
       "url": "/pricing"
     },
-    "tip": "Translate with soul",
+    "tip": "Experience the voice you want",
     "buttons": [
       {
-        "title": "Try ReVoice free today",
-        "icon": "Play",
+        "title": "Try ReVoice Free",
+        "icon": "Grid2x2Plus",
         "url": "/video_convert",
         "target": "_self",
         "variant": "default"
@@ -138,9 +138,9 @@
     "id": "introduce",
     "title": "What is ReVoice?",
     "label": "Product Introduction",
-    "description": "ReVoice is an AI-powered video translation tool that preserves your original voice tone and emotion, helping your voice cross language barriers.",
+    "description": "ReVoice is an AI-powered video translation tool that preserves your original voice tone and emotion, helping your voice cross language barriers. After translation, you can edit subtitles and audio, preview the results, and regenerate the video. Download subtitles, bilingual subtitles, subtitle audio, background audio, and HD video.",
     "image": {
-      "src": "/imgs/showcases/case1.jpg",
+      "src": "/imgs/cover_video_def.jpg",
       "alt": "ReVoice product introduction"
     },
     "items": [
@@ -163,12 +163,12 @@
         }
       },
       {
-        "title": "Multilingual Cloning",
+        "title": "Chinese-English Cloning",
         "description": "Supports bidirectional translation and cloning between Chinese and English, reaching global audiences.",
         "icon": "Languages",
         "image": {
           "src": "/imgs/features/3.png",
-          "alt": "Multilingual cloning"
+          "alt": "Chinese-English cloning"
         }
       },
       {
@@ -219,8 +219,8 @@
   },
   "usage": {
     "id": "usage",
-    "title": "Four Steps to Video Translation",
-    "description": "Simple four-step process to help your videos cross language barriers:",
+    "title": "Three Steps to Video Translation with Editing Support",
+    "description": "Simple three-step process to help your videos cross language barriers, with subtitle editing and audio synthesis after translation",
     "image": {
       "src": "/imgs/features/1.png",
       "alt": "Usage workflow"
@@ -233,7 +233,7 @@
         "description": "Supports multiple video formats, drag and drop or click to upload your original video file.",
         "icon": "Upload",
         "image": {
-          "src": "/imgs/features/5.png",
+          "src": "/imgs/steps/step1.png",
           "alt": "Upload video"
         }
       },
@@ -242,26 +242,35 @@
         "description": "Choose source and target languages, supporting translation between Chinese, English, Japanese, Korean, and more.",
         "icon": "Languages",
         "image": {
-          "src": "/imgs/features/6.png",
+          "src": "/imgs/steps/step2.png",
           "alt": "Select languages"
         }
       },
       {
-        "title": "Start Conversion",
-        "description": "AI intelligent processing with real-time progress bar, typically completed in just a few minutes.",
+        "title": "Video Translation",
+        "description": "Preserves original voice tone with advanced AI processing, real-time progress bar, typically completed in just a few minutes.",
         "icon": "Loader",
         "image": {
-          "src": "/imgs/features/7.png",
-          "alt": "Start conversion"
+          "src": "/imgs/steps/step3.png",
+          "alt": "Video translation"
         }
       },
       {
         "title": "Preview and Download",
-        "description": "Preview translation results online, download high-quality video file with one click when satisfied.",
+        "description": "Preview translation results online, download high-quality video file with one click when satisfied, with subtitle and bilingual subtitle download support.",
         "icon": "Download",
         "image": {
-          "src": "/imgs/features/8.png",
+          "src": "/imgs/steps/step4.png",
           "alt": "Preview and download"
+        }
+      },
+      {
+        "title": "Subtitle Editing and Synthesis",
+        "description": "After video translation, you can customize and synthesize audio for any subtitle segment, then regenerate and download the final video.",
+        "icon": "Edit",
+        "image": {
+          "src": "/imgs/steps/step5.png",
+          "alt": "Subtitle editing and synthesis"
         }
       }
     ]
@@ -363,62 +372,7 @@
     "id": "testimonials",
     "title": "What Users Say About ReVoice",
     "description": "Hear from creators and educators on how ReVoice helps them break language barriers and reach global audiences.",
-    "items": [
-      {
-        "name": "Li Wei",
-        "role": "Food Vlogger",
-        "quote": "ReVoice changed everything for me. I can now share my Chinese cooking videos with English-speaking audiences while keeping my authentic voice. My international followers grew 300% in just 2 months!",
-        "image": {
-          "src": "/imgs/avatars/1.png",
-          "alt": "Li Wei"
-        }
-      },
-      {
-        "name": "Sarah Johnson",
-        "role": "Educational Content Creator",
-        "quote": "As a parent, I wanted my kids to watch quality English educational content in Chinese. ReVoice preserves the original emotion and tone perfectly - it's like the narrator is speaking Chinese naturally!",
-        "image": {
-          "src": "/imgs/avatars/2.png",
-          "alt": "Sarah"
-        }
-      },
-      {
-        "name": "Takeshi Yamamoto",
-        "role": "Online Course Instructor",
-        "quote": "I teach programming in Japanese, but wanted to reach global students. ReVoice lets me create English, Chinese, and Korean versions in minutes. My student base expanded 5x!",
-        "image": {
-          "src": "/imgs/avatars/3.png",
-          "alt": "Takeshi"
-        }
-      },
-      {
-        "name": "Maria Garcia",
-        "role": "Travel Vlogger",
-        "quote": "The voice cloning is incredible - it really sounds like me speaking different languages! My Spanish travel vlogs now reach audiences in China, Japan, and Korea. Game changer!",
-        "image": {
-          "src": "/imgs/avatars/4.png",
-          "alt": "Maria"
-        }
-      },
-      {
-        "name": "Chen Ming",
-        "role": "Tech Reviewer",
-        "quote": "I review gadgets in Chinese, and ReVoice helps me reach English-speaking tech enthusiasts. The background music preservation is perfect - my production quality stays intact!",
-        "image": {
-          "src": "/imgs/avatars/5.png",
-          "alt": "Chen Ming"
-        }
-      },
-      {
-        "name": "Emma Thompson",
-        "role": "Language Teacher",
-        "quote": "ReVoice is a breakthrough for language education. I can show students how the same content sounds in different languages while maintaining emotional context. Absolutely brilliant!",
-        "image": {
-          "src": "/imgs/avatars/6.png",
-          "alt": "Emma"
-        }
-      }
-    ]
+    "items": []
   },
   "faq": {
     "id": "faq",
