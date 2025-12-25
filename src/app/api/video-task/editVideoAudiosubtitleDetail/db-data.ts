@@ -87,7 +87,7 @@ export const getDBJsonData = async (taskMainId: string) => {
     if (USE_JAVA_REQUEST) {
       const params: SignUrlItem[] = [
         { path: noSoundVideoUrl, operation: 'download', expirationMinutes:  24 * 60 }, // 无声视频
-        { path: noSoundVideoUrl, operation: 'download', expirationMinutes:  24 * 60 }, // 背景音频
+        { path: backgroundAudioUrl, operation: 'download', expirationMinutes:  24 * 60 }, // 背景音频
       ];
       const resUrlArr = await getPreSignedUrl(params);
       noSoundVideoUrl = resUrlArr[0].url;

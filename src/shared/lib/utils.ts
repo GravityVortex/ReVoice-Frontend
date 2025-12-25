@@ -25,6 +25,7 @@ export const LanguageMapEn: any = {
   'zh-CN': 'chinese',
   zh: 'chinese',
   'en-US': 'english',
+  en: 'english',
   auto: '',
 
   chinese: 'zh',
@@ -121,10 +122,10 @@ export function getPreviewCoverUrl(videoItem: any, r2PreUrl: string) {
 
 /**
  * 获取音频文件地址
- * @param userId 
- * @param taskId 
- * @param r2Key 
- * @returns 
+ * @param userId
+ * @param taskId
+ * @param r2Key
+ * @returns
  */
 export function getAudioR2PathName(userId: string, taskId: string, r2Key: string) {
   let env = process.env.ENV || 'dev';
