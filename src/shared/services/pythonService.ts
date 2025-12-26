@@ -22,6 +22,7 @@ export async function pyOriginalTxtTranslate(param: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Internal-API-Key': PYTHON_SECRET,
     },
     body: JSON.stringify(params),
   });
@@ -65,6 +66,7 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Internal-API-Key': PYTHON_SECRET,
     },
     body: JSON.stringify(params),
   });
@@ -106,6 +108,7 @@ export async function pyMergeVideo(taskId: string, nameArray: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Internal-API-Key': PYTHON_SECRET,
     },
     body: JSON.stringify(params),
   });
