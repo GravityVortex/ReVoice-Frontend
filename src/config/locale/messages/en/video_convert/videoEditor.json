@@ -17,6 +17,7 @@
   "audioList": {
     "title": "Subtitle Audio Comparison",
     "save": "Save",
+    "saveTooltip": "Regenerate video",
     "originalSubtitle": "Original Subtitle",
     "convertedSubtitle": "Converted Subtitle",
     "totalItems": "Total {count} subtitles",
@@ -29,11 +30,12 @@
       "playFailed": "Failed to play audio, please try again!",
       "generateSuccess": "Voice generated successfully, click to preview!",
       "generateFailed": "Failed to generate voice",
-      "videoSaveSuccess": "Video synthesis successful",
+      "videoSaveSuccess": "The video synthesis task has been generated, please be patient as it may take some time",
       "videoSaveFailed": "Video synthesis failed",
       "itemNotFound": "Subtitle item not found",
       "saveSuccess": "Saved successfully!",
-      "saveFailed": "Save failed!"
+      "saveFailed": "Save failed!",
+      "insufficientCreditsError": "Insufficient credits, please recharge."
     }
   },
   "videoEditor": {
@@ -79,5 +81,25 @@
       "saveVoice": "Save subtitle voice",
       "updateVoice": "Update subtitle voice"
     }
-  }
+  },
+  "dialog": {
+    "tip": {
+      "title": "Tip",
+      "description": "After all local subtitle audio is saved successfully, you need to click the 'Save' button in the upper right corner of the screen to re-synthesize the video for the local changes to take effect.",
+      "stopTip": "Don't show again",
+      "confirm": "Got it"
+    },
+    "payment": {
+      "title": "Daily Video Synthesis Limit Exceeded",
+      "description": "Daily video translation limit exceeded. {dayMaxNum} free times per day, additional synthesis requires {dayPayCredit} credits.",
+      "currentCredits": "Current remaining credits: ",
+      "insufficientCredits": "Insufficient credits?",
+      "buyCredits": "Buy credits",
+      "cancel": "Cancel",
+      "processing": "Processing...",
+      "pay": "Pay",
+      "insufficientCreditsError": "Insufficient credits, please recharge."
+    }
+  },
+  "videoDetail": "Video Detail"
 }

@@ -1,7 +1,7 @@
 "use client";
 
 // 右侧字幕音频对照表
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { SubtitleRowItem, SubtitleRowData } from './subtitle-row-item';
 import { Button } from '@/shared/components/ui/button';
 import { Loader2, Headphones, HeadphoneOff } from 'lucide-react';
@@ -19,10 +19,11 @@ interface AudioListPanelProps {
   playingSubtitleIndex?: number; // 左侧视频编辑器当前播放的字幕索引
   onSeekToSubtitle?: (time: number) => void; // 请求左侧定位到指定时间
   onShowTip?: () => void; // 触发提示弹框
+  onShowPayDialog?: () => void; // 触发支付弹框
   onUpdateSubtitleAudioUrl?: (id: string, audioUrl: string) => void; // 更新字幕音频URL
 }
 
-export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }: AudioListPanelProps) {
+export const AudioListPanel = forwardRef<{ onVideoSaveClick: (payCredit: number) => void }, AudioListPanelProps>(({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onShowPayDialog, onUpdateSubtitleAudioUrl }, ref) => {
   const t = useTranslations('video_convert.videoEditor.audioList');
   const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
   // 记录修改的字幕音频列表集合
@@ -373,19 +374,48 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
     }
   };
 
-  const onVideoSaveClick = async () => {
+  /**
+   * 大保存按钮，重新合成视频
+   */
+  const onVideoSaveClick = async (payCredit = 0) => {
     console.log('保存按钮--->');
-    // DOEND: 实现视频合成保存
-    const resp = await fetch('/api/video-task/generate-video?taskId=' + convertObj.id);
-    const { code, message } = await resp.json();
-    if (code === 0) {
-      toast.success(t('toast.videoSaveSuccess'));
-      // 保存按钮不可重复点击
-      setUpdateItemList([]);
-    } else {
+    try {
+      // DOEND: 实现视频合成保存
+      const resp = await fetch('/api/video-task/generate-video?taskId=' + convertObj.id + '&payCredit=' + payCredit);
+      const { code, message,data } = await resp.json();
+      if (code === 0) {
+        toast.success(t('toast.videoSaveSuccess'));
+        // 更新meta值，确保支付弹框逻辑超次弹框支付
+        convertObj.metadata = JSON.stringify(data.metaData);
+        // 保存按钮不可重复点击
+        setUpdateItemList([]);
+        return true;
+      }
+      // 今日超额
+      else if (code === -2) {
+        onShowPayDialog?.();
+        return false;
+      }
+      // 积分不足
+      else if (code === -3) {
+        toast.error(message || t('toast.insufficientCreditsError'));
+        return false;
+      }
+      // 其他
+      else {
+        toast.error(message || t('toast.videoSaveFailed'));
+        return false;
+      }
+    } catch (error) {
       toast.error(t('toast.videoSaveFailed'));
+      return false;
     }
   };
+
+  // 暴露方法给父组件
+  useImperativeHandle(ref, () => ({
+    onVideoSaveClick
+  }));
 
   // 字幕保存
   const handleSave = async (item: SubtitleRowData, type: string) => {
@@ -498,8 +528,19 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
               variant="destructive"
               disabled={updateItemList.length === 0}
               size="sm"
-              title="重新合成视频"
-              onClick={onVideoSaveClick}
+              title={t('saveTooltip')}
+              onClick={() => {
+                const metaDataJO = JSON.parse(convertObj.metadata);
+                const today = new Date().toISOString().slice(0, 10);
+                const maxNum = parseInt(convertObj.dayMaxNum || '3');
+                console.log('today---->', today);
+                // 超次数了，直接显示支付界面
+                if (metaDataJO && metaDataJO.saveNum >= maxNum && metaDataJO.date === today) {
+                  onShowPayDialog?.();
+                } else {
+                  onVideoSaveClick(0)
+                }
+              }}
             >
               <Save className="size-4" />
               {t('save')}
@@ -598,4 +639,6 @@ export function AudioListPanel({ onPlayingIndexChange, convertObj, playingSubtit
       </div>
     </div>
   );
-}
+});
+
+AudioListPanel.displayName = 'AudioListPanel';

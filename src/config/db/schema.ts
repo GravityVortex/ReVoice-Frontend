@@ -633,6 +633,7 @@ export const vtTaskMain = pgTable(
     creditId: text('credit_id'),
     creditsConsumed: integer('credits_consumed'),
     errorMessage: text('error_message'),
+    metadata: text('metadata'),
     startedAt: timestamp('started_at'),
     completedAt: timestamp('completed_at'),
     createdBy: varchar('created_by', { length: 64 }).notNull(),

@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     let mockProgress: any = [];
     // 如果progress为true，查询进度列表
     if (progress === 'true') {
-      // 2. TODO 转发java轮询获取进度列表
+      // 2. DOEND 转发java轮询获取进度列表
       if (USE_JAVA_REQUEST) {
         const taskArr = await getTaskProgress(taskId);
         console.log('服务器之间POST请求响应--->', taskArr);

@@ -17,6 +17,7 @@
   "audioList": {
     "title": "字幕音频对照表",
     "save": "保存",
+    "saveTooltip": "重新合成视频",
     "originalSubtitle": "原字幕",
     "convertedSubtitle": "转换后字幕",
     "totalItems": "共 {count} 条字幕",
@@ -29,11 +30,12 @@
       "playFailed": "播放音频失败，请重试！",
       "generateSuccess": "生成语音成功，可以点击试听！",
       "generateFailed": "生成语音失败",
-      "videoSaveSuccess": "合成视频成功",
+      "videoSaveSuccess": "视频合成任务已生成，较耗时请耐心等候。",
       "videoSaveFailed": "合成视频失败",
       "itemNotFound": "未找到要更新的字幕项",
       "saveSuccess": "保存成功！",
-      "saveFailed": "保存失败！"
+      "saveFailed": "保存失败！",
+      "insufficientCreditsError": "积分不足，请充值积分。"
     }
   },
   "videoEditor": {
@@ -79,5 +81,25 @@
       "saveVoice": "保存字幕语音",
       "updateVoice": "更新字幕语音"
     }
-  }
+  },
+  "dialog": {
+    "tip": {
+      "title": "提示",
+      "description": "所有局部字幕音频保存成功后需点击屏幕右上角「保存」按钮进行视频重新合成，局部修改才能生效。",
+      "stopTip": "不在提示",
+      "confirm": "知道了"
+    },
+    "payment": {
+      "title": "单日视频合成超次",
+      "description": "翻译视频当日超次，每日免费{dayMaxNum}次，额外合成需要支付{dayPayCredit}积分。",
+      "currentCredits": "当前剩余积分：",
+      "insufficientCredits": "积分不足？",
+      "buyCredits": "前往购买积分",
+      "cancel": "取消",
+      "processing": "处理中...",
+      "pay": "支付",
+      "insufficientCreditsError": "积分不足，请充值积分。"
+    }
+  },
+  "videoDetail": "视频详情"
 }

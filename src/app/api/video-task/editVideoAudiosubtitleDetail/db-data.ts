@@ -165,6 +165,9 @@ export const getDBJsonData = async (taskMainId: string) => {
     const totalTime = Date.now() - startTime;
     console.log('[getDBJsonData] 总耗时:', totalTime, 'ms');
 
+    // 每日限制视频合并最大次数
+    const dayMaxNum = await getSystemConfigByKey('limit.day.video_merge_num') || '3';
+
     return {
       code: '0',
       publicBaseUrl,
@@ -184,6 +187,9 @@ export const getDBJsonData = async (taskMainId: string) => {
         processDurationSeconds: taskMainItem.processDurationSeconds,
         startedAt: taskMainItem.startedAt,
         completedAt: taskMainItem.completedAt,
+        metadata: taskMainItem.metadata,
+        dayMaxNum: parseInt(dayMaxNum),
+        dayPayCredit: 2,// 每日超次数后扣积分
         noSoundVideoUrl,
         backgroundAudioUrl,
         srt_source_arr: originalSubtitleItem?.subtitleData || [],

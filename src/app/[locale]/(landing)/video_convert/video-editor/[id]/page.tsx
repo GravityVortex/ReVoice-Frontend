@@ -14,6 +14,7 @@ import PanelVideoEditor from './panel-video-editor';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { useTranslations } from 'next-intl';
+import { useAppContext } from '@/shared/contexts/app';
 
 
 export default function VideoEditorPage() {
@@ -22,6 +23,7 @@ export default function VideoEditorPage() {
   // console.log('params--->', params)
   const locale = (params.locale as string) || "zh";
   const t = useTranslations('video_convert.videoEditor');
+  const { user } = useAppContext();
   const [playingAudioIndex, setPlayingAudioIndex] = useState<number>(-1);
   const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
   const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
@@ -33,6 +35,10 @@ export default function VideoEditorPage() {
   // const [r2PreUrl, setR2PreUrl] = useState<string>('');
   // 删除确认弹框
   const [showTipDialog, setShowTipDialog] = useState(false);
+  // 支付弹框
+  const [showPayDialog, setShowPayDialog] = useState(false);
+  const [isPayLoading, setIsPayLoading] = useState(false);
+  const audioListPanelRef = useRef<any>(null);
 
   // 获取转换详情
   useEffect(() => {
@@ -44,7 +50,7 @@ export default function VideoEditorPage() {
         const response = await fetch(`/api/video-task/editVideoAudiosubtitleDetail?taskMainId=${convertId}`);
 
         if (!response.ok) {
-          throw new Error('获取转换详情失败');
+          throw new Error(t('error.fetchFailed'));
         }
 
         const result = await response.json();
@@ -64,10 +70,10 @@ export default function VideoEditorPage() {
           }
           console.log('成功加载转换详情:', result.taskMainItem);
         } else {
-          throw new Error(result.msg || '数据格式错误');
+          throw new Error(result.msg || t('error.dataFormatError'));
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : '加载失败';
+        const errorMessage = err instanceof Error ? err.message : t('error.fetchFailed');
         setError(errorMessage);
         console.error('获取转换详情失败:', err);
       } finally {
@@ -123,6 +129,21 @@ export default function VideoEditorPage() {
     }
   }
 
+  // 显示支付弹框
+  const handleShowPayDialog = () => {
+    setShowPayDialog(true);
+  }
+
+  // 支付按钮点击
+  const handlePayClick = async () => {
+    setIsPayLoading(true);
+    const success = await audioListPanelRef.current?.onVideoSaveClick(parseInt(convertObj?.dayPayCredit || '2'));
+    setIsPayLoading(false);
+    if (success) {
+      setShowPayDialog(false);
+    }
+  }
+
   // 防止父页面滚动
   useEffect(() => {
     // 隐藏 body 滚动条
@@ -158,6 +179,15 @@ export default function VideoEditorPage() {
         </div>
       </div>
     );
+  }
+
+  // 获取消费后积分
+  const getConsumeCredits = () => {
+    let sy = user?.credits?.remainingCredits || 0;
+    // let sy = 0;
+    if (sy <= 0) return 0;
+    let jf = sy - 2;
+    return jf;
   }
 
   // 错误状态
@@ -206,7 +236,7 @@ export default function VideoEditorPage() {
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
                       <Link href={`/${locale}/video_convert/project_detail/${videoSource?.id}`}>
-                        {videoSource?.fileName || '视频详情'}
+                        {videoSource?.fileName || t('videoDetail')}
                         {`【${getLanguageConvertStr(convertObj, locale)}】`}
                       </Link>
                     </BreadcrumbLink>
@@ -240,11 +270,13 @@ export default function VideoEditorPage() {
         }
         rightPanel={
           <AudioListPanel
+            ref={audioListPanelRef}
             onPlayingIndexChange={setPlayingAudioIndex}
             convertObj={convertObj}
             playingSubtitleIndex={playingSubtitleIndex}
             onSeekToSubtitle={handleSeekToSubtitle}
             onShowTip={handleShowTip}
+            onShowPayDialog={handleShowPayDialog}
             onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudioUrl}
           />
         }
@@ -254,12 +286,44 @@ export default function VideoEditorPage() {
       <Dialog open={showTipDialog} onOpenChange={setShowTipDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>提示</DialogTitle>
-            <DialogDescription>所有局部字幕音频保存成功后需点击屏幕右上角“保存”按钮进行视频重新合成，局部修改才能生效。</DialogDescription>
+            <DialogTitle>{t('dialog.tip.title')}</DialogTitle>
+            <DialogDescription>{t('dialog.tip.description')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleBtnClick('stopTip')}>不在提示</Button>
-            <Button variant="destructive" onClick={() => handleBtnClick('know')}>知道了</Button>
+            <Button variant="outline" onClick={() => handleBtnClick('stopTip')}>{t('dialog.tip.stopTip')}</Button>
+            <Button variant="destructive" onClick={() => handleBtnClick('know')}>{t('dialog.tip.confirm')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 支付弹框 */}
+      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('dialog.payment.title')}</DialogTitle>
+            <DialogDescription>
+              {t('dialog.payment.description', { dayMaxNum: convertObj.dayMaxNum|| '3', dayPayCredit: convertObj.dayPayCredit || '2'})}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">{t('dialog.payment.currentCredits')}<span className="font-bold text-lg">{user?.credits?.remainingCredits || 0}</span></p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {t('dialog.payment.insufficientCredits')}
+              <a
+                href="/pricing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline ml-1"
+              >
+                {t('dialog.payment.buyCredits')}
+              </a>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPayDialog(false)} disabled={isPayLoading}>{t('dialog.payment.cancel')}</Button>
+            <Button variant="destructive" onClick={handlePayClick} disabled={isPayLoading}>
+              {isPayLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('dialog.payment.processing')}</> : t('dialog.payment.pay')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

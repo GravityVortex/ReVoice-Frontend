@@ -131,7 +131,15 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (session && session.user) {
-      setUser(session.user as User);
+      // session跟新时，user中无积分
+      const userTemp = session.user as User;
+      if(userTemp){
+        if(!userTemp.credits){
+          userTemp.credits = user?.credits
+        }
+      }
+      console.log('session更新---save userTemp--->', userTemp)
+      setUser(userTemp);
       fetchUserInfo();
     } else {
       setUser(null);
