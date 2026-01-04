@@ -16,7 +16,7 @@ export async function pyOriginalTxtTranslate(param: any) {
 
   // console.log('解密明文--->', requestData);
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/v1/internal/subtitle/single/translate`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitle/single/translate`;
   console.log('请求python服务器--->', url);
   const response = await fetch(url, {
     method: 'POST',
@@ -58,7 +58,7 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
 
   // console.log('解密明文--->', requestData);
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/v1/internal/subtitles/translated/tts`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitles/translated/tts`;
   console.log('请求python服务器--->', url);
   console.log('请求python服务器--params--->', params);
 
@@ -100,7 +100,7 @@ export async function pyMergeVideo(taskId: string, nameArray: any) {
     audio_clips: nameArray,
   };
   // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/v1/internal/audios/video/merge`;
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/audios/video/merge`;
   console.log('请求python服务器--->', url);
   console.log('请求python服务器--params--->', params);
 
