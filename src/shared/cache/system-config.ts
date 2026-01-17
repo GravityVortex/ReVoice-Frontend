@@ -16,8 +16,11 @@ export const SECRET_EMAIL = process.env.SECRET_EMAIL || '';
 export const USE_PYTHON_REQUEST = process.env.USE_PYTHON_REQUEST || '';
 // python服务地址
 export const PYTHON_SERVER_BASE_URL = process.env.PYTHON_SERVER_BASE_URL || '';
-// python秘钥
+// python秘钥（已废弃，保留兼容）
 export const PYTHON_SECRET = process.env.PYTHON_SECRET || '';
+// Modal 认证密钥
+export const MODAL_KEY = process.env.MODAL_KEY || '';
+export const MODAL_SECRET = process.env.MODAL_SECRET || '';
 
 // 全局配置：签名URL开关 - true: 调用Java服务器, false: 调用自己的接口
 export const USE_JAVA_REQUEST = process.env.USE_JAVA_REQUEST === 'true' || false;

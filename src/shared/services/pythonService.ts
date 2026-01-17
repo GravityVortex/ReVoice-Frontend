@@ -1,4 +1,4 @@
-import { PYTHON_SECRET, PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-config';
+import { MODAL_KEY, MODAL_SECRET, PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-config';
 
 /**
  * 1.1、原视频字幕文字翻译
@@ -22,8 +22,8 @@ export async function pyOriginalTxtTranslate(param: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // 'X-Internal-API-Key': PYTHON_SECRET,
-      'Authorization': PYTHON_SECRET,
+      'Modal-Key': MODAL_KEY,
+      'Modal-Secret': MODAL_SECRET,
     },
     body: JSON.stringify(params),
   });
@@ -67,8 +67,8 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // 'X-Internal-API-Key': PYTHON_SECRET,
-      'Authorization': PYTHON_SECRET,
+      'Modal-Key': MODAL_KEY,
+      'Modal-Secret': MODAL_SECRET,
     },
     body: JSON.stringify(params),
   });
@@ -110,8 +110,8 @@ export async function pyMergeVideo(taskId: string, nameArray: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // 'X-Internal-API-Key': PYTHON_SECRET,
-      'Authorization': PYTHON_SECRET,
+      'Modal-Key': MODAL_KEY,
+      'Modal-Secret': MODAL_SECRET,
     },
     body: JSON.stringify(params),
   });
