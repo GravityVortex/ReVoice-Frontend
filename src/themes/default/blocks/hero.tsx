@@ -45,6 +45,7 @@ export function Hero({
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageScale, setImageScale] = useState(1);
   const { user, setIsShowSignModal } = useAppContext();
+  const bigLogoSrc = '/big.png';
   const highlightText = hero.highlight_text ?? '';
   let texts = null;
   if (highlightText) {
@@ -73,10 +74,21 @@ export function Hero({
     <>
       <section
         id={hero.id}
-        className={`pt-24 pb-8 md:pt-36 md:pb-8 ${hero.className} ${className}`}
+        className={`pt-24 pb-8 md:pt-36 md:pb-8 ${hero.className || ''} ${className || ''}`}
       >
+        <motion.div
+          {...createFadeInVariant(0)}
+          className="mb-4 flex justify-center"
+        >
+          <LazyImage
+            src={bigLogoSrc}
+            alt="SoulDub"
+            className="h-40 w-auto sm:h-48 md:h-56"
+          />
+        </motion.div>
+
         {hero.announcement && (
-          <motion.div {...createFadeInVariant(0)}>
+          <motion.div {...createFadeInVariant(0.1)}>
             <Link
               href={hero.announcement.url || ''}
               target={hero.announcement.target || '_self'}
@@ -102,9 +114,10 @@ export function Hero({
         )}
 
         <div className="relative mx-auto max-w-5xl px-4 text-center">
+
           <motion.div {...createFadeInVariant(0.15)}>
             {texts && texts.length > 0 ? (
-              <h1 className="text-foreground text-5xl font-semibold text-balance sm:mt-12 sm:text-7xl">
+              <h1 className="text-foreground text-5xl font-semibold text-balance sm:text-7xl">
                 {texts[0]}
                 <Highlighter action="underline" color="#FF9800">
                   {highlightText}

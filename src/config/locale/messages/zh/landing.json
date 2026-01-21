@@ -62,7 +62,7 @@
     "description": "AI驱动的视频翻译，保留你的原声与情感<br/>让你在任何语言中依然是自己",
     "announcement": {
       "badge": "全新",
-      "title": "🎉 这声 ReVoice 正式上线",
+      "title": "🎉 这声 SoulDub 正式上线",
       "url": "/pricing"
     },
     "tip": "感受这就是你要的声音",
@@ -378,7 +378,7 @@
     "id": "faq",
     "title": "关于【这声】的常见问题",
     "description": "还有其他问题？欢迎联系我们的客服团队。",
-    "tip": "没有找到想要的答案？请联系 <a href='mailto:support@revoice.com' class='text-primary font-medium hover:underline'>我们的客服团队</a>",
+    "tip": "没有找到想要的答案？请联系 <a href='mailto:support@souldub.com' class='text-primary font-medium hover:underline'>我们的客服团队</a>",
     "items": [
       {
         "question": "【这声】是什么？能帮我做什么？",

@@ -2,10 +2,10 @@
   "header": {
     "id": "header",
     "brand": {
-      "title": "ReVoice",
+      "title": "SoulDub",
       "logo": {
         "src": "/logo.png",
-        "alt": "ReVoice"
+        "alt": "SoulDub"
       },
       "url": "/"
     },
@@ -62,13 +62,13 @@
     "description": "AI-powered video translation that keeps your original tone and feeling<br/>So you sound like you, in any language",
     "announcement": {
       "badge": "New",
-      "title": "🎉 ReVoice is now live",
+      "title": "🎉 SoulDub is now live",
       "url": "/pricing"
     },
     "tip": "Experience the voice you want",
     "buttons": [
       {
-        "title": "Try ReVoice Free",
+        "title": "Try SoulDub Free",
         "icon": "Grid2x2Plus",
         "url": "/video_convert",
         "target": "_self",
@@ -83,19 +83,19 @@
       }
     ],
     "show_avatars": true,
-    "avatars_tip": "1000+ creators using ReVoice",
+    "avatars_tip": "1000+ creators using SoulDub",
     "show_award": false,
     "image": {
       "src": "/imgs/features/admin.png",
-      "alt": "ReVoice video translation showcase"
+      "alt": "SoulDub video translation showcase"
     },
     "image_invert": {
       "src": "/imgs/features/admin-dark.png",
-      "alt": "ReVoice video translation showcase"
+      "alt": "SoulDub video translation showcase"
     }
   },
   "logos": {
-    "title": "ReVoice - by Gravity Cyclone",
+    "title": "SoulDub - by Gravity Cyclone",
     "items": [
       {
         "title": "Next.js",
@@ -136,12 +136,12 @@
   },
   "introduce": {
     "id": "introduce",
-    "title": "What is ReVoice?",
+    "title": "What is SoulDub?",
     "label": "Product Introduction",
-    "description": "ReVoice is an AI-powered video translation tool that preserves your original voice tone and emotion, helping your voice cross language barriers. After translation, you can edit subtitles and audio, preview the results, and regenerate the video. Download subtitles, bilingual subtitles, subtitle audio, background audio, and HD video.",
+    "description": "SoulDub is an AI-powered video translation tool that preserves your original voice tone and emotion, helping your voice cross language barriers. After translation, you can edit subtitles and audio, preview the results, and regenerate the video. Download subtitles, bilingual subtitles, subtitle audio, background audio, and HD video.",
     "image": {
       "src": "/imgs/cover_video_def.jpg",
-      "alt": "ReVoice product introduction"
+      "alt": "SoulDub product introduction"
     },
     "items": [
       {
@@ -184,9 +184,9 @@
   },
   "benefits": {
     "id": "benefits",
-    "title": "ReVoice Use Cases",
+    "title": "SoulDub Use Cases",
     "label": "Multi-scenario Applications",
-    "description": "From content creation to educational outreach, ReVoice helps industries break language barriers and reach global audiences.",
+    "description": "From content creation to educational outreach, SoulDub helps industries break language barriers and reach global audiences.",
     "items": [
       {
         "title": "Content Creators Going Global",
@@ -277,7 +277,7 @@
   },
   "features": {
     "id": "features",
-    "title": "Why Choose ReVoice",
+    "title": "Why Choose SoulDub",
     "description": "Leading AI technology providing the most natural cross-language video experience.",
     "items": [
       {
@@ -314,7 +314,7 @@
   },
   "stats": {
     "id": "stats",
-    "title": "Users Trust ReVoice",
+    "title": "Users Trust SoulDub",
     "description": "Because we make voices cross languages with emotions intact.",
     "items": [
       {
@@ -334,7 +334,7 @@
   "showcases": {
     "id": "showcases",
     "title": "Video Showcase",
-    "description": "See how other creators use ReVoice to break language barriers",
+    "description": "See how other creators use SoulDub to break language barriers",
     "items": [
       {
         "title": "Content Creator Going Global",
@@ -370,19 +370,19 @@
   },
   "testimonials": {
     "id": "testimonials",
-    "title": "What Users Say About ReVoice",
-    "description": "Hear from creators and educators on how ReVoice helps them break language barriers and reach global audiences.",
+    "title": "What Users Say About SoulDub",
+    "description": "Hear from creators and educators on how SoulDub helps them break language barriers and reach global audiences.",
     "items": []
   },
   "faq": {
     "id": "faq",
-    "title": "Frequently Asked Questions About ReVoice",
+    "title": "Frequently Asked Questions About SoulDub",
     "description": "Have more questions? Feel free to contact our customer support team.",
-    "tip": "Can't find what you're looking for? Contact <a href='mailto:support@revoice.com' class='text-primary font-medium hover:underline'>our customer support team</a>",
+    "tip": "Can't find what you're looking for? Contact <a href='mailto:support@souldub.com' class='text-primary font-medium hover:underline'>our customer support team</a>",
     "items": [
       {
-        "question": "What is ReVoice and what can it do for me?",
-        "answer": "ReVoice is an AI-powered video translation tool that translates your videos into multiple languages while preserving your original voice tone and emotional expression, so you sound like yourself in any language."
+        "question": "What is SoulDub and what can it do for me?",
+        "answer": "SoulDub is an AI-powered video translation tool that translates your videos into multiple languages while preserving your original voice tone and emotional expression, so you sound like yourself in any language."
       },
       {
         "question": "Can the translated voice really preserve my tone?",
@@ -409,10 +409,10 @@
   "cta": {
     "id": "cta",
     "title": "Let Your Voice Cross Language Barriers",
-    "description": "Start using ReVoice today and let global audiences hear your voice.",
+    "description": "Start using SoulDub today and let global audiences hear your voice.",
     "buttons": [
       {
-        "title": "Try ReVoice Free",
+        "title": "Try SoulDub Free",
         "url": "/video_convert",
         "target": "_self",
         "icon": "Play"
@@ -429,7 +429,7 @@
   "subscribe": {
     "id": "subscribe",
     "title": "Subscribe to Our Newsletter",
-    "description": "Get the latest ReVoice feature updates and usage tips.",
+    "description": "Get the latest SoulDub feature updates and usage tips.",
     "submit": {
       "input": {
         "placeholder": "Enter your email"
@@ -443,11 +443,11 @@
   "footer": {
     "id": "footer",
     "brand": {
-      "title": "ReVoice",
-      "description": "ReVoice - AI-powered video translation tool that preserves your original voice and emotion, so you sound like yourself in any language. By Gravity Cyclone.",
+      "title": "SoulDub",
+      "description": "SoulDub - AI-powered video translation tool that preserves your original voice and emotion, so you sound like yourself in any language. By Gravity Cyclone.",
       "logo": {
         "src": "/logo.png",
-        "alt": "ReVoice"
+        "alt": "SoulDub"
       },
       "url": "/"
     },

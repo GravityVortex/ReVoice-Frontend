@@ -1,10 +1,10 @@
 {
   "header": {
     "brand": {
-      "title": "ReVoice",
+      "title": "SoulDub",
       "logo": {
         "src": "/logo.png",
-        "alt": "ReVoice"
+        "alt": "SoulDub"
       },
       "url": "/admin"
     },
