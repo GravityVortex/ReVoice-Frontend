@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "title": "ShipAny Template Two",
-    "description": "ShipAny is a NextJS boilerplate for building AI SaaS startups. Ship Fast with a variety of templates and components.",
-    "keywords": "shipany, shipany-boilerplate, shipany-template-two-demo"
+    "title": "SoulDub",
+    "description": "SoulDub is an AI-powered video translation tool that preserves your original voice and emotion, so you sound like yourself in any language.",
+    "keywords": "souldub, ai video translation, dubbing, voice cloning"
   },
   "sign": {
     "sign_in_title": "Sign In",

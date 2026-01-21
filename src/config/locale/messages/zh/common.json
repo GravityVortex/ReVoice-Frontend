@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "title": "ShipAny 模板二",
-    "description": "ShipAny 是用于构建 AI SaaS 创业项目的 NextJS 脚手架。提供丰富模板和组件，助您快速上线产品。",
-    "keywords": "shipany, shipany-boilerplate, shipany-template-two-demo"
+    "title": "SoulDub",
+    "description": "SoulDub 是一款 AI 驱动的视频翻译工具，保留你的原声与情感，让你在任何语言中依然是自己。",
+    "keywords": "souldub, AI视频翻译, 配音, 声音克隆"
   },
   "sign": {
     "sign_in_title": "登录",
