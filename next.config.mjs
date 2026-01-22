@@ -2,9 +2,7 @@ import bundleAnalyzer from '@next/bundle-analyzer';
 import { createMDX } from 'fumadocs-mdx/next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-// `.source` can end up owned by root (e.g. someone ran `sudo npm i`),
-// which breaks local builds. Use a dedicated writable output dir.
-const withMDX = createMDX({ outDir: '.source.next' });
+const withMDX = createMDX();
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -16,9 +14,6 @@ const withNextIntl = createNextIntlPlugin({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // `.next` in this repo can end up owned by root (e.g. someone ran `sudo next dev`).
-  // Use a writable dist dir to avoid EACCES and keep local builds/dev unblocked.
-  distDir: '.next.local',
   output: process.env.VERCEL ? undefined : 'standalone',
   reactStrictMode: false,
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
