@@ -66,6 +66,12 @@
       "url": "/pricing"
     },
     "tip": "感受这就是你要的声音",
+    "cinema_hint": "全屏沉浸观看",
+    "video_tabs": [
+      "案例一",
+      "案例二",
+      "案例三"
+    ],
     "buttons": [
       {
         "title": "免费试用这声",
@@ -93,6 +99,12 @@
       "src": "/imgs/features/admin-dark.png",
       "alt": "这声视频翻译案例"
     }
+  },
+  "features_step": {
+    "zoom_out": "缩小",
+    "reset": "重置",
+    "zoom_in": "放大",
+    "preview_alt": "预览图"
   },
   "logos": {
     "title": "这声 - 引力旋风出品",
@@ -156,7 +168,7 @@
       {
         "title": "人声克隆技术",
         "description": "精准克隆你的声音特征，保持独特的音色和说话风格。",
-        "icon": "UserVoice",
+        "icon": "MicVocal",
         "image": {
           "src": "/imgs/features/2.png",
           "alt": "人声克隆"
@@ -442,6 +454,7 @@
   },
   "footer": {
     "id": "footer",
+    "copyright": "ReVoice. 版权所有。",
     "brand": {
       "title": "这声",
       "description": "这声 - AI驱动的视频翻译工具，保留你的原声与情感，让你在任何语言中依然是自己。引力旋风出品。",
