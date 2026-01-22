@@ -64,6 +64,8 @@ export interface Hero extends Section {
   avatars_tip?: string;
   show_award?: boolean;
   highlight_text?: string;
+  cinema_hint?: string;
+  video_tabs?: string[];
 }
 
 export interface Logos extends Section {}
