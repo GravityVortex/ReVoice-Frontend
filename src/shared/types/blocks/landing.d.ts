@@ -9,7 +9,7 @@ import {
 } from './common';
 import { FormSubmit } from './form';
 
-export interface SectionItem extends NavItem {}
+export interface SectionItem extends NavItem { }
 
 export interface Section {
   id?: string;
@@ -66,15 +66,16 @@ export interface Hero extends Section {
   highlight_text?: string;
   cinema_hint?: string;
   video_tabs?: string[];
+  brand_statement?: string;
 }
 
-export interface Logos extends Section {}
+export interface Logos extends Section { }
 
-export interface Features extends Section {}
+export interface Features extends Section { }
 
-export interface Stats extends Section {}
+export interface Stats extends Section { }
 
-export interface Showcases extends Section {}
+export interface Showcases extends Section { }
 
 export interface FAQItem extends SectionItem {
   question?: string;
@@ -85,7 +86,7 @@ export interface FAQ extends Section {
   items?: FAQItem[];
 }
 
-export interface CTA extends Section {}
+export interface CTA extends Section { }
 
 export interface Subscribe extends Section {
   submit?: FormSubmit;

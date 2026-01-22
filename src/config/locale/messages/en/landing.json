@@ -377,6 +377,16 @@
         },
         "url": "#",
         "target": "_self"
+      },
+      {
+        "title": "Social Media Content",
+        "description": "Short video content translated for TikTok and Instagram reels, maintaining pacing and energy for viral reach across regions",
+        "image": {
+          "src": "/imgs/showcases/case4.jpg",
+          "alt": "Social Media Content"
+        },
+        "url": "#",
+        "target": "_self"
       }
     ]
   },

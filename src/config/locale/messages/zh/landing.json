@@ -57,9 +57,10 @@
   },
   "hero": {
     "id": "hero",
-    "title": "你的声音，跨越语言，情感如初",
+    "title": "让视频的声音，\n\n\n\n\n\n\n跨越语言，情感如初",
     "highlight_text": "情感如初",
-    "description": "AI驱动的视频翻译，保留你的原声与情感<br/>让你在任何语言中依然是自己",
+    "description": "AI驱动的视频翻译，保留视频的原声与情感",
+    "brand_statement": "AI驱动的视频翻译，保留你的原声与情感<br/>让你在任何语言中依然是自己",
     "announcement": {
       "badge": "全新",
       "title": "🎉 这声 SoulDub 正式上线",
@@ -201,30 +202,39 @@
     "description": "从内容创作到教育传播，这声帮助各行业打破语言壁垒，触达全球观众。",
     "items": [
       {
-        "title": "短视频创作者出海",
-        "description": "一键将中文视频翻译成英文、日文等多语种，保留你的独特声音，轻松开拓海外市场，扩大影响力。",
+        "title": "营销宣传",
+        "description": "广告宣传视频语音自动翻译多国语言，覆盖更多受众。",
         "icon": "Video",
         "image": {
           "src": "/imgs/showcases/case1.jpg",
-          "alt": "短视频创作者"
+          "alt": "营销宣传"
         }
       },
       {
-        "title": "儿童教育内容本地化",
-        "description": "将BBC等优质英文教育视频翻译成中文，保留原声情感，让孩子在熟悉的语言中学习成长。",
-        "icon": "Baby",
-        "image": {
-          "src": "/imgs/showcases/case2.jpg",
-          "alt": "儿童教育"
-        }
-      },
-      {
-        "title": "跨语种在线教学",
-        "description": "教育工作者可将课程翻译成多种语言，学生不仅能看字幕，更能听到自然流畅的母语发音。",
+        "title": "教育课程",
+        "description": "课程视频自动生成多语字幕与清晰配音，学生不仅能看字幕，更能听到自然流畅的母语发音。",
         "icon": "GraduationCap",
         "image": {
+          "src": "/imgs/showcases/case2.jpg",
+          "alt": "教育课程"
+        }
+      },
+      {
+        "title": "影视动画",
+        "description": "智能翻译对白与语气情绪，享受情绪语气的原汁原味。",
+        "icon": "Film",
+        "image": {
           "src": "/imgs/showcases/case3.jpg",
-          "alt": "在线教学"
+          "alt": "影视动画"
+        }
+      },
+      {
+        "title": "社交媒体",
+        "description": "短视频自动翻译成多国语音、字幕，保留视频原声和情感。",
+        "icon": "Share2",
+        "image": {
+          "src": "/imgs/showcases/case1.jpg",
+          "alt": "社交媒体"
         }
       }
     ]
@@ -289,8 +299,8 @@
   },
   "features": {
     "id": "features",
-    "title": "为什么选择【这声】",
-    "description": "领先的AI技术，为你提供最自然的跨语言视频体验。",
+    "title": "强大的视频编辑功能",
+    "description": "轻松对翻译的视频进行字幕、语音编辑，达到满意的翻译效果。",
     "items": [
       {
         "title": "声音克隆技术",
@@ -349,31 +359,41 @@
     "description": "看看其他创作者如何使用这声打破语言壁垒",
     "items": [
       {
-        "title": "短视频创作者出海案例",
-        "description": "中文美食视频翻译成英文，保留原声音色，成功开拓海外市场，粉丝增长300%",
+        "title": "营销宣传：《MacBook Pro发布会视频》片段",
+        "description": "MacBook Pro发布会视频片段翻译",
         "image": {
           "src": "/imgs/showcases/case1.jpg",
-          "alt": "短视频出海案例"
+          "alt": "营销宣传"
         },
         "url": "#",
         "target": "_self"
       },
       {
-        "title": "儿童教育视频本地化",
-        "description": "BBC英文科普视频翻译成中文，保留原声情感，让孩子在母语环境中学习",
+        "title": "教育课程：《太空之旅教育视频》片段",
+        "description": "太空之旅教育视频片段翻译",
         "image": {
           "src": "/imgs/showcases/case2.jpg",
-          "alt": "儿童教育案例"
+          "alt": "教育课程"
         },
         "url": "#",
         "target": "_self"
       },
       {
-        "title": "在线课程多语言版本",
-        "description": "编程教学视频一键生成中英日韩四个语言版本，学员覆盖全球",
+        "title": "影视动画：《疯狂动物城》片段",
+        "description": "疯狂动物城片段翻译",
         "image": {
           "src": "/imgs/showcases/case3.jpg",
-          "alt": "在线课程案例"
+          "alt": "影视动画"
+        },
+        "url": "#",
+        "target": "_self"
+      },
+      {
+        "title": "社交媒体：Mr. Beast《1美元到1亿美元的房屋》片段",
+        "description": "Mr. Beast视频片段翻译",
+        "image": {
+          "src": "/imgs/showcases/case1.jpg",
+          "alt": "社交媒体"
         },
         "url": "#",
         "target": "_self"
@@ -454,7 +474,7 @@
   },
   "footer": {
     "id": "footer",
-    "copyright": "ReVoice. 版权所有。",
+    "copyright": "SoulDub.ai 版权所有。",
     "brand": {
       "title": "这声",
       "description": "这声 - AI驱动的视频翻译工具，保留你的原声与情感，让你在任何语言中依然是自己。引力旋风出品。",
