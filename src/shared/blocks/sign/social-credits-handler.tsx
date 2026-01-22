@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useSession } from '@/core/auth/client';
+import { useAppContext } from '@/shared/contexts/app';
 
 export function SocialCreditsHandler() {
-  const { data: session } = useSession();
+  // Avoid another /api/auth/get-session subscription; AppContextProvider already owns it.
+  const { user } = useAppContext();
   const hasGranted = useRef(false);
 
   useEffect(() => {
-    if (session?.user && !hasGranted.current) {
+    if (user && !hasGranted.current) {
       hasGranted.current = true;
       fetch('/api/user/signup-social-credits', {
         method: 'POST',
@@ -17,7 +18,7 @@ export function SocialCreditsHandler() {
         console.error('Failed to grant credits:', error);
       });
     }
-  }, [session]);
+  }, [user]);
 
   return null;
 }

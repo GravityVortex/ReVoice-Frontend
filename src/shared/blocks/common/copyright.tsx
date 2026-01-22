@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { envConfigs } from '@/config';
 import { Brand as BrandType } from '@/shared/types/blocks/common';
 
 export function Copyright({ brand }: { brand: BrandType }) {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const t = useTranslations('common');
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
@@ -22,7 +24,7 @@ export function Copyright({ brand }: { brand: BrandType }) {
       >
         【{brand?.title || envConfigs.app_name}】
       </a>
-      , 版权所有
+      , {t('copyright')}
     </div>
   );
 }

@@ -5,8 +5,6 @@ import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
 import { findVtTaskMainById } from '@/shared/models/vt_task_main';
 import { getTaskProgress } from '@/shared/services/javaService';
 
-import { doPost } from '../../request-proxy/route';
-
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 

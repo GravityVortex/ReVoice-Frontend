@@ -6,7 +6,12 @@ import { envConfigs } from '@/config';
 export const authClient = createAuthClient({
   baseURL: envConfigs.auth_url,
   secret: envConfigs.auth_secret,
-  // pollingInterval: 5000, // 每5秒轮询一次，0禁用轮询
+  // Reduce /get-session chatter without changing auth logic:
+  // - keep initial fetch + cross-tab broadcast updates
+  // - avoid refetch-on-focus storms (esp. in dev / tab switching)
+  sessionOptions: {
+    refetchOnWindowFocus: false,
+  },
 });
 
 // export auth client methods
@@ -14,9 +19,5 @@ export const { signIn, signUp, signOut, useSession } = authClient;
 
 // get auth client with configs
 export function getAuthClient() {
-  return createAuthClient({
-    baseURL: envConfigs.auth_url,
-    secret: envConfigs.auth_secret,
-    // pollingInterval: 5000, // 每5秒轮询一次，0禁用轮询
-  });
+  return authClient;
 }

@@ -1,14 +1,9 @@
 // 前端上传file到后端，后端生成presigned url，前端直接上传到R2，绕过4.5M的限制
 import { NextRequest, NextResponse } from 'next/server';
-import { doGet, doPost } from '@/app/api/request-proxy/route';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { file } from 'zod';
 
 import { getPrivateR2UploadSignUrl } from '@/extensions/storage/privateR2Util';
 import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
-import { getStorageService } from '@/shared/services/storage';
 import { getUuid } from '@/shared/lib/hash';
 import { getUserInfo } from '@/shared/models/user';
 

@@ -82,18 +82,18 @@ export function FeaturesList({
 
         <ScrollAnimation delay={0.1}>
           {/* Prevent horizontal scrolling, min-w-0 and break-words */}
-          <div className="relative grid min-w-0 grid-cols-1 gap-x-3 gap-y-6 border-t pt-12 break-words sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+          <div className="relative grid min-w-0 grid-cols-1 gap-x-3 gap-y-8 border-t pt-12 break-words sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
             {features.items?.map((item, idx) => (
-              <div className="min-w-0 space-y-3 break-words" key={idx}>
-                <div className="flex min-w-0 items-center gap-2">
+              <div className="min-w-0 space-y-4 break-words" key={idx}>
+                <div className="flex min-w-0 items-center gap-3">
                   {item.icon && (
-                    <SmartIcon name={item.icon as string} size={16} />
+                    <SmartIcon name={item.icon as string} size={20} />
                   )}
-                  <h3 className="min-w-0 text-sm font-medium break-words">
+                  <h3 className="min-w-0 text-base font-semibold break-words">
                     {item.title}
                   </h3>
                 </div>
-                <p className="text-muted-foreground min-w-0 text-sm break-words">
+                <p className="text-muted-foreground min-w-0 text-sm leading-relaxed break-words">
                   {item.description ?? ''}
                 </p>
               </div>

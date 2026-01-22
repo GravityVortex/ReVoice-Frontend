@@ -66,6 +66,12 @@
       "url": "/pricing"
     },
     "tip": "Experience the voice you want",
+    "cinema_hint": "Immersive Fullscreen",
+    "video_tabs": [
+      "Case 1",
+      "Case 2",
+      "Case 3"
+    ],
     "buttons": [
       {
         "title": "Try SoulDub Free",
@@ -93,6 +99,12 @@
       "src": "/imgs/features/admin-dark.png",
       "alt": "SoulDub video translation showcase"
     }
+  },
+  "features_step": {
+    "zoom_out": "Zoom Out",
+    "reset": "Reset",
+    "zoom_in": "Zoom In",
+    "preview_alt": "Preview image"
   },
   "logos": {
     "title": "SoulDub - by Gravity Cyclone",
@@ -156,7 +168,7 @@
       {
         "title": "Voice Cloning Technology",
         "description": "Precisely clones your voice characteristics, maintaining your unique tone and speaking style.",
-        "icon": "UserVoice",
+        "icon": "MicVocal",
         "image": {
           "src": "/imgs/features/2.png",
           "alt": "Voice cloning"
@@ -442,6 +454,7 @@
   },
   "footer": {
     "id": "footer",
+    "copyright": "ReVoice. All rights reserved.",
     "brand": {
       "title": "SoulDub",
       "description": "SoulDub - AI-powered video translation tool that preserves your original voice and emotion, so you sound like yourself in any language. By Gravity Cyclone.",

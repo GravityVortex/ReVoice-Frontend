@@ -142,9 +142,8 @@ async function getCanonicalUrl(canonicalUrl: string, locale: string) {
       canonicalUrl = `/${canonicalUrl}`;
     }
 
-    canonicalUrl = `${envConfigs.app_url}${
-      !locale || locale === 'en' ? '' : `/${locale}`
-    }${canonicalUrl}`;
+    const appUrlBase = (envConfigs.app_url || '').replace(/\/$/, '');
+    canonicalUrl = `${appUrlBase}${locale ? `/${locale}` : ''}${canonicalUrl}`;
 
     if (locale !== 'en' && canonicalUrl.endsWith('/')) {
       canonicalUrl = canonicalUrl.slice(0, -1);

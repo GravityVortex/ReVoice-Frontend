@@ -2,6 +2,11 @@ import { ComponentType, lazy, Suspense } from 'react';
 
 const iconCache: { [key: string]: ComponentType<any> } = {};
 
+// Keep this intentionally tiny: only fix known mismatches we actually see in logs.
+const lucideAliases: Record<string, string> = {
+  UserVoice: 'User',
+};
+
 // Function to automatically detect icon library
 function detectIconLibrary(name: string): 'ri' | 'lucide' {
   if (name && name.startsWith('Ri')) {
@@ -23,7 +28,9 @@ export function SmartIcon({
   [key: string]: any;
 }) {
   const library = detectIconLibrary(name);
-  const cacheKey = `${library}-${name}`;
+  const resolvedName =
+    library === 'lucide' ? lucideAliases[name] ?? name : name;
+  const cacheKey = `${library}-${resolvedName}`;
 
   if (!iconCache[cacheKey]) {
     if (library === 'ri') {
@@ -31,12 +38,12 @@ export function SmartIcon({
       iconCache[cacheKey] = lazy(async () => {
         try {
           const module = await import('react-icons/ri');
-          const IconComponent = module[name as keyof typeof module];
+          const IconComponent = module[resolvedName as keyof typeof module];
           if (IconComponent) {
             return { default: IconComponent as ComponentType<any> };
           } else {
             console.warn(
-              `Icon "${name}" not found in react-icons/ri, using fallback`
+              `Icon "${resolvedName}" not found in react-icons/ri, using fallback`
             );
             return { default: module.RiQuestionLine as ComponentType<any> };
           }
@@ -53,12 +60,12 @@ export function SmartIcon({
       iconCache[cacheKey] = lazy(async () => {
         try {
           const module = await import('lucide-react');
-          const IconComponent = module[name as keyof typeof module];
+          const IconComponent = module[resolvedName as keyof typeof module];
           if (IconComponent) {
             return { default: IconComponent as ComponentType<any> };
           } else {
             console.warn(
-              `Icon "${name}" not found in lucide-react, using fallback`
+              `Icon "${resolvedName}" not found in lucide-react, using fallback`
             );
             return { default: module.HelpCircle as ComponentType<any> };
           }

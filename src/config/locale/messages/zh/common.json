@@ -49,5 +49,6 @@
   "locale_detector": {
     "title": "检测到浏览器语言是: {locale}，是否切换？",
     "switch_to": "切换到{locale}"
-  }
+  },
+  "copyright": "版权所有。"
 }

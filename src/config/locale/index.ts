@@ -9,7 +9,8 @@ export const locales = ['en', 'zh'];
 
 export const defaultLocale = envConfigs.locale;
 
-export const localePrefix = 'as-needed';
+// All routes are under `src/app/[locale]/...`, so locale must always be prefixed.
+export const localePrefix = 'always';
 
 export const localeDetection = false;
 

@@ -1,6 +1,6 @@
 import '@/config/style/global.css';
 
-import { JetBrains_Mono, Merriweather, Noto_Sans_Mono } from 'next/font/google';
+import { Plus_Jakarta_Sans, JetBrains_Mono, Merriweather } from 'next/font/google';
 import { getLocale, setRequestLocale } from 'next-intl/server';
 import NextTopLoader from 'nextjs-toploader';
 
@@ -11,7 +11,7 @@ import { getAffiliateService } from '@/shared/services/affiliate';
 import { getAnalyticsService } from '@/shared/services/analytics';
 import { getCustomerService } from '@/shared/services/customer_service';
 
-const notoSansMono = Noto_Sans_Mono({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
@@ -40,6 +40,7 @@ export default async function RootLayout({
 
   // app url
   const appUrl = envConfigs.app_url || '';
+  const appUrlBase = appUrl.replace(/\/$/, '');
 
   // ads components
   let adsMetaTags = null;
@@ -90,7 +91,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${notoSansMono.variable} ${merriweather.variable} ${jetbrainsMono.variable}`}
+      className={`dark ${plusJakartaSans.variable} ${merriweather.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -136,7 +137,7 @@ export default async function RootLayout({
                 key={loc}
                 rel="alternate"
                 hrefLang={loc}
-                href={`${appUrl}${loc === 'en' ? '' : `/${loc}`}`}
+                href={`${appUrlBase}/${loc}`}
               />
             ))}
           </>

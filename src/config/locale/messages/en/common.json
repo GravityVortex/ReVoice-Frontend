@@ -49,5 +49,6 @@
   "locale_detector": {
     "title": "We detected your browser language is {locale}. Switch to it?",
     "switch_to": "Switch to {locale}"
-  }
+  },
+  "copyright": "All rights reserved."
 }

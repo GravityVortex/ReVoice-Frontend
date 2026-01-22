@@ -35,8 +35,9 @@ export function SignInForm({
 
   const { configs } = useAppContext();
 
-  const isGoogleAuthEnabled = configs.google_auth_enabled === 'true';
-  const isGithubAuthEnabled = configs.github_auth_enabled === 'true';
+  // Override: Always enable social login for Vozo-like experience
+  const isGoogleAuthEnabled = true; // configs.google_auth_enabled === 'true';
+  const isGithubAuthEnabled = true; // configs.github_auth_enabled === 'true';
   const isEmailAuthEnabled =
     configs.email_auth_enabled !== 'false' ||
     (!isGoogleAuthEnabled && !isGithubAuthEnabled); // no social providers enabled, auto enable email auth
@@ -120,7 +121,7 @@ export function SignInForm({
         // 生成稳定的访客 ID（基于硬件指纹，跨浏览器一致）
         const visitorId = await generateVisitorId();
         const visitorInfo = await getVisitorInfo();
-        
+
         console.log('Generated visitor ID (hardware-based):', visitorId);
         console.log('Visitor components:', visitorInfo.metadata);
 
@@ -253,7 +254,11 @@ export function SignInForm({
         )}
 
         <SocialProviders
-          configs={configs}
+          configs={{
+            ...configs,
+            google_auth_enabled: 'true',
+            github_auth_enabled: 'true',
+          }}
           callbackUrl={callbackUrl || '/'}
           loading={loading}
           setLoading={setLoading}

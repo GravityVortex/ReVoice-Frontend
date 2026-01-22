@@ -18,6 +18,7 @@ jspm_packages/
 
 # Build outputs
 .next/
+.next.local/
 out/
 build/
 dist/
@@ -127,6 +128,9 @@ drizzle/
 # SQL and source files
 *.sql
 .source
+.source.local
+.source.gen
+.source.next
 
 # Chat and AI related
 .chats/
@@ -151,4 +155,3 @@ finger_safari.txt
 
 _demo/*
 public/mock_r2/*
-

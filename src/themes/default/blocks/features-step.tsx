@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowBigRight } from 'lucide-react';
 
 import { SmartIcon } from '@/shared/blocks/common/smart-icon';
@@ -18,6 +19,7 @@ export function FeaturesStep({
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [imageScale, setImageScale] = useState(1);
+  const t = useTranslations('landing.features_step');
 
   return (
     <section
@@ -100,7 +102,7 @@ export function FeaturesStep({
               }}
               className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
             >
-              缩小
+              {t('zoom_out')}
             </button>
             <button
               onClick={(e) => {
@@ -109,7 +111,7 @@ export function FeaturesStep({
               }}
               className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
             >
-              重置
+              {t('reset')}
             </button>
             <button
               onClick={(e) => {
@@ -118,12 +120,12 @@ export function FeaturesStep({
               }}
               className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
             >
-              放大
+              {t('zoom_in')}
             </button>
           </div>
           <img
             src={selectedImage}
-            alt="预览图"
+            alt={t('preview_alt')}
             className="max-w-[90vw] max-h-[90vh] object-contain transition-transform"
             style={{ transform: `scale(${imageScale})` }}
             onClick={(e) => e.stopPropagation()}
