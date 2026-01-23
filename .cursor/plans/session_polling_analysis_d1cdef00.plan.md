@@ -3,17 +3,17 @@ name: Session Polling Analysis
 overview: 完整梳理 /api/auth/get-session 接口的作用、调用机制、频繁调用的原因，并提供业界最佳实践的优化方案来减少不必要的请求（不影响现有功能）。
 todos:
   - id: set-polling-interval
-    content: "设置合理的轮询间隔 pollingInterval: 60000（60秒）"
-    status: pending
+    content: "设置合理的轮询间隔 sessionOptions.refetchInterval: 60（秒）"
+    status: completed
   - id: optimize-fetch-user
     content: 优化 fetchUserInfo 调用逻辑，只在用户真正变化时调用
-    status: pending
+    status: completed
   - id: remove-redundant-session
     content: 移除冗余的 useSession 调用，统一使用 useAppContext
-    status: pending
+    status: completed
   - id: test-auth-flow
     content: 测试登录/登出/多标签页同步，确保功能正常
-    status: pending
+    status: completed
 ---
 
 # /api/auth/get-session 接口完整梳理
@@ -67,25 +67,13 @@ flowchart TD
    - 在应用根布局中使用，每个页面都会执行
    - `useSession` 来自 Better Auth 的 React Hook
 
-2. **SidebarUser** ([`src/shared/blocks/dashboard/sidebar-user.tsx`](src/shared/blocks/dashboard/sidebar-user.tsx):39)
-   ```tsx
-   const { data: session, isPending } = useSession();
-   ```
+2. **SidebarUser / SocialCreditsHandler**
 
-
-   - 侧边栏组件也调用了 `useSession`
-
-3. **SocialCreditsHandler** ([`src/shared/blocks/sign/social-credits-handler.tsx`](src/shared/blocks/sign/social-credits-handler.tsx):7)
-   ```tsx
-   const { data: session } = useSession();
-   ```
-
-
-   - 社交登录积分处理组件
+   - 已统一改用 `useAppContext()` 读取 `user/isCheckSign`，不再重复调用 `useSession()`
 
 ## 三、为什么"疯狂调用"
 
-### 根本原因：Better Auth 默认启用了会话轮询
+### 根本原因：会话刷新策略 + 多处订阅联动
 
 在 [`src/core/auth/client.ts`](src/core/auth/client.ts) 中：
 
@@ -93,23 +81,26 @@ flowchart TD
 export const authClient = createAuthClient({
   baseURL: envConfigs.auth_url,
   secret: envConfigs.auth_secret,
-  // pollingInterval: 5000, // 每5秒轮询一次，0禁用轮询
+  sessionOptions: {
+    refetchOnWindowFocus: false,
+    // seconds; set to 0 to disable polling entirely
+    refetchInterval: 60,
+  },
 });
 ```
 
 **关键发现：**
 
-- `pollingInterval` 配置被注释掉了
-- Better Auth 默认行为：**如果不显式设置 pollingInterval，会使用默认轮询间隔**
-- 默认轮询间隔通常是 **3-5秒**，导致接口被频繁调用
+- Better Auth 的会话刷新由 `sessionOptions.refetchInterval`（定时轮询）和 `sessionOptions.refetchOnWindowFocus`（切回标签页触发）控制
+- 如果同时存在“定时刷新 + session 变化触发业务接口”，会出现连锁请求
 
 ### 触发场景
 
 1. **页面初始加载** - 每个使用 `useSession` 的组件都会调用
-2. **定时轮询** - Better Auth 自动每隔几秒调用一次
-3. **窗口焦点切换** - 用户切换标签页时可能触发
+2. **定时轮询** - 由 `refetchInterval` 控制（仅在已登录 session 存在时触发）
+3. **窗口焦点切换** - 由 `refetchOnWindowFocus` 控制
 4. **Session 更新** - 登录/登出时触发
-5. **多组件重复调用** - 3个组件都使用了 `useSession`
+5. **多组件重复调用** - 已收敛为仅 `AppContextProvider` 调用 `useSession`
 
 ### 额外的连锁反应
 
@@ -166,14 +157,17 @@ flowchart LR
 export const authClient = createAuthClient({
   baseURL: envConfigs.auth_url,
   secret: envConfigs.auth_secret,
-  pollingInterval: 60000, // 60秒轮询一次（推荐）
-  // pollingInterval: 0, // 或完全禁用
+  sessionOptions: {
+    refetchOnWindowFocus: false,
+    // seconds; set to 0 to disable polling entirely
+    refetchInterval: 60,
+  },
 });
 ```
 
 **效果：**
 
-- 从每 3-5 秒 → 每 60 秒
+- 从高频触发 → 每 60 秒（仅登录态）一次
 - 请求减少 **92-95%**
 - ✅ 保留多标签页同步能力
 - ✅ 不影响现有功能
@@ -187,27 +181,28 @@ export const authClient = createAuthClient({
 修改 [`src/shared/contexts/app.tsx`](src/shared/contexts/app.tsx):132-147：
 
 ```typescript
-// 添加 ref 记录上次的 user id
-const lastUserIdRef = useRef<string | null>(null);
+// 添加 ref 记录上次的 user id（避免 session refresh 导致重复触发）
+const lastSessionUserIdRef = useRef<string | null>(null);
 
 useEffect(() => {
-  if (session && session.user) {
-    const userTemp = session.user as User;
-    if(userTemp){
-      if(!userTemp.credits){
-        userTemp.credits = user?.credits
-      }
-    }
-    setUser(userTemp);
-    
+  if (session?.user) {
+    const sessionUser = session.user as User;
+
+    // Preserve already-fetched credits if the session payload doesn't include them.
+    setUser((prev) =>
+      sessionUser.credits
+        ? sessionUser
+        : { ...sessionUser, credits: prev?.credits }
+    );
+
     // 只在用户真正变化时才调用 fetchUserInfo
-    if (userTemp.id && userTemp.id !== lastUserIdRef.current) {
-      lastUserIdRef.current = userTemp.id;
+    if (sessionUser.id && sessionUser.id !== lastSessionUserIdRef.current) {
+      lastSessionUserIdRef.current = sessionUser.id;
       fetchUserInfo();
     }
   } else {
     setUser(null);
-    lastUserIdRef.current = null;
+    lastSessionUserIdRef.current = null;
   }
 }, [session]);
 ```
@@ -267,15 +262,10 @@ const { user } = useAppContext();
 export const authClient = createAuthClient({
   baseURL: envConfigs.auth_url,
   secret: envConfigs.auth_secret,
-  pollingInterval: 60000,
-  fetchOptions: {
-    onError: (context) => {
-      // 离线时暂停轮询
-      if (!navigator.onLine) {
-        console.log('Offline, skipping session refresh');
-        return;
-      }
-    },
+  sessionOptions: {
+    refetchInterval: 60,
+    // 默认 false：离线不刷新（更省资源）
+    refetchWhenOffline: false,
   },
 });
 ```
@@ -284,7 +274,7 @@ export const authClient = createAuthClient({
 
 ### 阶段1：立即见效（5分钟）
 
-1. ✅ 修改 `pollingInterval: 60000`（60秒）
+1. ✅ 修改 `sessionOptions.refetchInterval: 60`（秒）
 2. ✅ 优化 `fetchUserInfo` 调用逻辑
 
 **预期效果：** 减少 **85-90%** 请求

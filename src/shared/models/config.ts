@@ -10,6 +10,17 @@ export type UpdateConfig = Partial<Omit<NewConfig, 'name'>>;
 
 export type Configs = Record<string, string>;
 
+const CONFIG_CACHE_MS = 30_000;
+let cachedDbConfigs: Configs | null = null;
+let cachedDbConfigsAt = 0;
+let inflightDbConfigs: Promise<Configs> | null = null;
+
+function invalidateConfigCache() {
+  cachedDbConfigs = null;
+  cachedDbConfigsAt = 0;
+  inflightDbConfigs = null;
+}
+
 export async function saveConfigs(configs: Record<string, string>) {
   const result = await db().transaction(async (tx) => {
     const configEntries = Object.entries(configs);
@@ -31,32 +42,47 @@ export async function saveConfigs(configs: Record<string, string>) {
     return results;
   });
 
+  invalidateConfigCache();
   return result;
 }
 
 export async function addConfig(newConfig: NewConfig) {
   const [result] = await db().insert(config).values(newConfig).returning();
 
+  invalidateConfigCache();
   return result;
 }
 
 export async function getConfigs(): Promise<Configs> {
-  const configs: Record<string, string> = {};
-
   if (!envConfigs.database_url) {
-    return configs;
+    return {};
   }
 
-  const result = await db().select().from(config);
-  if (!result) {
-    return configs;
+  const now = Date.now();
+  if (cachedDbConfigs && now - cachedDbConfigsAt < CONFIG_CACHE_MS) {
+    // Callers sometimes mutate configs (e.g. admin settings save). Keep cache immutable by
+    // always returning a fresh object.
+    return { ...cachedDbConfigs };
   }
 
-  for (const config of result) {
-    configs[config.name] = config.value ?? '';
+  if (!inflightDbConfigs) {
+    inflightDbConfigs = (async () => {
+      const rows = await db().select().from(config);
+      const configs: Configs = {};
+      for (const row of rows || []) {
+        configs[row.name] = row.value ?? '';
+      }
+      cachedDbConfigs = configs;
+      cachedDbConfigsAt = Date.now();
+      inflightDbConfigs = null;
+      return { ...configs };
+    })().catch((e) => {
+      inflightDbConfigs = null;
+      throw e;
+    });
   }
 
-  return configs;
+  return inflightDbConfigs;
 }
 
 export async function getAllConfigs(): Promise<Configs> {

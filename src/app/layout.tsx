@@ -6,10 +6,11 @@ import NextTopLoader from 'nextjs-toploader';
 
 import { envConfigs } from '@/config';
 import { locales } from '@/config/locale';
-import { getAdsService } from '@/shared/services/ads';
-import { getAffiliateService } from '@/shared/services/affiliate';
-import { getAnalyticsService } from '@/shared/services/analytics';
-import { getCustomerService } from '@/shared/services/customer_service';
+import { getAllConfigs } from '@/shared/models/config';
+import { getAdsManagerWithConfigs } from '@/shared/services/ads';
+import { getAffiliateManagerWithConfigs } from '@/shared/services/affiliate';
+import { getAnalyticsManagerWithConfigs } from '@/shared/services/analytics';
+import { getCustomerServiceWithConfigs } from '@/shared/services/customer_service';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -63,26 +64,28 @@ export default async function RootLayout({
   let customerServiceBodyScripts = null;
 
   if (isProduction || isDebug) {
-    // get ads components
-    const adsService = await getAdsService();
+    const configs = await getAllConfigs();
+
+    // ads components
+    const adsService = getAdsManagerWithConfigs(configs);
     adsMetaTags = adsService.getMetaTags();
     adsHeadScripts = adsService.getHeadScripts();
     adsBodyScripts = adsService.getBodyScripts();
 
-    // get analytics components
-    const analyticsService = await getAnalyticsService();
+    // analytics components
+    const analyticsService = getAnalyticsManagerWithConfigs(configs);
     analyticsMetaTags = analyticsService.getMetaTags();
     analyticsHeadScripts = analyticsService.getHeadScripts();
     analyticsBodyScripts = analyticsService.getBodyScripts();
 
-    // get affiliate components
-    const affiliateService = await getAffiliateService();
+    // affiliate components
+    const affiliateService = getAffiliateManagerWithConfigs(configs);
     affiliateMetaTags = affiliateService.getMetaTags();
     affiliateHeadScripts = affiliateService.getHeadScripts();
     affiliateBodyScripts = affiliateService.getBodyScripts();
 
-    // get customer service components
-    const customerService = await getCustomerService();
+    // customer service components
+    const customerService = getCustomerServiceWithConfigs(configs);
     customerServiceMetaTags = customerService.getMetaTags();
     customerServiceHeadScripts = customerService.getHeadScripts();
     customerServiceBodyScripts = customerService.getBodyScripts();

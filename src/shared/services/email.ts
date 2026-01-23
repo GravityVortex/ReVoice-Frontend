@@ -20,17 +20,9 @@ export function getEmailServiceWithConfigs(configs: Configs) {
 }
 
 /**
- * global email service
- */
-let emailService: EmailManager | null = null;
-
-/**
  * get email service instance
  */
 export async function getEmailService(): Promise<EmailManager> {
-  if (true) {
-    const configs = await getAllConfigs();
-    emailService = getEmailServiceWithConfigs(configs);
-  }
-  return emailService;
+  const configs = await getAllConfigs();
+  return getEmailServiceWithConfigs(configs);
 }

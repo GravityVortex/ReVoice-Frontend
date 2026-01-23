@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Fragment } from 'react/jsx-runtime';
-import { Coins, LayoutDashboard, Loader2, LogOut, User } from 'lucide-react';
+import { Coins, LayoutDashboard, LogOut, User } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { signOut } from '@/core/auth/client';
@@ -40,18 +39,9 @@ export function SignUser({
   const { isCheckSign, user, setIsShowSignModal } = useAppContext();
   const router = useRouter();
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
     <>
-      {isCheckSign || !mounted ? (
-        <div>
-          <Loader2 className="size-4 animate-spin" />
-        </div>
-      ) : user ? (
+      {user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -153,13 +143,13 @@ export function SignUser({
       ) : (
         <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
           <Button
-            asChild
             size={signButtonSize}
             className={cn(
               'border-foreground/10 ml-4 cursor-pointer ring-0',
               isScrolled && 'lg:hidden'
             )}
             onClick={() => setIsShowSignModal(true)}
+            disabled={isCheckSign}
           >
             <span>{t('sign_in_title')}</span>
           </Button>

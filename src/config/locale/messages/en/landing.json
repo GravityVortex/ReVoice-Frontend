@@ -57,8 +57,8 @@
   },
   "hero": {
     "id": "hero",
-    "title": "Your voice, every language, same emotion",
-    "highlight_text": "same emotion",
+    "title": "Your voice, across languages\nSame emotion",
+    "highlight_text": "Same emotion",
     "description": "AI-powered video translation that keeps your original tone and feeling<br/>So you sound like you, in any language",
     "announcement": {
       "badge": "New",

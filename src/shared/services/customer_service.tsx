@@ -39,17 +39,9 @@ export function getCustomerServiceWithConfigs(configs: Configs) {
 }
 
 /**
- * global customer service
- */
-let customerServiceManager: CustomerServiceManager | null = null;
-
-/**
  * get customer service instance
  */
 export async function getCustomerService(): Promise<CustomerServiceManager> {
-  if (true) {
-    const configs = await getAllConfigs();
-    customerServiceManager = getCustomerServiceWithConfigs(configs);
-  }
-  return customerServiceManager;
+  const configs = await getAllConfigs();
+  return getCustomerServiceWithConfigs(configs);
 }

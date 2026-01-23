@@ -1,20 +1,17 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import { Fragment } from 'react';
+import type { MouseEvent } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 import { Link } from '@/core/i18n/navigation';
-import { LazyImage, SmartIcon } from '@/shared/blocks/common';
+import { SmartIcon } from '@/shared/blocks/common';
 import { AnimatedGridPattern } from '@/shared/components/ui/animated-grid-pattern';
 import { Button } from '@/shared/components/ui/button';
-import { Highlighter } from '@/shared/components/ui/highlighter';
 import { useAppContext } from '@/shared/contexts/app';
 import { cn } from '@/shared/lib/utils';
 import { Hero as HeroType } from '@/shared/types/blocks/landing';
-
-import { SocialAvatars } from './social-avatars';
 
 const createFadeInVariant = (delay: number) => ({
   initial: { opacity: 0, y: 20, filter: 'blur(10px)' },
@@ -32,66 +29,44 @@ export function Hero({
   const { user, setIsShowSignModal } = useAppContext();
   const titleText = hero.title ?? '';
   const highlightText = hero.highlight_text ?? '';
-  const titleLines = titleText.split(/\r?\n|\\n/);
+  const titleLines = titleText.split(/\r?\n|\\n/).filter((line) => line.trim());
 
   const renderHighlightedText = () => (
-    <Highlighter action="underline" color="var(--primary)" multiline={false}>
-      <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
-        {highlightText}
-      </span>
-    </Highlighter>
+    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
+      {highlightText}
+    </span>
   );
 
   const renderTitle = () => {
-    if (!highlightText) {
-      return titleLines.map((line, index) => (
+    let didHighlight = false;
+
+    return titleLines.map((line, index) => {
+      if (!highlightText || didHighlight || !line.includes(highlightText)) {
+        return (
+          <Fragment key={`hero-title-line-${index}`}>
+            {index > 0 && <br />}
+            {line}
+          </Fragment>
+        );
+      }
+
+      didHighlight = true;
+      const highlightIndex = line.indexOf(highlightText);
+      const pre = line.slice(0, highlightIndex);
+      const post = line.slice(highlightIndex + highlightText.length);
+
+      return (
         <Fragment key={`hero-title-line-${index}`}>
           {index > 0 && <br />}
-          {line}
-        </Fragment>
-      ));
-    }
-    // ... Simplified logic for centering if needed, but existing is fine
-    if (!titleText.includes(highlightText)) {
-      return (
-        <>
-          {titleLines.map((line, index) => (
-            <Fragment key={`hero-title-line-${index}`}>
-              {index > 0 && <br />}
-              {line}
-            </Fragment>
-          ))}
+          {pre}
           {renderHighlightedText()}
-        </>
-      );
-    }
-
-    let highlighted = false;
-    return titleLines.map((line, index) => {
-      const parts = line.split(highlightText);
-      // Simple split logic for demo, assumes max 1 highlight per line for now or logic from before
-      if (!highlighted && line.includes(highlightText)) {
-        highlighted = true;
-        const [pre, post] = [line.slice(0, line.indexOf(highlightText)), line.slice(line.indexOf(highlightText) + highlightText.length)];
-        return (
-          <Fragment key={index}>
-            {index > 0 && <br />}
-            {pre}
-            {renderHighlightedText()}
-            {post}
-          </Fragment>
-        )
-      }
-      return (
-        <Fragment key={index}>
-          {index > 0 && <br />}
-          {line}
+          {post}
         </Fragment>
       );
     });
   };
 
-  const handleButtonClick = (e: React.MouseEvent, url: string) => {
+  const handleButtonClick = (e: MouseEvent<HTMLElement>, url: string) => {
     if (url === '/video_convert' && !user) {
       e.preventDefault();
       setIsShowSignModal(true);
@@ -157,7 +132,7 @@ export function Hero({
         <motion.div {...createFadeInVariant(0.25)} className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-7xl leading-[1.1] text-white">
             <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70">
-              {hero.title}
+              {renderTitle()}
             </span>
           </h1>
         </motion.div>

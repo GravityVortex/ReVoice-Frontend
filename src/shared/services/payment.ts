@@ -97,19 +97,11 @@ export function getPaymentServiceWithConfigs(configs: Configs) {
 }
 
 /**
- * global payment service
- */
-let paymentService: PaymentManager | null = null;
-
-/**
  * get payment service instance
  */
 export async function getPaymentService(): Promise<PaymentManager> {
-  if (true) {
-    const configs = await getAllConfigs();
-    paymentService = getPaymentServiceWithConfigs(configs);
-  }
-  return paymentService;
+  const configs = await getAllConfigs();
+  return getPaymentServiceWithConfigs(configs);
 }
 
 /**

@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
-import { Link } from '@/core/i18n/navigation';
+import { Link, useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -28,7 +28,8 @@ export function SignInForm({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { configs } = useAppContext();
+  const { configs, refreshSession, setIsShowSignModal } = useAppContext();
+  const router = useRouter();
 
   // Override: Always enable social login for Vozo-like experience
   const isGoogleAuthEnabled = true; // configs.google_auth_enabled === 'true';
@@ -118,35 +119,14 @@ export function SignInForm({
         throw new Error(result?.message || 'Guest login failed');
       }
 
-      const guestEmail = result.data?.email;
-      const guestPassword = result.data?.password;
-      if (!guestEmail || !guestPassword) {
-        throw new Error('Failed to obtain guest credentials');
-      }
+      // Guest login endpoint sets the auth cookie. Refetch session so UI updates immediately.
+      void refreshSession();
 
-      // 使用标准 better-auth 登录
-      await signIn.email(
-        {
-          email: guestEmail,
-          password: guestPassword,
-          callbackURL: callbackUrl,
-        },
-        {
-          onRequest: (ctx) => {
-            setLoading(true);
-          },
-          onResponse: (ctx) => {
-            setLoading(false);
-          },
-          onSuccess: (ctx) => {
-            toast.success('Guest login successful!');
-          },
-          onError: (e: any) => {
-            toast.error(e?.error?.message || 'Guest login failed');
-            setLoading(false);
-          },
-        }
-      );
+      toast.success('Guest login successful!');
+      setLoading(false);
+      setIsShowSignModal(false);
+      router.push(callbackUrl || '/');
+      router.refresh();
     } catch (e: any) {
       toast.error(e.message || 'Guest login failed');
       setLoading(false);

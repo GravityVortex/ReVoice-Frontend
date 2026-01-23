@@ -32,17 +32,9 @@ export function getAffiliateManagerWithConfigs(configs: Configs) {
 }
 
 /**
- * global affiliate service
- */
-let affiliateService: AffiliateManager | null = null;
-
-/**
  * get affiliate service instance
  */
 export async function getAffiliateService(): Promise<AffiliateManager> {
-  if (true) {
-    const configs = await getAllConfigs();
-    affiliateService = getAffiliateManagerWithConfigs(configs);
-  }
-  return affiliateService;
+  const configs = await getAllConfigs();
+  return getAffiliateManagerWithConfigs(configs);
 }

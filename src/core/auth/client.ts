@@ -11,6 +11,8 @@ export const authClient = createAuthClient({
   // - avoid refetch-on-focus storms (esp. in dev / tab switching)
   sessionOptions: {
     refetchOnWindowFocus: false,
+    // Poll logged-in sessions at a sane cadence (seconds). Set to 0 to disable polling entirely.
+    refetchInterval: 60,
   },
 });
 

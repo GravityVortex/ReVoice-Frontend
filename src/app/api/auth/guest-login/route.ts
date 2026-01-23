@@ -5,7 +5,7 @@ import { getAuth } from '@/core/auth';
 import { db } from '@/core/db';
 import { account } from '@/config/db/schema';
 import { getShortUUID, getUuid } from '@/shared/lib/hash';
-import { respData, respErr } from '@/shared/lib/resp';
+import { respErr } from '@/shared/lib/resp';
 import { createCredit, CreditStatus, CreditTransactionType, NewCredit } from '@/shared/models/credit';
 import { generateGuestEmail, generateGuestId, generateGuestPassword } from '@/shared/models/guest-user';
 import { findUserByEmail } from '@/shared/models/user';
@@ -32,17 +32,17 @@ export async function POST(req: Request) {
     const auth = await getAuth();
 
     // Guest credentials must be stable. If the user already exists (e.g. password algorithm changed),
-    // sync the credential password so the returned password always works.
+    // sync the credential password so the deterministic password keeps working.
     let existingUser = await findUserByEmail(email);
     if (!existingUser) {
       try {
         const res = await auth.api.signUpEmail({
           body: { email, password, name },
-          // Client will sign in separately.
           asResponse: false,
         });
 
         if (res?.user) {
+          existingUser = res.user as any;
           const creditAdd: NewCredit = {
             id: getUuid(),
             transactionNo: getShortUUID(),
@@ -60,8 +60,6 @@ export async function POST(req: Request) {
           };
           await createCredit(creditAdd);
         }
-
-        return respData({ email, password });
       } catch (e) {
         // Likely a race (already exists) or DB error; only fall back when the user exists.
         existingUser = await findUserByEmail(email);
@@ -72,18 +70,25 @@ export async function POST(req: Request) {
       }
     }
 
+    if (!existingUser) {
+      return respErr('guest login failed');
+    }
+
     // Ensure credential account password matches the deterministic guest password.
     // If we ever change the guest password algorithm, this keeps old guest users working.
-    const passwordHash = await bcrypt.hash(password, 10);
-    const updated = await db()
-      .update(account)
-      .set({ password: passwordHash, updatedAt: new Date() })
-      .where(
-        and(eq(account.userId, existingUser.id), eq(account.providerId, 'credential'))
-      )
-      .returning({ id: account.id });
+    const whereCredentialAccount = and(
+      eq(account.userId, existingUser.id),
+      eq(account.providerId, 'credential')
+    );
 
-    if (updated.length === 0) {
+    const [credentialAccount] = await db()
+      .select({ password: account.password })
+      .from(account)
+      .where(whereCredentialAccount)
+      .limit(1);
+
+    if (!credentialAccount) {
+      const passwordHash = await bcrypt.hash(password, 10);
       await db().insert(account).values({
         id: getUuid(),
         accountId: existingUser.id,
@@ -93,9 +98,51 @@ export async function POST(req: Request) {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+    } else {
+      const currentPassword = credentialAccount.password;
+      const isBcryptHash =
+        typeof currentPassword === 'string' && currentPassword.startsWith('$2');
+      const matches =
+        isBcryptHash ? await bcrypt.compare(password, currentPassword) : false;
+
+      if (!matches) {
+        await db()
+          .update(account)
+          .set({ password: await bcrypt.hash(password, 10), updatedAt: new Date() })
+          .where(whereCredentialAccount);
+      }
     }
 
-    return respData({ email, password });
+    // Sign in server-side so the client doesn't need a second request that can fail/race.
+    const signInResponse = await auth.api.signInEmail({
+      body: { email, password },
+      asResponse: true,
+    });
+
+    const setCookies =
+      typeof (signInResponse.headers as any).getSetCookie === 'function'
+        ? (signInResponse.headers as any).getSetCookie()
+        : (() => {
+            const cookie = signInResponse.headers.get('set-cookie');
+            return cookie ? [cookie] : [];
+          })();
+
+    if (!signInResponse.ok) {
+      console.error('Guest sign-in failed:', signInResponse.status);
+      return respErr('guest login failed');
+    }
+
+    // Don't return session tokens to JS; cookie is already set.
+    const signInData = await signInResponse.json().catch(() => null);
+    const responseHeaders = new Headers();
+    for (const cookie of setCookies) {
+      responseHeaders.append('set-cookie', cookie);
+    }
+
+    return Response.json(
+      { code: 0, message: 'ok', data: { user: signInData?.user } },
+      { headers: responseHeaders }
+    );
   } catch (e) {
     console.error('Guest login failed:', e);
     return respErr('guest login failed');
