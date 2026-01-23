@@ -361,10 +361,16 @@ export function Pricing({
         )}
 
         <div
-          className={`mt-0 grid w-full gap-6 md:grid-cols-${
-            pricing.items?.filter((item) => !item.group || item.group === group)
-              ?.length
-          }`}
+          className={cn(
+            "mt-0 grid w-full gap-6",
+            (() => {
+              const itemCount = pricing.items?.filter((item) => !item.group || item.group === group)?.length || 0;
+              if (itemCount === 1) return "md:grid-cols-1";
+              if (itemCount === 2) return "md:grid-cols-2";
+              if (itemCount === 3) return "md:grid-cols-3";
+              return "md:grid-cols-4";
+            })()
+          )}
         >
           {pricing.items?.map((item: PricingItem, idx) => {
             if (item.group && item.group !== group) {
