@@ -323,6 +323,18 @@ export function Pricing({
     }
   }, [pricing.items]);
 
+  const visibleItems =
+    pricing.items?.filter((item) => !item.group || item.group === group) ?? [];
+
+  const mdGridColsClass =
+    visibleItems.length <= 1
+      ? 'md:grid-cols-1'
+      : visibleItems.length === 2
+        ? 'md:grid-cols-2'
+        : visibleItems.length === 3
+          ? 'md:grid-cols-3'
+          : 'md:grid-cols-4';
+
   return (
     <section
       id={pricing.id}
@@ -360,22 +372,8 @@ export function Pricing({
           </div>
         )}
 
-        <div
-          className={cn(
-            "mt-0 grid w-full gap-6",
-            (() => {
-              const itemCount = pricing.items?.filter((item) => !item.group || item.group === group)?.length || 0;
-              if (itemCount === 1) return "md:grid-cols-1";
-              if (itemCount === 2) return "md:grid-cols-2";
-              if (itemCount === 3) return "md:grid-cols-3";
-              return "md:grid-cols-4";
-            })()
-          )}
-        >
-          {pricing.items?.map((item: PricingItem, idx) => {
-            if (item.group && item.group !== group) {
-              return null;
-            }
+        <div className={cn('mt-0 grid w-full gap-6', mdGridColsClass)}>
+          {visibleItems.map((item: PricingItem, idx) => {
 
             let isCurrentPlan = false;
             if (
@@ -393,7 +391,7 @@ export function Pricing({
             const currencies = getCurrenciesFromItem(item);
 
             return (
-              <Card key={idx} className="relative">
+              <Card key={item.product_id || idx} className="relative">
                 {item.label && (
                   <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-linear-to-br/increasing from-purple-400 to-amber-300 px-3 py-1 text-xs font-medium text-amber-950 ring-1 ring-white/20 ring-offset-1 ring-offset-gray-950/5 ring-inset">
                     {item.label}

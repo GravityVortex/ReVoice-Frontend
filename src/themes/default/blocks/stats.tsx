@@ -34,7 +34,7 @@ export function Stats({
                 <div className="flex items-center gap-4 pt-4">
                   <div className="flex -space-x-3">
                     {[1, 2, 3, 4].map(i => (
-                      <div key={i} className={`w-10 h-10 rounded-full border-2 border-black bg-neutral-${i * 100 + 400}`} style={{ backgroundImage: `url(https://i.pravatar.cc/100?img=${i + 10})`, backgroundSize: 'cover' }} />
+                      <div key={i} className="w-10 h-10 rounded-full border-2 border-black bg-neutral-500" style={{ backgroundImage: `url(https://i.pravatar.cc/100?img=${i + 10})`, backgroundSize: 'cover' }} />
                     ))}
                   </div>
                   <div className="text-sm font-medium text-white">

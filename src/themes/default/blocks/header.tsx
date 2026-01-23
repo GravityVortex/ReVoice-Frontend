@@ -98,7 +98,7 @@ export function Header({ header }: { header: HeaderType }) {
             <NavigationMenuItem key={idx} value={item.title || ''}>
               {item.children && item.children.length > 0 ? (
                 <>
-                  <NavigationMenuTrigger className="flex flex-row items-center gap-2 text-sm">
+                  <NavigationMenuTrigger className="flex flex-row items-center gap-2 text-sm text-foreground">
                     {item.icon && (
                       <SmartIcon
                         name={item.icon as string}
@@ -136,10 +136,12 @@ export function Header({ header }: { header: HeaderType }) {
                   <Link
                     href={item.url || ''}
                     target={item.target || '_self'}
-                    className={`flex flex-row items-center gap-2 text-sm ${item.is_active || pathname.endsWith(item.url as string)
-                      ? 'bg-muted text-muted-foreground'
-                      : ''
-                      }`}
+                    className={cn(
+                      'flex flex-row items-center gap-2 text-sm text-foreground',
+                      (item.is_active ||
+                        pathname.endsWith(item.url as string)) &&
+                        'bg-muted/50'
+                    )}
                   >
                     {item.icon && <SmartIcon name={item.icon as string} />}
                     {item.title}
