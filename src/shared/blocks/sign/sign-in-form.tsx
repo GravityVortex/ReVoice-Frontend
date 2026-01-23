@@ -9,6 +9,7 @@ import { signIn } from '@/core/auth/client';
 import { Link, useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { useAppContext } from '@/shared/contexts/app';
@@ -264,19 +265,23 @@ export function SignInForm({
           setLoading={setLoading}
         />
 
-        {/* Guest Login Button */}
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          disabled={loading}
+        {/* Guest Login Card */}
+        <Card 
+          className="cursor-pointer transition-colors hover:bg-accent/50 border-dashed"
           onClick={handleGuestLogin}
         >
-          <UserRound className="h-4 w-4" />
-          <div className="flex flex-col items-start">
-            <span className="text-sm font-medium">{t('guest_sign_in_title')}</span>
-            <span className="text-xs text-muted-foreground">{t('guest_sign_in_description')}</span>
-          </div>
-        </Button>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <UserRound className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold">{t('guest_sign_in_title')}</span>
+                <span className="text-xs text-muted-foreground">{t('guest_sign_in_description')}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       {isEmailAuthEnabled && (
         <div className="flex w-full justify-center border-t py-4">
