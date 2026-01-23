@@ -32,7 +32,7 @@ export default async function LandingPage({
       {page.stats && (
         <Stats
           stats={page.stats}
-          className="bg-transparent border-y border-white/5 py-12"
+          className="bg-transparent border-y border-[rgba(255,255,255,0.05)] py-12"
         />
       )}
 
@@ -76,7 +76,7 @@ export default async function LandingPage({
       {page.cta && (
         <CTA
           cta={page.cta}
-          className="bg-gradient-to-t from-primary/20 to-background border-t border-white/10"
+          className="bg-gradient-to-t from-primary/20 to-background border-t border-[rgba(255,255,255,0.1)]"
         />
       )}
     </>

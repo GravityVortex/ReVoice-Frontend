@@ -48,9 +48,9 @@ export function LeftMenuPanel({
                 />
                 <button
                   onClick={() => handlePlayVideo(getPreviewVideoUrl(videoDetail), videoDetail.fileName)}
-                  className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all hover:bg-black/40"
+                  className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.3)] transition-all hover:bg-[rgba(0,0,0,0.4)]"
                 >
-                  <div className="flex size-16 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform hover:scale-110">
+                  <div className="flex size-16 items-center justify-center rounded-full bg-[rgba(255,255,255,0.9)] shadow-lg transition-transform hover:scale-110">
                     <Play className="ml-1 size-8 text-black" fill="currentColor" />
                   </div>
                 </button>

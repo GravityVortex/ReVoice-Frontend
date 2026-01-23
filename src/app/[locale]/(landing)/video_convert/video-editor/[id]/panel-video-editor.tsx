@@ -1075,7 +1075,9 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
                     className={cn(
                       "absolute cursor-move px-3 py-1 rounded backdrop-blur-sm",
                       selectedSubtitle === subtitle.id && "ring-2 ring-yellow-400",
-                      isEditing ? "bg-black/90" : "bg-black/70",
+                      isEditing
+                        ? "bg-[rgba(0,0,0,0.9)]"
+                        : "bg-[rgba(0,0,0,0.7)]",
                       !isDraggingSubtitle && "transition-all duration-200"
                     )}
                     style={{

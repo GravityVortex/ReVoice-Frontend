@@ -14,10 +14,10 @@ export function Logos({
   return (
     <section
       id={logos.id}
-      className={cn('py-12 bg-black border-y border-white/5 overflow-hidden', logos.className, className)}
+      className={cn('py-12 bg-black border-y border-[rgba(255,255,255,0.05)] overflow-hidden', logos.className, className)}
     >
       <div className="container px-4 md:px-6 mb-8 text-center">
-        <p className="text-sm font-medium text-white/40 uppercase tracking-widest">{logos.title}</p>
+        <p className="text-sm font-medium text-[rgba(255,255,255,0.4)] uppercase tracking-widest">{logos.title}</p>
       </div>
 
       <div className="relative w-full overflow-hidden">

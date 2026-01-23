@@ -264,7 +264,7 @@ export function Header({ header }: { header: HeaderType }) {
             // Default state: Transparent or subtle glass
             'bg-background/0 backdrop-blur-sm border-b border-transparent',
             // Scrolled state: Dark Glass with border
-            'in-data-scrolled:bg-background/60 in-data-scrolled:backdrop-blur-xl in-data-scrolled:border-white/10 in-data-scrolled:shadow-lg',
+            'in-data-scrolled:bg-background/60 in-data-scrolled:backdrop-blur-xl in-data-scrolled:border-[rgba(255,255,255,0.1)] in-data-scrolled:shadow-lg',
             // Mobile menu open state
             'has-data-[state=open]:bg-background/95 has-data-[state=open]:backdrop-blur-xl'
           )}
@@ -300,7 +300,7 @@ export function Header({ header }: { header: HeaderType }) {
 
             {/* Mobile Menu Content */}
             {!isLarge && isMobileMenuOpen && (
-              <div className="absolute top-[4.5rem] left-0 right-0 h-[calc(100vh-4.5rem)] bg-background/95 backdrop-blur-xl p-4 overflow-y-auto border-t border-white/10 lg:hidden">
+              <div className="absolute top-[4.5rem] left-0 right-0 h-[calc(100vh-4.5rem)] bg-background/95 backdrop-blur-xl p-4 overflow-y-auto border-t border-[rgba(255,255,255,0.1)] lg:hidden">
                 <MobileMenu closeMenu={() => setIsMobileMenuOpen(false)} />
               </div>
             )}
@@ -325,7 +325,7 @@ export function Header({ header }: { header: HeaderType }) {
                         'inline-flex items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-300',
                         'h-10 px-6',
                         button.variant === 'outline'
-                          ? 'bg-transparent text-foreground hover:bg-white/10'
+                          ? 'bg-transparent text-foreground hover:bg-[rgba(255,255,255,0.1)]'
                           : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_-5px_var(--primary)] hover:shadow-[0_0_20px_-2px_var(--primary)] hover:scale-105'
                       )}
                     >

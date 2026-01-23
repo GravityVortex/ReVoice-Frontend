@@ -102,7 +102,7 @@ export function FeaturesAccordion({
               <BorderBeam
                 duration={6}
                 size={200}
-                className="from-transparent via-yellow-700 to-transparent dark:via-white/50"
+                className="from-transparent via-yellow-700 to-transparent dark:via-[rgba(255,255,255,0.5)]"
               />
             </div>
           </ScrollAnimation>

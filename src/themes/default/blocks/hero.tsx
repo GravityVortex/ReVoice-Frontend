@@ -131,7 +131,7 @@ export function Hero({
         {/* Title */}
         <motion.div {...createFadeInVariant(0.25)} className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-7xl leading-[1.1] text-white">
-            <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70">
+            <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-[rgba(255,255,255,0.7)]">
               {renderTitle()}
             </span>
           </h1>
@@ -140,7 +140,7 @@ export function Hero({
         {/* Brand Statement / Subtitle */}
         <motion.p
           {...createFadeInVariant(0.35)}
-          className="mt-6 text-lg md:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+          className="mt-6 text-lg md:text-xl text-[rgba(255,255,255,0.6)] max-w-2xl mx-auto leading-relaxed"
           dangerouslySetInnerHTML={{ __html: hero.brand_statement || hero.description || '' }}
         />
 
@@ -158,7 +158,7 @@ export function Hero({
                 className={cn(
                   "min-w-[160px] h-12 text-base px-8 rounded-full transition-all duration-300",
                   idx === 0 && "bg-[#6366F1] hover:bg-[#5558DD] text-white shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)] border-none",
-                  idx !== 0 && "border-white/20 bg-white/5 text-white hover:bg-white/10 hover:border-white/40"
+                  idx !== 0 && "border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.4)]"
                 )}
                 key={idx}
               >

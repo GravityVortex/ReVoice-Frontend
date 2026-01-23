@@ -79,7 +79,7 @@ export default function FileManager() {
           {fileList.map((item, index) => (
             <div
               key={index}
-              className="flex items-center justify-between p-4 border-b last:border-b-0 hover:bg-black/9"
+              className="flex items-center justify-between p-4 border-b last:border-b-0 hover:bg-[rgba(0,0,0,0.09)]"
             >
               <div className="flex items-center gap-3">
                 {item.type === 'folder' ? (

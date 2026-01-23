@@ -187,12 +187,12 @@ function VideoCard({
 
         {/* 毛玻璃效果覆盖层 */}
         {status === "failed" && (
-          <div className="pointer-events-none absolute inset-0 bg-black/80 backdrop-blur-[3px]" />
+          <div className="pointer-events-none absolute inset-0 bg-[rgba(0,0,0,0.8)] backdrop-blur-[3px]" />
         )}
 
 
         {/* 悬浮遮罩 */}
-        <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10" />
+        <div className="pointer-events-none absolute inset-0 bg-[rgba(0,0,0,0)] transition-colors duration-300 group-hover:bg-[rgba(0,0,0,0.1)]" />
 
         {/* 中间播放按钮 */}
         {status === "completed" && (
@@ -200,7 +200,7 @@ function VideoCard({
             type="button"
             aria-label="play video"
             onClick={onPlay}
-            className="absolute inset-0 m-auto flex size-16 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-black/80"
+            className="absolute inset-0 m-auto flex size-16 items-center justify-center rounded-full bg-[rgba(0,0,0,0.6)] backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-[rgba(0,0,0,0.8)]"
           >
             <Play className="size-8 fill-white text-white" />
           </button>

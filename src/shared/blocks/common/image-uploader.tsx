@@ -357,7 +357,7 @@ export function ImageUploader({
                 </span>
               )}
               {item.status === 'uploading' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-xs font-medium text-white">
+                <div className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.6)] text-xs font-medium text-white">
                   Uploading...
                 </div>
               )}

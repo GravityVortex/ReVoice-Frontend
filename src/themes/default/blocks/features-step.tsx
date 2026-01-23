@@ -85,7 +85,7 @@ export function FeaturesStep({
 
       {showImageModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.9)] flex items-center justify-center"
           onClick={() => setShowImageModal(false)}
         >
           <button
@@ -100,7 +100,7 @@ export function FeaturesStep({
                 e.stopPropagation();
                 setImageScale(s => Math.max(0.5, s - 0.25));
               }}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
+              className="bg-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.3)] text-white px-4 py-2 rounded"
             >
               {t('zoom_out')}
             </button>
@@ -109,7 +109,7 @@ export function FeaturesStep({
                 e.stopPropagation();
                 setImageScale(1);
               }}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
+              className="bg-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.3)] text-white px-4 py-2 rounded"
             >
               {t('reset')}
             </button>
@@ -118,7 +118,7 @@ export function FeaturesStep({
                 e.stopPropagation();
                 setImageScale(s => Math.min(3, s + 0.25));
               }}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded"
+              className="bg-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.3)] text-white px-4 py-2 rounded"
             >
               {t('zoom_in')}
             </button>

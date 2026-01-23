@@ -182,7 +182,7 @@ export function SubtitleTrack({
 
             {/* 只显示时长，隐藏字幕文字 */}
             <div className="flex items-center justify-center">
-              <span className="text-white/90 text-xs font-medium">
+              <span className="text-[rgba(255,255,255,0.9)] text-xs font-medium">
                 {item.duration > 1 ? `${item.duration.toFixed(0)}s` : ''}
               </span>
             </div>

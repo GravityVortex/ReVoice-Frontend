@@ -185,7 +185,7 @@ export function Track({
             {/* 项目内容 */}
             <div className="flex-1 flex items-center justify-between min-w-0">
               <span className="text-white text-sm font-medium truncate">{item.name}</span>
-              <span className="text-white/70 text-xs ml-2 shrink-0">
+              <span className="text-[rgba(255,255,255,0.7)] text-xs ml-2 shrink-0">
                 {item.duration.toFixed(1)}s
               </span>
             </div>

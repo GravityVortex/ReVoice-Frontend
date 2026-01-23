@@ -78,7 +78,7 @@ export function VideoPlayerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.8)] backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -88,7 +88,7 @@ export function VideoPlayerModal({
         {/* 关闭按钮 */}
         <button
           onClick={onClose}
-          className="absolute -right-2 -top-12 flex size-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+          className="absolute -right-2 -top-12 flex size-10 items-center justify-center rounded-full bg-[rgba(255,255,255,0.1)] text-white backdrop-blur-sm transition-colors hover:bg-[rgba(255,255,255,0.2)]"
           aria-label="关闭"
         >
           <X className="size-6" />
