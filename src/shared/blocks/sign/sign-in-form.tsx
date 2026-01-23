@@ -6,20 +6,15 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
-import { Link, useRouter } from '@/core/i18n/navigation';
+import { Link } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { useAppContext } from '@/shared/contexts/app';
 
 import { SocialProviders } from './social-providers';
-// 客户端工具
-import { generateFingerprint, generateVisitorId, getVisitorInfo } from '@/shared/lib/fingerprint';
-// 服务端工具
-import { generateGuestId, generateGuestEmail, generateGuestPassword } from '@/shared/models/guest-user';
-import { cacheGet, cacheSet } from '@/shared/lib/cache';
+import { generateVisitorId, getVisitorInfo } from '@/shared/lib/fingerprint';
 
 export function SignInForm({
   callbackUrl = '/',
@@ -29,9 +24,8 @@ export function SignInForm({
   className?: string;
 }) {
   const t = useTranslations('common.sign');
-  const router = useRouter();
-  let [email, setEmail] = useState('');
-  let [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { configs } = useAppContext();
@@ -92,20 +86,6 @@ export function SignInForm({
       setLoading(false);
     }
   };
-  // 法二：调用better-auth的登录
-  const handleGuestLogin2 = async () => {
-    const fingerprint = await generateFingerprint();
-    const guestId = generateGuestId(fingerprint);
-    email = generateGuestEmail(guestId);
-    password = generateGuestPassword(guestId);
-    // const name = `Guest_${guestId.substring(0, 6)}`;
-    console.log('Guest login--->', { email, password });
-
-    // setEmail(email);
-    // setPassword(password);
-    handleSignIn();
-
-  };
   // 访客登录 - 使用稳定的跨浏览器访客 ID
   // 法一：调用自己后台接口处理
   const handleGuestLogin = async () => {
@@ -114,49 +94,32 @@ export function SignInForm({
     }
     try {
       setLoading(true);
-      let guestEmail = cacheGet('guest_email');
-      let guestPassword = cacheGet('guest_password');
-      console.log('Guest login--1--->', { guestEmail, guestPassword });
+      // 生成稳定的访客 ID（基于硬件指纹，跨浏览器一致）
+      const visitorId = await generateVisitorId();
+      const visitorInfo = await getVisitorInfo();
 
-      if (!guestEmail || !guestPassword) {
-        // 生成稳定的访客 ID（基于硬件指纹，跨浏览器一致）
-        const visitorId = await generateVisitorId();
-        const visitorInfo = await getVisitorInfo();
+      // 调用访客登录 API 获取/创建访客凭证
+      // 硬件指纹在同一台电脑的不同浏览器上是一致的
+      const response = await fetch('/api/auth/guest-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitorId,
+          fingerprint: visitorId, // backward compatibility
+          metadata: visitorInfo.metadata,
+        }),
+      });
 
-        console.log('Generated visitor ID (hardware-based):', visitorId);
-        console.log('Visitor components:', visitorInfo.metadata);
-
-        // 调用访客登录 API 获取/创建访客凭证
-        // 硬件指纹在同一台电脑的不同浏览器上是一致的
-        const response = await fetch('/api/auth/guest-login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            visitorId: visitorId,
-            fingerprint: visitorId, // 向后兼容
-            metadata: visitorInfo.metadata,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Guest login failed');
-        }
-
-        const result = await response.json();
-
-        if (result.code !== 0) {
-          throw new Error(result.message || 'Guest login failed');
-        }
-
-        const { email, password } = result.data;
-        guestEmail = email;
-        guestPassword = password;
-        cacheSet('guest_email', email);
-        cacheSet('guest_password', password);
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.message || 'Guest login failed');
+      }
+      if (!result || result.code !== 0) {
+        throw new Error(result?.message || 'Guest login failed');
       }
 
+      const guestEmail = result.data?.email;
+      const guestPassword = result.data?.password;
       if (!guestEmail || !guestPassword) {
         throw new Error('Failed to obtain guest credentials');
       }
@@ -265,23 +228,21 @@ export function SignInForm({
           setLoading={setLoading}
         />
 
-        {/* Guest Login Card */}
-        <Card 
-          className="cursor-pointer transition-colors hover:bg-accent/50 border-dashed"
+        {/* Guest Login Button */}
+        <Button
+          variant="outline"
+          className="h-auto w-full flex-col gap-1 py-4 hover:border-primary/50 hover:bg-accent/50"
           onClick={handleGuestLogin}
+          disabled={loading}
         >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <UserRound className="h-6 w-6 text-primary" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-base font-semibold">{t('guest_sign_in_title')}</span>
-                <span className="text-xs text-muted-foreground">{t('guest_sign_in_description')}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="flex items-center gap-2">
+            <UserRound className="h-4 w-4" />
+            <span className="font-medium">{t('guest_sign_in_title')}</span>
+          </div>
+          <span className="text-xs font-normal text-muted-foreground/80">
+            {t('guest_sign_in_description')}
+          </span>
+        </Button>
       </div>
       {isEmailAuthEnabled && (
         <div className="flex w-full justify-center border-t py-4">

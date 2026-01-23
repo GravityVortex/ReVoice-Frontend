@@ -140,7 +140,7 @@ export function Header({ header }: { header: HeaderType }) {
                       'flex flex-row items-center gap-2 text-sm text-foreground',
                       (item.is_active ||
                         pathname.endsWith(item.url as string)) &&
-                        'bg-muted/50'
+                      'bg-muted/50'
                     )}
                   >
                     {item.icon && <SmartIcon name={item.icon as string} />}
@@ -256,7 +256,7 @@ export function Header({ header }: { header: HeaderType }) {
       <header
         data-state={isMobileMenuOpen ? 'active' : 'inactive'}
         {...(isScrolled && { 'data-scrolled': true })}
-        className="fixed inset-x-0 top-0 z-50 h-[4.5rem] transition-all duration-300"
+        className="fixed inset-x-0 top-0 z-50 h-[4.5rem] transition-all duration-300 pr-[var(--removed-body-scroll-bar-size)]"
       >
         <div
           className={cn(
