@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
+import { stripLocalePrefix } from '@/core/i18n/href';
 import { Link, useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
@@ -15,6 +16,7 @@ import { useAppContext } from '@/shared/contexts/app';
 
 import { SocialProviders } from './social-providers';
 import { generateVisitorId, getVisitorInfo } from '@/shared/lib/fingerprint';
+import { GuestLoginToast } from '@/shared/components/guest-login-toast';
 
 export function SignInForm({
   callbackUrl = '/',
@@ -37,6 +39,8 @@ export function SignInForm({
   const isEmailAuthEnabled =
     configs.email_auth_enabled !== 'false' ||
     (!isGoogleAuthEnabled && !isGithubAuthEnabled); // no social providers enabled, auto enable email auth
+
+  const callbackHref = stripLocalePrefix(callbackUrl);
 
   if (callbackUrl) {
     const locale = useLocale();
@@ -122,10 +126,13 @@ export function SignInForm({
       // Guest login endpoint sets the auth cookie. Refetch session so UI updates immediately.
       void refreshSession();
 
-      toast.success('Guest login successful!');
+      toast.custom((t_id) => (
+        <GuestLoginToast t={t} onDismiss={() => toast.dismiss(t_id)} />
+      ));
+
       setLoading(false);
       setIsShowSignModal(false);
-      router.push(callbackUrl || '/');
+      router.push(callbackHref);
       router.refresh();
     } catch (e: any) {
       toast.error(e.message || 'Guest login failed');

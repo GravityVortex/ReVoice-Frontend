@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAppContext } from '@/shared/contexts/app';
 import { cn } from '@/shared/lib/utils';
 import { NavItem, UserNav } from '@/shared/types/blocks/common';
@@ -39,6 +40,19 @@ export function SignUser({
   const { isCheckSign, user, setIsShowSignModal } = useAppContext();
   const router = useRouter();
 
+  if (!user && isCheckSign) {
+    // Session is still loading; avoid flashing the signed-out UI.
+    return (
+      <>
+        <Skeleton
+          aria-hidden
+          className="h-10 w-10 rounded-full"
+        />
+        <SignModal />
+      </>
+    );
+  }
+
   return (
     <>
       {user ? (
@@ -51,7 +65,7 @@ export function SignUser({
               {/* 登录后的头像 */}
               <Avatar>
                 <AvatarImage src={user.image || ''} alt={user.name || ''} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{user.name?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -145,11 +159,10 @@ export function SignUser({
           <Button
             size={signButtonSize}
             className={cn(
-              'border-foreground/10 ml-4 cursor-pointer ring-0',
+              'border-foreground/10 cursor-pointer ring-0',
               isScrolled && 'lg:hidden'
             )}
             onClick={() => setIsShowSignModal(true)}
-            disabled={isCheckSign}
           >
             <span>{t('sign_in_title')}</span>
           </Button>

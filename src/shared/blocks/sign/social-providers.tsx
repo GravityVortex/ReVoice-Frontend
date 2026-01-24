@@ -5,6 +5,7 @@ import { RiGithubFill, RiGoogleFill } from 'react-icons/ri';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
+import { stripLocalePrefix } from '@/core/i18n/href';
 import { useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
@@ -27,6 +28,8 @@ export function SocialProviders({
   const router = useRouter();
 
   const { setIsShowSignModal } = useAppContext();
+
+  const callbackHref = stripLocalePrefix(callbackUrl);
 
   if (callbackUrl) {
     const locale = useLocale();
@@ -54,7 +57,7 @@ export function SocialProviders({
           setIsShowSignModal(false);
         },
         onSuccess: async (ctx) => {
-          router.push(callbackUrl);
+          router.push(callbackHref);
         },
         onError: (e: any) => {
           toast.error(e?.error?.message || 'sign in failed');

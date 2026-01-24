@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Globe, Languages } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 
 import { usePathname, useRouter } from '@/core/i18n/navigation';
-import { localeNames } from '@/config/locale';
+import { getLocaleDisplayName, localeNames, locales } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ export function LocaleSelector({
   const currentLocale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -33,9 +35,9 @@ export function LocaleSelector({
     if (value !== currentLocale) {
       // Update localStorage to sync with locale detector
       cacheSet('locale', value);
-      router.push(pathname, {
-        locale: value,
-      });
+      const search = searchParams.toString();
+      const href = search ? `${pathname}?${search}` : pathname;
+      router.push(href, { locale: value });
     }
   };
 
@@ -55,7 +57,7 @@ export function LocaleSelector({
         ) : (
           <>
             <Globe size={16} />
-            {localeNames[currentLocale]}
+            {localeNames[currentLocale] ?? currentLocale}
           </>
         )}
       </Button>
@@ -72,17 +74,17 @@ export function LocaleSelector({
         ) : (
           <Button variant="outline" size="sm" className="hover:bg-primary/10">
             <Globe size={16} />
-            {localeNames[currentLocale]}
+            {getLocaleDisplayName(currentLocale, currentLocale)}
           </Button>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {Object.keys(localeNames).map((locale) => (
+        {locales.map((locale) => (
           <DropdownMenuItem
             key={locale}
             onClick={() => handleSwitchLanguage(locale)}
           >
-            <span>{localeNames[locale]}</span>
+            <span>{getLocaleDisplayName(locale, currentLocale)}</span>
             {locale === currentLocale && (
               <Check size={16} className="text-primary" />
             )}

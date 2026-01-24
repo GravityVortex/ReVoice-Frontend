@@ -2,16 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { usePathname, useRouter } from '@/core/i18n/navigation';
-import { localeNames, locales } from '@/config/locale';
+import { getLocaleDisplayName, locales } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
 import { cacheGet, cacheSet } from '@/shared/lib/cache';
-import { getTimestamp } from '@/shared/lib/time';
 
-const DISMISSED_KEY = 'locale-suggestion-dismissed';
-const DISMISSED_EXPIRY_DAYS = 1; // Expiry in days
 const PREFERRED_LOCALE_KEY = 'locale';
 
 export function LocaleDetector() {
@@ -19,6 +17,7 @@ export function LocaleDetector() {
   const t = useTranslations('common.locale_detector');
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [showBanner, setShowBanner] = useState(false);
   const [browserLocale, setBrowserLocale] = useState<string | null>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -38,25 +37,15 @@ export function LocaleDetector() {
     return null;
   };
 
-  const isDismissed = (): boolean => {
-    const dismissedData = cacheGet(DISMISSED_KEY);
-    if (!dismissedData) return false;
-
-    return true;
-  };
-
-  const setDismissed = () => {
-    const expiresAt = getTimestamp() + DISMISSED_EXPIRY_DAYS * 24 * 60 * 60;
-    cacheSet(DISMISSED_KEY, 'true', expiresAt);
-  };
-
   const switchToLocale = useCallback(
     (locale: string) => {
-      router.replace(pathname, { locale });
+      const search = searchParams.toString();
+      const href = search ? `${pathname}?${search}` : pathname;
+      router.replace(href, { locale });
       cacheSet(PREFERRED_LOCALE_KEY, locale);
       setShowBanner(false);
     },
-    [router, pathname]
+    [router, pathname, searchParams]
   );
 
   useEffect(() => {
@@ -71,8 +60,7 @@ export function LocaleDetector() {
     const detectedLocale = detectBrowserLocale();
     setBrowserLocale(detectedLocale);
 
-    // Check if user has dismissed the banner or already set a preference
-    const dismissed = isDismissed();
+    // Check if user has already set a preference
     const preferredLocale = cacheGet(PREFERRED_LOCALE_KEY);
 
     // If user has previously clicked to switch locale, auto-switch to that preference
@@ -87,13 +75,11 @@ export function LocaleDetector() {
 
     // Show banner if:
     // 1. Browser locale is different from current locale
-    // 2. User hasn't dismissed the banner (or dismissal has expired)
-    // 3. Browser locale is supported
-    // 4. User hasn't set a preference yet (no auto-switch, only show banner)
+    // 2. Browser locale is supported
+    // 3. User hasn't set a preference yet (no auto-switch, only show banner)
     if (
       detectedLocale &&
       detectedLocale !== currentLocale &&
-      !dismissed &&
       !preferredLocale
     ) {
       setShowBanner(true);
@@ -161,39 +147,16 @@ export function LocaleDetector() {
   };
 
   const handleDismiss = () => {
-    setDismissed();
+    // User explicitly chose to stay on the current locale; persist it and don't nag again.
+    cacheSet(PREFERRED_LOCALE_KEY, currentLocale);
     setShowBanner(false);
-
-    // Reset header position
-    const header = document.querySelector('header');
-    if (header) {
-      header.style.top = '0px';
-    }
-
-    // Reset sidebar container
-    const sidebarContainer = document.querySelector(
-      '[data-slot="sidebar-container"]'
-    );
-    if (sidebarContainer) {
-      (sidebarContainer as HTMLElement).style.top = '0px';
-      (sidebarContainer as HTMLElement).style.height = '100vh';
-    }
-
-    // Reset sidebar wrapper padding
-    const sidebarWrapper = document.querySelector(
-      '[data-slot="sidebar-wrapper"]'
-    );
-    if (sidebarWrapper) {
-      (sidebarWrapper as HTMLElement).style.paddingTop = '0px';
-    }
   };
 
   if (!showBanner || !browserLocale) {
     return null;
   }
 
-  const targetLocaleName =
-    localeNames[browserLocale as keyof typeof localeNames] || browserLocale;
+  const targetLocaleName = getLocaleDisplayName(browserLocale, currentLocale);
 
   return (
     <div

@@ -119,13 +119,27 @@ export async function POST(req: Request) {
       asResponse: true,
     });
 
-    const setCookies =
-      typeof (signInResponse.headers as any).getSetCookie === 'function'
-        ? (signInResponse.headers as any).getSetCookie()
-        : (() => {
-            const cookie = signInResponse.headers.get('set-cookie');
-            return cookie ? [cookie] : [];
-          })();
+    // Forward all auth cookies (better-auth sets multiple Set-Cookie headers).
+    // Some runtimes don't expose Headers.getSetCookie(); iterating preserves duplicates.
+    const setCookies: string[] = (() => {
+      const headersAny = signInResponse.headers as any;
+      if (typeof headersAny.getSetCookie === 'function') {
+        return headersAny.getSetCookie();
+      }
+
+      const cookies: string[] = [];
+      for (const [key, value] of signInResponse.headers.entries()) {
+        if (key.toLowerCase() === 'set-cookie') {
+          cookies.push(value);
+        }
+      }
+      if (cookies.length > 0) {
+        return cookies;
+      }
+
+      const cookie = signInResponse.headers.get('set-cookie');
+      return cookie ? [cookie] : [];
+    })();
 
     if (!signInResponse.ok) {
       console.error('Guest sign-in failed:', signInResponse.status);

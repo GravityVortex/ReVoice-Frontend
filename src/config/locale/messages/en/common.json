@@ -23,6 +23,8 @@
     "github_sign_in_title": "Sign in with GitHub",
     "guest_sign_in_title": "Try as Guest",
     "guest_sign_in_description": "No registration required, valid for 7 days",
+    "guest_login_success_title": "Guest Login Successful",
+    "guest_login_success_desc": "You are now logged in as a guest. Enjoy your 7-day free trial!",
     "close_title": "Close",
     "cancel_title": "Cancel",
     "sign_out_title": "Sign Out",

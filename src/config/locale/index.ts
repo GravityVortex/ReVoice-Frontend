@@ -1,6 +1,6 @@
 import { envConfigs } from '..';
 
-export const localeNames: any = {
+export const localeNames: Record<string, string> = {
   en: 'English',
   zh: '中文',
 };
@@ -15,6 +15,23 @@ export const localePrefix = 'always';
 export const localeDetection = false;
 
 export const localeMessagesRootPath = '@/config/locale/messages';
+
+export function getLocaleDisplayName(locale: string, displayLocale: string): string {
+  // Keep locale names consistent with the current UI language when possible.
+  // Fallback to our static map and then to the raw locale code.
+  try {
+    const DisplayNames = (Intl as any)?.DisplayNames;
+    if (typeof DisplayNames === 'function') {
+      const dn = new DisplayNames([displayLocale], { type: 'language' });
+      const name = dn.of(locale);
+      if (typeof name === 'string' && name.trim()) return name;
+    }
+  } catch {
+    // Ignore and fallback.
+  }
+
+  return localeNames[locale] ?? locale;
+}
 
 export const localeMessagesPaths = [
   'common',

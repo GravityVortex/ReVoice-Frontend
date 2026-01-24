@@ -10,7 +10,6 @@ import {
 } from 'react';
 
 import { useSession } from '@/core/auth/client';
-import { envConfigs } from '@/config';
 import { User } from '@/shared/models/user';
 
 export interface ContextValue {
@@ -39,8 +38,24 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   // session
   const { data: session, isPending, refetch: refreshSession } = useSession();
 
-  // is check sign (true during SSR and initial render to avoid hydration mismatch when auth is enabled)
-  const [isCheckSign, setIsCheckSign] = useState(!!envConfigs.auth_secret);
+  // Avoid a one-render "signed out" flash when the session finishes loading.
+  // `user` is stored in state and updated in an effect, so it lags behind `session`.
+  const sessionUser = session?.user ? (session.user as User) : null;
+  let authedUser: User | null = null;
+  if (sessionUser) {
+    if (user && user.id === sessionUser.id) {
+      authedUser = user;
+    } else if (sessionUser.credits) {
+      authedUser = sessionUser;
+    } else {
+      // Preserve previously fetched credits if the session payload doesn't include them.
+      authedUser = { ...sessionUser, credits: user?.credits };
+    }
+  }
+
+  // Session is unknown while `useSession()` is pending. Treat this as a distinct state
+  // (don't show "Sign in" UI yet) to avoid flashing the wrong auth UI.
+  const isCheckSign = isPending;
 
   // show sign modal
   const [isShowSignModal, setIsShowSignModal] = useState(false);
@@ -159,26 +174,10 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  useEffect(() => {
-    // Don't let auth/session checks block UI indefinitely; if /api/auth/get-session is slow,
-    // fall back to "signed out" UI and let it update when the session request completes.
-    if (!isPending) {
-      setIsCheckSign(false);
-      return;
-    }
-
-    setIsCheckSign(true);
-    const timeoutId = setTimeout(() => {
-      setIsCheckSign(false);
-    }, 1500);
-
-    return () => clearTimeout(timeoutId);
-  }, [isPending]);
-
   return (
     <AppContext.Provider
       value={{
-        user,
+        user: authedUser,
         isCheckSign,
         isShowSignModal,
         setIsShowSignModal,
