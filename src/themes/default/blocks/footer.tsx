@@ -1,4 +1,6 @@
 // 网页底部链接组件
+import NextLink from 'next/link';
+
 import { Link } from '@/core/i18n/navigation';
 import type { NavItem } from '@/shared/types/blocks/common';
 import type { Footer as FooterType } from '@/shared/types/blocks/landing';
@@ -84,16 +86,40 @@ export function Footer({ footer }: { footer: FooterType }) {
           {/* 隐私政策 */}
           {footer.agreement ? (
             <div className="flex min-w-0 flex-wrap items-center gap-4">
-              {footer.agreement?.items.map((item: NavItem, index: number) => (
-                <Link
-                  key={index}
-                  href={item.url || ''}
-                  target={item.target || ''}
-                  className="text-muted-foreground hover:text-primary block text-xs break-words underline duration-150"
-                >
-                  {item.title || ''}
-                </Link>
-              ))}
+              {footer.agreement?.items.map((item: NavItem, index: number) => {
+                const href = item.url || '';
+                const target = item.target || undefined;
+                const rel = target === '_blank' ? 'noopener noreferrer' : undefined;
+
+                if (!href) return null;
+
+                // Agreement links are not localized. Avoid next-intl Link which would prefix `/{locale}`.
+                if (href.startsWith('/')) {
+                  return (
+                    <NextLink
+                      key={index}
+                      href={href}
+                      target={target}
+                      rel={rel}
+                      className="text-muted-foreground hover:text-primary block text-xs break-words underline duration-150"
+                    >
+                      {item.title || ''}
+                    </NextLink>
+                  );
+                }
+
+                return (
+                  <a
+                    key={index}
+                    href={href}
+                    target={target}
+                    rel={rel}
+                    className="text-muted-foreground hover:text-primary block text-xs break-words underline duration-150"
+                  >
+                    {item.title || ''}
+                  </a>
+                );
+              })}
             </div>
           ) : null}
 

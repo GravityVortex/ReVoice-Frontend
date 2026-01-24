@@ -570,11 +570,11 @@
       "items": [
         {
           "title": "Privacy Policy",
-          "url": "/privacy-policy"
+          "url": "/privacy"
         },
         {
           "title": "Terms of Service",
-          "url": "/terms-of-service"
+          "url": "/terms"
         }
       ]
     },

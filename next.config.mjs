@@ -32,6 +32,37 @@ const nextConfig = {
         destination: '/zh',
         permanent: false,
       },
+      // Legal pages (English only). Keep stable root URLs.
+      {
+        source: '/privacy-policy',
+        destination: '/privacy',
+        permanent: true,
+      },
+      {
+        source: '/terms-of-service',
+        destination: '/terms',
+        permanent: true,
+      },
+      {
+        source: '/:locale(en|zh)/privacy-policy',
+        destination: '/privacy',
+        permanent: true,
+      },
+      {
+        source: '/:locale(en|zh)/terms-of-service',
+        destination: '/terms',
+        permanent: true,
+      },
+      {
+        source: '/:locale(en|zh)/privacy',
+        destination: '/privacy',
+        permanent: true,
+      },
+      {
+        source: '/:locale(en|zh)/terms',
+        destination: '/terms',
+        permanent: true,
+      },
     ];
   },
   compiler: {
