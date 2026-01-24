@@ -44,7 +44,7 @@ export function getPaymentServiceWithConfigs(configs: Configs) {
   const defaultProvider = configs.default_payment_provider;
 
   // add stripe provider
-  if (configs.stripe_enabled === 'true') {
+  if (configs.stripe_enabled === 'true' || configs.stripe_publishable_key) {
     let allowedPaymentMethods = configs.stripe_payment_methods || [];
     if (typeof allowedPaymentMethods === 'string') {
       try {
@@ -79,7 +79,7 @@ export function getPaymentServiceWithConfigs(configs: Configs) {
   }
 
   // add paypal provider
-  if (configs.paypal_enabled === 'true') {
+  if (configs.paypal_enabled === 'true' || configs.paypal_client_id) {
     paymentManager.addProvider(
       new PayPalProvider({
         clientId: configs.paypal_client_id,
@@ -194,9 +194,9 @@ export async function handleCheckoutSuccess({
       const expiresAt =
         credits > 0
           ? calculateCreditExpirationTime({
-              creditsValidDays: order.creditsValidDays || 0,
-              currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
-            })
+            creditsValidDays: order.creditsValidDays || 0,
+            currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
+          })
           : null;
 
       newCredit = {
@@ -331,9 +331,9 @@ export async function handlePaymentSuccess({
       const expiresAt =
         credits > 0
           ? calculateCreditExpirationTime({
-              creditsValidDays: order.creditsValidDays || 0,
-              currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
-            })
+            creditsValidDays: order.creditsValidDays || 0,
+            currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
+          })
           : null;
 
       newCredit = {
@@ -453,9 +453,9 @@ export async function handleSubscriptionRenewal({
       const expiresAt =
         credits > 0
           ? calculateCreditExpirationTime({
-              creditsValidDays: order.creditsValidDays || 0,
-              currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
-            })
+            creditsValidDays: order.creditsValidDays || 0,
+            currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
+          })
           : null;
 
       newCredit = {

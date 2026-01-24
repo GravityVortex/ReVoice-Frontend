@@ -144,17 +144,17 @@ export function Pricing({
 
         const displayedItem = currencyData
           ? {
-              ...item,
-              currency: currencyData.currency,
-              amount: currencyData.amount,
-              price: currencyData.price,
-              original_price: currencyData.original_price,
-              // Override with currency-specific payment settings if available
-              payment_product_id:
-                currencyData.payment_product_id || item.payment_product_id,
-              payment_providers:
-                currencyData.payment_providers || item.payment_providers,
-            }
+            ...item,
+            currency: currencyData.currency,
+            amount: currencyData.amount,
+            price: currencyData.price,
+            original_price: currencyData.original_price,
+            // Override with currency-specific payment settings if available
+            payment_product_id:
+              currencyData.payment_product_id || item.payment_product_id,
+            payment_providers:
+              currencyData.payment_providers || item.payment_providers,
+          }
           : item;
 
         initialCurrencyStates[item.product_id] = {
@@ -201,6 +201,42 @@ export function Pricing({
     }
   };
 
+  // Payment provider state management
+  const [paymentProvider, setPaymentProvider] = useState<string>('');
+
+  useEffect(() => {
+    // Prefer the configured default provider, but only if it's enabled.
+    const configuredDefault = configs.default_payment_provider;
+
+    if (configuredDefault === 'stripe' && configs.stripe_enabled === 'true') {
+      setPaymentProvider('stripe');
+      return;
+    }
+    if (configuredDefault === 'paypal' && configs.paypal_enabled === 'true') {
+      setPaymentProvider('paypal');
+      return;
+    }
+    if (configuredDefault === 'creem' && configs.creem_enabled === 'true') {
+      setPaymentProvider('creem');
+      return;
+    }
+
+    if (configs.stripe_enabled === 'true') {
+      setPaymentProvider('stripe');
+    } else if (configs.paypal_enabled === 'true') {
+      setPaymentProvider('paypal');
+    } else if (configs.creem_enabled === 'true') {
+      setPaymentProvider('creem');
+    } else {
+      setPaymentProvider('');
+    }
+  }, [
+    configs.default_payment_provider,
+    configs.stripe_enabled,
+    configs.paypal_enabled,
+    configs.creem_enabled,
+  ]);
+
   const handlePayment = async (item: PricingItem) => {
     if (!user) {
       setIsShowSignModal(true);
@@ -211,11 +247,12 @@ export function Pricing({
     const displayedItem =
       itemCurrencies[item.product_id]?.displayedItem || item;
 
-    if (configs.select_payment_enabled === 'true') {
+    if (configs.select_payment_enabled === 'true' && !paymentProvider) {
+      // Fallback to modal if for some reason no provider is selected
       setPricingItem(displayedItem);
       setIsShowPaymentModal(true);
     } else {
-      handleCheckout(displayedItem, configs.default_payment_provider);
+      handleCheckout(displayedItem, paymentProvider || configs.default_payment_provider);
     }
   };
 
@@ -335,6 +372,12 @@ export function Pricing({
           ? 'md:grid-cols-3'
           : 'md:grid-cols-4';
 
+
+  const showPaymentSelection =
+    configs.select_payment_enabled === 'true' &&
+    configs.paypal_enabled === 'true' &&
+    configs.stripe_enabled === 'true';
+
   return (
     <section
       id={pricing.id}
@@ -354,7 +397,7 @@ export function Pricing({
 
       <div className="container">
         {pricing.groups && pricing.groups.length > 0 && (
-          <div className="mx-auto mt-8 mb-16 flex w-full justify-center md:max-w-lg">
+          <div className="mx-auto mt-8 mb-8 flex w-full justify-center md:max-w-lg">
             <Tabs value={group} onValueChange={setGroup} className="">
               <TabsList>
                 {pricing.groups.map((item, i) => {
@@ -369,6 +412,39 @@ export function Pricing({
                 })}
               </TabsList>
             </Tabs>
+          </div>
+        )}
+
+        {/* Global Payment Method Selector */}
+        {showPaymentSelection && (
+          <div className="mb-12 flex justify-center">
+            <div className="inline-flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 p-1.5 backdrop-blur-md">
+              <button
+                onClick={() => setPaymentProvider('stripe')}
+                className={cn(
+                  "flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
+                  paymentProvider === 'stripe'
+                    ? "bg-white text-black shadow-lg shadow-white/10 ring-1 ring-white/20"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <img src="/imgs/icons/stripe.png" alt="Stripe" className="h-5 w-auto object-contain opacity-90" />
+                <span>Card / Stripe</span>
+              </button>
+              <div className="mx-1 h-6 w-px bg-white/10" />
+              <button
+                onClick={() => setPaymentProvider('paypal')}
+                className={cn(
+                  "flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
+                  paymentProvider === 'paypal'
+                    ? "bg-[#003087] text-white shadow-lg shadow-[#003087]/20 ring-1 ring-[#003087]/30"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <img src="/imgs/icons/paypal.svg" alt="PayPal" className="h-5 w-auto object-contain brightness-0 invert" />
+                <span>PayPal</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -391,14 +467,14 @@ export function Pricing({
             const currencies = getCurrenciesFromItem(item);
 
             return (
-              <Card key={item.product_id || idx} className="relative">
+              <Card key={item.product_id || idx} className="relative flex flex-col h-full">
                 {item.label && (
                   <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-linear-to-br/increasing from-purple-400 to-amber-300 px-3 py-1 text-xs font-medium text-amber-950 ring-1 ring-[rgba(255,255,255,0.2)] ring-offset-1 ring-offset-gray-950/5 ring-inset">
                     {item.label}
                   </span>
                 )}
 
-                <CardHeader>
+                <CardHeader className="flex-none">
                   <CardTitle className="font-medium">
                     <h3 className="text-sm font-medium">{item.title}</h3>
                   </CardTitle>
@@ -493,14 +569,17 @@ export function Pricing({
                               className="size-4"
                             />
                           )}
-                          <span className="block">{item.button?.title}</span>
+                          <span className="block">
+                            {/* Show appropriate text based on payment provider if selected */}
+                            {paymentProvider === 'paypal' ? 'Pay with PayPal' : item.button?.title}
+                          </span>
                         </>
                       )}
                     </Button>
                   )}
                 </CardHeader>
 
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1">
                   <hr className="border-dashed" />
 
                   {item.features_title && (
