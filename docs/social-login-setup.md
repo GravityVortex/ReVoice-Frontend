@@ -2,19 +2,21 @@
 
 本项目使用 **better-auth** 做第三方登录。切换域名（比如换了新的 Vercel 域名/自定义域名）后登录失效，最常见原因是 **OAuth 回调地址（redirect URI / callback URL）不匹配**，以及 **应用自身的 base URL 环境变量没同步更新**。
 
+生产域名（当前）：`https://www.souldub.ai`（如果你实际使用的是 `https://souldub.ai`，下面所有 URL 里的域名要保持一致替换）
+
 ## 1) 本项目实际用到的回调地址
 
 代码入口是 Next.js 的 catch-all 路由：`src/app/api/auth/[...all]/route.ts`，better-auth 默认 `basePath` 是 `/api/auth`，OAuth 回调端点是 `/callback/:id`（其中 `:id` 是 `google` / `github`）。
 
-因此生产环境需要在第三方控制台配置的回调地址是：
-
-- Google：`https://<YOUR_DOMAIN>/api/auth/callback/google`
-- GitHub：`https://<YOUR_DOMAIN>/api/auth/callback/github`
-
-例如（SoulDub.ai 生产域名）：
+因此生产环境需要在第三方控制台配置的回调地址是（SoulDub.ai）：
 
 - Google：`https://www.souldub.ai/api/auth/callback/google`
 - GitHub：`https://www.souldub.ai/api/auth/callback/github`
+
+如果你使用 apex 域名（不带 www），则是：
+
+- Google：`https://souldub.ai/api/auth/callback/google`
+- GitHub：`https://souldub.ai/api/auth/callback/github`
 
 本地开发（可选）：
 
@@ -34,8 +36,8 @@
 
 在 Vercel 的 Project Settings → Environment Variables（至少 Production 环境）设置：
 
-- `NEXT_PUBLIC_APP_URL=https://<YOUR_DOMAIN>`
-- `AUTH_URL=https://<YOUR_DOMAIN>`
+- `NEXT_PUBLIC_APP_URL=https://www.souldub.ai`
+- `AUTH_URL=https://www.souldub.ai`
 - `AUTH_SECRET=<RANDOM_BASE64_32_BYTES>`
 
 要求：
@@ -58,8 +60,8 @@ openssl rand -base64 32
 
 1. 使用管理员账号登录
 1. 打开（任选一个 locale 前缀）：
-   - `/en/admin/settings/auth`
-   - `/zh/admin/settings/auth`
+   - `https://www.souldub.ai/en/admin/settings/auth`
+   - `https://www.souldub.ai/zh/admin/settings/auth`
 1. 填入并保存：
    - Google：`google_client_id`, `google_client_secret`
    - GitHub：`github_client_id`, `github_client_secret`
@@ -98,10 +100,10 @@ on conflict (name) do update set value = excluded.value;
 1. Credentials → Create Credentials → OAuth client ID
    - Application type：**Web application**
    - Authorized JavaScript origins：
-     - `https://<YOUR_DOMAIN>`
+     - `https://www.souldub.ai`
      - （可选）`http://localhost:3000`
    - Authorized redirect URIs：
-     - `https://<YOUR_DOMAIN>/api/auth/callback/google`
+     - `https://www.souldub.ai/api/auth/callback/google`
      - （可选）`http://localhost:3000/api/auth/callback/google`
 1. 创建完成后复制：
    - Client ID → 写到 `google_client_id`
@@ -117,8 +119,8 @@ on conflict (name) do update set value = excluded.value;
 
 1. New OAuth App
    - Application name：随意（例如 `SoulDub.ai`）
-   - Homepage URL：`https://<YOUR_DOMAIN>`
-   - Authorization callback URL：`https://<YOUR_DOMAIN>/api/auth/callback/github`
+   - Homepage URL：`https://www.souldub.ai`
+   - Authorization callback URL：`https://www.souldub.ai/api/auth/callback/github`
 1. 创建完成后：
    - Client ID → 写到 `github_client_id`
    - Generate a new client secret → 写到 `github_client_secret`
