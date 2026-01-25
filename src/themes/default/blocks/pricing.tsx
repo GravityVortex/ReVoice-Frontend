@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Lightbulb, Loader2, SendHorizonal, Zap } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 
 import { SmartIcon } from '@/shared/blocks/common';
-import { PaymentModal } from '@/shared/blocks/payment/payment-modal';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -34,6 +34,14 @@ import {
   PricingItem,
   Pricing as PricingType,
 } from '@/shared/types/blocks/pricing';
+
+const PaymentModal = dynamic(
+  () =>
+    import('@/shared/blocks/payment/payment-modal').then(
+      (mod) => mod.PaymentModal
+    ),
+  { ssr: false, loading: () => null }
+);
 
 // Helper function to get all available currencies from a pricing item
 function getCurrenciesFromItem(item: PricingItem | null): PricingCurrency[] {
@@ -643,13 +651,15 @@ export function Pricing({
         </div>
       </div>
 
-      <PaymentModal
-        isLoading={isLoading}
-        pricingItem={pricingItem}
-        onCheckout={(item, paymentProvider) =>
-          handleCheckout(item, paymentProvider)
-        }
-      />
+      {configs.select_payment_enabled === 'true' && isShowPaymentModal ? (
+        <PaymentModal
+          isLoading={isLoading}
+          pricingItem={pricingItem}
+          onCheckout={(item, paymentProvider) =>
+            handleCheckout(item, paymentProvider)
+          }
+        />
+      ) : null}
     </section>
   );
 }

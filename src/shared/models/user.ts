@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { getSessionCookie } from 'better-auth/cookies';
 import { count, desc, eq, inArray } from 'drizzle-orm';
 
 import { getAuth } from '@/core/auth';
@@ -112,9 +113,16 @@ export async function getUserCredits(userId: string) {
 
 export async function getSignUser() {
   try {
+    const reqHeaders = await headers();
+
+    // Fast-path: avoid initializing auth / hitting storage when no session cookie exists.
+    if (!getSessionCookie(reqHeaders)) {
+      return undefined;
+    }
+
     const auth = await getAuth();
     const session = await auth.api.getSession({
-      headers: await headers(),
+      headers: reqHeaders,
     });
 
     return session?.user;

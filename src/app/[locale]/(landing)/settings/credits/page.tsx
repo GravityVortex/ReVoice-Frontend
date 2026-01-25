@@ -24,26 +24,34 @@ export default async function CreditsPage({
   const page = pageNum || 1;
   const limit = pageSize || 20;
 
-  const user = await getUserInfo();
+  const userPromise = getUserInfo();
+  const translationsPromise = getTranslations('settings.credits');
+
+  const user = await userPromise;
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await getTranslations('settings.credits');
+  const t = await translationsPromise;
 
-  const total = await getCreditsCount({
-    transactionType: type as CreditTransactionType,
-    userId: user.id,
-    status: stu as CreditStatus || CreditStatus.ACTIVE,
-  });
+  const statusFilter = (stu as CreditStatus) || CreditStatus.ACTIVE;
+  const transactionType = type as CreditTransactionType;
 
-  const credits = await getCredits({
-    userId: user.id,
-    status: stu as CreditStatus || CreditStatus.ACTIVE,
-    transactionType: type as CreditTransactionType,
-    page,
-    limit,
-  });
+  const [total, credits, remainingCredits] = await Promise.all([
+    getCreditsCount({
+      transactionType,
+      userId: user.id,
+      status: statusFilter,
+    }),
+    getCredits({
+      userId: user.id,
+      status: statusFilter,
+      transactionType,
+      page,
+      limit,
+    }),
+    getRemainingCredits(user.id),
+  ]);
 
   const table: Table = {
     title: t('list.title'),
@@ -104,8 +112,6 @@ export default async function CreditsPage({
       limit,
     },
   };
-
-  const remainingCredits = await getRemainingCredits(user.id);
 
   const tabs: Tab[] = [
     {

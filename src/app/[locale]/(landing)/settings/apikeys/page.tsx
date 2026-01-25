@@ -21,24 +21,28 @@ export default async function ApiKeysPage({
   const page = pageNum || 1;
   const limit = pageSize || 20;
 
-  const user = await getUserInfo();
+  const userPromise = getUserInfo();
+  const translationsPromise = getTranslations('settings.apikeys');
+
+  const user = await userPromise;
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await getTranslations('settings.apikeys');
+  const t = await translationsPromise;
 
-  const total = await getApikeysCount({
-    userId: user.id,
-    status: ApikeyStatus.ACTIVE,
-  });
-
-  const apikeys = await getApikeys({
-    userId: user.id,
-    status: ApikeyStatus.ACTIVE,
-    page,
-    limit,
-  });
+  const [total, apikeys] = await Promise.all([
+    getApikeysCount({
+      userId: user.id,
+      status: ApikeyStatus.ACTIVE,
+    }),
+    getApikeys({
+      userId: user.id,
+      status: ApikeyStatus.ACTIVE,
+      page,
+      limit,
+    }),
+  ]);
 
   const table: Table = {
     title: t('list.title'),

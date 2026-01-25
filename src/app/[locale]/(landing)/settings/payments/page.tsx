@@ -22,26 +22,30 @@ export default async function PaymentsPage({
   const page = pageNum || 1;
   const limit = pageSize || 20;
 
-  const user = await getUserInfo();
+  const userPromise = getUserInfo();
+  const translationsPromise = getTranslations('settings.payments');
+
+  const user = await userPromise;
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await getTranslations('settings.payments');
+  const t = await translationsPromise;
 
-  const total = await getOrdersCount({
-    paymentType: type as PaymentType,
-    userId: user.id,
-    status: OrderStatus.PAID,
-  });
-
-  const orders = await getOrders({
-    paymentType: type as PaymentType,
-    userId: user.id,
-    status: OrderStatus.PAID,
-    page,
-    limit,
-  });
+  const [total, orders] = await Promise.all([
+    getOrdersCount({
+      paymentType: type as PaymentType,
+      userId: user.id,
+      status: OrderStatus.PAID,
+    }),
+    getOrders({
+      paymentType: type as PaymentType,
+      userId: user.id,
+      status: OrderStatus.PAID,
+      page,
+      limit,
+    }),
+  ]);
 
   const table: Table = {
     title: t('list.title'),

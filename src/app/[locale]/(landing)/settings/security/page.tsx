@@ -7,12 +7,15 @@ import { Button as ButtonType } from '@/shared/types/blocks/common';
 import { Form as FormType } from '@/shared/types/blocks/form';
 
 export default async function SecurityPage() {
-  const user = await getUserInfo();
+  const userPromise = getUserInfo();
+  const translationsPromise = getTranslations('settings.security');
+
+  const user = await userPromise;
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await getTranslations('settings.security');
+  const t = await translationsPromise;
 
   const form: FormType = {
     fields: [

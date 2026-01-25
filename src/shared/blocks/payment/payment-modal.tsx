@@ -57,7 +57,6 @@ export function PaymentModal({
             callbackUrl={callbackURL}
             configs={configs}
             loading={isLoading}
-            setLoading={() => {}}
             pricingItem={pricingItem}
             onCheckout={onCheckout}
           />
@@ -79,7 +78,6 @@ export function PaymentModal({
           callbackUrl={callbackURL}
           configs={configs}
           loading={isLoading}
-          setLoading={() => {}}
           pricingItem={pricingItem}
           onCheckout={onCheckout}
           className="px-4"

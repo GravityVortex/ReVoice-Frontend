@@ -23,24 +23,27 @@ export default async function PricingPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  // load landing data
-  const tl = await getTranslations('landing');
-  // loading pricing data
-  const t = await getTranslations('pricing');
+  const landingTranslationsPromise = getTranslations('landing');
+  const pricingTranslationsPromise = getTranslations('pricing');
+  const pagePromise = getThemePage('pricing');
 
-  // get current subscription
-  let currentSubscription;
-  try {
-    const user = await getUserInfo();
-    if (user) {
-      currentSubscription = await getCurrentSubscription(user.id);
+  const currentSubscriptionPromise = (async () => {
+    try {
+      const user = await getUserInfo();
+      if (!user) return undefined;
+      return await getCurrentSubscription(user.id);
+    } catch (error) {
+      console.log('getting current subscription failed:', error);
+      return undefined;
     }
-  } catch (error) {
-    console.log('getting current subscription failed:', error);
-  }
+  })();
 
-  // load page component
-  const Page = await getThemePage('pricing');
+  const [tl, t, Page, currentSubscription] = await Promise.all([
+    landingTranslationsPromise,
+    pricingTranslationsPromise,
+    pagePromise,
+    currentSubscriptionPromise,
+  ]);
 
   // build sections
   const pricing: PricingType = t.raw('pricing');

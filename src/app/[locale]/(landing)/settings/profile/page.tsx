@@ -5,13 +5,16 @@ import { Empty } from '@/shared/blocks/common';
 import { ProfileClient } from './profile-client';
 
 export default async function ProfilePage() {
-  const user = await getUserInfo();
+  const userPromise = getUserInfo();
+  const translationsPromise = getTranslations('settings.profile');
+
+  const user = await userPromise;
   
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await getTranslations('settings.profile');
+  const t = await translationsPromise;
 
   // 准备翻译文本
   const translations = {

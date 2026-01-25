@@ -3,15 +3,11 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Loader2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { RiGithubFill, RiGoogleFill } from 'react-icons/ri';
+import { useLocale } from 'next-intl';
 import { toast } from 'sonner';
 
-import { signIn } from '@/core/auth/client';
-import { useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
-import { useAppContext } from '@/shared/contexts/app';
 import { cn } from '@/shared/lib/utils';
 import { Button as ButtonType } from '@/shared/types/blocks/common';
 import { PricingItem } from '@/shared/types/blocks/pricing';
@@ -20,7 +16,6 @@ export function PaymentProviders({
   configs,
   callbackUrl,
   loading,
-  setLoading,
   pricingItem,
   onCheckout,
   className,
@@ -28,16 +23,10 @@ export function PaymentProviders({
   configs: Record<string, string>;
   callbackUrl: string;
   loading: boolean;
-  setLoading: (loading: boolean) => void;
   pricingItem: PricingItem | null;
   onCheckout: (item: PricingItem, paymentProvider?: string) => void;
   className?: string;
 }) {
-  const t = useTranslations('common.payment');
-  const router = useRouter();
-
-  const { setIsShowPaymentModal } = useAppContext();
-
   const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
 
   if (callbackUrl) {

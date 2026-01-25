@@ -25,26 +25,29 @@ export default async function BillingPage({
   const page = pageNum || 1;
   const limit = pageSize || 20;
 
-  const user = await getUserInfo();
+  const userPromise = getUserInfo();
+  const translationsPromise = getTranslations('settings.billing');
+
+  const user = await userPromise;
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await getTranslations('settings.billing');
+  const t = await translationsPromise;
 
-  const currentSubscription = await getCurrentSubscription(user.id);
-
-  const total = await getSubscriptionsCount({
-    userId: user.id,
-    status,
-  });
-
-  const subscriptions = await getSubscriptions({
-    userId: user.id,
-    status,
-    page,
-    limit,
-  });
+  const [currentSubscription, total, subscriptions] = await Promise.all([
+    getCurrentSubscription(user.id),
+    getSubscriptionsCount({
+      userId: user.id,
+      status,
+    }),
+    getSubscriptions({
+      userId: user.id,
+      status,
+      page,
+      limit,
+    }),
+  ]);
 
   const table: Table = {
     title: t('list.title'),

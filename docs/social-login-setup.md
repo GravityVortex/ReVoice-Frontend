@@ -29,7 +29,7 @@
 
 第三方登录强依赖域名稳定性：
 
-- 生产：建议使用稳定的自定义域名（例如 `https://souldub.ai`）
+- 生产：建议使用稳定的自定义域名（例如 `https://www.souldub.ai`）
 - Vercel Preview：域名会变（`*.vercel.app`），GitHub 无法为每个 Preview 都配回调地址，所以 **Preview 上 GitHub 登录通常不可用**
 
 ## 3) Vercel 环境变量（必须）
