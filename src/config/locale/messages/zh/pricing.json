@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "title": "价格",
+    "title": "SoulDub AI 视频翻译 原声翻译 | 价格",
     "description": "选择方案，立即开始"
   },
   "pricing": {
@@ -365,6 +365,7 @@
   },
   "page": {
     "current_plan": "当前方案",
-    "processing": "处理中"
+    "processing": "处理中",
+    "pay_with_paypal": "使用 PayPal 支付"
   }
 }

@@ -571,7 +571,9 @@ export function Pricing({
                           )}
                           <span className="block">
                             {/* Show appropriate text based on payment provider if selected */}
-                            {paymentProvider === 'paypal' ? 'Pay with PayPal' : item.button?.title}
+                            {paymentProvider === 'paypal'
+                              ? t('pay_with_paypal')
+                              : item.button?.title}
                           </span>
                         </>
                       )}

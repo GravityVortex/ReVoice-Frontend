@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "title": "Pricing",
+    "title": "SoulDub AI Video Translator - Native Voice Translation | Pricing",
     "description": "Start with a plan"
   },
   "pricing": {
@@ -365,6 +365,7 @@
   },
   "page": {
     "current_plan": "Current Plan",
-    "processing": "Processing"
+    "processing": "Processing",
+    "pay_with_paypal": "Pay with PayPal"
   }
 }
