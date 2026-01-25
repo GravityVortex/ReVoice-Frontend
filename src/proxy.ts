@@ -55,5 +55,7 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/((?!api|trpc|_next|_vercel|privacy|terms|.*\\..*).*)',
+  // Keep non-i18n root pages stable (no /en or /zh prefix).
+  matcher:
+    '/((?!api|trpc|_next|_vercel|privacy|terms|privacy-policy|terms-of-service|.*\\..*).*)',
 };

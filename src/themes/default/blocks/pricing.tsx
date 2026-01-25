@@ -440,7 +440,7 @@ export function Pricing({
                     : "text-muted-foreground hover:bg-white/5 hover:text-white"
                 )}
               >
-                <img src="/imgs/icons/stripe.png" alt="Stripe" className="h-5 w-auto object-contain opacity-90" />
+                <img src="/imgs/icons/stripe.svg" alt="Stripe" className="h-5 w-auto object-contain rounded-md" />
                 <span>Card / Stripe</span>
               </button>
               <div className="mx-1 h-6 w-px bg-white/10" />
@@ -449,11 +449,11 @@ export function Pricing({
                 className={cn(
                   "flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
                   paymentProvider === 'paypal'
-                    ? "bg-[#003087] text-white shadow-lg shadow-[#003087]/20 ring-1 ring-[#003087]/30"
+                    ? "bg-white text-black shadow-lg shadow-[#003087]/20 ring-1 ring-[#003087]/30"
                     : "text-muted-foreground hover:bg-white/5 hover:text-white"
                 )}
               >
-                <img src="/imgs/icons/paypal.svg" alt="PayPal" className="h-5 w-auto object-contain brightness-0 invert" />
+                <img src="/imgs/icons/paypal.svg" alt="PayPal" className="h-5 w-auto object-contain" />
                 <span>PayPal</span>
               </button>
             </div>

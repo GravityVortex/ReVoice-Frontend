@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { requireAdminAccess } from '@/core/rbac/permission';
-import { LocaleDetector } from '@/shared/blocks/common';
 import { DashboardLayout } from '@/shared/blocks/dashboard/layout';
 import { Sidebar as SidebarType } from '@/shared/types/blocks/dashboard';
 
@@ -31,8 +30,6 @@ export default async function TestLayout({
   return (
     // 左侧菜单导航栏，右侧内容布局
     <DashboardLayout sidebar={sidebar}>
-      {/* 语言检测，不匹配提示用户切换 */}
-      <LocaleDetector />
       {children}
     </DashboardLayout>
   );

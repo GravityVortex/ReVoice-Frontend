@@ -4,7 +4,6 @@ export * from './pagination';
 
 export * from './brand-logo';
 
-export * from './locale-detector';
 export * from './locale-selector';
 
 export * from './theme-toggler';

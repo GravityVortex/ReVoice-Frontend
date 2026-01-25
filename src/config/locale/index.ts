@@ -1,5 +1,3 @@
-import { envConfigs } from '..';
-
 export const localeNames: Record<string, string> = {
   en: 'English',
   zh: '中文',
@@ -7,12 +5,14 @@ export const localeNames: Record<string, string> = {
 
 export const locales = ['en', 'zh'];
 
-export const defaultLocale = envConfigs.locale;
+// Fallback locale when we can't infer a better match.
+export const defaultLocale = 'en';
 
 // All routes are under `src/app/[locale]/...`, so locale must always be prefixed.
 export const localePrefix = 'always';
 
-export const localeDetection = false;
+// Enable server-side locale detection (cookie + Accept-Language) via middleware.
+export const localeDetection = true;
 
 export const localeMessagesRootPath = '@/config/locale/messages';
 

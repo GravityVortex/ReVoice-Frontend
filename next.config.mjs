@@ -27,11 +27,6 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      {
-        source: '/',
-        destination: '/zh',
-        permanent: false,
-      },
       // Legal pages (English only). Keep stable root URLs.
       {
         source: '/privacy-policy',
