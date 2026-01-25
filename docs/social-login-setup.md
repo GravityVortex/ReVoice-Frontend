@@ -2,7 +2,7 @@
 
 本项目使用 **better-auth** 做第三方登录。切换域名（比如换了新的 Vercel 域名/自定义域名）后登录失效，最常见原因是 **OAuth 回调地址（redirect URI / callback URL）不匹配**，以及 **应用自身的 base URL 环境变量没同步更新**。
 
-生产域名（当前）：`https://www.souldub.ai`（如果你实际使用的是 `https://souldub.ai`，下面所有 URL 里的域名要保持一致替换）
+生产域名（当前）：`https://souldub.ai`（如果你实际使用的是 `https://www.souldub.ai`，下面所有 URL 里的域名要保持一致替换）
 
 ## 1) 本项目实际用到的回调地址
 
@@ -10,13 +10,13 @@
 
 因此生产环境需要在第三方控制台配置的回调地址是（SoulDub.ai）：
 
-- Google：`https://www.souldub.ai/api/auth/callback/google`
-- GitHub：`https://www.souldub.ai/api/auth/callback/github`
-
-如果你使用 apex 域名（不带 www），则是：
-
 - Google：`https://souldub.ai/api/auth/callback/google`
 - GitHub：`https://souldub.ai/api/auth/callback/github`
+
+如果你使用 `www` 子域名，则是：
+
+- Google：`https://www.souldub.ai/api/auth/callback/google`
+- GitHub：`https://www.souldub.ai/api/auth/callback/github`
 
 本地开发（可选）：
 
@@ -29,21 +29,21 @@
 
 第三方登录强依赖域名稳定性：
 
-- 生产：建议使用稳定的自定义域名（例如 `https://www.souldub.ai`）
+- 生产：建议使用稳定的自定义域名（例如 `https://souldub.ai`）
 - Vercel Preview：域名会变（`*.vercel.app`），GitHub 无法为每个 Preview 都配回调地址，所以 **Preview 上 GitHub 登录通常不可用**
 
 ## 3) Vercel 环境变量（必须）
 
 在 Vercel 的 Project Settings → Environment Variables（至少 Production 环境）设置：
 
-- `NEXT_PUBLIC_APP_URL=https://www.souldub.ai`
-- `AUTH_URL=https://www.souldub.ai`
+- `NEXT_PUBLIC_APP_URL=https://souldub.ai`
+- `AUTH_URL=https://souldub.ai`
 - `AUTH_SECRET=<RANDOM_BASE64_32_BYTES>`
 
 要求：
 
 - 必须带协议 `https://`
-- 不要写 path（例如不要写成 `https://www.souldub.ai/api/auth`）
+- 不要写 path（例如不要写成 `https://souldub.ai/api/auth`）
 - `www`/非 `www` 要和你在控制台配置的域名保持一致
 
 生成 `AUTH_SECRET` 示例：
@@ -60,8 +60,8 @@ openssl rand -base64 32
 
 1. 使用管理员账号登录
 1. 打开（任选一个 locale 前缀）：
-   - `https://www.souldub.ai/en/admin/settings/auth`
-   - `https://www.souldub.ai/zh/admin/settings/auth`
+   - `https://souldub.ai/en/admin/settings/auth`
+   - `https://souldub.ai/zh/admin/settings/auth`
 1. 填入并保存：
    - Google：`google_client_id`, `google_client_secret`
    - GitHub：`github_client_id`, `github_client_secret`
@@ -100,10 +100,10 @@ on conflict (name) do update set value = excluded.value;
 1. Credentials → Create Credentials → OAuth client ID
    - Application type：**Web application**
    - Authorized JavaScript origins：
-     - `https://www.souldub.ai`
+     - `https://souldub.ai`
      - （可选）`http://localhost:3000`
    - Authorized redirect URIs：
-     - `https://www.souldub.ai/api/auth/callback/google`
+     - `https://souldub.ai/api/auth/callback/google`
      - （可选）`http://localhost:3000/api/auth/callback/google`
 1. 创建完成后复制：
    - Client ID → 写到 `google_client_id`
@@ -119,8 +119,8 @@ on conflict (name) do update set value = excluded.value;
 
 1. New OAuth App
    - Application name：随意（例如 `SoulDub.ai`）
-   - Homepage URL：`https://www.souldub.ai`
-   - Authorization callback URL：`https://www.souldub.ai/api/auth/callback/github`
+   - Homepage URL：`https://souldub.ai`
+   - Authorization callback URL：`https://souldub.ai/api/auth/callback/github`
 1. 创建完成后：
    - Client ID → 写到 `github_client_id`
    - Generate a new client secret → 写到 `github_client_secret`
@@ -139,7 +139,7 @@ on conflict (name) do update set value = excluded.value;
 
 常见错误：
 
-- Google `redirect_uri_mismatch`：控制台里没加 `https://www.souldub.ai/api/auth/callback/google`（或你实际使用的域名），或 `www`/非 `www` 不一致
+- Google `redirect_uri_mismatch`：控制台里没加 `https://souldub.ai/api/auth/callback/google`（或你实际使用的域名），或 `www`/非 `www` 不一致
 - GitHub `The redirect_uri is not associated with this application`：callback URL 不一致（GitHub 只认一个）
 - 登录页跳回旧域名：`AUTH_URL` / `NEXT_PUBLIC_APP_URL` 仍然是旧值
 - Google 只允许你自己的账号登录：OAuth consent screen 还在 **Testing**，且只有 test users 能用
