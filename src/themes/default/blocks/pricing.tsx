@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Check, Lightbulb, Loader2, SendHorizonal, Zap } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -402,20 +403,27 @@ export function Pricing({
               {pricing.groups.map((item, i) => {
                 const isActive = group === (item.name || '');
                 return (
-                  <div key={i} className="flex items-center">
+                  <div key={i} className="flex items-center relative">
                     {i > 0 && <div className="mx-1 h-6 w-px bg-white/10" />}
                     <button
                       onClick={() => setGroup(item.name || '')}
                       className={cn(
-                        "flex min-w-[100px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
+                        "relative z-10 flex min-w-[100px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors duration-300",
                         isActive
-                          ? "bg-white text-black shadow-lg shadow-white/10 ring-1 ring-white/20"
-                          : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                          ? "text-white"
+                          : "text-muted-foreground hover:text-white"
                       )}
                     >
-                      {item.title}
+                      {isActive && (
+                        <motion.div
+                          layoutId="group-active"
+                          className="absolute inset-0 z-[-1] rounded-lg bg-white/10 border border-white/20 backdrop-blur-md shadow-lg shadow-black/5"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative z-10">{item.title}</span>
                       {item.label && (
-                        <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)] backdrop-blur-sm">
+                        <span className="relative z-10 ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)] backdrop-blur-sm">
                           {item.label}
                         </span>
                       )}
@@ -434,27 +442,45 @@ export function Pricing({
               <button
                 onClick={() => setPaymentProvider('stripe')}
                 className={cn(
-                  "flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
+                  "relative flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors duration-300",
                   paymentProvider === 'stripe'
-                    ? "bg-white text-black shadow-lg shadow-white/10 ring-1 ring-white/20"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                    ? "text-black"
+                    : "text-muted-foreground hover:text-white"
                 )}
               >
-                <img src="/imgs/icons/stripe.svg" alt="Stripe" className="h-5 w-auto object-contain rounded-md" />
-                <span>Card / Stripe</span>
+                {paymentProvider === 'stripe' && (
+                  <motion.div
+                    layoutId="payment-active"
+                    className="absolute inset-0 z-0 rounded-lg bg-white/80 border border-white/40 backdrop-blur-xl shadow-lg shadow-white/20"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <div className="relative z-10 flex items-center gap-2">
+                  <img src="/imgs/icons/stripe.svg" alt="Stripe" className="h-5 w-auto object-contain rounded-md" />
+                  <span>Card / Stripe</span>
+                </div>
               </button>
               <div className="mx-1 h-6 w-px bg-white/10" />
               <button
                 onClick={() => setPaymentProvider('paypal')}
                 className={cn(
-                  "flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
+                  "relative flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors duration-300",
                   paymentProvider === 'paypal'
-                    ? "bg-white text-black shadow-lg shadow-[#003087]/20 ring-1 ring-[#003087]/30"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                    ? "text-black"
+                    : "text-muted-foreground hover:text-white"
                 )}
               >
-                <img src="/imgs/icons/paypal.svg" alt="PayPal" className="h-5 w-auto object-contain" />
-                <span>PayPal</span>
+                {paymentProvider === 'paypal' && (
+                  <motion.div
+                    layoutId="payment-active"
+                    className="absolute inset-0 z-0 rounded-lg bg-white/80 border border-white/40 backdrop-blur-xl shadow-lg shadow-white/20"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <div className="relative z-10 flex items-center gap-2">
+                  <img src="/imgs/icons/paypal.svg" alt="PayPal" className="h-5 w-auto object-contain" />
+                  <span>PayPal</span>
+                </div>
               </button>
             </div>
           </div>
