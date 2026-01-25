@@ -43,7 +43,7 @@
 要求：
 
 - 必须带协议 `https://`
-- 不要写 path（不要写成 `https://<YOUR_DOMAIN>/api/auth`）
+- 不要写 path（例如不要写成 `https://www.souldub.ai/api/auth`）
 - `www`/非 `www` 要和你在控制台配置的域名保持一致
 
 生成 `AUTH_SECRET` 示例：
@@ -139,7 +139,7 @@ on conflict (name) do update set value = excluded.value;
 
 常见错误：
 
-- Google `redirect_uri_mismatch`：控制台里没加 `https://<YOUR_DOMAIN>/api/auth/callback/google`，或 `www`/非 `www` 不一致
+- Google `redirect_uri_mismatch`：控制台里没加 `https://www.souldub.ai/api/auth/callback/google`（或你实际使用的域名），或 `www`/非 `www` 不一致
 - GitHub `The redirect_uri is not associated with this application`：callback URL 不一致（GitHub 只认一个）
 - 登录页跳回旧域名：`AUTH_URL` / `NEXT_PUBLIC_APP_URL` 仍然是旧值
 - Google 只允许你自己的账号登录：OAuth consent screen 还在 **Testing**，且只有 test users 能用
