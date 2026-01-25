@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+
 import { useAppContext } from '@/shared/contexts/app';
 import { getCookie } from '@/shared/lib/cookie';
 import { cn } from '@/shared/lib/utils';
@@ -397,21 +397,33 @@ export function Pricing({
 
       <div className="container">
         {pricing.groups && pricing.groups.length > 0 && (
-          <div className="mx-auto mt-8 mb-8 flex w-full justify-center md:max-w-lg">
-            <Tabs value={group} onValueChange={setGroup} className="">
-              <TabsList>
-                {pricing.groups.map((item, i) => {
-                  return (
-                    <TabsTrigger key={i} value={item.name || ''}>
+          <div className="mx-auto mt-8 mb-8 flex w-full justify-center">
+            <div className="inline-flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 p-1.5 backdrop-blur-md">
+              {pricing.groups.map((item, i) => {
+                const isActive = group === (item.name || '');
+                return (
+                  <div key={i} className="flex items-center">
+                    {i > 0 && <div className="mx-1 h-6 w-px bg-white/10" />}
+                    <button
+                      onClick={() => setGroup(item.name || '')}
+                      className={cn(
+                        "flex min-w-[100px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-300",
+                        isActive
+                          ? "bg-white text-black shadow-lg shadow-white/10 ring-1 ring-white/20"
+                          : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                      )}
+                    >
                       {item.title}
                       {item.label && (
-                        <Badge className="ml-2">{item.label}</Badge>
+                        <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)] backdrop-blur-sm">
+                          {item.label}
+                        </span>
                       )}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-            </Tabs>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -467,11 +479,14 @@ export function Pricing({
             const currencies = getCurrenciesFromItem(item);
 
             return (
-              <Card key={item.product_id || idx} className="relative flex flex-col h-full">
+              <Card key={item.product_id || idx} className="relative flex flex-col h-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 backdrop-blur-md">
                 {item.label && (
-                  <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-linear-to-br/increasing from-purple-400 to-amber-300 px-3 py-1 text-xs font-medium text-amber-950 ring-1 ring-[rgba(255,255,255,0.2)] ring-offset-1 ring-offset-gray-950/5 ring-inset">
-                    {item.label}
-                  </span>
+                  <div className="absolute -top-4 left-0 right-0 mx-auto w-fit">
+                    <span className="flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-background px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                      <Zap className="size-3.5 fill-purple-300" />
+                      {item.label}
+                    </span>
+                  </div>
                 )}
 
                 <CardHeader className="flex-none">
