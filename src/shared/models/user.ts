@@ -114,15 +114,18 @@ export async function getUserCredits(userId: string) {
 export async function getSignUser() {
   try {
     const reqHeaders = await headers();
+    const requestHeaders = new Headers(reqHeaders);
 
     // Fast-path: avoid initializing auth / hitting storage when no session cookie exists.
-    if (!getSessionCookie(reqHeaders)) {
+    // next/headers returns a HeadersAdapter (has a `.headers` field), which trips
+    // better-auth's "Request vs Headers" heuristic. Clone into a real Headers.
+    if (!getSessionCookie(requestHeaders)) {
       return undefined;
     }
 
     const auth = await getAuth();
     const session = await auth.api.getSession({
-      headers: reqHeaders,
+      headers: requestHeaders,
     });
 
     return session?.user;
