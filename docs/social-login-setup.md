@@ -11,6 +11,11 @@
 - Google：`https://<YOUR_DOMAIN>/api/auth/callback/google`
 - GitHub：`https://<YOUR_DOMAIN>/api/auth/callback/github`
 
+例如（SoulDub.ai 生产域名）：
+
+- Google：`https://www.souldub.ai/api/auth/callback/google`
+- GitHub：`https://www.souldub.ai/api/auth/callback/github`
+
 本地开发（可选）：
 
 - Google：`http://localhost:3000/api/auth/callback/google`
@@ -76,7 +81,12 @@ on conflict (name) do update set value = excluded.value;
 
 ## 5) Google 控制台配置步骤（OAuth Client）
 
-入口：Google Cloud Console → APIs & Services
+入口：
+
+- Google Cloud Console：https://console.cloud.google.com/
+- APIs & Services：https://console.cloud.google.com/apis/dashboard
+- OAuth consent screen：https://console.cloud.google.com/apis/credentials/consent
+- Credentials：https://console.cloud.google.com/apis/credentials
 
 1. 选择/创建一个 Project
 1. OAuth consent screen（同意屏幕）
@@ -99,7 +109,11 @@ on conflict (name) do update set value = excluded.value;
 
 ## 6) GitHub 控制台配置步骤（OAuth App）
 
-入口：GitHub → Settings → Developer settings → OAuth Apps
+入口：
+
+- Developer settings：https://github.com/settings/developers
+- OAuth Apps 列表：https://github.com/settings/applications
+- New OAuth App：https://github.com/settings/applications/new
 
 1. New OAuth App
    - Application name：随意（例如 `SoulDub.ai`）
@@ -127,4 +141,3 @@ on conflict (name) do update set value = excluded.value;
 - GitHub `The redirect_uri is not associated with this application`：callback URL 不一致（GitHub 只认一个）
 - 登录页跳回旧域名：`AUTH_URL` / `NEXT_PUBLIC_APP_URL` 仍然是旧值
 - Google 只允许你自己的账号登录：OAuth consent screen 还在 **Testing**，且只有 test users 能用
-
