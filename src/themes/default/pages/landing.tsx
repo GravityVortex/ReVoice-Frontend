@@ -29,13 +29,6 @@ export default async function LandingPage({
 
 
 
-      {page.stats && (
-        <Stats
-          stats={page.stats}
-          className="bg-transparent border-y border-[rgba(255,255,255,0.05)] py-12"
-        />
-      )}
-
       {page.showcases && (
         <Showcases
           showcases={page.showcases}
