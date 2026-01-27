@@ -7,8 +7,22 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+import { getAllConfigs } from '@/shared/models/config';
+import { getUserInfo } from '@/shared/models/user';
+import { checkSoulDubAccess } from '@/shared/lib/souldub';
+
 export async function POST(req: Request) {
   try {
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr("unauthorized");
+    }
+
+    const configs = await getAllConfigs();
+    if (!checkSoulDubAccess(user.email, configs)) {
+      return respErr("SoulDub feature is currently in early access. Please contact support to join the waitlist.");
+    }
+
     const form = await req.formData();
     const file = form.get("file");
     const prefix = (form.get("prefix") as string) || "uploads/videos";

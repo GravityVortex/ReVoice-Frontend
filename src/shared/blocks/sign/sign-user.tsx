@@ -23,6 +23,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAppContext } from '@/shared/contexts/app';
 import { cn } from '@/shared/lib/utils';
 import { NavItem, UserNav } from '@/shared/types/blocks/common';
+import { checkSoulDubAccess } from '@/shared/lib/souldub';
 
 import { SmartIcon } from '../common/smart-icon';
 import { SignModal } from './sign-modal';
@@ -37,8 +38,10 @@ export function SignUser({
   userNav?: UserNav;
 }) {
   const t = useTranslations('common.sign');
-  const { isCheckSign, user, setIsShowSignModal } = useAppContext();
+  const { isCheckSign, user, setIsShowSignModal, configs } = useAppContext();
   const router = useRouter();
+
+  const hasAccess = checkSoulDubAccess(user?.email, configs);
 
   if (!user && isCheckSign) {
     // Session is still loading; avoid flashing the signed-out UI.
@@ -70,7 +73,7 @@ export function SignUser({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {userNav?.show_name && (
+            {hasAccess && userNav?.show_name && (
               <>
                 <DropdownMenuItem asChild>
                   <Link
@@ -85,7 +88,7 @@ export function SignUser({
               </>
             )}
 
-            {userNav?.show_credits && (
+            {hasAccess && userNav?.show_credits && (
               <>
                 <DropdownMenuItem asChild>
                   <Link
@@ -102,7 +105,7 @@ export function SignUser({
               </>
             )}
 
-            {userNav?.items?.map((item: NavItem, idx: number) => (
+            {hasAccess && userNav?.items?.map((item: NavItem, idx: number) => (
               <Fragment key={idx}>
                 <DropdownMenuItem asChild>
                   <Link
@@ -123,7 +126,7 @@ export function SignUser({
               </Fragment>
             ))}
 
-            {user.isAdmin && (
+            {hasAccess && user.isAdmin && (
               <>
                 <DropdownMenuItem asChild>
                   <Link className="w-full cursor-pointer" href="/admin">

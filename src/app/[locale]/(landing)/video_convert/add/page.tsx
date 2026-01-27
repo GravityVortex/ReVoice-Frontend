@@ -6,6 +6,7 @@ import { Label } from "@/shared/components/ui/label";
 // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from 'next-intl';
 // 视频上传：仅 mp4，预览 + 按钮上传，限制 300MB
 import React, { useMemo, useState } from "react";
 import { useAppContext } from "@/shared/contexts/app";
@@ -23,6 +24,7 @@ function formatDuration(seconds: number): string {
 }
 
 export default function UploadMp4() {
+  const t = useTranslations('landing.souldub_gate');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
@@ -85,7 +87,7 @@ export default function UploadMp4() {
     const url = URL.createObjectURL(f);
     const video = document.createElement('video');
     video.preload = 'metadata';
-    
+
     video.onloadedmetadata = () => {
       window.URL.revokeObjectURL(video.src);
       const videoDuration = video.duration;
@@ -94,7 +96,7 @@ export default function UploadMp4() {
       setDuration(formattedDuration);
       console.log('视频时长--->', formattedDuration, '秒');
     };
-    
+
     video.src = url;
     setFile(f);
     setPreviewUrl(url);
@@ -144,6 +146,26 @@ export default function UploadMp4() {
     }
   }
 
+  // Access Control Logic
+  const { configs } = useAppContext();
+  const isGloballyEnabled = (configs || {})['souldub_enabled'] === 'true';
+  const hasAccess = isGloballyEnabled || (user && user.souldubAccess);
+
+  if (!hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+        <div className="p-4 rounded-full bg-primary/10">
+          <span className="text-4xl">🎉</span>
+        </div>
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
+        <p className="text-muted-foreground max-w-md" dangerouslySetInnerHTML={{ __html: t.raw('description') }} />
+        <Button variant="outline" onClick={() => router.back()}>
+          {t('return_back')}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Button
@@ -171,7 +193,7 @@ export default function UploadMp4() {
                 className="mt-1"
               />
             </div>
-            
+
             <div className="flex flex-row">
               <Label className="w-[80px]" htmlFor="description">视频描述</Label>
               <Input
@@ -193,8 +215,8 @@ export default function UploadMp4() {
                 className="mt-1"
               />
             </div>
-            
-            
+
+
             <div className="flex flex-row items-center">
               <Label className="w-[80px]" htmlFor="id_file">选择视频</Label>
               <input

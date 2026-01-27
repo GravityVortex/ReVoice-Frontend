@@ -241,6 +241,12 @@ export async function getSettingGroups() {
         'custom your <a href="https://www.tawk.to" class="text-primary" target="_blank">Tawk</a> settings',
       tab: 'customer_service',
     },
+    {
+      name: 'souldub',
+      title: 'SoulDub',
+      description: 'SoulDub Feature Gating',
+      tab: 'ai',
+    },
   ];
   return settingGroups;
 }
@@ -712,6 +718,27 @@ export async function getSettings() {
       group: 'tawk',
       tab: 'customer_service',
     },
+    {
+      name: 'souldub_enabled',
+      title: 'SoulDub Enabled (Global)',
+      type: 'switch',
+      value: 'false',
+      group: 'souldub',
+      tab: 'ai',
+      tip: 'Globally enable or disable the SoulDub feature for all users.',
+    },
+    {
+      name: 'souldub_whitelist',
+      title: 'SoulDub Whitelist',
+      type: 'textarea',
+      placeholder: 'email1@example.com, email2@example.com',
+      group: 'souldub',
+      tab: 'ai',
+      tip: 'Comma-separated list of emails allowed to access SoulDub even if globally disabled.',
+      attributes: {
+        rows: 4,
+      },
+    },
   ];
 
   return settings;
@@ -732,4 +759,5 @@ export const publicSettingNames = [
   'promotekit_enabled',
   'crisp_enabled',
   'tawk_enabled',
+  'souldub_enabled',
 ];

@@ -62,7 +62,7 @@
     "description": "AI-powered video translation that keeps your original tone and feeling<br/>So you sound like you, in any language",
     "announcement": {
       "badge": "New",
-      "title": "🎉 SoulDub is now live",
+      "title": "🎉 SoulDub Coming Soon",
       "url": "/pricing"
     },
     "tip": "Experience the voice you want",
@@ -461,6 +461,13 @@
       },
       "action": "/api/subscribe"
     }
+  },
+  "souldub_gate": {
+    "title": "SoulDub Coming Soon",
+    "description": "We are putting the final touches on SoulDub. This feature is currently available to invited users only.<br/>Please stay tuned for the full release, or contact our support team to apply for access.",
+    "button_coming_soon": "Coming Soon",
+    "return_back": "Back",
+    "return_home": "Return to Home"
   },
   "footer": {
     "id": "footer",

@@ -4,6 +4,9 @@ import { getRemainingCredits } from '@/shared/models/credit';
 import { getUserInfo } from '@/shared/models/user';
 import { hasPermission } from '@/shared/services/rbac';
 
+import { getAllConfigs } from '@/shared/models/config';
+import { checkSoulDubAccess } from '@/shared/lib/souldub';
+
 export async function POST(req: Request) {
   try {
     // get sign user info
@@ -18,7 +21,11 @@ export async function POST(req: Request) {
     // get remaining credits
     const remainingCredits = await getRemainingCredits(user.id);
 
-    return respData({ ...user, isAdmin, credits: { remainingCredits } });
+    // check souldub access
+    const configs = await getAllConfigs();
+    const souldubAccess = checkSoulDubAccess(user.email, configs);
+
+    return respData({ ...user, isAdmin, souldubAccess, credits: { remainingCredits } });
   } catch (e) {
     console.log('get user info failed:', e);
     return respErr('get user info failed');

@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import type { MouseEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { Link } from '@/core/i18n/navigation';
 import { SmartIcon } from '@/shared/blocks/common';
@@ -26,6 +27,7 @@ export function Hero({
   hero: HeroType;
   className?: string;
 }) {
+  const t = useTranslations('landing.souldub_gate');
   const { user, setIsShowSignModal } = useAppContext();
   const titleText = hero.title ?? '';
   const highlightText = hero.highlight_text ?? '';
@@ -150,28 +152,52 @@ export function Hero({
             {...createFadeInVariant(0.5)}
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
           >
-            {hero.buttons.map((button, idx) => (
-              <Button
-                asChild
-                size="lg"
-                variant={idx === 0 ? 'default' : 'outline'}
-                className={cn(
-                  "min-w-[160px] h-12 text-base px-8 rounded-full transition-all duration-300",
-                  idx === 0 && "bg-[#6366F1] hover:bg-[#5558DD] text-white shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)] border-none",
-                  idx !== 0 && "border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.4)]"
-                )}
-                key={idx}
-              >
-                <Link
-                  href={button.url ?? ''}
-                  target={button.target ?? '_self'}
-                  onClick={(e) => handleButtonClick(e, button.url ?? '')}
+            {hero.buttons.map((button, idx) => {
+              // Custom Logic for SoulDub Gating
+              const isVideoConvert = button.url === '/video_convert';
+              const isGloballyEnabled = (useAppContext().configs || {})['souldub_enabled'] === 'true';
+              const hasAccess = isGloballyEnabled || (user && user.souldubAccess);
+
+              // If it's the video convert button and user doesn't have access, modify behavior
+              const isRestricted = isVideoConvert && !hasAccess;
+
+              return (
+                <Button
+                  asChild={!isRestricted}
+                  size="lg"
+                  variant={idx === 0 ? 'default' : 'outline'}
+                  className={cn(
+                    "min-w-[160px] h-12 text-base px-8 rounded-full transition-all duration-300",
+                    idx === 0 && "bg-[#6366F1] hover:bg-[#5558DD] text-white shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)] border-none",
+                    idx !== 0 && "border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.4)]",
+                    isRestricted && "opacity-80 cursor-not-allowed hover:bg-[#6366F1]" // Maintain style but hint restriction
+                  )}
+                  key={idx}
+                  onClick={(e) => {
+                    if (isRestricted) {
+                      e.preventDefault();
+                      return; // Let the button text explain it, or we could toast here.
+                    }
+                    handleButtonClick(e, button.url ?? '')
+                  }}
                 >
-                  {button.icon && <SmartIcon name={button.icon as string} className="mr-2 h-4 w-4" />}
-                  <span>{button.title}</span>
-                </Link>
-              </Button>
-            ))}
+                  {isRestricted ? (
+                    <span className="flex items-center">
+                      {button.icon && <SmartIcon name="Lock" className="mr-2 h-4 w-4" />}
+                      <span>{t('button_coming_soon')}</span>
+                    </span>
+                  ) : (
+                    <Link
+                      href={button.url ?? ''}
+                      target={button.target ?? '_self'}
+                    >
+                      {button.icon && <SmartIcon name={button.icon as string} className="mr-2 h-4 w-4" />}
+                      <span>{button.title}</span>
+                    </Link>
+                  )}
+                </Button>
+              );
+            })}
           </motion.div>
         )}
 

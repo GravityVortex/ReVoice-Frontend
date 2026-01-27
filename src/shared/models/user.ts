@@ -16,6 +16,7 @@ export interface UserCredits {
 
 export type User = typeof user.$inferSelect & {
   isAdmin?: boolean;
+  souldubAccess?: boolean;
   credits?: UserCredits;
   roles?: Role[];
   permissions?: Permission[];
