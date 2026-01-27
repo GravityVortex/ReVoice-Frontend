@@ -126,7 +126,7 @@ export function SignUser({
               </Fragment>
             ))}
 
-            {hasAccess && user.isAdmin && (
+            {(hasAccess || user.isAdmin) && user.isAdmin && (
               <>
                 <DropdownMenuItem asChild>
                   <Link className="w-full cursor-pointer" href="/admin">
