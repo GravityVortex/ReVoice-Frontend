@@ -41,7 +41,7 @@ export function SignUser({
   const { isCheckSign, user, setIsShowSignModal, configs } = useAppContext();
   const router = useRouter();
 
-  const hasAccess = checkSoulDubAccess(user?.email, configs);
+  const hasAccess = checkSoulDubAccess(user?.email, configs, user?.isAdmin);
 
   if (!user && isCheckSign) {
     // Session is still loading; avoid flashing the signed-out UI.

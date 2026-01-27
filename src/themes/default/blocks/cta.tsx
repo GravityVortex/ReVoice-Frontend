@@ -35,7 +35,7 @@ export function CTA({ cta, className }: { cta: CTAType; className?: string }) {
                 const t = useTranslations('landing.souldub_gate');
 
                 const isGloballyEnabled = (configs || {})['souldub_enabled'] === 'true';
-                const hasAccess = isGloballyEnabled || (user && checkSoulDubAccess(user.email, configs));
+                const hasAccess = isGloballyEnabled || (user && checkSoulDubAccess(user.email, configs, user.isAdmin));
                 const isRestricted = isVideoConvert && !hasAccess;
 
                 return (

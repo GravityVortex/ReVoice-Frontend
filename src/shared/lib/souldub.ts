@@ -11,8 +11,14 @@
  */
 export function checkSoulDubAccess(
     userEmail: string | undefined | null,
-    configs: Record<string, string>
+    configs: Record<string, string>,
+    isAdmin: boolean = false
 ): boolean {
+    // 0. Admins always have access
+    if (isAdmin) {
+        return true;
+    }
+
     // 1. Check global toggle
     if (configs['souldub_enabled'] === 'true') {
         return true;

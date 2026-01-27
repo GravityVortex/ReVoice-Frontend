@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     const configs = await getAllConfigs();
-    if (!checkSoulDubAccess(user.email, configs)) {
+    if (!checkSoulDubAccess(user.email, configs, !!(user as any).isAdmin)) {
       return respErr("SoulDub feature is currently in early access. Please contact support to join the waitlist.");
     }
 

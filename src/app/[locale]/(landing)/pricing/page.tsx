@@ -64,7 +64,7 @@ export default async function PricingPage({
   // Let's reuse or just await it cleanly.
 
   const userInfo = await getUserInfo();
-  const souldubAccess = checkSoulDubAccess(userInfo?.email, configs);
+  const souldubAccess = checkSoulDubAccess(userInfo?.email, configs, (userInfo as any)?.isAdmin);
 
   if (!souldubAccess) {
 
