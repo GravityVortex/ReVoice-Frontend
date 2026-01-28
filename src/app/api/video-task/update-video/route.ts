@@ -1,6 +1,7 @@
 import { respData, respErr } from "@/shared/lib/resp";
-import { updateVideoConvert } from "@/shared/models/video_convert";
-import { updateVtFileOriginal, updateVtFileOriginalCoverTitle } from "@/shared/models/vt_file_original";
+import { findVtFileOriginalById, updateVtFileOriginalCoverTitle } from "@/shared/models/vt_file_original";
+import { getUserInfo } from "@/shared/models/user";
+import { hasPermission } from "@/shared/services/rbac";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -12,6 +13,22 @@ export async function POST(req: Request) {
 
     if (!id || !cover_key) {
       return respErr("missing id parameter");
+    }
+
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr("no auth, please sign in");
+    }
+
+    const file = await findVtFileOriginalById(id);
+    if (!file) {
+      return respErr("video not found");
+    }
+    if (file.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr("no permission");
+      }
     }
 
     // const videoId = parseInt(id);

@@ -1,5 +1,5 @@
 import { respData, respErr } from '@/shared/lib/resp';
-import { ChatStatus, getChats, getChatsCount } from '@/shared/models/chat';
+import { findChatById } from '@/shared/models/chat';
 import {
   getChatMessages,
   getChatMessagesCount,
@@ -25,12 +25,22 @@ export async function POST(req: Request) {
       return respErr('no auth, please sign in');
     }
 
+    const chat = await findChatById(chatId);
+    if (!chat) {
+      return respErr('chat not found');
+    }
+    if (chat.userId !== user.id) {
+      return respErr('no permission to access this chat');
+    }
+
     const messages = await getChatMessages({
+      userId: user.id,
       chatId,
       page,
       limit,
     });
     const total = await getChatMessagesCount({
+      userId: user.id,
       chatId,
     });
 

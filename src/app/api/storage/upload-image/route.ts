@@ -27,6 +27,9 @@ export async function POST(req: Request) {
     const uploadResults = [];
 
     const user = await getUserInfo();
+    if (!user) {
+      return respErr('Unauthorized');
+    }
     // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
     let env = process.env.ENV || 'dev';
 
@@ -45,7 +48,7 @@ export async function POST(req: Request) {
       const key = `frame_img/image/${file.name}`;
       // const imgId = getUuid();
       // const pathName = `${env}/${user?.id}/frame_img/image/${imgId}.jpg`;
-      const pathName = `${env}/${user?.id}/${fileId}/` + key;
+      const pathName = `${env}/${user.id}/${fileId}/` + key;
 
 
       // Convert file to buffer

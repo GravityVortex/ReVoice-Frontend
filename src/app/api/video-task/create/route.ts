@@ -2,7 +2,9 @@ import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { getUuid } from '@/shared/lib/hash';
 import { respData, respErr } from '@/shared/lib/resp';
 import { consumeCredits, getRemainingCredits } from '@/shared/models/credit';
+import { isGuestEmail } from '@/shared/models/guest-user';
 import { getUserSubscriptionType } from '@/shared/models/order';
+import { getUserInfo } from '@/shared/models/user';
 import { insertVtFileOriginal } from '@/shared/models/vt_file_original';
 import { insertVtTaskMain } from '@/shared/models/vt_task_main';
 
@@ -12,16 +14,20 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const userId = formData.get('userId') as string;
-    // 'guest' : 'registered'
-    const userType = formData.get('userType') as string;
+
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
+    const userId = user.id;
+    const userType = isGuestEmail(user.email) ? 'guest' : 'registered';
     const fileName = formData.get('fileName') as string;
     const fileSizeBytes = parseInt(formData.get('fileSizeBytes') as string);
     const fileType = formData.get('fileType') as string;
     const r2Key = formData.get('r2Key') as string;
     let r2Bucket = formData.get('r2Bucket') as string;
     const videoDurationSeconds = Math.round(parseFloat(formData.get('videoDurationSeconds') as string));
-    const credits = parseInt(formData.get('credits') as string);
     const checksumSha256 = (formData.get('checksumSha256') as string) || '';
     const uploadStatus = 'pending';
     const sourceLanguage = formData.get('sourceLanguage') as string;
@@ -34,9 +40,19 @@ export async function POST(req: Request) {
       r2Bucket = (await getSystemConfigByKey('r2.bucket.private')) || 'zhesheng';
     }
 
-    if (!userId || !fileName || !fileSizeBytes || !fileType || !r2Key || !credits || !sourceLanguage || !targetLanguage || !speakerCount) {
+    if (!fileId || !fileName || !fileSizeBytes || !fileType || !r2Key || !sourceLanguage || !targetLanguage || !speakerCount) {
       return respErr('Missing required fields');
     }
+
+    if (!Number.isFinite(videoDurationSeconds) || videoDurationSeconds <= 0) {
+      return respErr('invalid videoDurationSeconds');
+    }
+
+    // Don't trust client-provided credits; derive from duration + server config.
+    const pointsPerMinuteRaw = (await getSystemConfigByKey('credit.points_per_minute')) || '2';
+    const pointsPerMinute = Number.parseInt(pointsPerMinuteRaw, 10);
+    const durationInMinutes = Math.max(1, Math.ceil(videoDurationSeconds / 60));
+    const credits = durationInMinutes * (Number.isFinite(pointsPerMinute) && pointsPerMinute > 0 ? pointsPerMinute : 2);
 
     // 1. 消耗积分
     // DOEND 积分不足也扣，只处理部分视频时长

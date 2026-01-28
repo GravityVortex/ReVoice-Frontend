@@ -36,14 +36,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
     }
 
+    const user = await getUserInfo();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // DOEND: 调用java接口生成presigned url
     if (USE_JAVA_REQUEST) {
       const fileId = getUuid();
-      const user = await getUserInfo();
       // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
       // let env = process.env.ENV || 'dev';
       const keyV = 'original/video/video_original.mp4';
-      const pathName = `${user?.id}/${fileId}/${keyV}`;
+      const pathName = `${user.id}/${fileId}/${keyV}`;
       const params: SignUrlItem[] = [{ path: pathName, operation: 'upload', expirationMinutes: 2 * 60 }];
       const resUrlArr = await getPreSignedUrl(params);
       const { path, operation, url, expiresAt } = resUrlArr[0];
@@ -57,7 +61,8 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ presignedUrl: url, key: keyV, publicUrl, r2Bucket: '', fileId });
     } else {
-      const { presignedUrl, keyV, publicUrl, bucketName, fileId } = await getPrivateR2UploadSignUrl(contentType, filename);
+      const { presignedUrl, keyV, publicUrl, bucketName, fileId } =
+        await getPrivateR2UploadSignUrl(contentType, filename, user.id);
       return NextResponse.json({ presignedUrl, key: keyV, publicUrl, r2Bucket: bucketName, fileId });
     }
 

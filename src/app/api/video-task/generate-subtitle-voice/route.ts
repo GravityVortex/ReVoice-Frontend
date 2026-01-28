@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { USE_PYTHON_REQUEST } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
+import { hasPermission } from '@/shared/services/rbac';
 import { pyConvertTxtGenerateVoice, pyOriginalTxtTranslate } from '@/shared/services/pythonService';
 
 /**
@@ -17,6 +19,20 @@ export async function POST(request: NextRequest) {
 
     if (!type || !text || !taskId || !subtitleName || !languageTarget) {
       return respErr('缺少参数');
+    }
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
+    const task = await findVtTaskMainById(taskId);
+    if (!task) {
+      return respErr('任务不存在');
+    }
+    if (task.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
     }
 
     // DOEND: 调用java获取视频下载签名地址

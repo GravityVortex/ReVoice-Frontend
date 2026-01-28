@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-import { R2Provider } from '@/extensions/storage';
 import { getPrivateR2DownLoadSignUrl } from '@/extensions/storage/privateR2Util';
 import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
-import { getStorageService } from '@/shared/services/storage';
+import { hasPermission } from '@/shared/services/rbac';
 
 /**
  * 下载音频
@@ -20,9 +18,29 @@ export async function GET(request: NextRequest) {
     const taskId = searchParams.get('taskId');
 
     const user = await getUserInfo();
+    if (!user) {
+      return NextResponse.json({ code: 401, message: '未授权' }, { status: 401 });
+    }
 
     if (!key) {
       return NextResponse.json({ code: -1, message: '缺少 key 或 bucket 参数' }, { status: 400 });
+    }
+    if (!taskId) {
+      return NextResponse.json({ code: -1, message: '缺少 taskId 参数' }, { status: 400 });
+    }
+
+    const task = await findVtTaskMainById(taskId);
+    if (!task) {
+      return NextResponse.json({ code: -1, message: '任务不存在' }, { status: 404 });
+    }
+    if (task.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return NextResponse.json({ code: -1, message: '无权限' }, { status: 403 });
+      }
+    }
+    if (!key.startsWith(`${task.userId}/${taskId}/`)) {
+      return NextResponse.json({ code: -1, message: '无权限' }, { status: 403 });
     }
 
     // 解析过期时间（默认 1 小时）

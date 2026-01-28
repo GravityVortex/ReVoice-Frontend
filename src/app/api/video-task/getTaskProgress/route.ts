@@ -3,6 +3,8 @@ import { getSystemConfigByKey, JAVA_SERVER_BASE_URL, USE_JAVA_REQUEST } from '@/
 import { respData, respErr } from '@/shared/lib/resp';
 import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
 import { findVtTaskMainById } from '@/shared/models/vt_task_main';
+import { getUserInfo } from '@/shared/models/user';
+import { hasPermission } from '@/shared/services/rbac';
 import { getTaskProgress } from '@/shared/services/javaService';
 
 export const runtime = 'nodejs';
@@ -18,8 +20,22 @@ export async function GET(req: Request) {
       return respErr('taskId is required');
     }
 
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
     // 1. 查询Item
     const taskItem = await findVtTaskMainById(taskId);
+    if (!taskItem) {
+      return respErr('task not found');
+    }
+    if (taskItem.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
+    }
 
     let mockProgress: any = [];
     // 如果progress为true，查询进度列表

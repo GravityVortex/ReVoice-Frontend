@@ -1,21 +1,39 @@
 import { respData, respErr } from '@/shared/lib/resp';
-import { updateVtTaskMain } from '@/shared/models/vt_task_main';
+import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskMainById, updateVtTaskMain } from '@/shared/models/vt_task_main';
+import { hasPermission } from '@/shared/services/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { id, updatedBy } = body;
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
 
-    if (!id || !updatedBy) {
-      return respErr('id and updatedBy are required');
+    const body = await req.json();
+    const { id } = body;
+
+    if (!id) {
+      return respErr('id is required');
+    }
+
+    const task = await findVtTaskMainById(id);
+    if (!task) {
+      return respErr('Task not found');
+    }
+    if (task.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
     }
 
     const result = await updateVtTaskMain(id, {
       delStatus: 1,
-      updatedBy,
+      updatedBy: user.id,
       updatedAt: new Date(),
     });
 

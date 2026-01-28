@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserInfo } from '@/shared/models/user';
-import { deleteFileOriginalById } from '@/shared/models/vt_file_original';
+import { deleteFileOriginalById, findVtFileOriginalById } from '@/shared/models/vt_file_original';
+import { hasPermission } from '@/shared/services/rbac';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +13,17 @@ export async function POST(request: NextRequest) {
     const { taskMainId } = await request.json();
     if (!taskMainId) {
       return NextResponse.json({ code: 400, message: '缺少taskMainId参数' }, { status: 400 });
+    }
+
+    const file = await findVtFileOriginalById(taskMainId);
+    if (!file) {
+      return NextResponse.json({ code: 404, message: '文件不存在' }, { status: 404 });
+    }
+    if (file.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return NextResponse.json({ code: 403, message: '无权限' }, { status: 403 });
+      }
     }
 
     // 更新del_status为1

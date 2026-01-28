@@ -1,6 +1,9 @@
-import {respData, respErr} from '@/shared/lib/resp';
-import {getVtTaskSubtitleListByTaskIdAndStepName} from '@/shared/models/vt_task_subtitle';
-import {NextRequest, NextResponse} from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+import { getVtTaskSubtitleListByTaskIdAndStepName } from '@/shared/models/vt_task_subtitle';
+import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
+import { hasPermission } from '@/shared/services/rbac';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,20 +13,39 @@ export async function GET(request: NextRequest) {
     const fileName = searchParams.get('fileName') || '';
 
     if (!taskId || !stepName) {
-      return respErr('缺少 taskId 或 stepName 参数');
+      return NextResponse.json(
+        { code: -1, message: '缺少 taskId 或 stepName 参数' },
+        { status: 400 }
+      );
+    }
+
+    const user = await getUserInfo();
+    if (!user) {
+      return NextResponse.json({ code: 401, message: '未授权' }, { status: 401 });
+    }
+
+    const task = await findVtTaskMainById(taskId);
+    if (!task) {
+      return NextResponse.json({ code: -1, message: '任务不存在' }, { status: 404 });
+    }
+    if (task.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return NextResponse.json({ code: -1, message: '无权限' }, { status: 403 });
+      }
     }
 
     const subtitleData = await getVtTaskSubtitleListByTaskIdAndStepName(taskId, [stepName]);
     console.log('subtitleData--->', subtitleData);
 
     if (!subtitleData || subtitleData.length === 0) {
-      return respErr('未找到字幕数据');
+      return NextResponse.json({ code: -1, message: '未找到字幕数据' }, { status: 404 });
     }
 
     const list = (subtitleData[0].subtitleData as unknown as any[]) || [];
     console.log('list--->', list);
     if (list.length === 0) {
-      return respErr('字幕列表为空');
+      return NextResponse.json({ code: -1, message: '字幕列表为空' }, { status: 404 });
     }
 
     const filteredList = list.map(({ file_path, ...rest }: any) => rest);
@@ -40,7 +62,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[SRT Download API] 失败:', error);
-    return respErr(error instanceof Error ? error.message : '下载失败');
+    return NextResponse.json(
+      { code: -1, message: error instanceof Error ? error.message : '下载失败' },
+      { status: 500 }
+    );
   }
 }
 

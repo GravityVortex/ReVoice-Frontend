@@ -77,11 +77,17 @@ export default function ClientUserVideo() {
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/video-task/delete-real?originalFileId=${deleteVideo?.id}&userId=${deleteVideo?.userId}`);
+      const res = await fetch('/api/video-task/delete-real', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalFileId: deleteVideo?.id }),
+      });
       const data = await res.json();
       if (data.code === 0) {
         toast.success('删除成功');
-        fetchVideos(selectedUserId);
+        if (selectedUserId) {
+          fetchVideos(selectedUserId);
+        }
       } else {
         toast.error(data.message || '删除失败');
       }

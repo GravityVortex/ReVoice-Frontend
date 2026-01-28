@@ -2,9 +2,15 @@
 // 前端上传file到后端，后端上传到R2，但有4.5M的限制
 import { NextRequest, NextResponse } from 'next/server';
 import { getStorageService } from '@/shared/services/storage';
+import { getUserInfo } from '@/shared/models/user';
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getUserInfo();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -13,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const key = `uploads/${Date.now()}-${file.name}`;
+    const key = `${user.id}/uploads/${Date.now()}-${file.name}`;
 
     const storageService = await getStorageService();
     const result = await storageService.uploadFile({

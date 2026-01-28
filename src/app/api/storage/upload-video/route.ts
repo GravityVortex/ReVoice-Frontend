@@ -1,10 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import { respData, respErr } from '@/shared/lib/resp';
+import { getUserInfo } from '@/shared/models/user';
 import { getStorageService } from '@/shared/services/storage';
 
 export async function POST(req: Request) {
   try {
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('Unauthorized');
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
@@ -31,7 +37,7 @@ export async function POST(req: Request) {
 
     // Generate unique key
     const ext = file.name.split('.').pop();
-    const key = `videos/${Date.now()}-${uuidv4()}.${ext}`;
+    const key = `${user.id}/videos/${Date.now()}-${uuidv4()}.${ext}`;
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();

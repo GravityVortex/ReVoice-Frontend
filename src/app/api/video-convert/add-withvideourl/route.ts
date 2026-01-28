@@ -1,17 +1,22 @@
 import { getUuid } from "@/shared/lib/hash";
 import { respData, respErr } from "@/shared/lib/resp";
 // import { newStorage } from "@/shared/lib/storage";
-import { getStorageService } from '@/shared/services/storage';
 import { insertVideoConvert } from "@/shared/models/video_convert";
+import { getUserInfo } from "@/shared/models/user";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr("unauthorized");
+    }
+
     const form = await req.formData();
 
-    const user_uuid = (form.get("user_uuid") as string) || '';
+    const user_uuid = user.id;
     const title = (form.get("title") as string) || '';
     const description = (form.get("description") as string) || '';
     const content = (form.get("content") as string) || '';

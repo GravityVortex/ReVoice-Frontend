@@ -213,7 +213,9 @@ export default function VideoConvertPage() {
             // ("https://picsum.photos/seed/" + item.id + "/640/360")
             // cover: item.coverR2Key? (responseData.preUrl + '/' + item.coverR2Key) : '',
             cover: getPreviewCoverUrl(item, responseData.preUrl),
-            videoUrl: item.r2Key || "",
+            // For private R2, the object key is namespaced under the user + file/task id.
+            // This keeps previews working after tightening `/api/storage/privater2-url`.
+            videoUrl: item.r2Key ? getVideoR2PathName(item.userId, item.id, item.r2Key) : "",
             status,
             duration,
             convertedAt: new Date(item.createdAt).toLocaleString("zh-CN"),

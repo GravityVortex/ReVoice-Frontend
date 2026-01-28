@@ -8,9 +8,13 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
     const body = await req.json();
     const {
-      userId,
       fileName,
       fileSizeBytes,
       fileType,
@@ -21,12 +25,10 @@ export async function POST(req: Request) {
       uploadStatus = 'pending',
     } = body;
 
-    if (!userId || !fileName || !fileSizeBytes || !fileType || !r2Key || !r2Bucket) {
+    if (!fileName || !fileSizeBytes || !fileType || !r2Key || !r2Bucket) {
       return respErr('Missing required fields');
     }
-
-    // const user = await getUserInfo();
-    // const userId = user?.id || '';
+    const userId = user.id;
 
     const result = await insertVtFileOriginal({
       id: getUuid(),

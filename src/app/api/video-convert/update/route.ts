@@ -1,5 +1,7 @@
 import { respData, respErr } from "@/shared/lib/resp";
-import { updateVideoConvert } from "@/shared/models/video_convert";
+import { findVideoConvertById, updateVideoConvert } from "@/shared/models/video_convert";
+import { getUserInfo } from "@/shared/models/user";
+import { hasPermission } from "@/shared/services/rbac";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,9 +15,25 @@ export async function POST(req: Request) {
       return respErr("missing id parameter");
     }
 
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr("unauthorized");
+    }
+
     const videoId = parseInt(id);
     if (isNaN(videoId)) {
       return respErr("invalid id parameter");
+    }
+
+    const existing = await findVideoConvertById(videoId);
+    if (!existing) {
+      return respErr("video not found");
+    }
+    if (existing.user_uuid !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
     }
 
     // 构建更新数据

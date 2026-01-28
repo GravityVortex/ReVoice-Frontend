@@ -1,4 +1,6 @@
 import { respData, respErr } from "@/shared/lib/resp";
+import { findVtTaskMainById } from "@/shared/models/vt_task_main";
+import { getUserInfo } from "@/shared/models/user";
 import { updateSubtitleDataByTaskId } from "@/shared/models/vt_task_subtitle";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +13,19 @@ export async function POST(req: Request) {
 
     if (!taskId || !type || !content) {
       return respErr("missing taskId or type or content parameter");
+    }
+
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr("no auth, please sign in");
+    }
+
+    const task = await findVtTaskMainById(taskId);
+    if (!task) {
+      return respErr("task not found");
+    }
+    if (task.userId !== user.id) {
+      return respErr("no permission");
     }
 
     // 更新字幕大JSON数据，原字幕:gen_srt; 翻译字幕:translate_srt

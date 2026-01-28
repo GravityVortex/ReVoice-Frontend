@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     console.log("upload-file success--->", res);
 
 
-    const user_uuid = (form.get("user_uuid") as string) || '';
+    const user_uuid = user.id;
     const title = (form.get("title") as string) || '';
     const description = (form.get("description") as string) || '';
     const content = (form.get("content") as string) || '';

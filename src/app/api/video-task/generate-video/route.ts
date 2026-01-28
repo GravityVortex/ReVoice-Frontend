@@ -11,25 +11,40 @@ import { getSystemConfigByKey } from '@/shared/cache/system-config';
 /**
  * 合成最终final视频
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
+  return NextResponse.json(
+    { code: 405, message: 'Method Not Allowed' },
+    { status: 405 }
+  );
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const taskId = searchParams.get('taskId');
-    // const userId = searchParams.get('userId');
-    // 未超次，传入0
-    const payCredit = parseInt(searchParams.get('payCredit') || '0');
+    const body = await request.json().catch(() => ({}));
+    const taskId = body?.taskId as string | undefined;
+    const payCredit = Number.parseInt(body?.payCredit ?? '0', 10) || 0;
 
     if (!taskId) {
       return respErr('缺少参数taskId');
     }
 
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
     // DOEND 查询taskMain表中metaData判断今天已经使用保存几次了
     const taskItem = await findVtTaskMainById(taskId);
-    let creditRecordId = taskItem.creditId;
-    console.log('taskItem---->', taskItem);
     if (!taskItem) {
       return respErr('找不到该任务！');
     }
+    if (taskItem.userId !== user.id) {
+      return respErr('no permission');
+    }
+
+    let creditRecordId = taskItem.creditId;
+    console.log('taskItem---->', taskItem);
+
     // {date:'', saveNum: 2}
     const mdJO = JSON.parse(taskItem.metadata || '{"saveNum":0}');
     const today = new Date().toISOString().slice(0, 10);
@@ -51,10 +66,6 @@ export async function GET(request: NextRequest) {
     }
     // 点击弹框中支付了
     else {
-      const user = await getUserInfo();
-      if (!user) {
-        throw respErr('no auth, please sign in');
-      }
       const userId = user.id;
       // 计算用户当前可用的剩余积分总额
       const remainingCredits = await getRemainingCredits(userId);

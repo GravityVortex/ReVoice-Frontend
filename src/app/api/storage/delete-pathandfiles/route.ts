@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { getAuth } from '@/core/auth';
 import { deletePathAndFiles } from '@/extensions/storage/privateR2Util';
 import { respData, respErr } from '@/shared/lib/resp';
+import { hasPermission } from '@/shared/services/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
     if (!session?.user) {
       return respErr('Unauthorized');
     }
+    const isAdmin = await hasPermission(session.user.id, 'admin.access');
+    if (!isAdmin) {
+      return respErr('Forbidden');
+    }
 
     const { searchParams } = new URL(request.url);
     // temp_test/test3.mp4
@@ -23,7 +28,7 @@ export async function GET(request: Request) {
     }
 
     // 删除R2指定路径及其下所有文件
-    deletePathAndFiles(r2Path);
+    await deletePathAndFiles(r2Path);
 
     return respData({ r2Path });
   } catch (e) {

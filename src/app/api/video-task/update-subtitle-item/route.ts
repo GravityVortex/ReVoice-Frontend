@@ -1,6 +1,8 @@
 import { getBucketName, r2MoveFile } from '@/extensions/storage/privateR2Util';
 import { getSystemConfigByKey, USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
+import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
 import { updateSingleSubtitleItem } from '@/shared/models/vt_task_subtitle';
 import { javaR2CoverWriteFile, javaR2MoveFile } from '@/shared/services/javaService';
 
@@ -11,11 +13,29 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { userId, taskId, type, seq, pathName, item } = body;
+    const { taskId, type, seq, pathName, item } = body;
 
-    if (!userId || !taskId || !type || !seq || !item || !pathName) {
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
+    if (!taskId || !type || typeof seq === 'undefined' || !item || !pathName) {
       return respErr('missing required parameters');
     }
+
+    const task = await findVtTaskMainById(taskId);
+    if (!task) {
+      return respErr('task not found');
+    }
+    if (task.userId !== user.id) {
+      return respErr('no permission');
+    }
+
+    if (typeof pathName !== 'string' || pathName.includes('..') || pathName.startsWith('/')) {
+      return respErr('invalid pathName');
+    }
+
     // 保存单条json数据
     await updateSingleSubtitleItem(taskId, type, seq, item);
     
@@ -24,8 +44,10 @@ export async function POST(req: Request) {
     let targetPath = '';
     // 翻译字幕
     if (type === 'translate_srt') {
-      sourcePath = `${userId}/${taskId}/${pathName}`;
-      targetPath = `${userId}/${taskId}/adj_audio_time/${item.id}.wav`;
+      sourcePath = `${task.userId}/${taskId}/${pathName}`;
+      targetPath = `${task.userId}/${taskId}/adj_audio_time/${item.id}.wav`;
+    } else {
+      return respErr('unsupported type');
     }
 
     let backJO = {code: 200};

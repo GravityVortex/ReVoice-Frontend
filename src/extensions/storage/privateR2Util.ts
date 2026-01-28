@@ -3,7 +3,6 @@ import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { getUuid } from '@/shared/lib/hash';
-import { getUserInfo } from '@/shared/models/user';
 
 const endpoint = process.env.R2_ENDPOINT!;
 const bucketName = process.env.R2_BUCKET_NAME!;
@@ -32,7 +31,11 @@ export async function getBucketName(){
  * @param filename
  * @returns
  */
-export async function getPrivateR2UploadSignUrl(contentType: string, filename: string) {
+export async function getPrivateR2UploadSignUrl(
+  contentType: string,
+  filename: string,
+  userId: string
+) {
   const client = new S3Client({
     region: 'auto',
     endpoint,
@@ -43,11 +46,10 @@ export async function getPrivateR2UploadSignUrl(contentType: string, filename: s
     forcePathStyle: false,
   });
   const fileId = getUuid();
-  const user = await getUserInfo();
   // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
   let env = process.env.ENV || 'dev';
   const keyV = 'original/video/video_original.mp4';
-  const pathName = `${env}/${user?.id}/${fileId}/${keyV}`;
+  const pathName = `${env}/${userId}/${fileId}/${keyV}`;
   // const keyV = `uploads/${Date.now()}-${filename}`;
 
   const command = new PutObjectCommand({
@@ -302,4 +304,3 @@ export async function r2MoveFile(sourcePath: string, targetPath: string) {
     };
   }
 }
-

@@ -14,6 +14,7 @@
     "cancelled": "已取消"
   },
   "statusShort": {
+    "all": "全部",
     "pending": "等待",
     "completed": "成功",
     "processing": "转换中",

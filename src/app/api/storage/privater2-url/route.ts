@@ -1,14 +1,11 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { getAuth } from '@/core/auth';
 import { getPrivateR2SignUrl } from '@/extensions/storage/privateR2Util';
 import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
-import { getStorageService } from '@/shared/services/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +26,13 @@ export async function GET(request: Request) {
 
     if (!key) {
       return respErr('key is required');
+    }
+    if (key.includes('..') || key.startsWith('/')) {
+      return respErr('invalid key');
+    }
+    // Only allow signing objects under the current user's prefix.
+    if (!key.startsWith(`${session.user.id}/`)) {
+      return respErr('Forbidden');
     }
     // DOEND: 调用java接口获取私桶中文件访问url
     let url = '';

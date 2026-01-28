@@ -381,7 +381,11 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: (payCredit: number)
     console.log('保存按钮--->');
     try {
       // DOEND: 实现视频合成保存
-      const resp = await fetch('/api/video-task/generate-video?taskId=' + convertObj.id + '&payCredit=' + payCredit);
+      const resp = await fetch('/api/video-task/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId: convertObj.id, payCredit }),
+      });
       const { code, message,data } = await resp.json();
       if (code === 0) {
         toast.success(t('toast.videoSaveSuccess'));

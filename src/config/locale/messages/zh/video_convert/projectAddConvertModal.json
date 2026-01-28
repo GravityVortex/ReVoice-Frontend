@@ -63,5 +63,9 @@
     "targetLanguageRequired": "请选择目标语言",
     "taskCreated": "转换任务已创建！",
     "submitFailed": "提交失败，稍后再试！"
+  },
+  "credits_required": "消耗积分",
+  "search": {
+    "credits": "积分"
   }
 }

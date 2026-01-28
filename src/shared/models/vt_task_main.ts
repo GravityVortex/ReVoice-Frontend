@@ -56,11 +56,12 @@ export async function getVtTaskMainListByFileId(originalFileId: string) {
     .orderBy(desc(vtTaskMain.createdAt));
 }
 
-export async function getVtTaskMainListByFileIds(fileIds: string[]) {
+export async function getVtTaskMainListByFileIds(fileIds: string[], userId: string) {
   if (fileIds.length === 0) return [];
   return await db()
     .select({
       id: vtTaskMain.id,
+      userId: vtTaskMain.userId,
       status: vtTaskMain.status,
       originalFileId: vtTaskMain.originalFileId,
       priority: vtTaskMain.priority,
@@ -76,7 +77,13 @@ export async function getVtTaskMainListByFileIds(fileIds: string[]) {
       // delStatus: vtTaskMain.delStatus,
     })
     .from(vtTaskMain)
-    .where(and(inArray(vtTaskMain.originalFileId, fileIds), eq(vtTaskMain.delStatus, 0)))
+    .where(
+      and(
+        eq(vtTaskMain.userId, userId),
+        inArray(vtTaskMain.originalFileId, fileIds),
+        eq(vtTaskMain.delStatus, 0)
+      )
+    )
     .orderBy(desc(vtTaskMain.createdAt));
 }
 

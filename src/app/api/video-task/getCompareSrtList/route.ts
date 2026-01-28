@@ -1,6 +1,9 @@
 import {getSystemConfigByKey} from '@/shared/cache/system-config';
 import {respData, respErr} from '@/shared/lib/resp';
+import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
 import {getVtTaskSubtitleListByTaskIdAndStepName} from '@/shared/models/vt_task_subtitle';
+import { hasPermission } from '@/shared/services/rbac';
 import {NextRequest} from 'next/server';
 
 
@@ -12,6 +15,22 @@ export async function GET(request: NextRequest) {
 
     if (!taskId) {
       return respErr('缺少 taskId 参数')
+    }
+
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
+    const task = await findVtTaskMainById(taskId);
+    if (!task) {
+      return respErr('任务不存在');
+    }
+    if (task.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
     }
     // 翻译前后字幕列表
     // [

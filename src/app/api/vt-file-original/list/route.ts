@@ -1,5 +1,7 @@
 import { respData, respErr } from '@/shared/lib/resp';
+import { getUserInfo } from '@/shared/models/user';
 import { getVtFileOriginalList, getVtFileOriginalTotal } from '@/shared/models/vt_file_original';
+import { hasPermission } from '@/shared/services/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,10 +11,20 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const userId = searchParams.get('userId') || '';
+    const requestedUserId = searchParams.get('userId') || '';
 
-    if (!userId) {
-      return respErr('userId is required');
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
+    let userId = user.id;
+    if (requestedUserId && requestedUserId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
+      userId = requestedUserId;
     }
 
     const list = await getVtFileOriginalList(userId, page, limit);

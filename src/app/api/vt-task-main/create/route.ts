@@ -1,4 +1,6 @@
 import { respData, respErr } from '@/shared/lib/resp';
+import { getUserInfo } from '@/shared/models/user';
+import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
 import { insertVtTaskMain } from '@/shared/models/vt_task_main';
 import { getUuid } from '@/shared/lib/hash';
 
@@ -7,9 +9,13 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
+
     const body = await req.json();
     const {
-      userId,
       originalFileId,
       status = 'pending',
       priority = 3,
@@ -22,16 +28,23 @@ export async function POST(req: Request) {
       errorMessage,
       startedAt,
       completedAt,
-      createdBy,
     } = body;
 
-    if (!userId || !originalFileId || !sourceLanguage || !targetLanguage || !speakerCount || !createdBy) {
+    if (!originalFileId || !sourceLanguage || !targetLanguage || !speakerCount) {
       return respErr('Missing required fields');
+    }
+
+    const file = await findVtFileOriginalById(originalFileId);
+    if (!file) {
+      return respErr('original file not found');
+    }
+    if (file.userId !== user.id) {
+      return respErr('no permission');
     }
 
     const result = await insertVtTaskMain({
       id: getUuid(),
-      userId,
+      userId: user.id,
       originalFileId,
       status,
       priority,
@@ -44,8 +57,8 @@ export async function POST(req: Request) {
       errorMessage,
       startedAt,
       completedAt,
-      createdBy,
-      updatedBy: createdBy,
+      createdBy: user.id,
+      updatedBy: user.id,
     });
 
     return respData(result);

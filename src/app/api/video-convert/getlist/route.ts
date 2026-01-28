@@ -1,5 +1,7 @@
 import { respData, respErr } from "@/shared/lib/resp";
 import { getVideoConvertList, getVideoConvertTotal } from "@/shared/models/video_convert";
+import { getUserInfo } from "@/shared/models/user";
+import { hasPermission } from "@/shared/services/rbac";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -9,7 +11,21 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || '1');
     const limit = parseInt(searchParams.get("limit") || '20');
-    const userId = searchParams.get("userId") || '';
+    const requestedUserId = searchParams.get("userId") || '';
+
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr("unauthorized");
+    }
+
+    let userId = user.id;
+    if (requestedUserId && requestedUserId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
+      userId = requestedUserId;
+    }
 
     // 获取视频列表和总数
     const videoList = await getVideoConvertList(userId, page, limit);

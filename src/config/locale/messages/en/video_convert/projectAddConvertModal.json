@@ -63,5 +63,9 @@
     "targetLanguageRequired": "Please select target language",
     "taskCreated": "Conversion task created!",
     "submitFailed": "Submission failed, please try again later!"
+  },
+  "credits_required": "Credits Required",
+  "search": {
+    "credits": "Credits"
   }
 }

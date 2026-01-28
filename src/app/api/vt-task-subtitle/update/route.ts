@@ -1,21 +1,39 @@
 import { respData, respErr } from '@/shared/lib/resp';
-import { updateVtTaskSubtitle } from '@/shared/models/vt_task_subtitle';
+import { getUserInfo } from '@/shared/models/user';
+import { findVtTaskSubtitleById, updateVtTaskSubtitle } from '@/shared/models/vt_task_subtitle';
+import { hasPermission } from '@/shared/services/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { id, userId, ...updateData } = body;
+    const user = await getUserInfo();
+    if (!user) {
+      return respErr('no auth, please sign in');
+    }
 
-    if (!id || !userId) {
-      return respErr('id and userId are required');
+    const body = await req.json();
+    const { id, ...updateData } = body;
+
+    if (!id) {
+      return respErr('id is required');
+    }
+
+    const subtitle = await findVtTaskSubtitleById(id);
+    if (!subtitle) {
+      return respErr('Subtitle not found');
+    }
+    if (subtitle.userId !== user.id) {
+      const isAdmin = await hasPermission(user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('no permission');
+      }
     }
 
     const result = await updateVtTaskSubtitle(id, {
       ...updateData,
-      updatedBy: userId,
+      updatedBy: user.id,
       updatedAt: new Date(),
     });
 
