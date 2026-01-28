@@ -45,6 +45,12 @@ export default function middleware(request: NextRequest) {
   // Run i18n routing only for real pages.
   const intlResponse = intlMiddleware(request);
 
+  // If the request has no locale prefix, let next-intl do its redirect first.
+  // This keeps auth redirects consistently locale-prefixed (e.g. `/en/sign-in`).
+  if (!isValidLocale && intlResponse.headers.has('location')) {
+    return intlResponse;
+  }
+
   // Page-level redirect gate. APIs must enforce auth/ownership separately.
   if (
     pathWithoutLocale.startsWith('/admin') ||
@@ -66,6 +72,14 @@ export default function middleware(request: NextRequest) {
       signInUrl.searchParams.set('callbackUrl', callbackPath);
       return NextResponse.redirect(signInUrl);
     }
+  }
+
+  // Keep `/dashboard` as the canonical entry point, but serve the current
+  // workspace implementation (video conversion list) without changing the URL.
+  if (isValidLocale && pathWithoutLocale === '/dashboard') {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}/video_convert/myVideoList`;
+    return NextResponse.rewrite(url, intlResponse);
   }
 
   // Debug headers help trace routing issues (safe; not sensitive).
