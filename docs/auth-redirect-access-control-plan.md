@@ -12,7 +12,8 @@ The goal is to implement this with minimal complexity (KISS) and eliminate bypas
 
 ## 1) Current Situation (Repo-Specific)
 
-- There is already a middleware-like implementation in `src/proxy.ts`, but Next.js only runs `middleware.ts` at the repo root, so this code is currently not active.
+- Page-level auth + i18n routing is implemented in repo-root `middleware.ts` (this is the only middleware Next.js will run).
+- `src/proxy.ts` is legacy/unused and can be removed once we confirm deployments are stable.
 - Some protected pages do ad-hoc `getUserInfo()` checks and render `Empty message="no auth"` instead of redirecting.
 - Several APIs accept `userId`/`key` from the client or do not check resource ownership. This enables horizontal privilege escalation even if pages are protected.
 
@@ -102,8 +103,8 @@ Without Layer B, users can bypass page redirects by calling APIs directly.
 
 ### Phase 1: Activate middleware (single source of truth)
 
-1) Create repo-root `middleware.ts` and have it call the existing implementation (or move `src/proxy.ts` to `middleware.ts`).
-   - Avoid duplicate logic; keep one implementation.
+1) Keep a single source of truth in repo-root `middleware.ts`.
+   - Avoid duplicate logic or re-exporting middleware config (Next.js requires static analysis).
 
 2) Expand the protected prefixes in the middleware:
    - Add `/dashboard`, `/video_convert`, `/chat` to the existing `/admin`, `/settings`, `/activity`.
@@ -195,4 +196,3 @@ Definition of done (Phase 3):
   - “is this path protected?”
   - “sanitize callbackUrl”
 - Avoid sprinkling `if (!user) return <Empty ...>` throughout pages once middleware/layout guard is correct.
-
