@@ -74,14 +74,6 @@ export default function middleware(request: NextRequest) {
     }
   }
 
-  // Keep `/dashboard` as the canonical entry point, but serve the current
-  // workspace implementation (video conversion list) without changing the URL.
-  if (isValidLocale && pathWithoutLocale === '/dashboard') {
-    const url = request.nextUrl.clone();
-    url.pathname = `/${locale}/video_convert/myVideoList`;
-    return NextResponse.rewrite(url, intlResponse);
-  }
-
   // Debug headers help trace routing issues (safe; not sensitive).
   intlResponse.headers.set('x-pathname', request.nextUrl.pathname);
   intlResponse.headers.set('x-url', request.url);
