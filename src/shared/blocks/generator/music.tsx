@@ -39,6 +39,7 @@ import {
 import { Switch } from '@/shared/components/ui/switch';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { useAppContext } from '@/shared/contexts/app';
+import { useSignInRedirect } from '@/shared/hooks/use-sign-in-redirect';
 import { cn } from '@/shared/lib/utils';
 
 interface SongData {
@@ -76,8 +77,8 @@ interface SongGeneratorProps {
 
 export function MusicGenerator({ className, srOnlyTitle }: SongGeneratorProps) {
   const t = useTranslations('ai.music');
-  const { user, isCheckSign, setIsShowSignModal, fetchUserCredits } =
-    useAppContext();
+  const { user, isCheckSign, fetchUserCredits } = useAppContext();
+  const redirectToSignIn = useSignInRedirect();
 
   // Form state
   const [provider, setProvider] = useState('kie');
@@ -246,7 +247,7 @@ export function MusicGenerator({ className, srOnlyTitle }: SongGeneratorProps) {
 
   const handleGenerate = async () => {
     if (!user) {
-      setIsShowSignModal(true);
+      redirectToSignIn();
       return;
     }
 
@@ -582,7 +583,7 @@ export function MusicGenerator({ className, srOnlyTitle }: SongGeneratorProps) {
                   <Button
                     className="w-full"
                     size="lg"
-                    onClick={() => setIsShowSignModal(true)}
+                    onClick={() => redirectToSignIn()}
                   >
                     <User className="mr-2 h-4 w-4" />{' '}
                     {t('generator.sign_in_to_generate')}

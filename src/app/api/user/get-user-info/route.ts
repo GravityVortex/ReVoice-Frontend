@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     // check souldub access
     const configs = await getAllConfigs();
-    const souldubAccess = checkSoulDubAccess(user.email, configs);
+    const souldubAccess = checkSoulDubAccess(user.email, configs, isAdmin);
 
     return respData({ ...user, isAdmin, souldubAccess, credits: { remainingCredits } });
   } catch (e) {

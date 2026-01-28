@@ -6,11 +6,12 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Link } from '@/core/i18n/navigation';
+import { Link, useRouter } from '@/core/i18n/navigation';
 import { SmartIcon } from '@/shared/blocks/common';
 import { AnimatedGridPattern } from '@/shared/components/ui/animated-grid-pattern';
 import { Button } from '@/shared/components/ui/button';
 import { useAppContext } from '@/shared/contexts/app';
+import { checkSoulDubAccess } from '@/shared/lib/souldub';
 import { cn } from '@/shared/lib/utils';
 import { Hero as HeroType } from '@/shared/types/blocks/landing';
 
@@ -28,7 +29,7 @@ export function Hero({
   className?: string;
 }) {
   const t = useTranslations('landing.souldub_gate');
-  const { user, setIsShowSignModal } = useAppContext();
+  const { user, configs } = useAppContext();
   const titleText = hero.title ?? '';
   const highlightText = hero.highlight_text ?? '';
   const titleLines = titleText.split(/\r?\n|\\n/).filter((line) => line.trim());
@@ -68,10 +69,19 @@ export function Hero({
     });
   };
 
+  const router = useRouter();
+
   const handleButtonClick = (e: MouseEvent<HTMLElement>, url: string) => {
-    if (url === '/video_convert' && !user) {
+    // Intercept "Try Free" / Video Convert button
+    if (url === '/video_convert') {
       e.preventDefault();
-      setIsShowSignModal(true);
+      if (user) {
+        router.push('/dashboard');
+      } else {
+        router.push(
+          `/sign-in?callbackUrl=${encodeURIComponent('/dashboard')}`
+        );
+      }
     }
   };
 
@@ -150,13 +160,12 @@ export function Hero({
         {hero.buttons && (
           <motion.div
             {...createFadeInVariant(0.5)}
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
-          >
+              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
+            >
             {hero.buttons.map((button, idx) => {
               // Custom Logic for SoulDub Gating
               const isVideoConvert = button.url === '/video_convert';
-              const isGloballyEnabled = (useAppContext().configs || {})['souldub_enabled'] === 'true';
-              const hasAccess = isGloballyEnabled || (user && user.souldubAccess);
+              const hasAccess = checkSoulDubAccess(user?.email, configs, Boolean(user?.isAdmin));
 
               // If it's the video convert button and user doesn't have access, modify behavior
               const isRestricted = isVideoConvert && !hasAccess;

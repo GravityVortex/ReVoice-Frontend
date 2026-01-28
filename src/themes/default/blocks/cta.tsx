@@ -10,6 +10,10 @@ import { useTranslations } from 'next-intl';
 import { checkSoulDubAccess } from '@/shared/lib/souldub';
 
 export function CTA({ cta, className }: { cta: CTAType; className?: string }) {
+  const { configs, user } = useAppContext();
+  const t = useTranslations('landing.souldub_gate');
+  const hasAccess = checkSoulDubAccess(user?.email, configs, Boolean(user?.isAdmin));
+
   return (
     <section id={cta.id} className={`py-16 md:py-24 ${className}`}>
       <div className="container">
@@ -31,11 +35,6 @@ export function CTA({ cta, className }: { cta: CTAType; className?: string }) {
               {cta.buttons?.map((button, idx) => {
                 // SoulDub Gating Logic
                 const isVideoConvert = button.url === '/video_convert';
-                const { configs, user } = useAppContext();
-                const t = useTranslations('landing.souldub_gate');
-
-                const isGloballyEnabled = (configs || {})['souldub_enabled'] === 'true';
-                const hasAccess = isGloballyEnabled || (user && checkSoulDubAccess(user.email, configs, user.isAdmin));
                 const isRestricted = isVideoConvert && !hasAccess;
 
                 return (

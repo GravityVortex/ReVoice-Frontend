@@ -9,7 +9,7 @@ import { stripLocalePrefix } from '@/core/i18n/href';
 import { useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
-import { useAppContext } from '@/shared/contexts/app';
+import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 import { cn } from '@/shared/lib/utils';
 import { Button as ButtonType } from '@/shared/types/blocks/common';
 
@@ -27,26 +27,24 @@ export function SocialProviders({
   const t = useTranslations('common.sign');
   const router = useRouter();
 
-  const { setIsShowSignModal } = useAppContext();
-
-  const callbackHref = stripLocalePrefix(callbackUrl);
-
-  if (callbackUrl) {
-    const locale = useLocale();
-    if (
-      locale !== defaultLocale &&
-      callbackUrl.startsWith('/') &&
-      !callbackUrl.startsWith(`/${locale}`)
-    ) {
-      callbackUrl = `/${locale}${callbackUrl}`;
-    }
+  const locale = useLocale();
+  const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/');
+  let localizedCallbackUrl = safeCallbackUrl;
+  if (
+    locale !== defaultLocale &&
+    safeCallbackUrl.startsWith('/') &&
+    !safeCallbackUrl.startsWith(`/${locale}`)
+  ) {
+    localizedCallbackUrl = `/${locale}${safeCallbackUrl}`;
   }
+
+  const callbackHref = stripLocalePrefix(localizedCallbackUrl);
 
   const handleSignIn = async ({ provider }: { provider: string }) => {
     await signIn.social(
       {
         provider: provider,
-        callbackURL: callbackUrl,
+        callbackURL: localizedCallbackUrl,
       },
       {
         onRequest: (ctx) => {
@@ -54,7 +52,6 @@ export function SocialProviders({
         },
         onResponse: (ctx) => {
           setLoading(false);
-          setIsShowSignModal(false);
         },
         onSuccess: async (ctx) => {
           router.push(callbackHref);

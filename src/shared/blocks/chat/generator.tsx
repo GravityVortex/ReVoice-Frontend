@@ -10,6 +10,7 @@ import { LocaleSelector } from '@/shared/blocks/common';
 import { PromptInputMessage } from '@/shared/components/ai-elements/prompt-input';
 import { SidebarTrigger } from '@/shared/components/ui/sidebar';
 import { useAppContext } from '@/shared/contexts/app';
+import { useSignInRedirect } from '@/shared/hooks/use-sign-in-redirect';
 import { useChatContext } from '@/shared/contexts/chat';
 
 import { ChatInput } from './input';
@@ -17,10 +18,11 @@ import { ChatInput } from './input';
 export function ChatGenerator() {
   const router = useRouter();
   const locale = useLocale();
+  const redirectToSignIn = useSignInRedirect('/chat');
 
   const t = useTranslations('ai.chat.generator');
 
-  const { user, setIsShowSignModal } = useAppContext();
+  const { user } = useAppContext();
   const { chats, setChats, setChat } = useChatContext();
 
   const [status, setStatus] = useState<UseChatHelpers<UIMessage>['status']>();
@@ -75,7 +77,7 @@ export function ChatGenerator() {
   ) => {
     // check user sign
     if (!user) {
-      setIsShowSignModal(true);
+      redirectToSignIn();
       return;
     }
 

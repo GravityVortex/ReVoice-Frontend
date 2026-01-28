@@ -26,6 +26,7 @@ import {
 } from '@/shared/components/ui/select';
 
 import { useAppContext } from '@/shared/contexts/app';
+import { useSignInRedirect } from '@/shared/hooks/use-sign-in-redirect';
 import { getCookie } from '@/shared/lib/cookie';
 import { cn } from '@/shared/lib/utils';
 import { Subscription } from '@/shared/models/subscription';
@@ -99,10 +100,10 @@ export function Pricing({
   const {
     user,
     isShowPaymentModal,
-    setIsShowSignModal,
     setIsShowPaymentModal,
     configs,
   } = useAppContext();
+  const redirectToSignIn = useSignInRedirect('/pricing');
 
   const [group, setGroup] = useState(() => {
     // find current pricing item
@@ -211,44 +212,9 @@ export function Pricing({
   };
 
   // Payment provider state management
-  const [paymentProvider, setPaymentProvider] = useState<string>('');
-
-  useEffect(() => {
-    // Prefer the configured default provider, but only if it's enabled.
-    const configuredDefault = configs.default_payment_provider;
-
-    if (configuredDefault === 'stripe' && configs.stripe_enabled === 'true') {
-      setPaymentProvider('stripe');
-      return;
-    }
-    if (configuredDefault === 'paypal' && configs.paypal_enabled === 'true') {
-      setPaymentProvider('paypal');
-      return;
-    }
-    if (configuredDefault === 'creem' && configs.creem_enabled === 'true') {
-      setPaymentProvider('creem');
-      return;
-    }
-
-    if (configs.stripe_enabled === 'true') {
-      setPaymentProvider('stripe');
-    } else if (configs.paypal_enabled === 'true') {
-      setPaymentProvider('paypal');
-    } else if (configs.creem_enabled === 'true') {
-      setPaymentProvider('creem');
-    } else {
-      setPaymentProvider('');
-    }
-  }, [
-    configs.default_payment_provider,
-    configs.stripe_enabled,
-    configs.paypal_enabled,
-    configs.creem_enabled,
-  ]);
-
   const handlePayment = async (item: PricingItem) => {
     if (!user) {
-      setIsShowSignModal(true);
+      redirectToSignIn();
       return;
     }
 
@@ -256,12 +222,11 @@ export function Pricing({
     const displayedItem =
       itemCurrencies[item.product_id]?.displayedItem || item;
 
-    if (configs.select_payment_enabled === 'true' && !paymentProvider) {
-      // Fallback to modal if for some reason no provider is selected
+    if (configs.select_payment_enabled === 'true') {
       setPricingItem(displayedItem);
       setIsShowPaymentModal(true);
     } else {
-      handleCheckout(displayedItem, paymentProvider || configs.default_payment_provider);
+      handleCheckout(displayedItem, configs.default_payment_provider);
     }
   };
 
@@ -302,7 +267,7 @@ export function Pricing({
   ) => {
     try {
       if (!user) {
-        setIsShowSignModal(true);
+        redirectToSignIn();
         return;
       }
 
@@ -333,7 +298,7 @@ export function Pricing({
         setIsLoading(false);
         setProductId(null);
         setPricingItem(null);
-        setIsShowSignModal(true);
+        redirectToSignIn();
         return;
       }
 
@@ -380,13 +345,6 @@ export function Pricing({
         : visibleItems.length === 3
           ? 'md:grid-cols-3'
           : 'md:grid-cols-4';
-
-
-  const showPaymentSelection =
-    configs.select_payment_enabled === 'true' &&
-    configs.paypal_enabled === 'true' &&
-    configs.stripe_enabled === 'true';
-
   return (
     <section
       id={pricing.id}
@@ -439,57 +397,6 @@ export function Pricing({
                   </div>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {/* Global Payment Method Selector */}
-        {showPaymentSelection && (
-          <div className="mb-12 flex justify-center">
-            <div className="inline-flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 p-1.5 backdrop-blur-md">
-              <button
-                onClick={() => setPaymentProvider('stripe')}
-                className={cn(
-                  "relative flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors duration-300",
-                  paymentProvider === 'stripe'
-                    ? "text-black"
-                    : "text-muted-foreground hover:text-white"
-                )}
-              >
-                {paymentProvider === 'stripe' && (
-                  <motion.div
-                    layoutId="payment-active"
-                    className="absolute inset-0 z-0 rounded-lg bg-white/80 border border-white/40 backdrop-blur-xl shadow-lg shadow-white/20"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <div className="relative z-10 flex items-center gap-2">
-                  <img src="/imgs/icons/stripe.svg" alt="Stripe" className="h-5 w-auto object-contain rounded-md" />
-                  <span>Card / Stripe</span>
-                </div>
-              </button>
-              <div className="mx-1 h-6 w-px bg-white/10" />
-              <button
-                onClick={() => setPaymentProvider('paypal')}
-                className={cn(
-                  "relative flex min-w-[140px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors duration-300",
-                  paymentProvider === 'paypal'
-                    ? "text-black"
-                    : "text-muted-foreground hover:text-white"
-                )}
-              >
-                {paymentProvider === 'paypal' && (
-                  <motion.div
-                    layoutId="payment-active"
-                    className="absolute inset-0 z-0 rounded-lg bg-white/80 border border-white/40 backdrop-blur-xl shadow-lg shadow-white/20"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <div className="relative z-10 flex items-center gap-2">
-                  <img src="/imgs/icons/paypal.svg" alt="PayPal" className="h-5 w-auto object-contain" />
-                  <span>PayPal</span>
-                </div>
-              </button>
             </div>
           </div>
         )}
@@ -619,10 +526,7 @@ export function Pricing({
                             />
                           )}
                           <span className="block">
-                            {/* Show appropriate text based on payment provider if selected */}
-                            {paymentProvider === 'paypal'
-                              ? t('pay_with_paypal')
-                              : item.button?.title}
+                            {item.button?.title}
                           </span>
                         </>
                       )}

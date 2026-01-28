@@ -41,7 +41,15 @@
     "enter_email_first": "Please enter email first",
     "enter_code": "Please enter verification code",
     "invalid_code": "Invalid verification code",
-    "send_code_failed": "Failed to send code"
+    "send_code_failed": "Failed to send code",
+    "start_creating": "Start Creating",
+    "profile_settings": "Profile Settings",
+    "brand_name_title": "SoulDub",
+    "marketing_slogan_title": "Global Reach, Local Feel",
+    "marketing_slogan_desc": "AI-driven video translation that preserves your voice and emotion.",
+    "terms_of_service": "Terms of Service",
+    "privacy_policy": "Privacy Policy",
+    "legal_agreement": "By signing in, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>."
   },
   "payment": {
     "choose_payment_method": "Choose Payment Method",

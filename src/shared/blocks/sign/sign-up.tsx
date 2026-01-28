@@ -10,6 +10,7 @@ import { signUp } from '@/core/auth/client';
 import { Link } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
+import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 import {
   Card,
   CardContent,
@@ -47,15 +48,15 @@ export function SignUp({
     configs.email_auth_enabled !== 'false' ||
     (!isGoogleAuthEnabled && !isGithubAuthEnabled); // no social providers enabled, auto enable email auth
 
-  if (callbackUrl) {
-    const locale = useLocale();
-    if (
-      locale !== defaultLocale &&
-      callbackUrl.startsWith('/') &&
-      !callbackUrl.startsWith(`/${locale}`)
-    ) {
-      callbackUrl = `/${locale}${callbackUrl}`;
-    }
+  const locale = useLocale();
+  const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/');
+  let localizedCallbackUrl = safeCallbackUrl;
+  if (
+    locale !== defaultLocale &&
+    safeCallbackUrl.startsWith('/') &&
+    !safeCallbackUrl.startsWith(`/${locale}`)
+  ) {
+    localizedCallbackUrl = `/${locale}${safeCallbackUrl}`;
   }
 
   const reportAffiliate = ({
@@ -167,7 +168,7 @@ export function SignUp({
 
           // report affiliate
           reportAffiliate({ userEmail: email });
-          router.push(callbackUrl);
+          router.push(localizedCallbackUrl);
         },
         onError: (e: any) => {
           console.log('sign up error--->', e);
@@ -271,7 +272,7 @@ export function SignUp({
 
           <SocialProviders
             configs={configs}
-            callbackUrl={callbackUrl || '/'}
+            callbackUrl={localizedCallbackUrl}
             loading={loading}
             setLoading={setLoading}
           />

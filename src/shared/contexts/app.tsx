@@ -15,8 +15,6 @@ import { User } from '@/shared/models/user';
 export interface ContextValue {
   user: User | null;
   isCheckSign: boolean;
-  isShowSignModal: boolean;
-  setIsShowSignModal: (show: boolean) => void;
   isShowPaymentModal: boolean;
   setIsShowPaymentModal: (show: boolean) => void;
   configs: Record<string, string>;
@@ -29,11 +27,21 @@ const AppContext = createContext({} as ContextValue);
 
 export const useAppContext = () => useContext(AppContext);
 
-export const AppContextProvider = ({ children }: { children: ReactNode }) => {
-  const [configs, setConfigs] = useState<Record<string, string>>({});
+export const AppContextProvider = ({
+  children,
+  initialUser = null,
+  initialConfigs,
+}: {
+  children: ReactNode;
+  initialUser?: User | null;
+  initialConfigs?: Record<string, string>;
+}) => {
+  const [configs, setConfigs] = useState<Record<string, string>>(
+    initialConfigs ?? {}
+  );
 
   // sign user
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(initialUser);
 
   // session
   const { data: session, isPending, refetch: refreshSession } = useSession();
@@ -51,14 +59,14 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       // Preserve previously fetched credits if the session payload doesn't include them.
       authedUser = { ...sessionUser, credits: user?.credits };
     }
+  } else if (user) {
+    // SSR can provide an initial user. Keep it until the session hook finishes.
+    authedUser = user;
   }
 
   // Session is unknown while `useSession()` is pending. Treat this as a distinct state
   // (don't show "Sign in" UI yet) to avoid flashing the wrong auth UI.
-  const isCheckSign = isPending;
-
-  // show sign modal
-  const [isShowSignModal, setIsShowSignModal] = useState(false);
+  const isCheckSign = isPending && !authedUser;
 
   // show payment modal
   const [isShowPaymentModal, setIsShowPaymentModal] = useState(false);
@@ -134,10 +142,18 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    fetchConfigs();
-  }, []);
+    // Avoid an immediate redundant round-trip when configs were already provided by SSR.
+    if (!initialConfigs || Object.keys(initialConfigs).length === 0) {
+      fetchConfigs();
+    }
+  }, [initialConfigs]);
 
   useEffect(() => {
+    // Don't clobber SSR-provided user while the session is still loading.
+    if (isPending) {
+      return;
+    }
+
     if (session?.user) {
       const sessionUser = session.user as User;
       // Preserve already-fetched credits if the session payload doesn't include them.
@@ -154,7 +170,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       lastSessionUserIdRef.current = null;
     }
-  }, [session]);
+  }, [session, isPending]);
 
   useEffect(() => {
     if (
@@ -179,8 +195,6 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user: authedUser,
         isCheckSign,
-        isShowSignModal,
-        setIsShowSignModal,
         isShowPaymentModal,
         setIsShowPaymentModal,
         configs,

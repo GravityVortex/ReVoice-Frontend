@@ -41,7 +41,15 @@
     "enter_email_first": "请先输入邮箱",
     "enter_code": "请输入验证码",
     "invalid_code": "验证码错误",
-    "send_code_failed": "发送验证码失败"
+    "send_code_failed": "发送验证码失败",
+    "start_creating": "开始创作",
+    "profile_settings": "个人设置",
+    "brand_name_title": "SoulDub",
+    "marketing_slogan_title": "连接全球，情感互通",
+    "marketing_slogan_desc": "AI 驱动的视频翻译，保留原声情感，让世界听懂你的声音。",
+    "terms_of_service": "服务条款",
+    "privacy_policy": "隐私政策",
+    "legal_agreement": "登录即代表您同意我们的<terms>服务条款</terms>和<privacy>隐私政策</privacy>。"
   },
   "payment": {
     "choose_payment_method": "选择支付方式",

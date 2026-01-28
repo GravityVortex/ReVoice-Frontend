@@ -19,11 +19,14 @@ export default async function proxy(request: NextRequest) {
     ? pathname.slice(locale.length + 1)
     : pathname;
 
-  // Only check authentication for admin routes
+  // Check authentication for protected pages (page routing only; APIs must enforce auth separately).
   if (
     pathWithoutLocale.startsWith('/admin') ||
+    pathWithoutLocale.startsWith('/dashboard') ||
     pathWithoutLocale.startsWith('/settings') ||
-    pathWithoutLocale.startsWith('/activity')
+    pathWithoutLocale.startsWith('/activity') ||
+    pathWithoutLocale.startsWith('/video_convert') ||
+    pathWithoutLocale.startsWith('/chat')
   ) {
     // Check if session cookie exists
     const sessionCookie = getSessionCookie(request);
@@ -53,9 +56,3 @@ export default async function proxy(request: NextRequest) {
   // For all other routes (including /, /sign-in, /sign-up, /sign-out), just return the intl response
   return intlResponse;
 }
-
-export const config = {
-  // Keep non-i18n root pages stable (no /en or /zh prefix).
-  matcher:
-    '/((?!api|trpc|_next|_vercel|privacy|terms|privacy-policy|terms-of-service|.*\\..*).*)',
-};

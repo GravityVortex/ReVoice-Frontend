@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { envConfigs } from '@/config';
 import { defaultLocale } from '@/config/locale';
 import { SignUp } from '@/shared/blocks/sign/sign-up';
+import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 import { getConfigs } from '@/shared/models/config';
 
 export async function generateMetadata({
@@ -34,5 +35,10 @@ export default async function SignUpPage({
 
   const configs = await getConfigs();
 
-  return <SignUp configs={configs} callbackUrl={callbackUrl || '/'} />;
+  return (
+    <SignUp
+      configs={configs}
+      callbackUrl={sanitizeCallbackUrl(callbackUrl, '/')}
+    />
+  );
 }

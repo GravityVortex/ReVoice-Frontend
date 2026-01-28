@@ -13,6 +13,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { useAppContext } from '@/shared/contexts/app';
+import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 
 import { SocialProviders } from './social-providers';
 import { generateVisitorId, getVisitorInfo } from '@/shared/lib/fingerprint';
@@ -30,28 +31,27 @@ export function SignInForm({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { configs, refreshSession, setIsShowSignModal } = useAppContext();
+  const { configs, refreshSession } = useAppContext();
   const router = useRouter();
 
-  // Override: Always enable social login for Vozo-like experience
-  const isGoogleAuthEnabled = true; // configs.google_auth_enabled === 'true';
-  const isGithubAuthEnabled = true; // configs.github_auth_enabled === 'true';
+  const isGoogleAuthEnabled = configs.google_auth_enabled === 'true';
+  const isGithubAuthEnabled = configs.github_auth_enabled === 'true';
   const isEmailAuthEnabled =
     configs.email_auth_enabled !== 'false' ||
     (!isGoogleAuthEnabled && !isGithubAuthEnabled); // no social providers enabled, auto enable email auth
 
-  const callbackHref = stripLocalePrefix(callbackUrl);
-
-  if (callbackUrl) {
-    const locale = useLocale();
-    if (
-      locale !== defaultLocale &&
-      callbackUrl.startsWith('/') &&
-      !callbackUrl.startsWith(`/${locale}`)
-    ) {
-      callbackUrl = `/${locale}${callbackUrl}`;
-    }
+  const locale = useLocale();
+  const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/');
+  let localizedCallbackUrl = safeCallbackUrl;
+  if (
+    locale !== defaultLocale &&
+    safeCallbackUrl.startsWith('/') &&
+    !safeCallbackUrl.startsWith(`/${locale}`)
+  ) {
+    localizedCallbackUrl = `/${locale}${safeCallbackUrl}`;
   }
+
+  const callbackHref = stripLocalePrefix(localizedCallbackUrl);
 
   const handleSignIn = async () => {
     if (loading) {
@@ -69,7 +69,7 @@ export function SignInForm({
         {
           email,
           password,
-          callbackURL: callbackUrl,
+          callbackURL: localizedCallbackUrl,
         },
         {
           onRequest: (ctx) => {
@@ -131,7 +131,6 @@ export function SignInForm({
       ));
 
       setLoading(false);
-      setIsShowSignModal(false);
       router.push(callbackHref);
       router.refresh();
     } catch (e: any) {
@@ -205,12 +204,8 @@ export function SignInForm({
         )}
 
         <SocialProviders
-          configs={{
-            ...configs,
-            google_auth_enabled: 'true',
-            github_auth_enabled: 'true',
-          }}
-          callbackUrl={callbackUrl || '/'}
+          configs={configs}
+          callbackUrl={localizedCallbackUrl}
           loading={loading}
           setLoading={setLoading}
         />

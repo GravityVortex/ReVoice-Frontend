@@ -256,7 +256,9 @@ export function Header({ header }: { header: HeaderType }) {
       <header
         data-state={isMobileMenuOpen ? 'active' : 'inactive'}
         {...(isScrolled && { 'data-scrolled': true })}
-        className="fixed inset-x-0 top-0 z-50 h-[4.5rem] transition-all duration-300 pr-[var(--removed-body-scroll-bar-size)]"
+        // Don't animate padding changes from `react-remove-scroll-bar` (modal open/close),
+        // otherwise the whole header "slides" left/right.
+        className="fixed inset-x-0 top-0 z-50 h-[4.5rem] pr-[var(--removed-body-scroll-bar-size)]"
       >
         <div
           className={cn(

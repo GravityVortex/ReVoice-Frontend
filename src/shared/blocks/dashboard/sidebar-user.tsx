@@ -7,7 +7,6 @@ import { useTranslations } from 'next-intl';
 import { signOut } from '@/core/auth/client';
 import { Link, useRouter } from '@/core/i18n/navigation';
 import { SmartIcon } from '@/shared/blocks/common';
-import { SignModal } from '@/shared/blocks/sign/sign-modal';
 import {
   Avatar,
   AvatarFallback,
@@ -30,6 +29,7 @@ import {
   useSidebar,
 } from '@/shared/components/ui/sidebar';
 import { useAppContext } from '@/shared/contexts/app';
+import { useSignInRedirect } from '@/shared/hooks/use-sign-in-redirect';
 import { NavItem } from '@/shared/types/blocks/common';
 import { SidebarUser as SidebarUserType } from '@/shared/types/blocks/dashboard';
 
@@ -38,9 +38,10 @@ export function SidebarUser({ user }: { user: SidebarUserType }) {
   const t = useTranslations('common.sign');
   const { isMobile, open } = useSidebar();
   const router = useRouter();
+  const redirectToSignIn = useSignInRedirect('/dashboard');
 
   // Centralize auth/session fetching in AppContextProvider to avoid redundant /api/auth/get-session calls.
-  const { user: authedUser, isCheckSign, setIsShowSignModal } = useAppContext();
+  const { user: authedUser, isCheckSign } = useAppContext();
 
   // This state will ensure rendering only happens after client hydration
   const [hasMounted, setHasMounted] = useState(false);
@@ -173,7 +174,10 @@ export function SidebarUser({ user }: { user: SidebarUserType }) {
               <Loader2 className="animate-spin" />
             </div>
           ) : (
-            <Button className="w-full" onClick={() => setIsShowSignModal(true)}>
+            <Button
+              className="w-full"
+              onClick={() => redirectToSignIn(user.signin_callback || '/dashboard')}
+            >
               <User className="mr-1 h-4 w-4" />
               {t('sign_in_title')}
             </Button>
@@ -182,8 +186,6 @@ export function SidebarUser({ user }: { user: SidebarUserType }) {
       ) : (
         <SidebarMenu />
       )}
-
-      <SignModal callbackUrl={user.signin_callback || '/'} />
     </>
   );
 }

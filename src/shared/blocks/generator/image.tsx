@@ -38,6 +38,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { useAppContext } from '@/shared/contexts/app';
+import { useSignInRedirect } from '@/shared/hooks/use-sign-in-redirect';
 
 interface ImageGeneratorProps {
   allowMultipleImages?: boolean;
@@ -178,8 +179,8 @@ export function ImageGenerator({
   );
   const [isMounted, setIsMounted] = useState(false);
 
-  const { user, isCheckSign, setIsShowSignModal, fetchUserCredits } =
-    useAppContext();
+  const { user, isCheckSign, fetchUserCredits } = useAppContext();
+  const redirectToSignIn = useSignInRedirect();
 
   useEffect(() => {
     setIsMounted(true);
@@ -394,7 +395,7 @@ export function ImageGenerator({
 
   const handleGenerate = async () => {
     if (!user) {
-      setIsShowSignModal(true);
+      redirectToSignIn();
       return;
     }
 
@@ -646,7 +647,7 @@ export function ImageGenerator({
                   <Button
                     size="lg"
                     className="w-full"
-                    onClick={() => setIsShowSignModal(true)}
+                    onClick={() => redirectToSignIn()}
                   >
                     <User className="mr-2 h-4 w-4" />
                     {t('sign_in_to_generate')}
