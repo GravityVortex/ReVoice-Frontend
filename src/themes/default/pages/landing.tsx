@@ -29,6 +29,13 @@ export default async function LandingPage({
 
 
 
+      {page.usage && (
+        <FeaturesStep
+          features={page.usage}
+          className="bg-background"
+        />
+      )}
+
       {page.showcases && (
         <Showcases
           showcases={page.showcases}

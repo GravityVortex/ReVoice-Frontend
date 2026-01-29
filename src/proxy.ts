@@ -20,6 +20,23 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Normalize accidental double-locale prefixes (e.g. `/zh/zh/...` or `/en/zh/...`).
+  // Keep the *last* locale segment to match the user's latest selection.
+  const segments = pathname.split('/').filter(Boolean);
+  if (
+    segments.length >= 2 &&
+    routing.locales.includes(segments[0] as any) &&
+    routing.locales.includes(segments[1] as any)
+  ) {
+    const canonicalPath =
+      '/' +
+      segments[1] +
+      (segments.length > 2 ? `/${segments.slice(2).join('/')}` : '');
+    const url = request.nextUrl.clone();
+    url.pathname = canonicalPath;
+    return NextResponse.redirect(url);
+  }
+
   // Skip legal pages (no locale prefix)
   if (
     pathname === '/privacy' ||

@@ -15,6 +15,29 @@ import { hasPermission } from '@/shared/services/rbac';
 
 export const generateMetadata = getMetadata();
 
+const SOFT_SSR_TIMEOUT_MS = 1500;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+
+  return Promise.race([
+    promise.finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    }),
+    timeout,
+  ]);
+}
+
 export default async function LocaleLayout({
   children,
   params,
@@ -31,14 +54,31 @@ export default async function LocaleLayout({
 
   const initialConfigsPromise = getPublicConfigs();
   const initialUserPromise = (async (): Promise<User | null> => {
-    const user = await getSignUser();
+    // LocaleLayout gates client hydration (it contains our providers). If the DB/auth
+    // backend is slow/unreachable, don't block the entire page and make the UI feel
+    // "dead" (no clicks). Fail fast and degrade gracefully.
+    const user = await withTimeout(getSignUser(), SOFT_SSR_TIMEOUT_MS, 'getSignUser()')
+      .catch((e) => {
+        console.log('[LocaleLayout] getSignUser failed:', e);
+        return undefined;
+      });
     if (!user) {
       return null;
     }
 
     const [configs, isAdmin] = await Promise.all([
-      getAllConfigs(),
-      hasPermission(user.id, 'admin.access'),
+      getAllConfigs().catch((e) => {
+        console.log('[LocaleLayout] getAllConfigs failed:', e);
+        return {};
+      }),
+      withTimeout(
+        hasPermission(user.id, 'admin.access'),
+        SOFT_SSR_TIMEOUT_MS,
+        'hasPermission(admin.access)'
+      ).catch((e) => {
+        console.log('[LocaleLayout] hasPermission failed:', e);
+        return false;
+      }),
     ]);
 
     return {
@@ -56,7 +96,7 @@ export default async function LocaleLayout({
   ]);
 
   return (
-    <NextIntlClientProvider>
+    <NextIntlClientProvider locale={locale}>
       <ThemeProvider>
         <AppContextProvider initialUser={initialUser} initialConfigs={initialConfigs}>
           {children}

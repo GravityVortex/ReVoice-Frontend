@@ -4,6 +4,9 @@ import { DashboardSidebar } from "@/shared/blocks/dashboard/sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/shared/components/ui/sidebar";
 import { useAppContext } from "@/shared/contexts/app";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Button } from "@/shared/components/ui/button";
+import { useSignInRedirect } from "@/shared/hooks/use-sign-in-redirect";
+import { useTranslations } from "next-intl";
 
 export default function DashboardLayout({
     children,
@@ -11,8 +14,10 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const { user, isCheckSign } = useAppContext();
+    const t = useTranslations("common.sign");
+    const redirectToSignIn = useSignInRedirect();
 
-    if (isCheckSign || !user) {
+    if (isCheckSign) {
         return (
             <div className="flex w-full h-screen bg-background">
                 {/* Sidebar Skeleton */}
@@ -30,6 +35,26 @@ export default function DashboardLayout({
                     </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {[1, 2, 3].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background p-6">
+                <div className="w-full max-w-md rounded-xl border bg-card p-8 text-center shadow-sm">
+                    <h1 className="text-xl font-semibold text-foreground">
+                        {t("sign_in_description")}
+                    </h1>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        {t("guest_sign_in_description")}
+                    </p>
+                    <div className="mt-6 flex justify-center">
+                        <Button onClick={() => redirectToSignIn()}>
+                            {t("sign_in_title")}
+                        </Button>
                     </div>
                 </div>
             </div>

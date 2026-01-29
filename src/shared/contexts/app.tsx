@@ -43,6 +43,8 @@ export const AppContextProvider = ({
   // sign user
   const [user, setUser] = useState<User | null>(initialUser);
 
+  const [sessionGraceExpired, setSessionGraceExpired] = useState(false);
+
   // session
   const {
     data: session,
@@ -72,7 +74,11 @@ export const AppContextProvider = ({
 
   // Session is unknown while `useSession()` is pending. Treat this as a distinct state
   // (don't show "Sign in" UI yet) to avoid flashing the wrong auth UI.
-  const isCheckSign = isPending && !authedUser;
+  //
+  // However, when the auth backend is slow/unreachable, the pending state can persist
+  // long enough that the UI feels "dead". After a short grace period, we fall back to
+  // a signed-out UI (the session can still resolve later and rehydrate the user).
+  const isCheckSign = isPending && !authedUser && !sessionGraceExpired;
 
   // show payment modal
   const [isShowPaymentModal, setIsShowPaymentModal] = useState(false);
@@ -80,6 +86,7 @@ export const AppContextProvider = ({
   // Avoid redundant user-info fetches caused by session refreshes.
   const lastSessionUserIdRef = useRef<string | null>(null);
   const didRevalidateSessionRef = useRef(false);
+  const clearUserTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchConfigs = async function () {
     try {
@@ -149,6 +156,19 @@ export const AppContextProvider = ({
   };
 
   useEffect(() => {
+    if (!isPending) {
+      setSessionGraceExpired(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSessionGraceExpired(true);
+    }, 1500);
+
+    return () => clearTimeout(timeoutId);
+  }, [isPending]);
+
+  useEffect(() => {
     // Avoid an immediate redundant round-trip when configs were already provided by SSR.
     if (!initialConfigs || Object.keys(initialConfigs).length === 0) {
       fetchConfigs();
@@ -158,10 +178,19 @@ export const AppContextProvider = ({
   useEffect(() => {
     // Don't clobber SSR-provided user while the session is still loading.
     if (isPending) {
+      if (clearUserTimeoutRef.current) {
+        clearTimeout(clearUserTimeoutRef.current);
+        clearUserTimeoutRef.current = null;
+      }
       return;
     }
 
     if (session?.user) {
+      if (clearUserTimeoutRef.current) {
+        clearTimeout(clearUserTimeoutRef.current);
+        clearUserTimeoutRef.current = null;
+      }
+
       // Session is healthy again, allow a future revalidation if needed.
       didRevalidateSessionRef.current = false;
 
@@ -210,6 +239,19 @@ export const AppContextProvider = ({
       // If we can't load session due to a transient client error, keep the last
       // known user instead of flashing "signed out".
       if (user && sessionError) {
+        return;
+      }
+
+      // Avoid clearing an SSR user immediately; this can cause a visible flicker if the
+      // session endpoint briefly returns null before stabilizing.
+      if (user) {
+        if (!clearUserTimeoutRef.current) {
+          clearUserTimeoutRef.current = setTimeout(() => {
+            setUser(null);
+            lastSessionUserIdRef.current = null;
+            clearUserTimeoutRef.current = null;
+          }, 1500);
+        }
         return;
       }
 
