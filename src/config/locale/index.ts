@@ -8,9 +8,8 @@ export const locales = ['en', 'zh'];
 // Fallback locale when we can't infer a better match.
 export const defaultLocale = 'en';
 
-// Locale prefix strategy. 'as-needed' allows paths without locale prefix
-// and prevents next-intl from redirecting static assets like /_next/...
-export const localePrefix = 'as-needed' as const;
+// All routes are under `src/app/[locale]/...`, so locale must always be prefixed.
+export const localePrefix = 'always' as const;
 
 // Enable server-side locale detection (cookie + Accept-Language) via middleware.
 export const localeDetection = true;
