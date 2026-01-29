@@ -21,7 +21,7 @@ export default function DashboardPage() {
             titleKey: 'cards.translation.title',
             descriptionKey: 'cards.translation.description',
             icon: Languages,
-            href: "/dashboard/projects?open=create",
+            href: "/dashboard/create",
             color: "text-blue-500",
             bgColor: "bg-blue-500/10",
             gradient: "from-blue-500/20 to-purple-500/20",

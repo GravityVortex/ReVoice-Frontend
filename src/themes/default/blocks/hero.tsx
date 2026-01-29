@@ -1,12 +1,11 @@
 'use client';
 
 import { Fragment } from 'react';
-import type { MouseEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Link, useRouter } from '@/core/i18n/navigation';
+import { Link } from '@/core/i18n/navigation';
 import { SmartIcon } from '@/shared/blocks/common';
 import { AnimatedGridPattern } from '@/shared/components/ui/animated-grid-pattern';
 import { Button } from '@/shared/components/ui/button';
@@ -67,22 +66,6 @@ export function Hero({
         </Fragment>
       );
     });
-  };
-
-  const router = useRouter();
-
-  const handleButtonClick = (e: MouseEvent<HTMLElement>, url: string) => {
-    // Intercept "Try Free" / Video Convert button
-    if (url === '/video_convert') {
-      e.preventDefault();
-      if (user) {
-        router.push('/dashboard');
-      } else {
-        router.push(
-          `/sign-in?callbackUrl=${encodeURIComponent('/dashboard')}`
-        );
-      }
-    }
   };
 
   return (
@@ -164,7 +147,8 @@ export function Hero({
             >
             {hero.buttons.map((button, idx) => {
               // Custom Logic for SoulDub Gating
-              const isVideoConvert = button.url === '/video_convert';
+              const isVideoConvert =
+                button.url === '/video_convert' || button.url === '/dashboard/create';
               const hasAccess = checkSoulDubAccess(user?.email, configs, Boolean(user?.isAdmin));
 
               // If it's the video convert button and user doesn't have access, modify behavior
@@ -182,13 +166,7 @@ export function Hero({
                     isRestricted && "opacity-80 cursor-not-allowed hover:bg-[#6366F1]" // Maintain style but hint restriction
                   )}
                   key={idx}
-                  onClick={(e) => {
-                    if (isRestricted) {
-                      e.preventDefault();
-                      return; // Let the button text explain it, or we could toast here.
-                    }
-                    handleButtonClick(e, button.url ?? '')
-                  }}
+                  disabled={isRestricted}
                 >
                   {isRestricted ? (
                     <span className="flex items-center">

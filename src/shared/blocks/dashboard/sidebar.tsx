@@ -1,30 +1,17 @@
 'use client';
 
-import { LayoutDashboard, Video, PlusCircle, User, Settings, LogOut } from 'lucide-react'; // Some might be unused now
-// Actually I'm using string names now, but keeping them might be safe or I should clean up.
-// SmartIcon handles strings.
-// I will just let it be for now or remove if I am sure.
-// Cleaner to remove logic:
-// I will just let it be for now or remove if I am sure.
-// Cleaner to remove logic:
+import { Settings } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { usePathname, Link, useRouter } from '@/core/i18n/navigation';
+import { Link, usePathname } from '@/core/i18n/navigation';
 import { cn } from '@/shared/lib/utils';
 import { LazyImage } from "@/shared/blocks/common/lazy-image";
 import { useAppContext } from '@/shared/contexts/app';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { signOut } from '@/core/auth/client';
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
 import { Sidebar as SidebarType } from '@/shared/types/blocks/dashboard';
 import { SmartIcon } from '@/shared/blocks/common';
+import { SignUser } from '@/shared/blocks/common';
 
 interface SidebarProps {
   className?: string;
@@ -32,14 +19,10 @@ interface SidebarProps {
   variant?: string;
 }
 
-import { SignUser } from '@/shared/blocks/common';
-
 export function Sidebar({ className, sidebar }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('common.dashboard.sidebar');
-  const tCommon = useTranslations('common.sign');
   const { user, isCheckSign } = useAppContext();
-  const router = useRouter();
 
   const defaultNavItems = [
     {

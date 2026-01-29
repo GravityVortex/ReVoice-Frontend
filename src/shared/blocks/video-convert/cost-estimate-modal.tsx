@@ -14,7 +14,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { useAppContext } from "@/shared/contexts/app";
 import { Sparkles, Zap, CreditCard, Clock, Languages, Users, Flame, Rocket } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/core/i18n/navigation';
 
 interface CostEstimateModalProps {
     isOpen: boolean;

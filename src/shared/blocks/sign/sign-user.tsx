@@ -68,7 +68,7 @@ export function SignUser({
       {user ? (
         <div className="flex items-center gap-4">
           {hasAccess && showStartCreate && (
-            <Link href="/dashboard" className="hidden lg:flex">
+            <Link href="/dashboard/create" className="hidden lg:flex">
               <Button
                 size="sm"
                 className="relative group h-9 gap-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 border-0 shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_25px_rgba(59,130,246,0.7)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] overflow-hidden"

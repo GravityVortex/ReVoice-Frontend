@@ -34,7 +34,8 @@ export function CTA({ cta, className }: { cta: CTAType; className?: string }) {
             <div className="mt-12 flex flex-wrap justify-center gap-4">
               {cta.buttons?.map((button, idx) => {
                 // SoulDub Gating Logic
-                const isVideoConvert = button.url === '/video_convert';
+                const isVideoConvert =
+                  button.url === '/video_convert' || button.url === '/dashboard/create';
                 const isRestricted = isVideoConvert && !hasAccess;
 
                 return (
@@ -44,12 +45,7 @@ export function CTA({ cta, className }: { cta: CTAType; className?: string }) {
                     variant={button.variant || 'default'}
                     key={idx}
                     className={isRestricted ? "opacity-80 cursor-not-allowed" : ""}
-                    onClick={(e) => {
-                      if (isRestricted) {
-                        e.preventDefault();
-                        // Optional: Add toast or modal here
-                      }
-                    }}
+                    disabled={isRestricted}
                   >
                     {isRestricted ? (
                       <span className="flex items-center gap-2">

@@ -76,7 +76,7 @@
       {
         "title": "Try SoulDub Free",
         "icon": "Grid2x2Plus",
-        "url": "/video_convert",
+        "url": "/dashboard/create",
         "target": "_self",
         "variant": "default"
       },
@@ -435,7 +435,7 @@
     "buttons": [
       {
         "title": "Try SoulDub Free",
-        "url": "/video_convert",
+        "url": "/dashboard/create",
         "target": "_self",
         "icon": "Play"
       },

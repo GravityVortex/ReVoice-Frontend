@@ -11,14 +11,36 @@ export type UpdateConfig = Partial<Omit<NewConfig, 'name'>>;
 export type Configs = Record<string, string>;
 
 const CONFIG_CACHE_MS = 30_000;
+// We use configs to enrich the page (ads/analytics/etc). If the DB is slow/unreachable,
+// don't block the entire request for ~10s connect timeouts.
+const CONFIG_DB_TIMEOUT_MS = 1_500;
 let cachedDbConfigs: Configs | null = null;
 let cachedDbConfigsAt = 0;
+let cachedDbConfigsErrorAt = 0;
 let inflightDbConfigs: Promise<Configs> | null = null;
 
 function invalidateConfigCache() {
   cachedDbConfigs = null;
   cachedDbConfigsAt = 0;
+  cachedDbConfigsErrorAt = 0;
   inflightDbConfigs = null;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+
+  return Promise.race([
+    promise.finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    }),
+    timeout,
+  ]);
 }
 
 export async function saveConfigs(configs: Record<string, string>) {
@@ -65,18 +87,30 @@ export async function getConfigs(): Promise<Configs> {
     return { ...cachedDbConfigs };
   }
 
+  // If the DB is currently unreachable, avoid retrying on every request and causing repeated
+  // long hangs in SSR. We'll retry after the cache window elapses.
+  if (cachedDbConfigsErrorAt && now - cachedDbConfigsErrorAt < CONFIG_CACHE_MS) {
+    return {};
+  }
+
   if (!inflightDbConfigs) {
     inflightDbConfigs = (async () => {
-      const rows = await db().select().from(config);
+      const rows = await withTimeout(
+        db().select().from(config),
+        CONFIG_DB_TIMEOUT_MS,
+        'getConfigs()'
+      );
       const configs: Configs = {};
       for (const row of rows || []) {
         configs[row.name] = row.value ?? '';
       }
       cachedDbConfigs = configs;
       cachedDbConfigsAt = Date.now();
+      cachedDbConfigsErrorAt = 0;
       inflightDbConfigs = null;
       return { ...configs };
     })().catch((e) => {
+      cachedDbConfigsErrorAt = Date.now();
       inflightDbConfigs = null;
       throw e;
     });

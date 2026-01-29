@@ -29,7 +29,7 @@ export default async function LandingLayout({
   footer: FooterType;
 }) {
   return (
-    <div className="h-screen w-screen">
+    <div className="min-h-screen w-full">
       <Header header={header} />
       {children}
       <Footer footer={footer} />

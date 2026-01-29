@@ -44,7 +44,13 @@ export const AppContextProvider = ({
   const [user, setUser] = useState<User | null>(initialUser);
 
   // session
-  const { data: session, isPending, refetch: refreshSession } = useSession();
+  const {
+    data: session,
+    isPending,
+    isRefetching,
+    error: sessionError,
+    refetch: refreshSession,
+  } = useSession();
 
   // Avoid a one-render "signed out" flash when the session finishes loading.
   // `user` is stored in state and updated in an effect, so it lags behind `session`.
@@ -73,6 +79,7 @@ export const AppContextProvider = ({
 
   // Avoid redundant user-info fetches caused by session refreshes.
   const lastSessionUserIdRef = useRef<string | null>(null);
+  const didRevalidateSessionRef = useRef(false);
 
   const fetchConfigs = async function () {
     try {
@@ -155,22 +162,61 @@ export const AppContextProvider = ({
     }
 
     if (session?.user) {
+      // Session is healthy again, allow a future revalidation if needed.
+      didRevalidateSessionRef.current = false;
+
       const sessionUser = session.user as User;
       // Preserve already-fetched credits if the session payload doesn't include them.
-      setUser((prev) =>
-        sessionUser.credits
-          ? sessionUser
-          : { ...sessionUser, credits: prev?.credits }
-      );
+      setUser((prev) => {
+        if (!prev) return sessionUser;
+        if (prev.id && sessionUser.id && prev.id !== sessionUser.id) {
+          return sessionUser;
+        }
+
+        // `useSession()` often returns a minimal user shape (no credits/isAdmin/souldubAccess).
+        // Merge to avoid UI flicker/regressions from dropping SSR-provided fields.
+        return {
+          ...prev,
+          ...sessionUser,
+          name: sessionUser.name ?? prev.name,
+          email: sessionUser.email ?? prev.email,
+          image: sessionUser.image ?? prev.image,
+          credits: sessionUser.credits ?? prev.credits,
+          isAdmin: sessionUser.isAdmin ?? prev.isAdmin,
+          souldubAccess: sessionUser.souldubAccess ?? prev.souldubAccess,
+          roles: sessionUser.roles ?? prev.roles,
+          permissions: sessionUser.permissions ?? prev.permissions,
+          data: (sessionUser as any).data ?? (prev as any).data,
+        };
+      });
       if (sessionUser.id && sessionUser.id !== lastSessionUserIdRef.current) {
         lastSessionUserIdRef.current = sessionUser.id;
         fetchUserInfo();
       }
     } else {
+      // If SSR gave us a user but the client session briefly resolves to null,
+      // do a single revalidation pass to avoid auth UI flicker.
+      if (user && !didRevalidateSessionRef.current && !isRefetching) {
+        didRevalidateSessionRef.current = true;
+        void refreshSession();
+        return;
+      }
+
+      // While we're revalidating, keep the last known user to prevent flicker.
+      if (user && isRefetching) {
+        return;
+      }
+
+      // If we can't load session due to a transient client error, keep the last
+      // known user instead of flashing "signed out".
+      if (user && sessionError) {
+        return;
+      }
+
       setUser(null);
       lastSessionUserIdRef.current = null;
     }
-  }, [session, isPending]);
+  }, [session, isPending, isRefetching, refreshSession, sessionError, user]);
 
   useEffect(() => {
     if (

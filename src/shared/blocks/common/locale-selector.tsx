@@ -5,6 +5,7 @@ import { Check, Globe, Languages } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 
+import { stripLocalePrefix } from '@/core/i18n/href';
 import { usePathname, useRouter } from '@/core/i18n/navigation';
 import { getLocaleDisplayName, localeNames, locales } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
@@ -33,7 +34,9 @@ export function LocaleSelector({
   const handleSwitchLanguage = (value: string) => {
     if (value !== currentLocale) {
       const search = searchParams.toString();
-      const href = search ? `${pathname}?${search}` : pathname;
+      // Guard against accidentally passing a locale-prefixed pathname (would yield `/zh/zh/...`).
+      const basePath = stripLocalePrefix(pathname);
+      const href = search ? `${basePath}?${search}` : basePath;
       router.push(href, { locale: value });
     }
   };

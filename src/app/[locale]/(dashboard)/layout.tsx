@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/shared/blocks/dashboard/sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/shared/components/ui/sidebar";
 import { useAppContext } from "@/shared/contexts/app";
@@ -13,13 +11,6 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const { user, isCheckSign } = useAppContext();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!isCheckSign && !user) {
-            router.push('/sign-in');
-        }
-    }, [user, isCheckSign, router]);
 
     if (isCheckSign || !user) {
         return (

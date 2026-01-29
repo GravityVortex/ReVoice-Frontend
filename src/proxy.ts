@@ -9,24 +9,18 @@ const intlMiddleware = createIntlMiddleware(routing);
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // CRITICAL: Skip ALL internal Next.js paths immediately.
-  // This MUST be first, before ANY other processing, to prevent next-intl
-  // from redirecting /_next/... to /en/_next/... (which causes 404s).
-  if (pathname.startsWith('/_next') || pathname.startsWith('/_vercel')) {
+  // Skip internal Next.js paths, static files, and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/_vercel') ||
+    pathname.match(/\.[a-zA-Z0-9]+$/) ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/trpc')
+  ) {
     return NextResponse.next();
   }
 
-  // Skip static files (images, fonts, etc.) - they have file extensions.
-  if (pathname.match(/\.[a-zA-Z0-9]+$/)) {
-    return NextResponse.next();
-  }
-
-  // Skip API routes.
-  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
-    return NextResponse.next();
-  }
-
-  // Skip stable root pages (legal pages without locale prefix).
+  // Skip legal pages (no locale prefix)
   if (
     pathname === '/privacy' ||
     pathname === '/terms' ||
@@ -36,22 +30,21 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract locale from pathname.
-  const locale = pathname.split('/')[1];
-  const isValidLocale = routing.locales.includes(locale as any);
-  const pathWithoutLocale = isValidLocale
-    ? pathname.slice(locale.length + 1)
-    : pathname;
-
-  // Run i18n routing only for real pages.
+  // Let next-intl handle locale routing FIRST
   const intlResponse = intlMiddleware(request);
 
-  // If the request has no locale prefix, let next-intl do its redirect first.
-  if (!isValidLocale && intlResponse.headers.has('location')) {
-    return intlResponse;
-  }
+  // Extract locale AFTER next-intl has processed the request
+  // This ensures we get the correct locale that next-intl determined
+  const locale = intlResponse.headers.get('x-next-intl-locale') ||
+    pathname.split('/')[1];
+  const isValidLocale = routing.locales.includes(locale as any);
 
-  // Page-level redirect gate. APIs must enforce auth/ownership separately.
+  // Calculate path without locale for auth checks
+  const pathWithoutLocale = isValidLocale && pathname.startsWith(`/${locale}`)
+    ? pathname.slice(locale.length + 1) || '/'
+    : pathname;
+
+  // Auth check for protected routes
   if (
     pathWithoutLocale.startsWith('/admin') ||
     pathWithoutLocale.startsWith('/dashboard') ||
@@ -66,17 +59,10 @@ export default function middleware(request: NextRequest) {
         isValidLocale ? `/${locale}/sign-in` : '/sign-in',
         request.url
       );
-
-      // Preserve the requested path + query (relative, without locale prefix).
-      const callbackPath = pathWithoutLocale + request.nextUrl.search;
-      signInUrl.searchParams.set('callbackUrl', callbackPath);
+      signInUrl.searchParams.set('callbackUrl', pathWithoutLocale + request.nextUrl.search);
       return NextResponse.redirect(signInUrl);
     }
   }
-
-  // Debug headers help trace routing issues (safe; not sensitive).
-  intlResponse.headers.set('x-pathname', request.nextUrl.pathname);
-  intlResponse.headers.set('x-url', request.url);
 
   return intlResponse;
 }
@@ -86,5 +72,5 @@ export const config = {
   // Match all pathnames except for
   // - paths that start with `/api`, `/trpc`, `/_next` or `/_vercel`
   // - paths containing a dot (e.g. `favicon.ico`)
-  matcher: '/((?!api|trpc|_next|_vercel|.*\\..*).*))'
+  matcher: ['/((?!api|trpc|_next|_vercel|.*\\..*).*)'],
 };

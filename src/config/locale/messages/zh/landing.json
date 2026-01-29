@@ -77,7 +77,7 @@
       {
         "title": "免费试用这声",
         "icon": "Grid2x2Plus",
-        "url": "/video_convert",
+        "url": "/dashboard/create",
         "target": "_self",
         "variant": "default"
       },
@@ -445,7 +445,7 @@
     "buttons": [
       {
         "title": "免费试用这声",
-        "url": "/video_convert",
+        "url": "/dashboard/create",
         "target": "_self",
         "icon": "Play"
       },
