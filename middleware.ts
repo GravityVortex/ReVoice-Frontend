@@ -43,20 +43,6 @@ export default function middleware(request: NextRequest) {
     ? pathname.slice(locale.length + 1)
     : pathname;
 
-  // Handle incorrectly locale-prefixed internal assets (e.g. `/zh/_next/...`).
-  // These need to be rewritten to the canonical path without locale prefix.
-  if (isValidLocale) {
-    const isNextInternal =
-      pathWithoutLocale.startsWith('/_next') ||
-      pathWithoutLocale.startsWith('/_vercel');
-
-    if (isNextInternal) {
-      const url = request.nextUrl.clone();
-      url.pathname = pathWithoutLocale;
-      return NextResponse.rewrite(url);
-    }
-  }
-
   // Run i18n routing only for real pages.
   const intlResponse = intlMiddleware(request);
 
@@ -97,11 +83,12 @@ export default function middleware(request: NextRequest) {
 
 // Next.js requires `config` to be declared in this file (it must be statically analyzable).
 export const config = {
+  // Match all pathnames except for:
+  // - paths starting with /api, /trpc, /_next, /_vercel
+  // - paths containing a dot (static files like .css, .js, .ico)
+  // - locale-prefixed internal paths like /en/_next, /zh/_vercel
   matcher: [
-    // Catch locale-prefixed internal assets so we can rewrite them.
-    '/:locale(en|zh)/_next/:path*',
-    '/:locale(en|zh)/_vercel/:path*',
-    // Standard matcher for pages.
-    '/((?!api|trpc|_next|_vercel|privacy|terms|privacy-policy|terms-of-service|.*\\..*).*)',
+    '/((?!api|trpc|_next|_vercel|en/_next|zh/_next|en/_vercel|zh/_vercel|privacy|terms|privacy-policy|terms-of-service|.*\\..*).*)',
   ],
 };
+
