@@ -83,12 +83,9 @@ export default function middleware(request: NextRequest) {
 
 // Next.js requires `config` to be declared in this file (it must be statically analyzable).
 export const config = {
-  // Match all pathnames except for:
-  // - paths starting with /api, /trpc, /_next, /_vercel
-  // - paths containing a dot (static files like .css, .js, .ico)
-  // - locale-prefixed internal paths like /en/_next, /zh/_vercel
-  matcher: [
-    '/((?!api|trpc|_next|_vercel|en/_next|zh/_next|en/_vercel|zh/_vercel|privacy|terms|privacy-policy|terms-of-service|.*\\..*).*)',
-  ],
+  // Match all pathnames except for
+  // -  … if they start with `/api`, `/trpc`, `/_next` or `/_vercel`
+  // - … the ones containing a dot (e.g. `favicon.ico`)
+  matcher: '/((?!api|trpc|_next|_vercel|.*\\..*).*))'
 };
 
