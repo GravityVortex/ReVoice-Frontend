@@ -9,7 +9,34 @@ const intlMiddleware = createIntlMiddleware(routing);
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Extract locale from pathname first.
+  // CRITICAL: Skip ALL internal Next.js paths immediately.
+  // This MUST be first, before ANY other processing, to prevent next-intl
+  // from redirecting /_next/... to /en/_next/... (which causes 404s).
+  if (pathname.startsWith('/_next') || pathname.startsWith('/_vercel')) {
+    return NextResponse.next();
+  }
+
+  // Skip static files (images, fonts, etc.) - they have file extensions.
+  if (pathname.match(/\.[a-zA-Z0-9]+$/)) {
+    return NextResponse.next();
+  }
+
+  // Skip API routes.
+  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+    return NextResponse.next();
+  }
+
+  // Skip stable root pages (legal pages without locale prefix).
+  if (
+    pathname === '/privacy' ||
+    pathname === '/terms' ||
+    pathname === '/privacy-policy' ||
+    pathname === '/terms-of-service'
+  ) {
+    return NextResponse.next();
+  }
+
+  // Extract locale from pathname.
   const locale = pathname.split('/')[1];
   const isValidLocale = routing.locales.includes(locale as any);
   const pathWithoutLocale = isValidLocale
@@ -18,27 +45,16 @@ export default function middleware(request: NextRequest) {
 
   // Handle incorrectly locale-prefixed internal assets (e.g. `/zh/_next/...`).
   // These need to be rewritten to the canonical path without locale prefix.
-  const isNextInternal =
-    pathWithoutLocale.startsWith('/_next') ||
-    pathWithoutLocale.startsWith('/_vercel');
+  if (isValidLocale) {
+    const isNextInternal =
+      pathWithoutLocale.startsWith('/_next') ||
+      pathWithoutLocale.startsWith('/_vercel');
 
-  if (isValidLocale && isNextInternal) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathWithoutLocale;
-    return NextResponse.rewrite(url);
-  }
-
-  const isApiRoute =
-    pathname.startsWith('/api') || pathname.startsWith('/trpc');
-  const isPublicFile = pathname.includes('.');
-  const isStableRootPage =
-    pathname === '/privacy' ||
-    pathname === '/terms' ||
-    pathname === '/privacy-policy' ||
-    pathname === '/terms-of-service';
-
-  if (isApiRoute || isPublicFile || isStableRootPage) {
-    return NextResponse.next();
+    if (isNextInternal) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathWithoutLocale;
+      return NextResponse.rewrite(url);
+    }
   }
 
   // Run i18n routing only for real pages.
