@@ -12,7 +12,7 @@ export const defaultLocale = 'en';
 export const localePrefix = 'always' as const;
 
 // Enable server-side locale detection (cookie + Accept-Language) via middleware.
-export const localeDetection = true;
+export const localeDetection = false;
 
 export const localeMessagesRootPath = '@/config/locale/messages';
 
