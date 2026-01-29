@@ -36,6 +36,7 @@
     "multiple": "多人"
   },
   "confirm": {
+    "checkInfo": "请确认以下信息",
     "videoDuration": "视频时长",
     "sourceLanguage": "原语言",
     "targetLanguage": "目标语言",
@@ -67,5 +68,10 @@
   "credits_required": "消耗积分",
   "search": {
     "credits": "积分"
+  },
+  "ui": {
+    "advanced": "高级选项",
+    "minutes": "分钟",
+    "speakerHint": "多说话人/采访/对话请选择“多人”，否则默认即可。"
   }
 }

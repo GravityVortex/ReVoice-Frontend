@@ -104,5 +104,34 @@
       "errorLabel": "Error",
       "completedTime": "Completed Time"
     }
+  },
+  "ui": {
+    "back": "Back",
+    "preview": "Preview",
+    "outputs": "Outputs",
+    "runs": "Runs",
+    "noPreview": "No preview available",
+    "startConvert": "Start conversion",
+    "emptyRuns": "No conversion runs yet",
+    "downloadSubtitles": "Download subtitles",
+    "tabs": {
+      "video": "Video"
+    },
+    "mode": {
+      "result": "Result",
+      "preview": "Preview",
+      "original": "Original"
+    },
+    "features": {
+      "vocalSplit": "Vocal/Background Split",
+      "bilingualSubtitles": "Bilingual Subtitles"
+    },
+    "finalVideo": {
+      "title": "Final video",
+      "description": "Dubbed voice + preserved background audio (ready to deliver)"
+    },
+    "progressLoadFailed": "Failed to load progress. Please try again later.",
+    "progressEmpty": "No progress logs yet.",
+    "progressEmptyFailed": "No progress logs (the task may have failed to start)."
   }
 }

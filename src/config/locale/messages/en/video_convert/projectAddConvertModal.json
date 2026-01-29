@@ -36,6 +36,7 @@
     "multiple": "Multiple"
   },
   "confirm": {
+    "checkInfo": "Please review the details below",
     "videoDuration": "Video Duration",
     "sourceLanguage": "Source Language",
     "targetLanguage": "Target Language",
@@ -67,5 +68,10 @@
   "credits_required": "Credits Required",
   "search": {
     "credits": "Credits"
+  },
+  "ui": {
+    "advanced": "Advanced options",
+    "minutes": "min",
+    "speakerHint": "Choose “Multiple” for interviews/dialogue; otherwise the default is fine."
   }
 }

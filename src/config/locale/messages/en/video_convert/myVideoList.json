@@ -6,7 +6,9 @@
   "loading": "Loading...",
   "error": "Failed to fetch video list",
   "empty": "No videos",
+  "noData": "No data available",
   "status": {
+    "all": "All",
     "pending": "Pending",
     "completed": "Completed",
     "processing": "Processing",

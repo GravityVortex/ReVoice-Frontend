@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 
 import { ProjectDetailView } from '@/shared/blocks/video-convert/project-detail-view';
 
-export default function ProjectDetailPage() {
+export default function DashboardProjectDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const locale = (params.locale as string) || 'zh';
@@ -13,8 +13,8 @@ export default function ProjectDetailPage() {
     <ProjectDetailView
       fileId={id}
       locale={locale}
-      backHref={`/${locale}/video_convert/myVideoList`}
-      createHref={`/${locale}/dashboard/create`}
+      backHref="/dashboard/projects"
+      createHref="/dashboard/create"
     />
   );
 }

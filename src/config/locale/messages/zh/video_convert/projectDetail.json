@@ -104,5 +104,34 @@
       "errorLabel": "错误",
       "completedTime": "完成时间"
     }
+  },
+  "ui": {
+    "back": "返回",
+    "preview": "预览",
+    "outputs": "交付物",
+    "runs": "转换记录",
+    "noPreview": "暂无预览",
+    "startConvert": "开始转换",
+    "emptyRuns": "还没有转换记录",
+    "downloadSubtitles": "下载字幕",
+    "tabs": {
+      "video": "视频"
+    },
+    "mode": {
+      "result": "成品",
+      "preview": "预览",
+      "original": "原片"
+    },
+    "features": {
+      "vocalSplit": "人声/背景音分离",
+      "bilingualSubtitles": "双语字幕"
+    },
+    "finalVideo": {
+      "title": "成品视频",
+      "description": "配音合成 + 保留背景音（可直接交付）"
+    },
+    "progressLoadFailed": "加载进度失败，请稍后重试",
+    "progressEmpty": "暂无进度日志",
+    "progressEmptyFailed": "任务未生成进度日志（可能启动失败）"
   }
 }

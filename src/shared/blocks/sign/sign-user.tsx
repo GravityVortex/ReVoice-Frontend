@@ -32,10 +32,14 @@ export function SignUser({
   isScrolled,
   signButtonSize = 'sm',
   userNav,
+  children,
+  showStartCreate = true,
 }: {
   isScrolled?: boolean;
   signButtonSize?: 'default' | 'sm' | 'lg' | 'icon';
   userNav?: UserNav;
+  children?: React.ReactNode;
+  showStartCreate?: boolean;
 }) {
   const t = useTranslations('common.sign');
   const { isCheckSign, user, configs } = useAppContext();
@@ -63,7 +67,7 @@ export function SignUser({
     <>
       {user ? (
         <div className="flex items-center gap-4">
-          {hasAccess && (
+          {hasAccess && showStartCreate && (
             <Link href="/dashboard" className="hidden lg:flex">
               <Button
                 size="sm"
@@ -79,16 +83,18 @@ export function SignUser({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="relative h-10 w-10 rounded-full p-0"
-              >
-                {/* 登录后的头像 */}
-                <Avatar>
-                  <AvatarImage src={user.image || ''} alt={user.name || ''} />
-                  <AvatarFallback>{user.name?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-              </Button>
+              {children || (
+                <Button
+                  variant="ghost"
+                  className="relative h-10 w-10 rounded-full p-0"
+                >
+                  {/* 登录后的头像 */}
+                  <Avatar>
+                    <AvatarImage src={user.image || ''} alt={user.name || ''} />
+                    <AvatarFallback>{user.name?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              )}
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 rounded-xl p-2" align="end">
               {/* User Info Header */}

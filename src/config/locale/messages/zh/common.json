@@ -60,5 +60,79 @@
     "title": "检测到浏览器语言是: {locale}，是否切换？",
     "switch_to": "切换到{locale}"
   },
+  "dashboard": {
+    "sidebar": {
+      "workstation": "仪表盘",
+      "projects": "视频翻译",
+      "create": "创建翻译",
+      "user_nav": {
+        "video": "我的视频",
+        "billing": "账单",
+        "activity": "活动"
+      }
+    },
+    "home": {
+      "greeting": "你好，{name}👋",
+      "subtitle": "今天想翻译什么视频？",
+      "cards": {
+        "translation": {
+          "title": "AI视频翻译",
+          "description": "使用口型同步和声音克隆翻译视频。"
+        },
+        "lipsync": {
+          "title": "口型同步视频",
+          "description": "将口型同步到任何音频。"
+        },
+        "voice": {
+          "title": "语音克隆",
+          "description": "从任何音频克隆语音。"
+        }
+      },
+      "buttons": {
+        "create": "创建翻译任务",
+        "comingSoon": "即将推出"
+      }
+    },
+    "create": {
+      "title": "新建翻译任务",
+      "uploadTitle": "上传视频",
+      "uploadSubtitle": "拖放或点击浏览 (最大 300MB)",
+      "selectFile": "选择文件",
+      "remove": "移除",
+      "videoTitle": "视频标题",
+      "videoTitlePlaceholder": "请输入视频标题",
+      "description": "视频描述",
+      "descriptionPlaceholder": "请输入视频描述",
+      "content": "视频内容",
+      "contentPlaceholder": "请输入视频内容",
+      "createButton": "上传转换",
+      "creatingButton": "上传中...",
+      "errors": {
+        "fileTooLarge": "文件过大，最大 300MB",
+        "selectFile": "请选择视频文件",
+        "uploadFailed": "上传失败"
+      }
+    },
+    "projects": {
+      "status": {
+        "all": "全部",
+        "processing": "处理中",
+        "completed": "已完成",
+        "failed": "失败",
+        "cancelled": "已取消",
+        "pending": "等待中",
+        "statusShort": {
+          "pending": "等待中",
+          "processing": "处理中",
+          "completed": "已完成",
+          "failed": "失败",
+          "cancelled": "已取消"
+        }
+      },
+      "buttons": {
+        "upload": "新建项目"
+      }
+    }
+  },
   "copyright": "版权所有。"
 }

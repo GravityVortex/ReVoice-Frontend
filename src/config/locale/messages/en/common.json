@@ -60,5 +60,79 @@
     "title": "We detected your browser language is {locale}. Switch to it?",
     "switch_to": "Switch to {locale}"
   },
+  "dashboard": {
+    "sidebar": {
+      "workstation": "Dashboard",
+      "projects": "Video Translation",
+      "create": "Create Translation",
+      "user_nav": {
+        "video": "My Videos",
+        "billing": "Billing",
+        "activity": "Activity"
+      }
+    },
+    "home": {
+      "greeting": "Hello, {name}👋",
+      "subtitle": "What video would you like to translate today?",
+      "cards": {
+        "translation": {
+          "title": "AI Video Translation",
+          "description": "Translate videos with lip-sync and voice cloning."
+        },
+        "lipsync": {
+          "title": "Lip-Sync Video",
+          "description": "Synchronize lip movements to any audio."
+        },
+        "voice": {
+          "title": "Voice Cloning",
+          "description": "Clone voice from any audio."
+        }
+      },
+      "buttons": {
+        "create": "Create Translation Task",
+        "comingSoon": "Coming Soon"
+      }
+    },
+    "create": {
+      "title": "New Translation Task",
+      "uploadTitle": "Upload Video",
+      "uploadSubtitle": "Drag and drop or click to browse (Max 300MB)",
+      "selectFile": "Select File",
+      "remove": "Remove",
+      "videoTitle": "Video Title",
+      "videoTitlePlaceholder": "Enter video title",
+      "description": "Video Description",
+      "descriptionPlaceholder": "Enter video description",
+      "content": "Video Content",
+      "contentPlaceholder": "Enter video content",
+      "createButton": "Upload & Convert",
+      "creatingButton": "Uploading...",
+      "errors": {
+        "fileTooLarge": "File too large, max 300MB",
+        "selectFile": "Please select a video file",
+        "uploadFailed": "Upload failed"
+      }
+    },
+    "projects": {
+      "status": {
+        "all": "All",
+        "processing": "Processing",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "pending": "Pending",
+        "statusShort": {
+          "pending": "Pending",
+          "processing": "Processing",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        }
+      },
+      "buttons": {
+        "upload": "New Project"
+      }
+    }
+  },
   "copyright": "All rights reserved."
 }

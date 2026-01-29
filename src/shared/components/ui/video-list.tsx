@@ -33,37 +33,15 @@ export interface VideoListProps {
   locale?: string; // 用于路由国际化
 }
 
-// 状态颜色映射
-const statusColors: Record<VideoConversionStatus, { bg: string; text: string; border: string }> = {
-  pending: {
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    border: "border-blue-200",
-  },
-  completed: {
-    bg: "bg-green-50",
-    text: "text-green-700",
-    border: "border-green-200",
-  },
-  processing: {
-    bg: "bg-orange-50",
-    text: "text-orange-700",
-    border: "border-orange-200",
-  },
-  failed: {
-    bg: "bg-gray-50",
-    text: "text-gray-700",
-    border: "border-gray-200",
-  },
-  cancelled: {
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-  },
+// 状态颜色映射 (Modern Badge Styles)
+const statusStyles: Record<VideoConversionStatus, string> = {
+  pending: "bg-blue-600/90 text-white",
+  processing: "bg-orange-500/90 text-white animate-pulse",
+  completed: "bg-green-600/90 text-white",
+  failed: "bg-red-600/90 text-white",
+  cancelled: "bg-gray-600/90 text-white",
 };
 
-
-// -------------------------------VideoList---start----分隔符---------------------------
 export function VideoList({
   items,
   className,
@@ -77,43 +55,27 @@ export function VideoList({
   const router = useRouter();
   const t = useTranslations('video_convert.myVideoList');
 
-  // 缓存数据
   const colsClass = useMemo(() => {
     switch (cols) {
-      case 1:
-        return "grid-cols-1";
-      case 2:
-        return "grid-cols-2";
-      case 3:
-        return "grid-cols-3";
-      case 4:
-        return "grid-cols-4";
-      case 5:
-        return "grid-cols-5";
-      case 6:
-        return "grid-cols-6";
-      default:
-        return "grid-cols-3";
+      case 1: return "grid-cols-1";
+      case 2: return "grid-cols-2";
+      case 3: return "grid-cols-3";
+      case 4: return "grid-cols-4";
+      case 5: return "grid-cols-5";
+      case 6: return "grid-cols-6";
+      default: return "grid-cols-3";
     }
   }, [cols]);
 
-  // 跳转编辑页面
   const handleEdit = (item: VideoListItem, index: number) => {
-    // router.push(`/${locale}/video_convert/update?id=${item.id}`);
     onEditClick?.(item, index);
   };
-  // 播放视频
   const handlePlayVideo = (item: VideoListItem, index: number) => {
     onVideoPlay?.(item, index);
   };
-
-  // 点击标题跳转详情页
   const handleItemClick = (item: VideoListItem, index: number) => {
-    console.log("[VideoList] 点击标题，跳转到项目详情页，ID:", item.id);
     onItemClick?.(item, index);
-    // router.push(`/${locale}/video_convert/project_detail/${item.id}`);
   };
-  // 状态点击
   const handleStatusClick = (item: VideoListItem, index: number) => {
     onStatusClick?.(item, index);
   };
@@ -134,9 +96,7 @@ export function VideoList({
     </div>
   );
 }
-// -------------------------------VideoList---end----分隔符---------------------------
 
-// -------------------------------VideoCard---start----分隔符---------------------------
 interface VideoCardProps {
   item: VideoListItem;
   t: (key: string) => string;
@@ -146,7 +106,7 @@ interface VideoCardProps {
   onStatusClick: () => void;
 }
 
-// 卡片组件
+// 卡片组件 - Premium Card Style
 function VideoCard({
   item,
   t,
@@ -156,8 +116,6 @@ function VideoCard({
   onStatusClick,
 }: VideoCardProps) {
   const { fileName, cover, status, duration, convertedAt, videoSize } = item;
-  // const coverImg = getPreviewCoverUrl(item, r2P)
-  const colors = statusColors[status];
   const [imgSrc, setImgSrc] = React.useState('/imgs/cover_video_def.jpg');
 
   React.useEffect(() => {
@@ -169,126 +127,110 @@ function VideoCard({
     }
   }, [cover]);
 
+  // Modern refined status badges
+  const statusConfig: Record<VideoConversionStatus, { color: string, icon: React.ReactNode }> = {
+    pending: { color: "bg-blue-500/10 text-blue-600 border-blue-200", icon: <Clock className="w-3 h-3" /> },
+    processing: { color: "bg-orange-500/10 text-orange-600 border-orange-200", icon: <Clock className="w-3 h-3 animate-spin" /> },
+    completed: { color: "bg-green-500/10 text-green-600 border-green-200", icon: <CheckCircle2 className="w-3 h-3" /> },
+    failed: { color: "bg-red-500/10 text-red-600 border-red-200", icon: <AlertCircle className="w-3 h-3" /> },
+    cancelled: { color: "bg-gray-500/10 text-gray-600 border-gray-200", icon: <XCircle className="w-3 h-3" /> },
+  };
+
+  const config = statusConfig[status] || statusConfig.pending;
+
   return (
-    // rounded-bl-md rounded-br-md rounded-tl-[0]
-    <Card className="rounded-[2px] py-0 group overflow-hidden transition-transform duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:ring-1 hover:ring-primary/20">
-      {/* 封面区域 */}
-      <div className="rounded-tl-[2px] rounded-tr-[2px] relative aspect-video w-full overflow-hidden bg-muted/40 border-b-[0.5px]">
-        <img src={imgSrc}
+    <div className="group relative flex flex-col gap-3 rounded-2xl bg-card p-3 border border-border/50 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20">
+
+      {/* Thumbnail Section */}
+      <div
+        className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted cursor-pointer"
+        onClick={status === "completed" ? onPlay : onCardContentClick}
+      >
+        <img
+          src={imgSrc}
           alt={fileName}
-          onError={(e) => {
-            e.currentTarget.src = '/imgs/cover_video_def.jpg'// 设置默认图片
-            // e.currentTarget.style.display = 'none';// 隐藏img
-          }}
-          className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] "
-          // className="rounded-tl-[2px] rounded-tr-[2px] h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.03] opacity-99 blur-[0.9px] brightness-90 contrast-90"
+          onError={(e) => { e.currentTarget.src = '/imgs/cover_video_def.jpg' }}
+          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           loading="lazy"
         />
 
-        {/* 毛玻璃效果覆盖层 */}
-        {status === "failed" && (
-          <div className="pointer-events-none absolute inset-0 bg-[rgba(0,0,0,0.8)] backdrop-blur-[3px]" />
-        )}
+        {/* Overlay Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-
-        {/* 悬浮遮罩 */}
-        <div className="pointer-events-none absolute inset-0 bg-[rgba(0,0,0,0)] transition-colors duration-300 group-hover:bg-[rgba(0,0,0,0.1)]" />
-
-        {/* 中间播放按钮 */}
-        {status === "completed" && (
+        {/* Status Badge (Top Right) */}
+        <div className="absolute top-2 right-2 flex gap-2">
           <button
-            type="button"
-            aria-label="play video"
-            onClick={onPlay}
-            className="absolute inset-0 m-auto flex size-16 items-center justify-center rounded-full bg-[rgba(0,0,0,0.6)] backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-[rgba(0,0,0,0.8)]"
+            onClick={(e) => { e.stopPropagation(); onStatusClick(); }}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md shadow-sm transition-transform hover:scale-105",
+              status === 'completed' ? "bg-white/90 text-green-700 border-white/20 dark:bg-black/60 dark:text-green-400" : "bg-white/90 text-foreground border-white/20 dark:bg-black/60"
+            )}
           >
-            <Play className="size-8 fill-white text-white" />
+            <div className={cn("w-1.5 h-1.5 rounded-full",
+              status === 'processing' ? 'bg-orange-500 animate-pulse' :
+                status === 'completed' ? 'bg-green-500' :
+                  status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
+            )} />
+            {t(`statusShort.${status}`)}
           </button>
+        </div>
+
+        {/* Play Button Overlay */}
+        {status === "completed" && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-xl hover:scale-110 transition-transform">
+              <Play className="w-5 h-5 ml-0.5 fill-white" />
+            </div>
+          </div>
         )}
 
-        {/* 右上角状态三角形 */}
-        <div className="absolute right-0 top-0 overflow-hidden"
-          onClick={onStatusClick}
-        >
-          {/* 直角三角形 - 两个直角边与封面上右边重叠 */}
-          <div
-            className={cn(
-              "w-0 h-0 border-l-transparent border-b-transparent",
-              status === "pending" && "border-t-blue-500 border-r-blue-500",
-              status === "completed" && "border-t-green-700 border-r-green-700",
-              status === "processing" && "border-t-orange-400 border-r-orange-400",
-              status === "failed" && "border-t-gray-600 border-r-gray-600",
-              status === "cancelled" && "border-t-red-600 border-r-red-600"
-            )}
-            style={{
-              borderTopWidth: "28px",
-              borderRightWidth: "28px",
-              borderLeftWidth: "28px",
-              borderBottomWidth: "28px",
-              borderLeftColor: "transparent",
-              borderBottomColor: "transparent"
-            }}
-          />
-          {/* 状态文字 */}
-          <div className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center">
-            <span className="text-white text-[10px] font-bold leading-none transform rotate-45 whitespace-nowrap">
-              {t(`statusShort.${status}`)}
-            </span>
+        {/* Duration Badge */}
+        {duration && (
+          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm">
+            {duration}
+          </div>
+        )}
+      </div>
+
+      {/* Info Section */}
+      <div className="flex flex-col gap-1 px-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3
+            className="line-clamp-1 font-semibold text-base text-card-foreground group-hover:text-primary transition-colors cursor-pointer"
+            onClick={onCardContentClick}
+            title={fileName}
+          >
+            {fileName}
+          </h3>
+
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Edit"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* 右上角编辑按钮 */}
-        <button
-          type="button"
-          aria-label="edit"
-          onClick={onEdit}
-          className="absolute right-[3px] bottom-[3px] inline-flex size-8 items-center justify-center border bg-background/80 text-foreground/70 backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
-        >
-          <Edit className="size-4" />
-        </button>
-      </div>
-
-      {/* 信息区域 */}
-      <CardContent onClick={onCardContentClick} className="space-y-3 pt-4 pb-4 pl-3 pr-3 mt-[-20px]">
-        {/* 视频名称 - 可点击 */}
-        <div
-          className="line-clamp-2 text-base font-semibold leading-snug cursor-pointer hover:text-primary transition-colors"
-        // onClick={onCardContentClick}
-        >
-          {fileName}
-        </div>
-
-        {/* 视频元信息 */}
-        <div className="relative flex flex-col gap-2 text-sm text-muted-foreground">
-          {/* 时长 */}
-          {duration && (
-            <div className="flex flex-row justify-between items-center gap-1">
-              <div className="flex items-center gap-1.5">
-                <Clock className="size-4" />
-                <span>{t('fields.duration')}: {duration}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Video className="size-4" />
-                <span>{t('fields.size')}: {(videoSize / 1024 / 1024).toFixed(2)} MB</span>
-              </div>
-            </div>
-          )}
-
-          {/* 转换时间 */}
-          {convertedAt && (
+        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+          <div className="flex items-center gap-1.5" title="Start Time">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{convertedAt?.split(' ')[0] || '-'}</span>
+          </div>
+          {videoSize > 0 && (
             <div className="flex items-center gap-1.5">
-              <Calendar className="size-4" />
-              <span>{t('fields.uploadTime')}: {convertedAt}</span>
+              <span className="w-0.5 h-0.5 rounded-full bg-muted-foreground/50" />
+              <span>{(videoSize / 1024 / 1024).toFixed(1)} MB</span>
             </div>
           )}
-
-
         </div>
-
-
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
+
+import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 
 export default VideoList;

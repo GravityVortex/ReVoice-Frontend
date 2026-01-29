@@ -7,11 +7,9 @@ import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination-client";
-import { ProjectAddConvertModal } from "@/shared/blocks/video-convert/project-add-convert-modal";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
-import { envConfigs } from "@/config";
 import { getPreviewCoverUrl, getVideoR2PathName } from "@/shared/lib/utils";
 
 // import { Pagination } from "@/shared/types/blocks/pagination";
@@ -32,7 +30,6 @@ export default function VideoConvertPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize] = useState(6);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   // 转换进度弹框状态
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   const [taskMainId, setTaskMainId] = useState<string>("");
@@ -41,7 +38,7 @@ export default function VideoConvertPage() {
   // const [projectSourceId, setProjectSourceId] = useState<string>("");
   const [projectItem, setProjectItem] = useState<Record<string, any>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [preUrl, setPreUrl] = useState<string>("");
+  const [, setPreUrl] = useState<string>("");
 
   const handlePlayVideo = (item: VideoListItem) => {
     console.log("点击播放视频，handlePlayVideo--->", item);
@@ -90,22 +87,14 @@ export default function VideoConvertPage() {
       setIsProgressDialogOpen(true);
     }
   };
+
   const goAddClick = () => {
-    router.push(`/${locale}/video_convert/add`);
+    router.push(`/${locale}/dashboard/create`);
   };
-  const goAdd2Click = () => {
-    setIsAddDialogOpen(true)
-  }
 
   const handleClosePlayer = () => {
     setIsPlayerOpen(false);
     setSelectedVideo(null);
-  };
-
-  // 刷新页面
-  const onCreateTaskSuccess = () => {
-    // setIsAddDialogOpen(false);
-    doGetVideoListFromNet();
   };
 
   // 修改项目后更新列表数据
@@ -135,51 +124,6 @@ export default function VideoConvertPage() {
 
       const data = await response.json();
       console.log("视频列表数据-->", data);
-      // {
-      //     "id": "8bb54f6e-8572-44f5-a674-ae939b026c63",
-      //     "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
-      //     "fileName": "test3.mp4",
-      //     "fileSizeBytes": 2419199,
-      //     "fileType": "video/mp4",
-      //     "r2Key": "uploads/1765106611963-test3.mp4",
-      //     "r2Bucket": "video-store",
-      //     "videoDurationSeconds": 65,
-      //     "checksumSha256": "",
-      //     "uploadStatus": "pending",
-      //     "coverR2Key": null,
-      //     "coverSizeBytes": null,
-      //     "coverUpdatedAt": null,
-      //     "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
-      //     "createdAt": "2025-12-07T11:24:05.135Z",
-      //     "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
-      //     "updatedAt": "2025-12-07T11:24:05.135Z",
-      //     "delStatus": 0,
-      //     "tasks":[
-      //               {
-      //                 "id": "221e9937-c663-4de0-84ee-32a29aef6da6",
-      //                 "userId": "99a30c57-88c1-4c93-9a4d-cea945a731be",
-      //                 "originalFileId": "8bb54f6e-8572-44f5-a674-ae939b026c63",
-      //                 "status": "pending",
-      //                 "priority": 3,
-      //                 "progress": 0,
-      //                 "currentStep": null,
-      //                 "sourceLanguage": "zh-CN",
-      //                 "targetLanguage": "en-US",
-      //                 "speakerCount": "single",
-      //                 "processDurationSeconds": 0,
-      //                 "creditId": "61986398-4a24-4650-b0ce-3ba50405dd11",
-      //                 "creditsConsumed": 4,
-      //                 "errorMessage": null,
-      //                 "startedAt": null,
-      //                 "completedAt": null,
-      //                 "createdBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
-      //                 "createdAt": "2025-12-07T11:24:06.605Z",
-      //                 "updatedBy": "99a30c57-88c1-4c93-9a4d-cea945a731be",
-      //                 "updatedAt": "2025-12-07T11:24:06.605Z",
-      //                 "delStatus": 0
-      //               }
-      //             ]
-      // }
 
       if (data?.code === 0) {
         const responseData = data.data;
@@ -278,7 +222,7 @@ export default function VideoConvertPage() {
       <div className="mb-8 flex justify-between">
         <h1 className="text-3xl font-bold">{t('title')}</h1>
         {/* <Button className="mask-add color-" onClick={goAddClick}>{t('buttons.upload')}</Button> */}
-        <Button className="mask-add text-white" onClick={goAdd2Click}>{t('buttons.upload')}</Button>
+        <Button className="mask-add text-white" onClick={goAddClick}>{t('buttons.upload')}</Button>
       </div>
 
       {/* 加载状态龙骨状态 */}
@@ -363,13 +307,6 @@ export default function VideoConvertPage() {
         onClose={() => setIsProgressDialogOpen(false)}
         taskMainId={taskMainId}
         activeTabIdx={activeTabIdx}
-      />
-
-      {/* 添加视频转换弹框 */}
-      <ProjectAddConvertModal
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onCreateTaskSuccess={onCreateTaskSuccess}
       />
 
       {/* 修改视频转换弹框 */}
