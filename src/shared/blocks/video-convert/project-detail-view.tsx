@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useRouter } from '@/core/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
@@ -366,11 +365,11 @@ export function ProjectDetailView({
       prev.map((t) =>
         t.id === incoming.id
           ? {
-              ...t,
-              ...incoming,
-              // Preserve final outputs from detail endpoint.
-              finalFileList: t.finalFileList,
-            }
+            ...t,
+            ...incoming,
+            // Preserve final outputs from detail endpoint.
+            finalFileList: t.finalFileList,
+          }
           : t
       )
     );

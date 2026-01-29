@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useAppContext } from "@/shared/contexts/app";
 import { UploadCloud, Clock, Settings2, Zap, Loader2, X, ArrowRight, Languages, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/core/i18n/navigation';
 import { CostEstimateModal } from './cost-estimate-modal';
 
 type Lang = 'zh' | 'en';

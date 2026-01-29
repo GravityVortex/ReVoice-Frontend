@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { useRouter } from "@/core/i18n/navigation";
 import { useTranslations } from "next-intl";
 import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
