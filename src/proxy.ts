@@ -6,11 +6,35 @@ import { routing } from '@/core/i18n/config';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-export default function proxy(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Handle internationalization first.
-  const intlResponse = intlMiddleware(request);
+  // CRITICAL: Skip ALL internal Next.js paths immediately.
+  // This MUST be first, before ANY other processing, to prevent next-intl
+  // from redirecting /_next/... to /en/_next/... (which causes 404s).
+  if (pathname.startsWith('/_next') || pathname.startsWith('/_vercel')) {
+    return NextResponse.next();
+  }
+
+  // Skip static files (images, fonts, etc.) - they have file extensions.
+  if (pathname.match(/\.[a-zA-Z0-9]+$/)) {
+    return NextResponse.next();
+  }
+
+  // Skip API routes.
+  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+    return NextResponse.next();
+  }
+
+  // Skip stable root pages (legal pages without locale prefix).
+  if (
+    pathname === '/privacy' ||
+    pathname === '/terms' ||
+    pathname === '/privacy-policy' ||
+    pathname === '/terms-of-service'
+  ) {
+    return NextResponse.next();
+  }
 
   // Extract locale from pathname.
   const locale = pathname.split('/')[1];
@@ -18,6 +42,14 @@ export default function proxy(request: NextRequest) {
   const pathWithoutLocale = isValidLocale
     ? pathname.slice(locale.length + 1)
     : pathname;
+
+  // Run i18n routing only for real pages.
+  const intlResponse = intlMiddleware(request);
+
+  // If the request has no locale prefix, let next-intl do its redirect first.
+  if (!isValidLocale && intlResponse.headers.has('location')) {
+    return intlResponse;
+  }
 
   // Page-level redirect gate. APIs must enforce auth/ownership separately.
   if (
@@ -42,9 +74,17 @@ export default function proxy(request: NextRequest) {
     }
   }
 
+  // Debug headers help trace routing issues (safe; not sensitive).
   intlResponse.headers.set('x-pathname', request.nextUrl.pathname);
   intlResponse.headers.set('x-url', request.url);
 
   return intlResponse;
 }
 
+// Next.js requires `config` to be declared in this file (it must be statically analyzable).
+export const config = {
+  // Match all pathnames except for
+  // - paths that start with `/api`, `/trpc`, `/_next` or `/_vercel`
+  // - paths containing a dot (e.g. `favicon.ico`)
+  matcher: '/((?!api|trpc|_next|_vercel|.*\\..*).*))'
+};
