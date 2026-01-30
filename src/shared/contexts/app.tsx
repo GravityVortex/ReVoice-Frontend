@@ -204,7 +204,7 @@ export const AppContextProvider = ({
 
         // `useSession()` often returns a minimal user shape (no credits/isAdmin/souldubAccess).
         // Merge to avoid UI flicker/regressions from dropping SSR-provided fields.
-        return {
+        const next = {
           ...prev,
           ...sessionUser,
           name: sessionUser.name ?? prev.name,
@@ -217,6 +217,28 @@ export const AppContextProvider = ({
           permissions: sessionUser.permissions ?? prev.permissions,
           data: (sessionUser as any).data ?? (prev as any).data,
         };
+
+        // Prevent infinite loops when `useSession()` returns a new object on every render.
+        // Only update state when fields that affect rendering actually changed.
+        const prevCredits = prev.credits?.remainingCredits ?? null;
+        const nextCredits = next.credits?.remainingCredits ?? null;
+        const prevExpires = prev.credits?.expiresAt?.valueOf?.() ?? null;
+        const nextExpires = next.credits?.expiresAt?.valueOf?.() ?? null;
+
+        if (
+          prev.id === next.id &&
+          prev.name === next.name &&
+          prev.email === next.email &&
+          prev.image === next.image &&
+          prev.isAdmin === next.isAdmin &&
+          prev.souldubAccess === next.souldubAccess &&
+          prevCredits === nextCredits &&
+          prevExpires === nextExpires
+        ) {
+          return prev;
+        }
+
+        return next;
       });
       if (sessionUser.id && sessionUser.id !== lastSessionUserIdRef.current) {
         lastSessionUserIdRef.current = sessionUser.id;
@@ -258,7 +280,7 @@ export const AppContextProvider = ({
       setUser(null);
       lastSessionUserIdRef.current = null;
     }
-  }, [session, isPending, isRefetching, refreshSession, sessionError, user]);
+  }, [session, isPending, isRefetching, refreshSession, sessionError]);
 
   useEffect(() => {
     if (
