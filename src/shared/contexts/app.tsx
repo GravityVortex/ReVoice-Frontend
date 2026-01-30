@@ -231,7 +231,7 @@ export const AppContextProvider = ({
       setUser(null);
       lastSessionUserIdRef.current = null;
     }
-  }, [isPending, isRefetching, sessionError, sessionUserId, sessionUser, user]);
+  }, [isPending, isRefetching, sessionError, sessionUserId]);
 
   useEffect(() => {
     if (
