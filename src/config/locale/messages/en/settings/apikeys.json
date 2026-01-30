@@ -43,5 +43,13 @@
     "buttons": {
       "submit": "Confirm Delete"
     }
+  },
+  "created": {
+    "title": "API Key created",
+    "description": "Copy your key and store it somewhere safe.",
+    "buttons": {
+      "copy": "Copy",
+      "back": "Back to API Keys"
+    }
   }
 }

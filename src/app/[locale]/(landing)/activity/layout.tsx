@@ -1,31 +1,10 @@
 import { ReactNode } from 'react';
-import { getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 
-import { ConsoleLayout } from '@/shared/blocks/console/layout';
-
-export default async function ActivityLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const t = await getTranslations('activity.sidebar');
-
-  // settings title
-  const title = t('title');
-
-  // settings nav
-  const nav = t.raw('nav');
-
-  const topNav = t.raw('top_nav');
-
-  return (
-    <ConsoleLayout
-      // title={title}
-      nav={nav}
-      topNav={topNav}
-      className="py-16 md:py-20"
-    >
-      {children}
-    </ConsoleLayout>
-  );
+export default function ActivityLayout({ children }: { children: ReactNode }) {
+  // Activity is not part of the public product UX. Keep it fully disabled until it is
+  // intentionally reintroduced (navigation + permissions + product surface).
+  void children;
+  notFound();
 }
+

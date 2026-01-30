@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Folder, File, Trash2 } from 'lucide-react';
 
+import { Skeleton } from '@/shared/components/ui/skeleton';
+
 export default function FileManager() {
   const [currentPath, setCurrentPath] = useState('');
   const [fileList, setFileList] = useState<any[]>([]);
@@ -68,10 +70,10 @@ export default function FileManager() {
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" />
-                <div className="w-48 h-4 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" />
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-4 w-48 rounded" />
               </div>
-              <div className="w-8 h-8 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" />
+              <Skeleton className="h-8 w-8 rounded" />
             </div>
           ))
         ) : (

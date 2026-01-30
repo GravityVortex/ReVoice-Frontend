@@ -66,7 +66,6 @@ export default function middleware(request: NextRequest) {
     pathWithoutLocale.startsWith('/admin') ||
     pathWithoutLocale.startsWith('/dashboard') ||
     pathWithoutLocale.startsWith('/settings') ||
-    pathWithoutLocale.startsWith('/activity') ||
     pathWithoutLocale.startsWith('/video_convert') ||
     pathWithoutLocale.startsWith('/chat')
   ) {

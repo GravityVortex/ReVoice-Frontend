@@ -20,6 +20,7 @@ export function Input({
       placeholder={field.placeholder}
       className="bg-background placeholder:text-base-content/50 rounded-md"
       {...field.attributes}
+      suppressHydrationWarning={true}
     />
   );
 }

@@ -1,4 +1,8 @@
 {
+  "page": {
+    "title": "Credits",
+    "description": "Track your balance and transactions."
+  },
   "fields": {
     "transaction_no": "Transaction No",
     "description": "Description",

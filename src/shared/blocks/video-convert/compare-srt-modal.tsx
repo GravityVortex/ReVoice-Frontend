@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Play, Pause, Copy, Download } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAppContext } from '@/shared/contexts/app';
 
 interface CompareSrtModalProps {
@@ -97,14 +98,14 @@ export function CompareSrtModal({ isOpen, onClose, taskId, onDownBtnsClick }: Co
                 <div>翻译后字幕</div>
               </div>
               {[...Array(5)].map((_, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4 animate-pulse">
+                <div key={index} className="grid grid-cols-2 gap-4">
                   <div className="border-2 rounded-lg p-4 bg-card">
-                    <div className="h-8 bg-muted border rounded mb-2"></div>
-                    <div className="h-16 bg-muted border rounded"></div>
+                    <Skeleton className="h-8 w-full mb-2" />
+                    <Skeleton className="h-16 w-full" />
                   </div>
                   <div className="border-2 rounded-lg p-4 bg-card">
-                    <div className="h-8 bg-muted border rounded mb-2"></div>
-                    <div className="h-16 bg-muted border rounded"></div>
+                    <Skeleton className="h-8 w-full mb-2" />
+                    <Skeleton className="h-16 w-full" />
                   </div>
                 </div>
               ))}

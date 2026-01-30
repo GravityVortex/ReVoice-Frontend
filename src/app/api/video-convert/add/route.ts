@@ -10,6 +10,8 @@ export const maxDuration = 300;
 import { getAllConfigs } from '@/shared/models/config';
 import { getUserInfo } from '@/shared/models/user';
 import { checkSoulDubAccess } from '@/shared/lib/souldub';
+import { PERMISSIONS } from '@/core/rbac';
+import { hasPermission } from '@/shared/services/rbac';
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +21,8 @@ export async function POST(req: Request) {
     }
 
     const configs = await getAllConfigs();
-    if (!checkSoulDubAccess(user.email, configs, !!(user as any).isAdmin)) {
+    const isAdmin = await hasPermission(user.id, PERMISSIONS.ADMIN_ACCESS).catch(() => false);
+    if (!checkSoulDubAccess(user.email, configs, isAdmin)) {
       return respErr("SoulDub feature is currently in early access. Please contact support to join the waitlist.");
     }
 

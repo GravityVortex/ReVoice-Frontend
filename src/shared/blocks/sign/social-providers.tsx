@@ -84,6 +84,24 @@ export function SocialProviders({
     });
   }
 
+  // Show loading skeleton if configs haven't been loaded yet
+  const isConfigsLoaded = Object.keys(configs).length > 0;
+
+  if (!isConfigsLoaded) {
+    return (
+      <div className={cn('flex w-full items-center gap-2', 'flex-col justify-between')}>
+        {/* Skeleton loaders for potential social buttons */}
+        <div className="w-full h-10 bg-white/5 animate-pulse rounded-md" />
+        <div className="w-full h-10 bg-white/5 animate-pulse rounded-md" />
+      </div>
+    );
+  }
+
+  // Don't render anything if no providers are enabled
+  if (providers.length === 0) {
+    return null;
+  }
+
   return (
     <div
       className={cn(

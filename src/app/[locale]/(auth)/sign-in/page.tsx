@@ -54,8 +54,8 @@ export default async function SignInPage({
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
           <div className="relative w-[800px] h-[800px] opacity-80">
             {/* Rotating Rings */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-blue-500/20 border-dashed animate-[spin_60s_linear_infinite]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-purple-500/20 animate-[spin_40s_linear_infinite_reverse]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border-2 border-blue-500/20 border-dashed animate-[spin_60s_linear_infinite]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border-2 border-purple-500/20 animate-[spin_40s_linear_infinite_reverse]" />
 
             {/* Connecting Lines SVG */}
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 800">
@@ -68,9 +68,8 @@ export default async function SignInPage({
               </defs>
 
               {/* Dynamic Curves simulating global connections */}
-              <path d="M200,400 Q400,200 600,400" fill="none" stroke="url(#conn-grad)" strokeWidth="2" className="animate-[pulse_4s_infinite]" />
-              <path d="M250,500 Q400,650 550,500" fill="none" stroke="url(#conn-grad)" strokeWidth="1.5" className="animate-[pulse_5s_infinite]" style={{ animationDelay: '1s' }} />
-              <path d="M300,300 Q500,400 300,500" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4 4" />
+              <path d="M200,400 Q400,200 600,400" fill="none" stroke="url(#conn-grad)" strokeWidth="4" className="animate-[pulse_4s_infinite]" />
+              <path d="M250,500 Q400,650 550,500" fill="none" stroke="url(#conn-grad)" strokeWidth="3" className="animate-[pulse_5s_infinite]" style={{ animationDelay: '1s' }} />
 
               {/* Active Nodes */}
               <circle cx="200" cy="400" r="4" fill="#60a5fa">

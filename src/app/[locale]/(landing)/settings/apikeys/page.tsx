@@ -1,7 +1,10 @@
 import { getTranslations } from 'next-intl/server';
 
+import { Link } from '@/core/i18n/navigation';
 import { Empty } from '@/shared/blocks/common';
+import { ConsolePageHeader } from '@/shared/blocks/console/page-header';
 import { TableCard } from '@/shared/blocks/table';
+import { Button } from '@/shared/components/ui/button';
 import {
   Apikey,
   ApikeyStatus,
@@ -9,8 +12,15 @@ import {
   getApikeysCount,
 } from '@/shared/models/apikey';
 import { getUserInfo } from '@/shared/models/user';
-import { Button } from '@/shared/types/blocks/common';
 import { type Table } from '@/shared/types/blocks/table';
+
+function maskKey(value: string) {
+  if (!value) return '';
+  const prefix = value.slice(0, 3);
+  const last = value.slice(-4);
+  const maskLen = Math.max(0, value.length - prefix.length - last.length);
+  return `${prefix}${'*'.repeat(maskLen)}${last}`;
+}
 
 export default async function ApiKeysPage({
   searchParams,
@@ -51,7 +61,16 @@ export default async function ApiKeysPage({
         name: 'title',
         title: t('fields.title'),
       },
-      { name: 'key', title: t('fields.key'), type: 'copy' },
+      {
+        name: 'key',
+        title: t('fields.key'),
+        type: 'copy',
+        callback: (item: Apikey) => (
+          <span className="font-mono text-xs md:text-sm">
+            {maskKey(item.key)}
+          </span>
+        ),
+      },
       {
         name: 'createdAt',
         title: t('fields.created_at'),
@@ -86,17 +105,18 @@ export default async function ApiKeysPage({
     },
   };
 
-  const buttons: Button[] = [
-    {
-      title: t('list.buttons.add'),
-      url: '/settings/apikeys/create',
-      icon: 'Plus',
-    },
-  ];
-
   return (
     <div className="space-y-8">
-      <TableCard title={t('list.title')} buttons={buttons} table={table} />
+      <ConsolePageHeader
+        title={t('list.title')}
+        icon="Key"
+        actions={
+          <Button asChild size="sm" className="rounded-full">
+            <Link href="/settings/apikeys/create">{t('list.buttons.add')}</Link>
+          </Button>
+        }
+      />
+      <TableCard table={table} />
     </div>
   );
 }

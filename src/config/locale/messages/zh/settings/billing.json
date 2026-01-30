@@ -1,4 +1,8 @@
 {
+  "page": {
+    "title": "订阅",
+    "description": "管理你的套餐与订阅记录。"
+  },
   "fields": {
     "subscription_no": "订阅号",
     "interval": "周期",

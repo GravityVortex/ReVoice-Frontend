@@ -1,0 +1,55 @@
+{
+  "title": "概览",
+  "description": "管理你的账号、订阅与用量。",
+  "auth": {
+    "title": "需要登录",
+    "description": "请先登录后再管理你的设置。",
+    "button": "去登录"
+  },
+  "cards": {
+    "account": {
+      "title": "账号",
+      "description": "个人资料、订阅与积分一目了然。"
+    },
+    "profile": {
+      "title": "个人资料",
+      "description": "更新昵称与头像。"
+    },
+    "subscription": {
+      "title": "订阅",
+      "description": "查看套餐状态与续费时间。"
+    },
+    "credits": {
+      "title": "积分",
+      "description": "余额与明细记录。"
+    },
+    "payments": {
+      "title": "支付",
+      "description": "订单与发票。"
+    },
+    "recent_orders": {
+      "title": "最近支付",
+      "description": "你最近成功支付的订单。"
+    },
+    "quick_actions": {
+      "title": "快捷入口",
+      "description": "常用功能快速抵达。"
+    }
+  },
+  "actions": {
+    "open": "打开",
+    "upgrade": "升级",
+    "manage": "管理",
+    "buy_credits": "购买积分",
+    "view": "查看",
+    "docs": "文档"
+  },
+  "labels": {
+    "current_plan": "当前套餐",
+    "no_subscription": "暂无有效订阅",
+    "remaining_credits": "剩余积分",
+    "recent_orders": "最近订单",
+    "renews_on": "{date} 续费",
+    "no_orders": "暂无订单"
+  }
+}

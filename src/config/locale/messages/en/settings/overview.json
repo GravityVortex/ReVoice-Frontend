@@ -1,0 +1,55 @@
+{
+  "title": "Overview",
+  "description": "Manage your account, billing, and usage.",
+  "auth": {
+    "title": "Sign in required",
+    "description": "Please sign in to manage your settings.",
+    "button": "Sign in"
+  },
+  "cards": {
+    "account": {
+      "title": "Account",
+      "description": "Profile, plan, and credits at a glance."
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Update your name and avatar."
+    },
+    "subscription": {
+      "title": "Subscription",
+      "description": "Plan status and renewal date."
+    },
+    "credits": {
+      "title": "Credits",
+      "description": "Balance and transaction history."
+    },
+    "payments": {
+      "title": "Payments",
+      "description": "Orders and invoices."
+    },
+    "recent_orders": {
+      "title": "Recent payments",
+      "description": "Your latest successful orders."
+    },
+    "quick_actions": {
+      "title": "Shortcuts",
+      "description": "Fast ways to get things done."
+    }
+  },
+  "actions": {
+    "open": "Open",
+    "upgrade": "Upgrade",
+    "manage": "Manage",
+    "buy_credits": "Buy credits",
+    "view": "View",
+    "docs": "Docs"
+  },
+  "labels": {
+    "current_plan": "Current plan",
+    "no_subscription": "No active subscription",
+    "remaining_credits": "Remaining credits",
+    "recent_orders": "Recent orders",
+    "renews_on": "Renews on {date}",
+    "no_orders": "No orders yet"
+  }
+}

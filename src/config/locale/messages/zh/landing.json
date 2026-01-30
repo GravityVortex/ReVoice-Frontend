@@ -43,11 +43,6 @@
           "title": "账单",
           "url": "/settings/billing",
           "icon": "CreditCard"
-        },
-        {
-          "title": "活动",
-          "url": "/activity",
-          "icon": "Activity"
         }
       ]
     },

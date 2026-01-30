@@ -1,4 +1,8 @@
 {
+  "page": {
+    "title": "积分",
+    "description": "查看余额与明细记录。"
+  },
   "fields": {
     "transaction_no": "交易单号",
     "description": "描述",

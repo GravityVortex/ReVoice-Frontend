@@ -34,9 +34,9 @@ export function PanelCard({
   className?: string;
 }) {
   return (
-    <CardComponent className={cn('overflow-hidden pb-0', className)}>
+    <CardComponent className={cn('gap-4 py-5 overflow-hidden pb-0', className)}>
       {(title || description) && (
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle>
             {title}
             {label && (
@@ -57,13 +57,14 @@ export function PanelCard({
         </CardContent>
       )}
       {buttons && buttons.length > 0 && (
-        <CardFooter className="bg-muted flex justify-start gap-4 py-4">
+        <CardFooter className="border-white/10 bg-white/[0.02] flex flex-wrap justify-end gap-2 border-t py-4">
           {buttons.map((button, idx) => (
             <Button
               key={idx}
               variant={button.variant || 'default'}
               size={button.size || 'default'}
               asChild
+              className="rounded-full"
             >
               <Link href={button.url || ''} target={button.target || '_self'}>
                 {button.icon && <SmartIcon name={button.icon as string} />}

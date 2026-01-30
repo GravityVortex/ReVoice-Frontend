@@ -309,6 +309,7 @@ export function Form({
   return (
     <FormComponent {...form}>
       <form
+        suppressHydrationWarning
         onSubmit={form.handleSubmit(onSubmit)}
         className="w-full space-y-0 pb-2 md:max-w-xl"
       >

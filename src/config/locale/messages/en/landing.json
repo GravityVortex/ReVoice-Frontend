@@ -43,11 +43,6 @@
           "title": "Billing",
           "url": "/settings/billing",
           "icon": "CreditCard"
-        },
-        {
-          "title": "Activity",
-          "url": "/activity",
-          "icon": "Activity"
         }
       ]
     },

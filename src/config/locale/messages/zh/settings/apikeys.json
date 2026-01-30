@@ -43,5 +43,13 @@
     "buttons": {
       "submit": "确认删除"
     }
+  },
+  "created": {
+    "title": "API 密钥已创建",
+    "description": "请复制并妥善保存你的密钥。",
+    "buttons": {
+      "copy": "复制",
+      "back": "返回 API 密钥"
+    }
   }
 }

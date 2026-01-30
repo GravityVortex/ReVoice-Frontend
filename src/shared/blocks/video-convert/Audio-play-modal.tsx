@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Slider } from '@/shared/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 
@@ -16,6 +17,23 @@ interface AudioPlayModalProps {
   backgroundAudioUrl: string;
   audioRef: React.RefObject<HTMLAudioElement | null>;
   isLoading: boolean;
+}
+
+function AudioPlayerSkeleton() {
+  return (
+    <div className="mt-6 flex items-center gap-4">
+      <Skeleton className="h-10 w-10 rounded-md flex items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </Skeleton>
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-2 w-full rounded-full" />
+        <div className="flex justify-between">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const AudioPlayModal = forwardRef<HTMLAudioElement, AudioPlayModalProps>(({ 
@@ -195,18 +213,7 @@ const AudioPlayModal = forwardRef<HTMLAudioElement, AudioPlayModalProps>(({
 
           <TabsContent value="subtitle" className="space-y-4">
             {isLoading ? (
-              <div className="mt-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center animate-pulse">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-2 w-full rounded-full bg-muted animate-pulse" />
-                  <div className="flex justify-between">
-                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
-                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
-                  </div>
-                </div>
-              </div>
+              <AudioPlayerSkeleton />
             ) : (
               <div className="mt-6 flex items-center gap-4">
                 <Button size="icon" variant="outline" onClick={togglePlay}>
@@ -225,18 +232,7 @@ const AudioPlayModal = forwardRef<HTMLAudioElement, AudioPlayModalProps>(({
 
           <TabsContent value="background" className="space-y-4">
             {isLoading ? (
-              <div className="mt-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center animate-pulse">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-2 w-full rounded-full bg-muted animate-pulse" />
-                  <div className="flex justify-between">
-                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
-                    <div className="h-3 w-12 rounded bg-muted animate-pulse" />
-                  </div>
-                </div>
-              </div>
+              <AudioPlayerSkeleton />
             ) : (
               <div className="mt-6 flex items-center gap-4">
                 <Button size="icon" variant="outline" onClick={togglePlay}>

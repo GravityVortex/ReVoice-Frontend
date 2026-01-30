@@ -1,18 +1,22 @@
+import { Skeleton } from '@/shared/components/ui/skeleton';
+
 export default function Loading() {
   return (
-    <div className="animate-pulse space-y-8">
-      <div className="h-8 w-56 rounded-md bg-muted" />
-      <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Page header */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-9 rounded-xl" />
         <div className="space-y-2">
-          <div className="h-4 w-24 rounded bg-muted" />
-          <div className="h-32 rounded-xl bg-muted" />
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-72" />
         </div>
-        <div className="space-y-4">
-          <div className="h-12 rounded-lg bg-muted" />
-          <div className="h-12 rounded-lg bg-muted" />
-        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="space-y-6">
+        <Skeleton className="h-32 rounded-2xl" />
+        <Skeleton className="h-64 rounded-2xl" />
       </div>
     </div>
   );
 }
-

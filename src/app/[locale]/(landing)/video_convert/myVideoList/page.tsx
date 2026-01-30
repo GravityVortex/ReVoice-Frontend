@@ -7,6 +7,7 @@ import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination-client";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
@@ -227,21 +228,21 @@ export default function VideoConvertPage() {
 
       {/* 加载状态龙骨状态 */}
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, index) => (
             <div key={index} className="border-2 rounded-lg overflow-hidden bg-card">
               {/* 视频封面骨架 */}
-              <div className="aspect-video bg-card border-b-2"></div>
+              <Skeleton className="aspect-video w-full rounded-none border-b-2" />
 
               {/* 内容区域骨架 */}
               <div className="px-4 py-4 pt-2 space-y-3 mt-2">
                 {/* 标题 */}
-                <div className="h-5 w-3/4 bg-muted rounded border"></div>
+                <Skeleton className="h-5 w-3/4" />
 
                 {/* 状态和时长 */}
                 <div className="flex justify-between gap-2">
-                  <div className="h-5 w-full bg-muted rounded border"></div>
-                  <div className="h-5 w-full bg-muted rounded border"></div>
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-full" />
                 </div>
 
                 {/* 转换时间 */}
@@ -249,7 +250,7 @@ export default function VideoConvertPage() {
 
                 {/* 按钮组 */}
                 <div className="">
-                  <div className="h-5 w-full flex-1 bg-muted rounded border"></div>
+                  <Skeleton className="h-5 w-full flex-1" />
                 </div>
               </div>
             </div>

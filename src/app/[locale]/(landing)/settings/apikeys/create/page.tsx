@@ -59,7 +59,7 @@ export default async function CreateApiKeyPage() {
         return {
           status: 'success',
           message: 'API Key created',
-          redirect_url: '/settings/apikeys',
+          redirect_url: `/settings/apikeys/${newApikey.id}/edit?created=1`,
         };
       },
       button: {

@@ -25,15 +25,16 @@ export function checkSoulDubAccess(
     }
 
     // 2. Check whitelist (if user is logged in)
-    if (userEmail) {
-        const whitelistStr = configs['souldub_whitelist'] || '';
-        // Normalize: split by comma, trim whitespace, remove empty entries
+    const normalizedEmail = userEmail?.trim().toLowerCase();
+    if (normalizedEmail) {
+        const whitelistStr = (configs['souldub_whitelist'] || '').trim();
+        // Normalize: split by common separators (commas/newlines/spaces), trim, remove empties
         const whitelist = whitelistStr
-            .split(',')
-            .map((email) => email.trim())
+            .split(/[,\s]+/)
+            .map((email) => email.trim().toLowerCase())
             .filter((email) => email.length > 0);
 
-        if (whitelist.includes(userEmail.trim())) {
+        if (whitelist.includes(normalizedEmail)) {
             return true;
         }
     }

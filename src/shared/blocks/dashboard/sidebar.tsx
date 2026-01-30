@@ -104,11 +104,6 @@ export function Sidebar({ className, sidebar }: SidebarProps) {
                   title: t('user_nav.billing'),
                   url: '/settings/billing',
                   icon: 'CreditCard'
-                },
-                {
-                  title: t('user_nav.activity'),
-                  url: '/activity',
-                  icon: 'Activity'
                 }
               ]
             }}

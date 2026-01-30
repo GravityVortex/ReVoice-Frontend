@@ -163,7 +163,7 @@ export default async function CancelBillingPage({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <FormCard
         title={t('title')}
         description={t('description')}

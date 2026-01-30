@@ -3,12 +3,25 @@
   "nav": {
     "items": [
       {
+        "title": "概览",
+        "url": "/settings",
+        "icon": "LayoutDashboard"
+      },
+      {
+        "title": "账号",
+        "type": "section"
+      },
+      {
         "title": "个人资料",
         "url": "/settings/profile",
         "icon": "User"
       },
       {
-        "title": "账单",
+        "title": "账务",
+        "type": "section"
+      },
+      {
+        "title": "订阅",
         "url": "/settings/billing",
         "icon": "CreditCard"
       },
@@ -18,9 +31,22 @@
         "icon": "DollarSign"
       },
       {
+        "title": "用量",
+        "type": "section"
+      },
+      {
         "title": "积分",
         "url": "/settings/credits",
         "icon": "Coins"
+      },
+      {
+        "title": "开发者",
+        "type": "section"
+      },
+      {
+        "title": "API Key",
+        "url": "/settings/apikeys",
+        "icon": "Key"
       }
     ]
   },
@@ -30,11 +56,6 @@
         "title": "设置",
         "url": "/settings",
         "icon": "Settings"
-      },
-      {
-        "title": "视频转换",
-        "url": "/video_convert",
-        "icon": "Video"
       }
     ]
   }

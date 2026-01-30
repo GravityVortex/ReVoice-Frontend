@@ -8,6 +8,7 @@ import VideoList, { VideoListItem } from "@/shared/components/ui/video-list";
 import VideoPlayerModal from "@/shared/components/ui/video-player-modal";
 import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination-client";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
@@ -210,24 +211,25 @@ export default function DashboardProjectsPage() {
             </div>
 
             {loading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(6)].map((_, index) => (
                         <div key={index} className="flex flex-col gap-3 rounded-2xl bg-card p-3 border border-border/50 shadow-sm">
                             {/* Thumbnail Skeleton */}
-                            <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
-                                <div className="absolute top-2 right-2 w-16 h-6 bg-background/50 rounded-full"></div>
-                                <div className="absolute bottom-2 right-2 w-10 h-4 bg-background/50 rounded"></div>
+                            <div className="relative aspect-video w-full overflow-hidden rounded-xl">
+                                <Skeleton className="absolute inset-0 rounded-xl" />
+                                <Skeleton className="absolute top-2 right-2 h-6 w-16 rounded-full" />
+                                <Skeleton className="absolute bottom-2 right-2 h-4 w-10 rounded" />
                             </div>
 
                             {/* Info Section Skeleton */}
                             <div className="flex flex-col gap-1 px-1">
                                 <div className="flex items-start justify-between gap-2">
-                                    <div className="h-5 w-3/4 bg-muted rounded"></div>
-                                    <div className="h-6 w-6 bg-muted rounded-full"></div>
+                                    <Skeleton className="h-5 w-3/4" />
+                                    <Skeleton className="h-6 w-6 rounded-full" />
                                 </div>
                                 <div className="flex items-center gap-4 mt-1">
-                                    <div className="h-3 w-16 bg-muted rounded"></div>
-                                    <div className="h-3 w-12 bg-muted rounded"></div>
+                                    <Skeleton className="h-3 w-16" />
+                                    <Skeleton className="h-3 w-12" />
                                 </div>
                             </div>
                         </div>

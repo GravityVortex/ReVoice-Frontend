@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Mail, Shield } from 'lucide-react';
 
 import { FormCard } from '@/shared/blocks/form';
+import { ConsolePageHeader } from '@/shared/blocks/console/page-header';
 import { Form as FormType } from '@/shared/types/blocks/form';
 import { Button } from '@/shared/components/ui/button';
 import { GuestVerificationModal } from '@/shared/blocks/settings/guest-verification-modal';
@@ -151,23 +152,35 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
   const isGuest = email.startsWith('guest_') && email.endsWith('@temp.local');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <ConsolePageHeader
+        title={translations.edit.title}
+        description={translations.edit.description}
+        icon="User"
+      />
+
       {isGuest && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-          <div className="flex items-start gap-3">
-            <Mail className="size-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+        <div className="bg-card/50 border-white/10 relative overflow-hidden rounded-2xl border p-4 shadow-lg backdrop-blur">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent opacity-60"
+          />
+          <div className="relative flex items-start gap-3">
+            <Mail className="text-primary mt-0.5 size-5" />
             <div className="flex-1">
-              <h3 className="font-medium text-yellow-900 dark:text-yellow-100">{translations.guest.banner.title}</h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+              <h3 className="text-foreground font-medium">
+                {translations.guest.banner.title}
+              </h3>
+              <p className="text-muted-foreground mt-1 text-sm">
                 {translations.guest.banner.description}
               </p>
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={() => setIsVerificationModalOpen(true)}
-                className="mt-3 border-yellow-600 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-400 dark:text-yellow-300"
+                className="mt-3 rounded-full"
               >
-                <Shield className="size-4 mr-1" />
+                <Shield className="mr-1 size-4" />
                 {translations.guest.banner.button}
               </Button>
             </div>
@@ -177,8 +190,6 @@ export function ProfileClient({ user: initialUser, translations }: ProfileClient
 
       <FormCard
         key={user?.email || 'no-email'}
-        title={translations.edit.title}
-        description={translations.edit.description}
         form={form}
       />
 

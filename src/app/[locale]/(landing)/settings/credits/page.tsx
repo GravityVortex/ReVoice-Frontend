@@ -1,8 +1,11 @@
 import { getTranslations } from 'next-intl/server';
 
+import { Link } from '@/core/i18n/navigation';
 import { Empty } from '@/shared/blocks/common';
+import { ConsolePageHeader } from '@/shared/blocks/console/page-header';
 import { PanelCard } from '@/shared/blocks/panel';
 import { TableCard } from '@/shared/blocks/table';
+import { Button } from '@/shared/components/ui/button';
 import {
   Credit,
   CreditStatus,
@@ -22,7 +25,7 @@ export default async function CreditsPage({
 }) {
   const { page: pageNum, pageSize, type, stu } = await searchParams;
   const page = pageNum || 1;
-  const limit = pageSize || 20;
+  const limit = pageSize || 8;
 
   const userPromise = getUserInfo();
   const translationsPromise = getTranslations('settings.credits');
@@ -57,23 +60,16 @@ export default async function CreditsPage({
     title: t('list.title'),
     columns: [
       {
-        name: 'transactionNo',
-        title: t('fields.transaction_no'),
-        type: 'copy',
-      },
-      { name: 'description', title: t('fields.description') },
-      {
-        name: 'transactionType',
-        title: t('fields.type'),
-        type: 'label',
-        metadata: { variant: 'outline' },
-      },
-      {
-        name: 'transactionScene',
-        title: t('fields.scene'),
-        type: 'label',
-        placeholder: '-',
-        metadata: { variant: 'outline' },
+        name: 'description',
+        title: t('fields.description'),
+        callback: (item: Credit) => (
+          <div className="min-w-0">
+            <div className="truncate font-medium">{item.description || '-'}</div>
+            <div className="text-muted-foreground truncate text-xs">
+              {item.transactionNo}
+            </div>
+          </div>
+        ),
       },
       {
         name: 'credits',
@@ -98,6 +94,7 @@ export default async function CreditsPage({
         type: 'time',
         placeholder: '-',
         metadata: { format: 'YYYY-MM-DD HH:mm:ss' },
+        className: 'hidden lg:table-cell',
       },
       {
         name: 'createdAt',
@@ -141,24 +138,36 @@ export default async function CreditsPage({
   ];
 
   return (
-    <div className="space-y-8">
-      <PanelCard
-        title={t('view.title')}
-        buttons={[
-          {
-            title: t('view.buttons.purchase'),
-            url: '/pricing',
-            target: '_blank',
-            icon: 'Coins',
-          },
-        ]}
-        className="max-w-md"
-      >
-        <div className="text-primary text-3xl font-bold">
-          {remainingCredits}
-        </div>
-      </PanelCard>
-      <TableCard title={t('list.title')} tabs={tabs} table={table} />
+    <div className="space-y-6">
+      <ConsolePageHeader
+        title={t('page.title')}
+        description={t('page.description')}
+        icon="Coins"
+        actions={
+          <Button
+            asChild
+            size="sm"
+            className="rounded-full"
+          >
+            <Link href="/pricing" target="_blank" rel="noreferrer">
+              {t('view.buttons.purchase')}
+            </Link>
+          </Button>
+        }
+      />
+
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <TableCard className="order-2 lg:order-1" tabs={tabs} table={table} />
+
+        <PanelCard
+          title={t('view.title')}
+          className="order-1 h-fit lg:order-2"
+        >
+          <div className="text-primary text-3xl font-bold">
+            {remainingCredits}
+          </div>
+        </PanelCard>
+      </div>
     </div>
   );
 }

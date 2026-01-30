@@ -2,7 +2,16 @@ import { getTranslations } from 'next-intl/server';
 
 import { Empty } from '@/shared/blocks/common';
 import { FormCard } from '@/shared/blocks/form';
-import { getNonceStr } from '@/shared/lib/hash';
+import { Copy } from '@/shared/blocks/table/copy';
+import { Button } from '@/shared/components/ui/button';
+import { Link } from '@/core/i18n/navigation';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
 import {
   findApikeyById,
   updateApikey,
@@ -14,10 +23,13 @@ import { Form as FormType } from '@/shared/types/blocks/form';
 
 export default async function EditApiKeyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   const { id } = await params;
+  const { created } = await searchParams;
   const apikey = await findApikeyById(id);
   if (!apikey) {
     return <Empty message="API key not found" />;
@@ -73,8 +85,6 @@ export default async function EditApiKeyPage({
           throw new Error('title is required');
         }
 
-        const key = `sk-${getNonceStr(32)}`;
-
         const updatedApikey: UpdateApikey = {
           title: title.trim(),
         };
@@ -106,6 +116,37 @@ export default async function EditApiKeyPage({
 
   return (
     <div className="space-y-8">
+      {created === '1' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('created.title')}</CardTitle>
+            <CardDescription>{t('created.description')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-white/[0.03] border-white/10 flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-muted-foreground text-xs">
+                  {t('fields.key')}
+                </div>
+                <div className="text-foreground font-mono text-xs md:text-sm truncate">
+                  {apikey.key}
+                </div>
+              </div>
+              <Copy value={apikey.key}>
+                <span className="text-sm font-medium">
+                  {t('created.buttons.copy')}
+                </span>
+              </Copy>
+            </div>
+            <div className="flex justify-end">
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link href="/settings/apikeys">{t('created.buttons.back')}</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <FormCard title={t('edit.title')} crumbs={crumbs} form={form} />
     </div>
   );

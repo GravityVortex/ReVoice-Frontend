@@ -29,6 +29,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -620,26 +621,26 @@ export function ProjectDetailView({
       <div className="mx-auto w-full max-w-6xl flex flex-1 min-h-0 flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="h-6 w-64 rounded bg-muted animate-pulse" />
-            <div className="h-4 w-80 rounded bg-muted animate-pulse" />
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-4 w-80" />
           </div>
-          <div className="h-10 w-32 rounded bg-muted animate-pulse" />
+          <Skeleton className="h-10 w-32" />
         </div>
         <div className="grid flex-1 min-h-0 gap-6 items-stretch lg:grid-cols-[minmax(0,1fr)_420px] lg:grid-rows-[minmax(0,1fr)]">
           <div className="rounded-xl border bg-card p-6 flex min-h-0 flex-col">
-            <div className="flex-1 min-h-0 rounded-lg bg-muted animate-pulse" />
-            <div className="mt-4 h-10 w-72 rounded bg-muted animate-pulse" />
+            <Skeleton className="flex-1 min-h-0 rounded-lg" />
+            <Skeleton className="mt-4 h-10 w-72" />
           </div>
           <div className="flex h-full min-h-0 flex-col gap-6">
             <div className="rounded-xl border bg-card p-6">
-              <div className="h-10 w-64 rounded bg-muted animate-pulse" />
-              <div className="mt-4 h-24 w-full rounded bg-muted animate-pulse" />
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="mt-4 h-24 w-full" />
             </div>
             <div className="rounded-xl border bg-card p-6">
-              <div className="h-6 w-40 rounded bg-muted animate-pulse" />
+              <Skeleton className="h-6 w-40" />
               <div className="mt-4 space-y-2">
-                <div className="h-12 w-full rounded bg-muted animate-pulse" />
-                <div className="h-12 w-full rounded bg-muted animate-pulse" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
               </div>
             </div>
           </div>
@@ -869,7 +870,7 @@ export function ProjectDetailView({
                           </span>
                         </div>
                       ) : (
-                        <div className="h-5 w-36 rounded bg-muted animate-pulse" />
+                        <Skeleton className="h-5 w-36" />
                       )}
 
                       {selectedTask?.status === 'failed' && selectedTask.errorMessage && (

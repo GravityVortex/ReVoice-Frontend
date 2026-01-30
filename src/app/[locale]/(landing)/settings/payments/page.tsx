@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { PaymentType } from '@/extensions/payment';
 import { Empty } from '@/shared/blocks/common';
+import { ConsolePageHeader } from '@/shared/blocks/console/page-header';
 import { TableCard } from '@/shared/blocks/table';
 import {
   getOrders,
@@ -20,7 +21,7 @@ export default async function PaymentsPage({
 }) {
   const { page: pageNum, pageSize, type } = await searchParams;
   const page = pageNum || 1;
-  const limit = pageSize || 20;
+  const limit = pageSize || 8;
 
   const userPromise = getUserInfo();
   const translationsPromise = getTranslations('settings.payments');
@@ -50,45 +51,29 @@ export default async function PaymentsPage({
   const table: Table = {
     title: t('list.title'),
     columns: [
-      { name: 'orderNo', title: t('fields.order_no'), type: 'copy' },
-      { name: 'productName', title: t('fields.product_name') },
       {
-        name: 'status',
-        title: t('fields.status'),
-        type: 'label',
-        metadata: { variant: 'outline' },
+        name: 'productName',
+        title: t('fields.product_name'),
+        callback: (item: Order) => (
+          <div className="min-w-0">
+            <div className="truncate font-medium">{item.productName || '-'}</div>
+            <div className="text-muted-foreground truncate text-xs">
+              {item.orderNo}
+            </div>
+          </div>
+        ),
       },
       {
         name: 'paymentType',
         title: t('fields.type'),
         type: 'label',
         metadata: { variant: 'outline' },
-      },
-      {
-        title: t('fields.price'),
-        callback: function (item) {
-          const currency = (item.currency || 'USD').toUpperCase();
-
-          let prefix = '';
-          if (currency === 'USD') {
-            prefix = `$`;
-          } else if (currency === 'EUR') {
-            prefix = `€`;
-          } else if (currency === 'CNY') {
-            prefix = `¥`;
-          } else {
-            prefix = `${currency} `;
-          }
-
-          return (
-            <div className="text-primary">{`${prefix}${item.amount / 100}`}</div>
-          );
-        },
+        className: 'hidden lg:table-cell',
       },
       {
         title: t('fields.paid_amount'),
         callback: function (item) {
-          const currency = (item.paymentCurrency || 'USD').toUpperCase();
+          const currency = (item.paymentCurrency || item.currency || 'USD').toUpperCase();
 
           let prefix = '';
           if (currency === 'USD') {
@@ -101,30 +86,8 @@ export default async function PaymentsPage({
             prefix = `${currency} `;
           }
 
-          return (
-            <div className="text-primary">{`${prefix}${item.paymentAmount / 100}`}</div>
-          );
-        },
-      },
-      {
-        title: t('fields.discount_amount'),
-        callback: function (item) {
-          const currency = (item.discountCurrency || 'USD').toUpperCase();
-
-          let prefix = '';
-          if (currency === 'USD') {
-            prefix = `$`;
-          } else if (currency === 'EUR') {
-            prefix = `€`;
-          } else if (currency === 'CNY') {
-            prefix = `¥`;
-          } else {
-            prefix = `${currency} `;
-          }
-
-          return (
-            <div className="text-primary">{`${prefix}${item.discountAmount / 100}`}</div>
-          );
+          const amount = (item.paymentAmount ?? item.amount ?? 0) / 100;
+          return <div className="text-primary font-semibold tabular-nums">{`${prefix}${amount}`}</div>;
         },
       },
       {
@@ -134,6 +97,7 @@ export default async function PaymentsPage({
       },
       {
         name: 'actions',
+        title: t('fields.action'),
         type: 'dropdown',
         callback: (item: Order) => {
           if (item.invoiceUrl) {
@@ -193,10 +157,14 @@ export default async function PaymentsPage({
   ];
 
   return (
-    <div className="space-y-8">
-      <TableCard
+    <div className="space-y-6">
+      <ConsolePageHeader
         title={t('list.title')}
         description={t('list.description')}
+        icon="DollarSign"
+      />
+
+      <TableCard
         tabs={tabs}
         table={table}
       />

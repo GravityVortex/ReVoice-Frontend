@@ -3,12 +3,25 @@
   "nav": {
     "items": [
       {
+        "title": "Overview",
+        "url": "/settings",
+        "icon": "LayoutDashboard"
+      },
+      {
+        "title": "Account",
+        "type": "section"
+      },
+      {
         "title": "Profile",
         "url": "/settings/profile",
         "icon": "User"
       },
       {
         "title": "Billing",
+        "type": "section"
+      },
+      {
+        "title": "Subscription",
         "url": "/settings/billing",
         "icon": "CreditCard"
       },
@@ -18,9 +31,22 @@
         "icon": "DollarSign"
       },
       {
+        "title": "Usage",
+        "type": "section"
+      },
+      {
         "title": "Credits",
         "url": "/settings/credits",
         "icon": "Coins"
+      },
+      {
+        "title": "Developer",
+        "type": "section"
+      },
+      {
+        "title": "API Keys",
+        "url": "/settings/apikeys",
+        "icon": "Key"
       }
     ]
   },
@@ -30,11 +56,6 @@
         "title": "Settings",
         "url": "/settings",
         "icon": "Settings"
-      },
-      {
-        "title": "Video Convert",
-        "url": "/video_convert",
-        "icon": "Video"
       }
     ]
   }

@@ -2,9 +2,9 @@ import moment from 'moment';
 import { getTranslations } from 'next-intl/server';
 
 import { Empty } from '@/shared/blocks/common';
+import { ConsolePageHeader } from '@/shared/blocks/console/page-header';
 import { PanelCard } from '@/shared/blocks/panel';
 import { TableCard } from '@/shared/blocks/table';
-import { Button } from '@/shared/components/ui/button';
 import {
   getCurrentSubscription,
   getSubscriptions,
@@ -23,7 +23,7 @@ export default async function BillingPage({
 }) {
   const { page: pageNum, pageSize, status } = await searchParams;
   const page = pageNum || 1;
-  const limit = pageSize || 20;
+  const limit = pageSize || 8;
 
   const userPromise = getUserInfo();
   const translationsPromise = getTranslations('settings.billing');
@@ -53,18 +53,18 @@ export default async function BillingPage({
     title: t('list.title'),
     columns: [
       {
-        name: 'subscriptionNo',
-        title: t('fields.subscription_no'),
-        type: 'copy',
-      },
-      {
-        name: 'interval',
-        title: t('fields.interval'),
-        callback: function (item) {
-          if (!item.interval || !item.intervalCount) {
-            return '-';
-          }
-          return <div>{`${item.intervalCount}-${item.interval}`}</div>;
+        name: 'planName',
+        title: t('fields.plan'),
+        callback: function (item: Subscription) {
+          const title = item.planName || item.productName || '-';
+          return (
+            <div className="min-w-0">
+              <div className="truncate font-medium">{title}</div>
+              <div className="text-muted-foreground truncate text-xs">
+                {item.subscriptionNo}
+              </div>
+            </div>
+          );
         },
       },
       {
@@ -72,10 +72,12 @@ export default async function BillingPage({
         title: t('fields.status'),
         type: 'label',
         metadata: { variant: 'outline' },
+        className: 'hidden sm:table-cell',
       },
       {
+        name: 'amount',
         title: t('fields.amount'),
-        callback: function (item) {
+        callback: function (item: Subscription) {
           const currency = (item.currency || 'USD').toUpperCase();
 
           let prefix = '';
@@ -90,14 +92,27 @@ export default async function BillingPage({
           }
 
           return (
-            <div className="text-primary">{`${prefix}${item.amount / 100}`}</div>
+            <div className="text-primary font-semibold tabular-nums">{`${prefix}${(item.amount || 0) / 100}`}</div>
           );
         },
+        className: 'hidden sm:table-cell',
+      },
+      {
+        name: 'interval',
+        title: t('fields.interval'),
+        callback: function (item: Subscription) {
+          if (!item.interval || !item.intervalCount) {
+            return '-';
+          }
+          return <div>{`${item.intervalCount}-${item.interval}`}</div>;
+        },
+        className: 'hidden md:table-cell',
       },
       {
         name: 'createdAt',
         title: t('fields.created_at'),
         type: 'time',
+        className: 'hidden lg:table-cell',
       },
       {
         title: t('fields.current_period'),
@@ -112,6 +127,7 @@ export default async function BillingPage({
 
           return period;
         },
+        className: 'hidden xl:table-cell',
       },
       {
         title: t('fields.end_time'),
@@ -121,6 +137,7 @@ export default async function BillingPage({
           }
           return '-';
         },
+        className: 'hidden xl:table-cell',
       },
       {
         title: t('fields.action'),
@@ -232,40 +249,49 @@ export default async function BillingPage({
   }
 
   return (
-    <div className="space-y-8">
-      <PanelCard
-        label={currentSubscription?.status}
-        title={t('view.title')}
-        buttons={buttons}
-        className="max-w-md"
-      >
-        <div className="text-primary text-3xl font-bold">
-          {currentSubscription?.planName || t('view.no_subscription')}
-        </div>
-        {currentSubscription ? (
-          <>
-            {currentSubscription?.status === SubscriptionStatus.ACTIVE ||
-            currentSubscription?.status === SubscriptionStatus.TRIALING ? (
-              <div className="text-muted-foreground mt-4 text-sm font-normal">
-                {t('view.tip', {
-                  date: moment(currentSubscription?.currentPeriodEnd).format(
-                    'YYYY-MM-DD'
-                  ),
-                })}
-              </div>
-            ) : (
-              <div className="text-destructive mt-4 text-sm font-normal">
-                {t('view.end_tip', {
-                  date: moment(currentSubscription?.canceledEndAt).format(
-                    'YYYY-MM-DD'
-                  ),
-                })}
-              </div>
-            )}
-          </>
-        ) : null}
-      </PanelCard>
-      <TableCard title={t('list.title')} tabs={tabs} table={table} />
+    <div className="space-y-6">
+      <ConsolePageHeader
+        title={t('page.title')}
+        description={t('page.description')}
+        icon="CreditCard"
+      />
+
+      <div className="flex flex-col gap-6">
+        <PanelCard
+          label={currentSubscription?.status}
+          title={t('view.title')}
+          buttons={buttons}
+          className="w-full"
+        >
+          <div className="text-primary text-3xl font-bold">
+            {currentSubscription?.planName || t('view.no_subscription')}
+          </div>
+          {currentSubscription ? (
+            <>
+              {currentSubscription?.status === SubscriptionStatus.ACTIVE ||
+                currentSubscription?.status === SubscriptionStatus.TRIALING ? (
+                <div className="text-muted-foreground mt-4 text-sm font-normal">
+                  {t('view.tip', {
+                    date: moment(currentSubscription?.currentPeriodEnd).format(
+                      'YYYY-MM-DD'
+                    ),
+                  })}
+                </div>
+              ) : (
+                <div className="text-destructive mt-4 text-sm font-normal">
+                  {t('view.end_tip', {
+                    date: moment(currentSubscription?.canceledEndAt).format(
+                      'YYYY-MM-DD'
+                    ),
+                  })}
+                </div>
+              )}
+            </>
+          ) : null}
+        </PanelCard>
+
+        <TableCard className="w-full" tabs={tabs} table={table} />
+      </div>
     </div>
   );
 }

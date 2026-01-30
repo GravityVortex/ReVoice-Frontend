@@ -6,6 +6,7 @@ import { Table } from '@/shared/blocks/table';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -35,46 +36,48 @@ export function TableCard({
   className?: string;
 }) {
   return (
-    <Card className={cn(className)}>
+    <Card className={cn('gap-4 py-5', className)}>
       {(title || description || buttons) && (
-        <CardHeader className="flex flex-wrap items-center gap-2">
+        <CardHeader className="pb-4">
           <div className="flex flex-col gap-2">
-            {title && <CardTitle>{title}</CardTitle>}
+            {title && <CardTitle className="text-base">{title}</CardTitle>}
             {description && <CardDescription>{description}</CardDescription>}
           </div>
-          <div className="flex-1"></div>
           {buttons && buttons.length > 0 && (
-            <div className="flex items-center gap-2">
-              {buttons.map((button, idx) => (
-                <Button
-                  key={idx}
-                  asChild
-                  variant={button.variant || 'default'}
-                  size={button.size || 'sm'}
-                >
-                  <Link
-                    href={button.url || ''}
-                    target={button.target || '_self'}
+            <CardAction>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {buttons.map((button, idx) => (
+                  <Button
+                    key={idx}
+                    asChild
+                    variant={button.variant || 'default'}
+                    size={button.size || 'sm'}
+                    className="rounded-full"
                   >
-                    {button.icon && <SmartIcon name={button.icon as string} />}
-                    {button.title}
-                  </Link>
-                </Button>
-              ))}
-            </div>
+                    <Link
+                      href={button.url || ''}
+                      target={button.target || '_self'}
+                    >
+                      {button.icon && <SmartIcon name={button.icon as string} />}
+                      {button.title}
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </CardAction>
           )}
         </CardHeader>
       )}
 
       {table && (
-        <CardContent>
+        <CardContent className="space-y-4">
           {tabs && tabs.length > 0 ? <Tabs tabs={tabs} /> : null}
           <Table {...table} />
         </CardContent>
       )}
 
       {table.pagination && (
-        <CardFooter>
+        <CardFooter className="border-white/10 border-t pt-4">
           <Pagination {...table.pagination} />
         </CardFooter>
       )}

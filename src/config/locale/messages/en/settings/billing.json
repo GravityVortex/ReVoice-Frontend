@@ -1,4 +1,8 @@
 {
+  "page": {
+    "title": "Subscription",
+    "description": "Manage your plan and subscription history."
+  },
   "fields": {
     "subscription_no": "Subscription No",
     "interval": "Interval",

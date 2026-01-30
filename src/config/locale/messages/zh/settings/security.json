@@ -1,4 +1,17 @@
 {
+  "page": {
+    "title": "安全",
+    "description": "管理账号访问与安全设置。"
+  },
+  "common": {
+    "coming_soon": "即将上线",
+    "go_to_profile": "前往个人资料"
+  },
+  "guest": {
+    "title": "访客账号",
+    "description": "请前往个人资料完成认证，以解锁完整功能并保护数据安全。",
+    "button": "前往个人资料"
+  },
   "fields": {
     "email": "邮箱",
     "password": "密码",

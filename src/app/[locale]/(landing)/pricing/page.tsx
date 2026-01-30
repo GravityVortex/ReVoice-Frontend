@@ -1,9 +1,15 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
+import { PERMISSIONS } from '@/core/rbac';
+import { Link } from '@/core/i18n/navigation';
 import { getThemePage } from '@/core/theme';
 import { getMetadata } from '@/shared/lib/seo';
+import { checkSoulDubAccess } from '@/shared/lib/souldub';
+import { Button } from '@/shared/components/ui/button';
+import { getAllConfigs } from '@/shared/models/config';
 import { getCurrentSubscription } from '@/shared/models/subscription';
 import { getUserInfo } from '@/shared/models/user';
+import { hasPermission } from '@/shared/services/rbac';
 import {
   FAQ as FAQType,
   Testimonials as TestimonialsType,
@@ -23,51 +29,33 @@ export default async function PricingPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const landingTranslationsPromise = getTranslations('landing');
-  const pricingTranslationsPromise = getTranslations('pricing');
-  const pagePromise = getThemePage('pricing');
-
-  const currentSubscriptionPromise = (async () => {
+  const userPromise = getUserInfo();
+  const configsPromise = getAllConfigs();
+  const isAdminPromise = (async () => {
+    const user = await userPromise;
+    if (!user) return false;
     try {
-      const user = await getUserInfo();
-      if (!user) return undefined;
-      return await getCurrentSubscription(user.id);
-    } catch (error) {
-      console.log('getting current subscription failed:', error);
-      return undefined;
+      return await hasPermission(user.id, PERMISSIONS.ADMIN_ACCESS);
+    } catch {
+      return false;
     }
   })();
+  const souldubAccessPromise = (async () => {
+    const [user, configs, isAdmin] = await Promise.all([
+      userPromise,
+      configsPromise,
+      isAdminPromise,
+    ]);
+    return checkSoulDubAccess(user?.email, configs, isAdmin);
+  })();
 
-  const [tl, t, Page, currentSubscription] = await Promise.all([
+  const landingTranslationsPromise = getTranslations('landing');
+  const [tl, souldubAccess] = await Promise.all([
     landingTranslationsPromise,
-    pricingTranslationsPromise,
-    pagePromise,
-    currentSubscriptionPromise,
+    souldubAccessPromise,
   ]);
 
-  // build sections
-  const pricing: PricingType = t.raw('pricing');
-  const faq: FAQType = tl.raw('faq');
-  const testimonials: TestimonialsType = tl.raw('testimonials');
-
-  /* SoulDub Gating Logic */
-  const { getAllConfigs } = await import('@/shared/models/config');
-  const { checkSoulDubAccess } = await import('@/shared/lib/souldub');
-  const { Button } = await import('@/shared/components/ui/button');
-  const { ArrowLeft } = await import('lucide-react');
-  const { Link } = await import('@/core/i18n/navigation'); // Using Link from navigation for consistency
-
-  const configs = await getAllConfigs();
-  const user = await getUserInfo(); // Already imported and used above, but need strict user object here? No, 'user' variable from line 32 is inside a promise. Let's just use the result of that promise or fetch again? 
-  // Actually, getUserInfo is called inside currentSubscriptionPromise. Let's lift it out or call it again.
-  // getUserInfo() caches ? It relies on headers/session. safe to call again or reuse.
-  // Let's reuse or just await it cleanly.
-
-  const userInfo = await getUserInfo();
-  const souldubAccess = checkSoulDubAccess(userInfo?.email, configs, (userInfo as any)?.isAdmin);
-
   if (!souldubAccess) {
-
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black text-white selection:bg-white/20">
         {/* Background Gradients */}
@@ -108,6 +96,30 @@ export default async function PricingPage({
       </div>
     );
   }
+
+  const pricingTranslationsPromise = getTranslations('pricing');
+  const pagePromise = getThemePage('pricing');
+  const currentSubscriptionPromise = (async () => {
+    try {
+      const user = await userPromise;
+      if (!user) return undefined;
+      return await getCurrentSubscription(user.id);
+    } catch (error) {
+      console.log('getting current subscription failed:', error);
+      return undefined;
+    }
+  })();
+
+  const [t, Page, currentSubscription] = await Promise.all([
+    pricingTranslationsPromise,
+    pagePromise,
+    currentSubscriptionPromise,
+  ]);
+
+  // build sections
+  const pricing: PricingType = t.raw('pricing');
+  const faq: FAQType = tl.raw('faq');
+  const testimonials: TestimonialsType = tl.raw('testimonials');
 
   return (
     <Page
