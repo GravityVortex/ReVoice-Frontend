@@ -54,23 +54,16 @@ export const AppContextProvider = ({
     refetch: refreshSession,
   } = useSession();
 
-  // Avoid a one-render "signed out" flash when the session finishes loading.
-  // `user` is stored in state and updated in an effect, so it lags behind `session`.
+  const refreshSessionRef = useRef(refreshSession);
+  refreshSessionRef.current = refreshSession;
+
   const sessionUser = session?.user ? (session.user as User) : null;
-  let authedUser: User | null = null;
-  if (sessionUser) {
-    if (user && user.id === sessionUser.id) {
-      authedUser = user;
-    } else if (sessionUser.credits) {
-      authedUser = sessionUser;
-    } else {
-      // Preserve previously fetched credits if the session payload doesn't include them.
-      authedUser = { ...sessionUser, credits: user?.credits };
-    }
-  } else if (user) {
-    // SSR can provide an initial user. Keep it until the session hook finishes.
-    authedUser = user;
-  }
+  const sessionUserId = sessionUser?.id ?? null;
+
+  // Avoid a one-render "signed out" flash when the session finishes loading.
+  // Prefer the richer SSR/user state for the active session user.
+  const authedUser: User | null =
+    sessionUser && user && user.id === sessionUser.id ? user : sessionUser || user;
 
   // Session is unknown while `useSession()` is pending. Treat this as a distinct state
   // (don't show "Sign in" UI yet) to avoid flashing the wrong auth UI.
@@ -185,7 +178,7 @@ export const AppContextProvider = ({
       return;
     }
 
-    if (session?.user) {
+    if (sessionUserId) {
       if (clearUserTimeoutRef.current) {
         clearTimeout(clearUserTimeoutRef.current);
         clearUserTimeoutRef.current = null;
@@ -194,54 +187,12 @@ export const AppContextProvider = ({
       // Session is healthy again, allow a future revalidation if needed.
       didRevalidateSessionRef.current = false;
 
-      const sessionUser = session.user as User;
-      // Preserve already-fetched credits if the session payload doesn't include them.
-      setUser((prev) => {
-        if (!prev) return sessionUser;
-        if (prev.id && sessionUser.id && prev.id !== sessionUser.id) {
-          return sessionUser;
-        }
+      if ((!user || user.id !== sessionUserId) && sessionUser) {
+        setUser(sessionUser);
+      }
 
-        // `useSession()` often returns a minimal user shape (no credits/isAdmin/souldubAccess).
-        // Merge to avoid UI flicker/regressions from dropping SSR-provided fields.
-        const next = {
-          ...prev,
-          ...sessionUser,
-          name: sessionUser.name ?? prev.name,
-          email: sessionUser.email ?? prev.email,
-          image: sessionUser.image ?? prev.image,
-          credits: sessionUser.credits ?? prev.credits,
-          isAdmin: sessionUser.isAdmin ?? prev.isAdmin,
-          souldubAccess: sessionUser.souldubAccess ?? prev.souldubAccess,
-          roles: sessionUser.roles ?? prev.roles,
-          permissions: sessionUser.permissions ?? prev.permissions,
-          data: (sessionUser as any).data ?? (prev as any).data,
-        };
-
-        // Prevent infinite loops when `useSession()` returns a new object on every render.
-        // Only update state when fields that affect rendering actually changed.
-        const prevCredits = prev.credits?.remainingCredits ?? null;
-        const nextCredits = next.credits?.remainingCredits ?? null;
-        const prevExpires = prev.credits?.expiresAt?.valueOf?.() ?? null;
-        const nextExpires = next.credits?.expiresAt?.valueOf?.() ?? null;
-
-        if (
-          prev.id === next.id &&
-          prev.name === next.name &&
-          prev.email === next.email &&
-          prev.image === next.image &&
-          prev.isAdmin === next.isAdmin &&
-          prev.souldubAccess === next.souldubAccess &&
-          prevCredits === nextCredits &&
-          prevExpires === nextExpires
-        ) {
-          return prev;
-        }
-
-        return next;
-      });
-      if (sessionUser.id && sessionUser.id !== lastSessionUserIdRef.current) {
-        lastSessionUserIdRef.current = sessionUser.id;
+      if (sessionUserId !== lastSessionUserIdRef.current) {
+        lastSessionUserIdRef.current = sessionUserId;
         fetchUserInfo();
       }
     } else {
@@ -249,7 +200,7 @@ export const AppContextProvider = ({
       // do a single revalidation pass to avoid auth UI flicker.
       if (user && !didRevalidateSessionRef.current && !isRefetching) {
         didRevalidateSessionRef.current = true;
-        void refreshSession();
+        void refreshSessionRef.current();
         return;
       }
 
@@ -280,7 +231,7 @@ export const AppContextProvider = ({
       setUser(null);
       lastSessionUserIdRef.current = null;
     }
-  }, [session, isPending, isRefetching, refreshSession, sessionError]);
+  }, [isPending, isRefetching, sessionError, sessionUserId, sessionUser, user]);
 
   useEffect(() => {
     if (

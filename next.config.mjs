@@ -10,7 +10,6 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const withNextIntl = createNextIntlPlugin({
   requestConfig: './src/core/i18n/request.ts',
-  middleware: './src/proxy.ts',
 });
 
 /** @type {import('next').NextConfig} */

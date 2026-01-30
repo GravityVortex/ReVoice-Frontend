@@ -59,7 +59,6 @@ export default async function LocaleLayout({
     // "dead" (no clicks). Fail fast and degrade gracefully.
     const user = await withTimeout(getSignUser(), SOFT_SSR_TIMEOUT_MS, 'getSignUser()')
       .catch((e) => {
-        console.log('[LocaleLayout] getSignUser failed:', e);
         return undefined;
       });
     if (!user) {
@@ -68,7 +67,6 @@ export default async function LocaleLayout({
 
     const [configs, isAdmin] = await Promise.all([
       getAllConfigs().catch((e) => {
-        console.log('[LocaleLayout] getAllConfigs failed:', e);
         return {};
       }),
       withTimeout(
@@ -76,7 +74,6 @@ export default async function LocaleLayout({
         SOFT_SSR_TIMEOUT_MS,
         'hasPermission(admin.access)'
       ).catch((e) => {
-        console.log('[LocaleLayout] hasPermission failed:', e);
         return false;
       }),
     ]);

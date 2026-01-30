@@ -112,7 +112,8 @@ export async function getConfigs(): Promise<Configs> {
     })().catch((e) => {
       cachedDbConfigsErrorAt = Date.now();
       inflightDbConfigs = null;
-      throw e;
+      // Configs are non-critical for rendering. On timeouts/outages, degrade silently.
+      return {};
     });
   }
 
@@ -127,7 +128,6 @@ export async function getAllConfigs(): Promise<Configs> {
     try {
       dbConfigs = await getConfigs();
     } catch (e) {
-      console.log(`get configs from db failed:`, e);
       dbConfigs = {};
     }
   }
@@ -148,7 +148,6 @@ export async function getPublicConfigs(): Promise<Configs> {
     try {
       dbConfigs = await getConfigs();
     } catch (e) {
-      console.log('get configs from db failed:', e);
       dbConfigs = {};
     }
   }
