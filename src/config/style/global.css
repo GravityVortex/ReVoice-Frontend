@@ -39,6 +39,40 @@
   display: none;
 }
 
+/* Dashboard sidebar: match the site's glassy, cosmic look */
+.dashboard-sidebar [data-slot='sidebar-inner'] {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.dashboard-sidebar [data-slot='sidebar-inner'] {
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-sidebar [data-slot='sidebar-inner']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      80% 55% at 20% 0%,
+      oklch(0.65 0.22 280 / 0.22),
+      transparent 60%
+    ),
+    radial-gradient(
+      70% 60% at 85% 10%,
+      oklch(0.60 0.20 290 / 0.16),
+      transparent 55%
+    );
+  opacity: 0.9;
+}
+
 input,
 select,
 textarea {

@@ -14,28 +14,26 @@ import { SidebarHeader as SidebarHeaderType } from '@/shared/types/blocks/dashbo
 export function SidebarHeader({ header }: { header: SidebarHeaderType }) {
   const { open } = useSidebar();
   return (
-    <SidebarHeaderComponent className="mb-0">
+    <SidebarHeaderComponent className="mb-0 border-b border-white/10 px-3 py-3">
       <SidebarMenu>
         <SidebarMenuItem className="flex items-center justify-between">
           {(open || !header.show_trigger) && (
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="h-16 w-full rounded-xl p-1 hover:bg-white/[0.04]"
             >
               {header.brand && (
-                <Link href={header.brand.url || ''}>
+                <Link href={header.brand.url || ''} className="flex h-full w-full items-center justify-center">
                   {header.brand.logo && (
                     <Image
                       src={header.brand.logo.src}
                       alt={header.brand.logo.alt || ''}
-                      width={80}
-                      height={80}
-                      className="h-auto w-8 shrink-0"
+                      width={120}
+                      height={120}
+                      className="max-w-[80%] h-full w-auto object-contain transition-transform duration-300 hover:scale-110"
                     />
                   )}
-                  <span className="text-base font-semibold">
-                    {header.brand.title}
-                  </span>
+                  <span className="sr-only">{header.brand.title}</span>
                 </Link>
               )}
             </SidebarMenuButton>

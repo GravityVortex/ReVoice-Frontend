@@ -15,6 +15,7 @@ import { User } from '@/shared/models/user';
 export interface ContextValue {
   user: User | null;
   isCheckSign: boolean;
+  isAuthLoading: boolean;
   isShowPaymentModal: boolean;
   setIsShowPaymentModal: (show: boolean) => void;
   configs: Record<string, string>;
@@ -72,6 +73,9 @@ export const AppContextProvider = ({
   // long enough that the UI feels "dead". After a short grace period, we fall back to
   // a signed-out UI (the session can still resolve later and rehydrate the user).
   const isCheckSign = isPending && !authedUser && !sessionGraceExpired;
+  // Raw auth network state. Some screens (e.g. dashboard) should never show a signed-out
+  // screen while we still haven't resolved auth, even after the grace period.
+  const isAuthLoading = isPending || isRefetching;
 
   // show payment modal
   const [isShowPaymentModal, setIsShowPaymentModal] = useState(false);
@@ -256,6 +260,7 @@ export const AppContextProvider = ({
       value={{
         user: authedUser,
         isCheckSign,
+        isAuthLoading,
         isShowPaymentModal,
         setIsShowPaymentModal,
         configs,

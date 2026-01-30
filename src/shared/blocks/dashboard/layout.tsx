@@ -26,7 +26,8 @@ export function DashboardLayout({
         <Sidebar variant={sidebar.variant || 'inset'} sidebar={sidebar} />
       )}
       {/* 右侧面板内容 */}
-      <SidebarInset>{children}</SidebarInset>
+      {/* SidebarProvider locks the viewport (`h-svh` + `overflow-hidden`), so the inset must scroll. */}
+      <SidebarInset className="min-h-0 overflow-auto">{children}</SidebarInset>
     </SidebarProvider>
   );
 }

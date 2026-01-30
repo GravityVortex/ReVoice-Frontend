@@ -17,13 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
 
 import { useAppContext } from '@/shared/contexts/app';
 import { useSignInRedirect } from '@/shared/hooks/use-sign-in-redirect';
@@ -44,6 +37,21 @@ const PaymentModal = dynamic(
   { ssr: false, loading: () => null }
 );
 
+function currencySymbol(code: string) {
+  switch (code.toUpperCase()) {
+    case 'USD':
+      return '$';
+    case 'CNY':
+      return '¥';
+    case 'EUR':
+      return '€';
+    case 'GBP':
+      return '£';
+    default:
+      return '';
+  }
+}
+
 // Helper function to get all available currencies from a pricing item
 function getCurrenciesFromItem(item: PricingItem | null): PricingCurrency[] {
   if (!item) return [];
@@ -54,6 +62,8 @@ function getCurrenciesFromItem(item: PricingItem | null): PricingCurrency[] {
     amount: item.amount,
     price: item.price || '',
     original_price: item.original_price || '',
+    payment_product_id: item.payment_product_id,
+    payment_providers: item.payment_providers,
   };
 
   // Add additional currencies if available
@@ -84,6 +94,73 @@ function getInitialCurrency(
 
   // Otherwise return default currency
   return defaultCurrency;
+}
+
+function CurrencySwitch({
+  productId,
+  currencies,
+  selectedCurrency,
+  onSelect,
+}: {
+  productId: string;
+  currencies: PricingCurrency[];
+  selectedCurrency: string;
+  onSelect: (currency: string) => void;
+}) {
+  if (currencies.length <= 1) return null;
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Currency"
+      className={cn(
+        'ml-auto inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/30 p-1',
+        'shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md'
+      )}
+    >
+      {currencies.map((currency) => {
+        const code = currency.currency.toUpperCase();
+        const isActive =
+          selectedCurrency.toUpperCase() === currency.currency.toUpperCase();
+        const symbol = currencySymbol(code);
+
+        return (
+          <button
+            key={currency.currency}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            onClick={() => onSelect(currency.currency)}
+            className={cn(
+              'relative isolate inline-flex items-center gap-1 rounded-full px-2.5 py-1',
+              'text-[11px] font-semibold tracking-wide transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
+              isActive ? 'text-white' : 'text-white/60 hover:text-white'
+            )}
+          >
+            {isActive && (
+              <motion.div
+                layoutId={`currency-active-${productId}`}
+                className={cn(
+                  'absolute inset-0 -z-10 rounded-full',
+                  'bg-gradient-to-b from-white/20 to-white/8 ring-1 ring-white/15',
+                  'shadow-[0_10px_22px_rgba(0,0,0,0.35)]'
+                )}
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.55 }}
+              />
+            )}
+
+            {symbol ? (
+              <span className="text-[12px] leading-none text-white/80">
+                {symbol}
+              </span>
+            ) : null}
+            <span className="leading-none">{code}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function Pricing({
@@ -435,14 +512,14 @@ export function Pricing({
                     <h3 className="text-sm font-medium">{item.title}</h3>
                   </CardTitle>
 
-                  <div className="my-3 flex items-baseline gap-2">
+                  <div className="my-3 flex items-center gap-3">
                     {displayedItem.original_price && (
                       <span className="text-muted-foreground text-sm line-through">
                         {displayedItem.original_price}
                       </span>
                     )}
 
-                    <div className="my-3 block text-2xl font-semibold">
+                    <div className="block text-2xl font-semibold leading-none">
                       <span className="text-primary">
                         {displayedItem.price}
                       </span>{' '}
@@ -455,32 +532,14 @@ export function Pricing({
                       )}
                     </div>
 
-                    {currencies.length > 1 && (
-                      <Select
-                        value={selectedCurrency}
-                        onValueChange={(currency) =>
-                          handleCurrencyChange(item.product_id, currency)
-                        }
-                      >
-                        <SelectTrigger
-                          size="sm"
-                          className="border-muted-foreground/30 bg-background/50 h-6 min-w-[60px] px-2 text-xs"
-                        >
-                          <SelectValue placeholder="Currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {currencies.map((currency) => (
-                            <SelectItem
-                              key={currency.currency}
-                              value={currency.currency}
-                              className="text-xs"
-                            >
-                              {currency.currency.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <CurrencySwitch
+                      productId={item.product_id}
+                      currencies={currencies}
+                      selectedCurrency={selectedCurrency}
+                      onSelect={(currency) =>
+                        handleCurrencyChange(item.product_id, currency)
+                      }
+                    />
                   </div>
 
                   <CardDescription className="text-sm">

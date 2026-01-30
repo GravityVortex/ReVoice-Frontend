@@ -12,7 +12,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ConversionProgressModal } from "@/shared/blocks/video-convert/convert-progress-modal";
 import { ProjectUpdateModal } from "@/shared/blocks/video-convert/project-update-modal";
 import { useAppContext } from "@/shared/contexts/app";
-import { getPreviewCoverUrl, getVideoR2PathName } from "@/shared/lib/utils";
+import { cn, getPreviewCoverUrl, getVideoR2PathName } from "@/shared/lib/utils";
 
 import { SlidingTabs } from "@/shared/components/ui/sliding-tabs";
 import { PlusCircle } from "lucide-react";
@@ -191,7 +191,17 @@ export default function DashboardProjectsPage() {
             <div className="flex flex-col gap-6 mb-8">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">{tDashboard('projects')}</h1>
-                    <Button onClick={goAddClick} size="lg" className="shadow-lg hover:shadow-xl transition-all">
+                    <Button
+                        onClick={goAddClick}
+                        size="lg"
+                        className={cn(
+                            "rounded-full px-6 transition-all duration-300",
+                            "bg-primary hover:bg-primary/90 text-primary-foreground",
+                            "shadow-[0_4px_14px_0_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)]",
+                            "hover:scale-105 active:scale-95",
+                            "border border-white/10" // Glassy hint
+                        )}
+                    >
                         <PlusCircle className="mr-2 h-5 w-5" />
                         {t('buttons.upload')}
                     </Button>

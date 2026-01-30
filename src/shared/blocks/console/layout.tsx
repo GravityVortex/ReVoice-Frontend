@@ -102,9 +102,8 @@ export function ConsoleLayout({
   return (
     <div
       className={cn(
-        // App-like surface that fills the viewport under the fixed landing header.
-        // `box-border` ensures padding does not increase the overall height (avoids page scroll).
-        'console-surface bg-background relative min-h-screen pt-[4.5rem]',
+        // Offset below the fixed marketing header.
+        'console-surface bg-background relative min-h-screen pt-[var(--site-header-h)]',
         className
       )}
     >
@@ -121,7 +120,8 @@ export function ConsoleLayout({
       {showTopBar ? (
         <div
           className={cn(
-            'border-white/10 bg-background/40 z-40 shrink-0 border-b backdrop-blur-xl',
+            // Keep the console nav accessible while scrolling; sit below the fixed site header.
+            'border-white/10 bg-background/40 sticky top-[var(--site-header-h)] z-40 shrink-0 border-b backdrop-blur-xl',
             // When there's no module switcher, the desktop sidebar is enough.
             navItems.length > 0 && !showModuleTabs ? 'md:hidden' : undefined
           )}
@@ -198,18 +198,18 @@ export function ConsoleLayout({
 
       {/* Main Content */}
       <div className="container relative flex-1 min-h-0">
-        <div className="flex h-full gap-6 py-4 md:py-6">
+        <div className="flex gap-6 py-4 md:py-6">
           {/* Desktop sidebar */}
           {navItems.length > 0 ? (
             <aside className="hidden w-72 flex-shrink-0 md:block">
-              <div className="bg-card/50 border-white/10 h-full rounded-2xl border p-3 shadow-lg backdrop-blur">
+              <div className="bg-card/50 border-white/10 sticky top-24 rounded-2xl border p-3 shadow-lg backdrop-blur">
                 <NavList />
               </div>
             </aside>
           ) : null}
 
           {/* Right Content Area */}
-          <div className="min-w-0 flex-1 min-h-0 overflow-auto">
+          <div className="min-w-0 flex-1">
             {children}
           </div>
         </div>

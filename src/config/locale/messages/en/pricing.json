@@ -40,7 +40,7 @@
           "Advanced editing: Supported",
           "Valid for 60 days"
         ],
-        "interval": "credits",
+        "interval": "one-time",
         "amount": 1200,
         "currency": "USD",
         "price": "$12",
@@ -84,7 +84,7 @@
           "Advanced editing: Supported",
           "Valid for 90 days"
         ],
-        "interval": "credits",
+        "interval": "one-time",
         "amount": 2400,
         "currency": "USD",
         "price": "$24",
@@ -127,7 +127,7 @@
           "Advanced editing: Supported",
           "Valid for 120 days"
         ],
-        "interval": "credits",
+        "interval": "one-time",
         "amount": 3600,
         "currency": "USD",
         "price": "$36",

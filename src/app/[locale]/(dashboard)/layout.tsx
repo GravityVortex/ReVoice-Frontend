@@ -13,11 +13,11 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, isCheckSign } = useAppContext();
+    const { user, isCheckSign, isAuthLoading } = useAppContext();
     const t = useTranslations("common.sign");
     const redirectToSignIn = useSignInRedirect();
 
-    if (isCheckSign) {
+    if ((isCheckSign || isAuthLoading) && !user) {
         return (
             <div className="flex w-full h-screen bg-background">
                 {/* Sidebar Skeleton */}
@@ -62,11 +62,29 @@ export default function DashboardLayout({
     }
 
     return (
-        <SidebarProvider>
+        <SidebarProvider
+            className="relative"
+            style={
+                {
+                    // Match the console/sidebar proportions across the app.
+                    "--sidebar-width": "calc(var(--spacing) * 72)",
+                } as React.CSSProperties
+            }
+        >
+            {/* Ambient background (matches console-surface vibe) */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 overflow-hidden"
+            >
+                <div className="absolute -top-56 left-1/2 h-[520px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[80px] opacity-60" />
+                <div className="absolute -top-32 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-400/10 via-purple-400/0 to-transparent blur-[60px] opacity-60" />
+            </div>
+
             <DashboardSidebar />
-            <SidebarInset className="bg-background">
+            {/* SidebarProvider locks body scroll; make inset the scroll container. */}
+            <SidebarInset className="bg-background/40 min-h-0 overflow-auto backdrop-blur-xl">
                 {/* Mobile sidebar trigger */}
-                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 md:hidden">
+                <header className="bg-background/40 sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-white/10 px-4 backdrop-blur-xl md:hidden">
                     <SidebarTrigger />
                 </header>
                 <div className="flex min-h-0 flex-1 flex-col gap-4 p-8 pt-6">

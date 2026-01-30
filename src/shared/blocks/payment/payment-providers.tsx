@@ -56,6 +56,7 @@ export function PaymentProviders({
   // Get allowed payment providers from pricing item
   // If payment_providers is set, use it; otherwise show all enabled providers
   const allowedProviders = pricingItem?.payment_providers;
+  const isOneTimePricing = pricingItem?.interval === 'one-time';
   
   // Helper function to check if a provider is allowed
   const isProviderAllowed = (providerName: string): boolean => {
@@ -87,7 +88,12 @@ export function PaymentProviders({
     });
   }
 
-  if (configs.paypal_enabled === 'true' && isProviderAllowed('paypal')) {
+  // PayPal currently only supports one-time (order capture) in this project.
+  if (
+    configs.paypal_enabled === 'true' &&
+    isOneTimePricing &&
+    isProviderAllowed('paypal')
+  ) {
     providers.push({
       name: 'paypal',
       title: 'Paypal',

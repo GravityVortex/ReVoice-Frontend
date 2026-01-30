@@ -6,7 +6,6 @@ import {
   PaymentProvider,
   PaymentSession,
   PaymentStatus,
-  PaymentType,
 } from '.';
 
 /**
@@ -284,23 +283,48 @@ export class PayPalProvider implements PaymentProvider {
 
       await this.ensureAccessToken();
 
-      // Try to get as order first, then as subscription
-      let result = await this.makeRequest(
-        `/v2/checkout/orders/${sessionId}`,
-        'GET'
-      );
-
-      if (result.error && result.error.name === 'RESOURCE_NOT_FOUND') {
-        // Try as subscription
-        result = await this.makeRequest(
-          `/v1/billing/subscriptions/${sessionId}`,
-          'GET'
-        );
+      // One-time orders require an explicit capture after the payer approves the checkout.
+      // Without it, the order stays APPROVED and we never mark it as paid/grant credits.
+      let result = await this.makeRequest(`/v2/checkout/orders/${sessionId}`, 'GET');
+      if (result?.status === 'APPROVED') {
+        try {
+          result = await this.makeRequest(
+            `/v2/checkout/orders/${sessionId}/capture`,
+            'POST',
+            {}
+          );
+        } catch (e: any) {
+          // If we race/retry, capture may already have happened.
+          if (typeof e?.message === 'string' && e.message.includes('ORDER_ALREADY_COMPLETED')) {
+            result = await this.makeRequest(`/v2/checkout/orders/${sessionId}`, 'GET');
+          } else {
+            throw e;
+          }
+        }
       }
 
-      if (result.error) {
-        throw new Error(result.error.message || 'get payment failed');
-      }
+      const payer = result?.payer;
+      const payerName = [payer?.name?.given_name, payer?.name?.surname]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || undefined;
+
+      const capture = result?.purchase_units?.[0]?.payments?.captures?.[0];
+      const amount =
+        capture?.amount || result?.purchase_units?.[0]?.amount;
+
+      const paymentCurrency: string =
+        amount?.currency_code ||
+        result?.purchase_units?.[0]?.amount?.currency_code ||
+        'USD';
+
+      const paymentAmount = (() => {
+        const value = amount?.value;
+        if (!value) return undefined;
+        const parsed = Number.parseFloat(value);
+        if (!Number.isFinite(parsed)) return undefined;
+        return Math.round(parsed * 100);
+      })() ?? 0;
 
       return {
         provider: this.name,
@@ -309,10 +333,13 @@ export class PayPalProvider implements PaymentProvider {
           discountCode: '',
           discountAmount: undefined,
           discountCurrency: undefined,
-          paymentAmount: result.amount,
-          paymentCurrency: result.currency,
-          paymentEmail: result.customer_email,
-          paidAt: new Date(),
+          paymentAmount,
+          paymentCurrency,
+          paymentEmail: payer?.email_address,
+          paymentUserName: payerName,
+          paymentUserId: payer?.payer_id,
+          transactionId: capture?.id,
+          paidAt: capture?.create_time ? new Date(capture.create_time) : undefined,
         },
         paymentResult: result,
         metadata: result.metadata,

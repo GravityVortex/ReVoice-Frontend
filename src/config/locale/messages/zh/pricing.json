@@ -40,7 +40,7 @@
           "高级编辑：支持",
           "有效期60天"
         ],
-        "interval": "credits",
+        "interval": "one-time",
         "amount": 1200,
         "currency": "USD",
         "price": "$12",
@@ -84,7 +84,7 @@
           "高级编辑：支持",
           "有效期90天"
         ],
-        "interval": "credits",
+        "interval": "one-time",
         "amount": 2400,
         "currency": "USD",
         "price": "$24",
@@ -127,7 +127,7 @@
           "高级编辑：支持",
           "有效期120天"
         ],
-        "interval": "credits",
+        "interval": "one-time",
         "amount": 3600,
         "currency": "USD",
         "price": "$36",

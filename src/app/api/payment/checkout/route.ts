@@ -129,15 +129,24 @@ export async function POST(req: Request) {
       // If no currencies list exists, fallback to default (already set above)
     }
 
-    // get payment interval
-    const paymentInterval: PaymentInterval =
-      pricingItem.interval || PaymentInterval.ONE_TIME;
+    // get payment interval (server-side validation; never trust CMS/i18n blobs)
+    const rawInterval = pricingItem.interval || PaymentInterval.ONE_TIME;
+    if (!Object.values(PaymentInterval).includes(rawInterval as PaymentInterval)) {
+      return respErr(`invalid pricing interval: ${rawInterval}`);
+    }
+    const paymentInterval = rawInterval as PaymentInterval;
 
     // get payment type
     const paymentType =
       paymentInterval === PaymentInterval.ONE_TIME
         ? PaymentType.ONE_TIME
         : PaymentType.SUBSCRIPTION;
+
+    // PayPal subscription flow isn't implemented (and would otherwise create an order,
+    // then fail later when we expect subscription info).
+    if (paymentProviderName === 'paypal' && paymentType === PaymentType.SUBSCRIPTION) {
+      return respErr('paypal subscription is not supported');
+    }
 
     const orderNo = getSnowId();
 

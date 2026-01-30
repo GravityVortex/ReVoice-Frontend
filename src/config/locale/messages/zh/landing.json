@@ -35,11 +35,6 @@
       "show_sign_out": true,
       "items": [
         {
-          "title": "视频",
-          "url": "/video_convert/myVideoList",
-          "icon": "Video"
-        },
-        {
           "title": "账单",
           "url": "/settings/billing",
           "icon": "CreditCard"
