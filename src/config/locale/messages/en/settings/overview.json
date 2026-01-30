@@ -6,6 +6,11 @@
     "description": "Please sign in to manage your settings.",
     "button": "Sign in"
   },
+  "help": {
+    "title": "Need help?",
+    "description": "Check our docs to learn how to use the platform.",
+    "link": "Read documentation"
+  },
   "cards": {
     "account": {
       "title": "Account",
@@ -14,6 +19,14 @@
     "profile": {
       "title": "Profile",
       "description": "Update your name and avatar."
+    },
+    "security": {
+      "title": "Security",
+      "description": "Update password and security settings."
+    },
+    "apikeys": {
+      "title": "API Keys",
+      "description": "Manage API keys for integration."
     },
     "subscription": {
       "title": "Subscription",

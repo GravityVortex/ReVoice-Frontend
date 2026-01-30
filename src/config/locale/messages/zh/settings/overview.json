@@ -6,6 +6,11 @@
     "description": "请先登录后再管理你的设置。",
     "button": "去登录"
   },
+  "help": {
+    "title": "需要帮助？",
+    "description": "查看文档以了解如何高效使用本平台。",
+    "link": "阅读文档"
+  },
   "cards": {
     "account": {
       "title": "账号",
@@ -14,6 +19,14 @@
     "profile": {
       "title": "个人资料",
       "description": "更新昵称与头像。"
+    },
+    "security": {
+      "title": "安全设置",
+      "description": "更新密码与安全设置。"
+    },
+    "apikeys": {
+      "title": "API 密钥",
+      "description": "管理集成所需的 API 密钥。"
     },
     "subscription": {
       "title": "订阅",
