@@ -16,8 +16,6 @@ export interface ContextValue {
   user: User | null;
   isCheckSign: boolean;
   isAuthLoading: boolean;
-  isShowPaymentModal: boolean;
-  setIsShowPaymentModal: (show: boolean) => void;
   configs: Record<string, string>;
   refreshSession: () => Promise<void>;
   fetchUserCredits: () => Promise<void>;
@@ -76,9 +74,6 @@ export const AppContextProvider = ({
   // Raw auth network state. Some screens (e.g. dashboard) should never show a signed-out
   // screen while we still haven't resolved auth, even after the grace period.
   const isAuthLoading = isPending || isRefetching;
-
-  // show payment modal
-  const [isShowPaymentModal, setIsShowPaymentModal] = useState(false);
 
   // Avoid redundant user-info fetches caused by session refreshes.
   const lastSessionUserIdRef = useRef<string | null>(null);
@@ -261,8 +256,6 @@ export const AppContextProvider = ({
         user: authedUser,
         isCheckSign,
         isAuthLoading,
-        isShowPaymentModal,
-        setIsShowPaymentModal,
         configs,
         refreshSession,
         fetchUserCredits,

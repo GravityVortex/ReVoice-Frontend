@@ -366,6 +366,7 @@
   "page": {
     "current_plan": "Current Plan",
     "processing": "Processing",
+    "payment_methods": "Payment methods",
     "pay_with_paypal": "Pay with PayPal"
   }
 }

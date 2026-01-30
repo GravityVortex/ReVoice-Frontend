@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Lightbulb, Loader2, SendHorizonal, Zap } from 'lucide-react';
+import { Check, Loader2, Zap } from 'lucide-react';
+import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
-import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 
 import { SmartIcon } from '@/shared/blocks/common';
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -28,14 +27,6 @@ import {
   PricingItem,
   Pricing as PricingType,
 } from '@/shared/types/blocks/pricing';
-
-const PaymentModal = dynamic(
-  () =>
-    import('@/shared/blocks/payment/payment-modal').then(
-      (mod) => mod.PaymentModal
-    ),
-  { ssr: false, loading: () => null }
-);
 
 function currencySymbol(code: string) {
   switch (code.toUpperCase()) {
@@ -94,6 +85,80 @@ function getInitialCurrency(
 
   // Otherwise return default currency
   return defaultCurrency;
+}
+
+type PaymentProviderName = 'stripe' | 'creem' | 'paypal';
+
+type PaymentProviderOption = {
+  name: PaymentProviderName;
+  title: string;
+  iconUrl: string;
+};
+
+const PAYMENT_PROVIDER_OPTIONS: PaymentProviderOption[] = [
+  { name: 'stripe', title: 'Stripe', iconUrl: '/imgs/icons/stripe.png' },
+  { name: 'paypal', title: 'PayPal', iconUrl: '/imgs/icons/paypal.svg' },
+  { name: 'creem', title: 'Creem', iconUrl: '/imgs/icons/creem.png' },
+];
+
+function PaymentMethodPills({
+  productId,
+  options,
+  primaryProvider,
+  label,
+  disabled,
+  onPay,
+}: {
+  productId: string;
+  options: PaymentProviderOption[];
+  primaryProvider: PaymentProviderName;
+  label?: string;
+  disabled: boolean;
+  onPay: (provider: PaymentProviderName) => void;
+}) {
+  const alternatives = options.filter((p) => p.name !== primaryProvider);
+  if (alternatives.length === 0) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {label ? (
+        <div className="text-left text-[11px] font-medium text-white/50">
+          {label}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        {alternatives.map((provider) => (
+          <button
+            key={`${productId}-${provider.name}`}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPay(provider.name)}
+            className={cn(
+              'group inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5',
+              'text-xs font-semibold text-white/70 transition-colors',
+              'hover:border-white/20 hover:bg-black/35 hover:text-white',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15',
+              disabled && 'pointer-events-none opacity-60'
+            )}
+            aria-label={`Pay with ${provider.title}`}
+          >
+            <span className="relative inline-flex size-5 items-center justify-center">
+              <span className="absolute inset-0 rounded-full bg-white/5 opacity-0 blur-sm transition-opacity group-hover:opacity-100" />
+              <Image
+                src={provider.iconUrl}
+                alt=""
+                width={16}
+                height={16}
+                className="relative z-10 rounded-full opacity-90"
+              />
+            </span>
+            <span className="leading-none">{provider.title}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function CurrencySwitch({
@@ -176,8 +241,6 @@ export function Pricing({
   const t = useTranslations('pricing.page');
   const {
     user,
-    isShowPaymentModal,
-    setIsShowPaymentModal,
     configs,
   } = useAppContext();
   const redirectToSignIn = useSignInRedirect('/pricing');
@@ -196,11 +259,10 @@ export function Pricing({
     );
   });
 
-  // current pricing item
-  const [pricingItem, setPricingItem] = useState<PricingItem | null>(null);
-
   const [isLoading, setIsLoading] = useState(false);
   const [productId, setProductId] = useState<string | null>(null);
+  const [preferredPaymentProvider, setPreferredPaymentProvider] =
+    useState<PaymentProviderName | null>(null);
 
   // Currency state management for each item
   // Store selected currency and displayed item for each product_id
@@ -288,24 +350,18 @@ export function Pricing({
     }
   };
 
-  // Payment provider state management
-  const handlePayment = async (item: PricingItem) => {
-    if (!user) {
-      redirectToSignIn();
-      return;
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('preferred_payment_provider');
+      if (!raw) return;
+      const normalized = raw.toLowerCase() as PaymentProviderName;
+      if (PAYMENT_PROVIDER_OPTIONS.some((p) => p.name === normalized)) {
+        setPreferredPaymentProvider(normalized);
+      }
+    } catch {
+      // ignore
     }
-
-    // Use displayed item with selected currency
-    const displayedItem =
-      itemCurrencies[item.product_id]?.displayedItem || item;
-
-    if (configs.select_payment_enabled === 'true') {
-      setPricingItem(displayedItem);
-      setIsShowPaymentModal(true);
-    } else {
-      handleCheckout(displayedItem, configs.default_payment_provider);
-    }
-  };
+  }, []);
 
   const getAffiliateMetadata = ({
     paymentProvider,
@@ -336,6 +392,56 @@ export function Pricing({
     }
 
     return affiliateMetadata;
+  };
+
+  const getAvailablePaymentProviders = (item: PricingItem) => {
+    const allowed = item.payment_providers;
+    const isAllowed = (provider: PaymentProviderName) =>
+      !allowed || allowed.length === 0 || allowed.includes(provider);
+
+    const result: PaymentProviderOption[] = [];
+
+    if (configs.stripe_enabled === 'true' && isAllowed('stripe')) {
+      result.push(PAYMENT_PROVIDER_OPTIONS.find((p) => p.name === 'stripe')!);
+    }
+    if (configs.paypal_enabled === 'true' && isAllowed('paypal')) {
+      result.push(PAYMENT_PROVIDER_OPTIONS.find((p) => p.name === 'paypal')!);
+    }
+    if (configs.creem_enabled === 'true' && isAllowed('creem')) {
+      result.push(PAYMENT_PROVIDER_OPTIONS.find((p) => p.name === 'creem')!);
+    }
+
+    return result;
+  };
+
+  const rememberPreferredProvider = (provider: PaymentProviderName) => {
+    setPreferredPaymentProvider(provider);
+    try {
+      window.localStorage.setItem('preferred_payment_provider', provider);
+    } catch {
+      // ignore
+    }
+  };
+
+  const getPrimaryProviderForItem = (
+    options: PaymentProviderOption[]
+  ): PaymentProviderName | null => {
+    if (options.length === 0) return null;
+
+    const normalizedDefault = (configs.default_payment_provider || '').toLowerCase();
+
+    const candidates = [
+      configs.select_payment_enabled === 'true' ? preferredPaymentProvider : null,
+      normalizedDefault as PaymentProviderName,
+    ].filter(Boolean) as PaymentProviderName[];
+
+    for (const candidate of candidates) {
+      if (options.some((p) => p.name === candidate)) {
+        return candidate;
+      }
+    }
+
+    return options[0].name;
   };
 
   const handleCheckout = async (
@@ -371,13 +477,12 @@ export function Pricing({
         body: JSON.stringify(params),
       });
 
-      if (response.status === 401) {
-        setIsLoading(false);
-        setProductId(null);
-        setPricingItem(null);
-        redirectToSignIn();
-        return;
-      }
+	      if (response.status === 401) {
+	        setIsLoading(false);
+	        setProductId(null);
+	        redirectToSignIn();
+	        return;
+	      }
 
       if (!response.ok) {
         throw new Error(`request failed with status ${response.status}`);
@@ -491,13 +596,19 @@ export function Pricing({
 
             // Get currency state for this item
             const currencyState = itemCurrencies[item.product_id];
-            const displayedItem = currencyState?.displayedItem || item;
-            const selectedCurrency =
-              currencyState?.selectedCurrency || item.currency;
-            const currencies = getCurrenciesFromItem(item);
+	            const displayedItem = currencyState?.displayedItem || item;
+	            const selectedCurrency =
+	              currencyState?.selectedCurrency || item.currency;
+	            const currencies = getCurrenciesFromItem(item);
+	            const availableProviders =
+	              getAvailablePaymentProviders(displayedItem);
+	            const primaryProvider = getPrimaryProviderForItem(availableProviders);
+	            const primaryProviderMeta = primaryProvider
+	              ? availableProviders.find((p) => p.name === primaryProvider) || null
+	              : null;
 
-            return (
-              <Card key={item.product_id || idx} className="relative flex flex-col h-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 backdrop-blur-md">
+	            return (
+	              <Card key={item.product_id || idx} className="relative flex flex-col h-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 backdrop-blur-md">
                 {item.label && (
                   <div className="absolute -top-4 left-0 right-0 mx-auto w-fit">
                     <span className="flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-background px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
@@ -561,37 +672,78 @@ export function Pricing({
                         {t('current_plan')}
                       </span>
                     </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handlePayment(item)}
-                      disabled={isLoading}
-                      className={cn(
-                        'focus-visible:ring-ring inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
-                        'mt-4 h-9 w-full px-4 py-2',
-                        'bg-primary text-primary-foreground hover:bg-primary/90 border-[0.5px] border-[rgba(255,255,255,0.25)] shadow-md shadow-black/20'
-                      )}
-                    >
-                      {isLoading && item.product_id === productId ? (
-                        <>
-                          <Loader2 className="size-4 animate-spin" />
-                          <span className="block">{t('processing')}</span>
-                        </>
-                      ) : (
-                        <>
-                          {item.button?.icon && (
-                            <SmartIcon
-                              name={item.button?.icon as string}
-                              className="size-4"
-                            />
-                          )}
-                          <span className="block">
-                            {item.button?.title}
-                          </span>
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </CardHeader>
+	                  ) : (
+	                    <Button
+	                      onClick={() => {
+	                        if (!primaryProvider) return;
+	                        handleCheckout(displayedItem, primaryProvider);
+	                      }}
+	                      disabled={isLoading || !primaryProvider}
+	                      className={cn(
+	                        'focus-visible:ring-ring inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+	                        'mt-4 h-9 w-full px-4 py-2',
+	                        'bg-primary text-primary-foreground hover:bg-primary/90 border-[0.5px] border-[rgba(255,255,255,0.25)] shadow-md shadow-black/20'
+	                      )}
+	                    >
+	                      {isLoading && item.product_id === productId ? (
+	                        <>
+	                          <Loader2 className="size-4 animate-spin" />
+	                          <span className="block">{t('processing')}</span>
+	                        </>
+	                      ) : (
+	                        <div className="flex w-full items-center gap-2">
+	                          {item.button?.icon ? (
+	                            <SmartIcon
+	                              name={item.button?.icon as string}
+	                              className="size-4"
+	                            />
+	                          ) : null}
+
+	                          <span className="block flex-1 text-left">
+	                            {item.button?.title}
+	                          </span>
+
+	                          {primaryProviderMeta ? (
+	                            <span
+	                              className={cn(
+	                                'ml-auto inline-flex items-center gap-1 rounded-full',
+	                                'border border-white/15 bg-white/10 px-2 py-1',
+	                                'text-[11px] font-semibold text-white/85'
+	                              )}
+	                            >
+	                              <Image
+	                                src={primaryProviderMeta.iconUrl}
+	                                alt=""
+	                                width={14}
+	                                height={14}
+	                                className="rounded-full opacity-90"
+	                              />
+	                              <span className="leading-none">
+	                                {primaryProviderMeta.title}
+	                              </span>
+	                            </span>
+	                          ) : null}
+	                        </div>
+	                      )}
+	                    </Button>
+	                  )}
+
+	                  {!isCurrentPlan &&
+	                  configs.select_payment_enabled === 'true' &&
+	                  primaryProvider ? (
+	                    <PaymentMethodPills
+	                      productId={item.product_id}
+	                      options={availableProviders}
+	                      primaryProvider={primaryProvider}
+	                      label={t('payment_methods')}
+	                      disabled={isLoading}
+	                      onPay={(provider) => {
+	                        rememberPreferredProvider(provider);
+	                        handleCheckout(displayedItem, provider);
+	                      }}
+	                    />
+	                  ) : null}
+	                </CardHeader>
 
                 <CardContent className="space-y-4 flex-1">
                   <hr className="border-dashed" />
@@ -614,15 +766,6 @@ export function Pricing({
         </div>
       </div>
 
-      {configs.select_payment_enabled === 'true' && isShowPaymentModal ? (
-        <PaymentModal
-          isLoading={isLoading}
-          pricingItem={pricingItem}
-          onCheckout={(item, paymentProvider) =>
-            handleCheckout(item, paymentProvider)
-          }
-        />
-      ) : null}
-    </section>
-  );
-}
+	    </section>
+	  );
+	}

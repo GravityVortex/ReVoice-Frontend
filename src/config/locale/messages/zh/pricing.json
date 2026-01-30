@@ -366,6 +366,7 @@
   "page": {
     "current_plan": "当前方案",
     "processing": "处理中",
+    "payment_methods": "支付方式",
     "pay_with_paypal": "使用 PayPal 支付"
   }
 }
