@@ -142,12 +142,6 @@ export async function POST(req: Request) {
         ? PaymentType.ONE_TIME
         : PaymentType.SUBSCRIPTION;
 
-    // PayPal subscription flow isn't implemented (and would otherwise create an order,
-    // then fail later when we expect subscription info).
-    if (paymentProviderName === 'paypal' && paymentType === PaymentType.SUBSCRIPTION) {
-      return respErr('paypal subscription is not supported');
-    }
-
     const orderNo = getSnowId();
 
     // get payment product id from pricing table in local file

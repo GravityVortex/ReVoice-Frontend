@@ -84,6 +84,7 @@ export function getPaymentServiceWithConfigs(configs: Configs) {
       new PayPalProvider({
         clientId: configs.paypal_client_id,
         clientSecret: configs.paypal_client_secret,
+        webhookId: configs.paypal_webhook_id,
         environment:
           configs.paypal_environment === 'production'
             ? 'production'

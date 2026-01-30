@@ -487,6 +487,15 @@ export async function getSettings() {
       tab: 'payment',
     },
     {
+      name: 'paypal_webhook_id',
+      title: 'Paypal Webhook ID',
+      type: 'text',
+      placeholder: 'wh_xxx',
+      group: 'paypal',
+      tab: 'payment',
+      tip: 'Webhook ID from PayPal Dashboard (Webhooks). Used to verify webhook notifications.',
+    },
+    {
       name: 'google_analytics_id',
       title: 'Google Analytics ID',
       type: 'text',
