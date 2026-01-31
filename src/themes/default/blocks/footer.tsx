@@ -74,7 +74,7 @@ export function Footer({ footer }: { footer: FooterType }) {
           aria-hidden
           className="h-px min-w-0 [background-image:linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] bg-[length:6px_1px] bg-repeat-x opacity-25"
         />
-        <div className="flex min-w-0 flex-wrap justify-between gap-8">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-8">
 
           {/* 版权 */}
           <p className="text-muted-foreground text-sm font-medium">
@@ -123,8 +123,8 @@ export function Footer({ footer }: { footer: FooterType }) {
             </div>
           ) : null}
 
-          {/* 社交 */}
-          {footer.social ? (
+          {/* 社交 - TODO: 暂时注释，待有内容时开启 */}
+          {/* {footer.social ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {footer.social?.items.map((item: NavItem, index) => (
                 <Link
@@ -139,7 +139,7 @@ export function Footer({ footer }: { footer: FooterType }) {
                 </Link>
               ))}
             </div>
-          ) : null}
+          ) : null} */}
 
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {footer.show_theme !== false ? <ThemeToggler type="toggle" /> : null}
