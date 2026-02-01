@@ -221,8 +221,8 @@
   },
   "usage": {
     "id": "usage",
-    "title": "Three Steps to Video Translation with Editing Support",
-    "description": "Simple three-step process to help your videos cross language barriers, with subtitle editing and audio synthesis after translation",
+    "title": "3 Steps to Video Translation: Upload -> Configure -> Edit & Export",
+    "description": "Upload your video, choose translation direction and speaker count, then start. After it finishes, edit subtitles/voice and export the final video.",
     "image": {
       "src": "/imgs/features/1.png",
       "alt": "Usage workflow"
@@ -232,47 +232,29 @@
     "items": [
       {
         "title": "Upload Video",
-        "description": "Supports multiple video formats, drag and drop or click to upload your original video file.",
-        "icon": "Upload",
+        "description": "Drag & drop an MP4. We auto-detect duration and estimate credits.",
+        "icon": "UploadCloud",
         "image": {
           "src": "/imgs/steps/step1.png",
           "alt": "Upload video"
         }
       },
       {
-        "title": "Select Languages",
-        "description": "Choose source and target languages, supporting translation between Chinese, English, Japanese, Korean, and more.",
+        "title": "Configure Translation",
+        "description": "Pick translation direction (ZH<->EN) and speaker count. Advanced options when needed.",
         "icon": "Languages",
         "image": {
           "src": "/imgs/steps/step2.png",
-          "alt": "Select languages"
+          "alt": "Configure translation"
         }
       },
       {
-        "title": "Video Translation",
-        "description": "Preserves original voice tone with advanced AI processing, real-time progress bar, typically completed in just a few minutes.",
-        "icon": "Loader",
-        "image": {
-          "src": "/imgs/steps/step3.png",
-          "alt": "Video translation"
-        }
-      },
-      {
-        "title": "Preview and Download",
-        "description": "Preview translation results online, download high-quality video file with one click when satisfied, with subtitle and bilingual subtitle download support.",
-        "icon": "Download",
-        "image": {
-          "src": "/imgs/steps/step4.png",
-          "alt": "Preview and download"
-        }
-      },
-      {
-        "title": "Subtitle Editing and Synthesis",
-        "description": "After video translation, you can customize and synthesize audio for any subtitle segment, then regenerate and download the final video.",
-        "icon": "Edit",
+        "title": "Edit & Export",
+        "description": "Open the editor after conversion: tweak subtitles, regenerate voice, and export.",
+        "icon": "Captions",
         "image": {
           "src": "/imgs/steps/step5.png",
-          "alt": "Subtitle editing and synthesis"
+          "alt": "Edit & export"
         }
       }
     ]
@@ -390,7 +372,7 @@
     "id": "faq",
     "title": "Frequently Asked Questions About SoulDub",
     "description": "Have more questions? Feel free to contact our customer support team.",
-    "tip": "Can't find what you're looking for? Contact <a href='mailto:support@souldub.com' class='text-primary font-medium hover:underline'>our customer support team</a>",
+    "tip": "Can't find what you're looking for? Contact <a href='mailto:support@souldub.ai' class='text-primary font-medium hover:underline'>our customer support team</a>",
     "items": [
       {
         "question": "What is SoulDub and what can it do for me?",
@@ -538,27 +520,9 @@
     "social": {
       "items": [
         {
-          "title": "X",
-          "icon": "RiTwitterXFill",
-          "url": "https://x.com/your-app-name",
-          "target": "_blank"
-        },
-        {
-          "title": "Github",
-          "icon": "Github",
-          "url": "https://github.com/your-app-name",
-          "target": "_blank"
-        },
-        {
-          "title": "Discord",
-          "icon": "RiDiscordFill",
-          "url": "https://discord.gg/your-app-name",
-          "target": "_blank"
-        },
-        {
           "title": "Email",
           "icon": "Mail",
-          "url": "mailto:support@your-domain.com",
+          "url": "mailto:support@souldub.ai",
           "target": "_self"
         }
       ]

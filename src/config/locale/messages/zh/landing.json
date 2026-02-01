@@ -231,8 +231,8 @@
   },
   "usage": {
     "id": "usage",
-    "title": "三步完成视频翻译，支持剪辑",
-    "description": "简单三步，让你的视频跨越语言障碍，翻译后支持字幕剪辑、字幕语音合成等修改",
+    "title": "三步完成视频翻译：上传 → 配置 → 剪辑导出",
+    "description": "拖拽上传视频，选择翻译方向与说话人数，一键创建任务。完成后可在线编辑字幕与语音，重新合成导出。",
     "image": {
       "src": "/imgs/features/1.png",
       "alt": "使用流程"
@@ -242,47 +242,29 @@
     "items": [
       {
         "title": "上传视频",
-        "description": "支持多种视频格式，拖拽或点击上传你的原始视频文件。",
-        "icon": "Upload",
+        "description": "拖拽或点击上传 MP4，自动识别时长并预估积分。",
+        "icon": "UploadCloud",
         "image": {
           "src": "/imgs/steps/step1.png",
           "alt": "上传视频"
         }
       },
       {
-        "title": "选择语言",
-        "description": "选择源语言和目标语言，支持中英日韩等多种语言互译。",
+        "title": "配置翻译",
+        "description": "选择翻译方向（中↔英）和说话人数；高级选项按需开启。",
         "icon": "Languages",
         "image": {
           "src": "/imgs/steps/step2.png",
-          "alt": "选择语言"
+          "alt": "配置翻译"
         }
       },
       {
-        "title": "视频翻译",
-        "description": "保留视频原生音色，先进的AI处理翻译，实时进度条显示，通常几分钟即可完成。",
-        "icon": "Loader",
-        "image": {
-          "src": "/imgs/steps/step3.png",
-          "alt": "视频翻译"
-        }
-      },
-      {
-        "title": "预览和下载",
-        "description": "在线预览翻译效果，满意后一键下载高清视频文件，同时支持字幕和双语字幕下载。",
-        "icon": "Download",
-        "image": {
-          "src": "/imgs/steps/step4.png",
-          "alt": "预览下载"
-        }
-      },
-      {
-        "title": "字幕编辑合成",
-        "description": "视频翻译成功后，可以对任意一段字幕进行自定义修改语音合成，最终重新合成视频下载。",
-        "icon": "Edit",
+        "title": "剪辑与导出",
+        "description": "翻译完成后一键进入编辑器：字幕改写、语音合成、重新合成导出。",
+        "icon": "Captions",
         "image": {
           "src": "/imgs/steps/step5.png",
-          "alt": "字幕编辑合成"
+          "alt": "剪辑与导出"
         }
       }
     ]
@@ -400,7 +382,7 @@
     "id": "faq",
     "title": "关于【这声】的常见问题",
     "description": "还有其他问题？欢迎联系我们的客服团队。",
-    "tip": "没有找到想要的答案？请联系 <a href='mailto:support@souldub.com' class='text-primary font-medium hover:underline'>我们的客服团队</a>",
+    "tip": "没有找到想要的答案？请联系 <a href='mailto:support@souldub.ai' class='text-primary font-medium hover:underline'>我们的客服团队</a>",
     "items": [
       {
         "question": "【这声】是什么？能帮我做什么？",
@@ -548,27 +530,9 @@
     "social": {
       "items": [
         {
-          "title": "X",
-          "icon": "RiTwitterXFill",
-          "url": "https://x.com/your-app-name",
-          "target": "_blank"
-        },
-        {
-          "title": "Github",
-          "icon": "Github",
-          "url": "https://github.com/your-app-name",
-          "target": "_blank"
-        },
-        {
-          "title": "Discord",
-          "icon": "RiDiscordFill",
-          "url": "https://discord.gg/your-app-name",
-          "target": "_blank"
-        },
-        {
           "title": "邮箱",
           "icon": "Mail",
-          "url": "mailto:support@your-domain.com",
+          "url": "mailto:support@souldub.ai",
           "target": "_self"
         }
       ]
