@@ -1,11 +1,14 @@
-import { and, asc, count, desc, eq, gt, isNull, or, sql, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNull, lte, or, sql, sum } from 'drizzle-orm';
+import { addDays, addMonths } from 'date-fns';
 
 import { db } from '@/core/db';
 import { credit } from '@/config/db/schema';
 import { PaymentType } from '@/extensions/payment';
 import { getSnowId, getUuid } from '@/shared/lib/hash';
+import { getPromoEntitlementTransactionNo } from '@/shared/lib/promo';
 
 import { Order } from './order';
+import { getCurrentSubscription } from './subscription';
 import { appendUserToResult, getUserByUserIds, User } from './user';
 
 export type Credit = typeof credit.$inferSelect & {
@@ -33,40 +36,138 @@ export enum CreditTransactionScene {
   AWARD = 'award', // award
 }
 
+function createSubscriptionCreditTransactionNo({
+  subscriptionNo,
+  windowStart,
+}: {
+  subscriptionNo: string;
+  windowStart: Date;
+}) {
+  return `sub_credit:${subscriptionNo}:${windowStart.getTime()}`;
+}
+
+async function ensureCurrentSubscriptionCreditBatch(userId: string) {
+  const sub = await getCurrentSubscription(userId).catch(() => undefined);
+  if (!sub) return;
+
+  const creditsPerMonth = Number(sub.creditsAmount || 0);
+  if (!Number.isFinite(creditsPerMonth) || creditsPerMonth <= 0) {
+    return;
+  }
+
+  if (!sub.currentPeriodStart || !sub.currentPeriodEnd || !sub.subscriptionNo) {
+    return;
+  }
+
+  const now = new Date();
+  const periodStart = new Date(sub.currentPeriodStart);
+  const periodEnd = new Date(sub.currentPeriodEnd);
+
+  if (!Number.isFinite(periodStart.getTime()) || !Number.isFinite(periodEnd.getTime())) {
+    return;
+  }
+  if (periodEnd <= now) {
+    return;
+  }
+
+  // Find the "subscription month" window that contains `now`.
+  let windowStart = periodStart;
+  const maxSteps = 24; // safety valve; should never exceed 12 for annual plans
+  for (let step = 0; step < maxSteps; step += 1) {
+    const nextStart = addMonths(windowStart, 1);
+    if (nextStart <= now && nextStart < periodEnd) {
+      windowStart = nextStart;
+      continue;
+    }
+    break;
+  }
+
+  const nextStart = addMonths(windowStart, 1);
+  const windowEnd = nextStart < periodEnd ? nextStart : periodEnd;
+  if (windowEnd <= now) {
+    return;
+  }
+
+  const transactionNo = createSubscriptionCreditTransactionNo({
+    subscriptionNo: sub.subscriptionNo,
+    windowStart,
+  });
+
+  await db()
+    .insert(credit)
+    .values({
+      id: getUuid(),
+      userId: sub.userId,
+      userEmail: sub.userEmail,
+      orderNo: null,
+      subscriptionNo: sub.subscriptionNo,
+      transactionNo,
+      transactionType: CreditTransactionType.GRANT,
+      transactionScene: CreditTransactionScene.SUBSCRIPTION,
+      credits: creditsPerMonth,
+      remainingCredits: creditsPerMonth,
+      description: 'Grant subscription credits',
+      availableAt: windowStart,
+      expiresAt: windowEnd,
+      status: CreditStatus.ACTIVE,
+      consumedDetail: '',
+      metadata: JSON.stringify({
+        subscriptionNo: sub.subscriptionNo,
+        planName: sub.planName || '',
+        creditsPerMonth,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        windowStart: windowStart.toISOString(),
+        windowEnd: windowEnd.toISOString(),
+      }),
+    })
+    .onConflictDoNothing({ target: credit.transactionNo });
+}
+
 // Calculate credit expiration time based on order and subscription info
 export function calculateCreditExpirationTime({
   creditsValidDays,
   currentPeriodEnd,
+  baseTime,
 }: {
   creditsValidDays: number;
   currentPeriodEnd?: Date;
+  // For one-time credits: the validity must be anchored to the actual payment time.
+  // Fallback to "now" if the payment provider doesn't return a paidAt value.
+  baseTime?: Date;
 }): Date | null {
-  const now = new Date();
+  const now = baseTime ? new Date(baseTime.getTime()) : new Date();
 
-  // Check if credits should never expire
+  // Subscription credits expire with the subscription billing period, regardless of `creditsValidDays`.
+  if (currentPeriodEnd) {
+    return new Date(currentPeriodEnd.getTime());
+  }
+
+  // One-time credits: `creditsValidDays <= 0` means never expires.
   if (!creditsValidDays || creditsValidDays <= 0) {
-    // never expires
     return null;
   }
 
-  const expiresAt = new Date();
-
-  if (currentPeriodEnd) {
-    // For subscription: credits expire at the end of current period
-    expiresAt.setTime(currentPeriodEnd.getTime());
-  } else {
-    // For one-time payment: use configured validity days
-    expiresAt.setDate(now.getDate() + creditsValidDays);
+  // For one-time topups: product rule is "12 months validity".
+  // Use month arithmetic to match "same day, else month end" semantics (avoid leap-year off-by-one).
+  if (creditsValidDays === 365) {
+    return addMonths(now, 12);
   }
 
-  return expiresAt;
+  // Fallback: treat as day-based validity (legacy configs such as 60/90/120).
+  return addDays(now, creditsValidDays);
 }
 
 // Helper function to create expiration condition for queries
 export function createExpirationCondition() {
   const currentTime = new Date();
-  // Credit is valid if: expires_at IS NULL OR expires_at > current_time
-  return or(isNull(credit.expiresAt), gt(credit.expiresAt, currentTime));
+  // Credit is usable if:
+  // - available_at IS NULL OR available_at <= now
+  // - AND (expires_at IS NULL OR expires_at > now)
+  return and(
+    or(isNull(credit.availableAt), lte(credit.availableAt, currentTime)),
+    or(isNull(credit.expiresAt), gt(credit.expiresAt, currentTime))
+  );
 }
 
 // create credit
@@ -151,17 +252,39 @@ export async function consumeCredits({
   scene,
   description,
   metadata,
+  idempotencyKey,
 }: {
   userId: string;
   credits: number; // credits to consume
   scene?: string;
   description?: string;
   metadata?: string;
+  idempotencyKey?: string;
 }) {
+  // Subscription credits are issued per "subscription billing month".
+  // Keep it on-demand and server-side to avoid relying on cron/webhooks.
+  await ensureCurrentSubscriptionCreditBatch(userId);
+
   const currentTime = new Date();
 
   // consume credits
   const result = await db().transaction(async (tx) => {
+    const idemKey = String(idempotencyKey || '').trim();
+    const idempotentTxnNo = idemKey
+      ? `consume:${String(scene || 'default')}:${userId}:${idemKey}`
+      : null;
+
+    if (idempotentTxnNo) {
+      const [existing] = await tx
+        .select()
+        .from(credit)
+        .where(eq(credit.transactionNo, idempotentTxnNo))
+        .limit(1);
+      if (existing) {
+        return existing;
+      }
+    }
+
     // 1. check credits balance
     const [creditsBalance] = await tx
       .select({
@@ -174,6 +297,8 @@ export async function consumeCredits({
           eq(credit.transactionType, CreditTransactionType.GRANT),
           eq(credit.status, CreditStatus.ACTIVE),
           gt(credit.remainingCredits, 0),
+          // Only count credits that are already available.
+          or(isNull(credit.availableAt), lte(credit.availableAt, currentTime)),
           or(
             isNull(credit.expiresAt), // Never expires
             gt(credit.expiresAt, currentTime) // Not yet expired
@@ -186,17 +311,29 @@ export async function consumeCredits({
       throw new Error(`Insufficient credits, ${creditsBalance?.total || 0} < ${credits}`);
     }
 
-    // 2. get available credits, FIFO queue with expiresAt, batch query
-    let remainingToConsume = credits; // remaining credits to consume
+    // 2. Consume from available GRANT records.
+    //
+    // Hard requirement:
+    // - Spend credits by expiration time: whoever expires first is used first.
+    // - Within the same expiration time, keep ordering stable.
+    //
+    // This matches the product rule: "谁先到期先用谁".
+    //
+    // We enforce this by sorting `expiresAt ASC NULLS LAST`:
+    // - expiring credits first (both subscription and top-up batches)
+    // - `expiresAt = NULL` (never expires / legacy data) last
+    //
+    // IMPORTANT: Never use OFFSET pagination here.
+    // We mutate `remainingCredits` and filter with `remainingCredits > 0`, so OFFSET would
+    // skip rows as soon as earlier rows become ineligible, and can incorrectly throw
+    // "Insufficient credits" even when balance is enough.
+    let remainingToConsume = credits;
 
-    // only deal with 10000 credit grant records
-    let batchNo = 1; // batch no
-    const maxBatchNo = 10; // max batch no
-    const batchSize = 1000; // batch size
+    const batchSize = 1000;
+    const maxBatches = 10_000; // safety valve; should be far above normal usage
     const consumedItems: any[] = [];
 
-    while (remainingToConsume > 0) {
-      // get batch credits
+    for (let batchNo = 1; remainingToConsume > 0 && batchNo <= maxBatches; batchNo += 1) {
       const batchCredits = await tx
         .select()
         .from(credit)
@@ -206,67 +343,68 @@ export async function consumeCredits({
             eq(credit.transactionType, CreditTransactionType.GRANT),
             eq(credit.status, CreditStatus.ACTIVE),
             gt(credit.remainingCredits, 0),
-            or(
-              isNull(credit.expiresAt), // Never expires
-              gt(credit.expiresAt, currentTime) // Not yet expired
-            )
+            or(isNull(credit.availableAt), lte(credit.availableAt, currentTime)),
+            or(isNull(credit.expiresAt), gt(credit.expiresAt, currentTime))
           )
         )
         .orderBy(
-          // FIFO queue: expired credits first, then by expiration date
-          // NULL values (never expires) will be ordered last
-          asc(credit.expiresAt)
+          // soonest expiry first; non-expiring last
+          sql`${credit.expiresAt} asc nulls last`,
+          asc(credit.createdAt),
+          asc(credit.id)
         )
-        .limit(batchSize) // batch size
-        .offset((batchNo - 1) * batchSize) // offset
-        .for('update'); // lock for update
+        .limit(batchSize)
+        .for('update');
 
-      // no more credits
-      if (batchCredits?.length === 0) {
+      if (!batchCredits?.length) {
         break;
       }
 
-      // consume credits for each item
+      let progressed = false;
       for (const item of batchCredits) {
-        // no need to consume more
         if (remainingToConsume <= 0) {
           break;
         }
-        const toConsume = Math.min(remainingToConsume, item.remainingCredits);
 
-        // update remaining credits
+        const toConsume = Math.min(remainingToConsume, item.remainingCredits);
+        if (toConsume <= 0) {
+          continue;
+        }
+
         await tx
           .update(credit)
           .set({ remainingCredits: item.remainingCredits - toConsume })
           .where(eq(credit.id, item.id));
 
-        // update consumed items
+        progressed = true;
         consumedItems.push({
           creditId: item.id,
           transactionNo: item.transactionNo,
           expiresAt: item.expiresAt,
-          creditsToConsume: remainingToConsume,
           creditsConsumed: toConsume,
           creditsBefore: item.remainingCredits,
           creditsAfter: item.remainingCredits - toConsume,
-          batchSize: batchSize,
-          batchNo: batchNo,
+          batchNo,
         });
 
-        batchNo += 1;
         remainingToConsume -= toConsume;
-
-        // if too many batches, throw error
-        if (batchNo > maxBatchNo) {
-          throw new Error(`Too many batches: ${batchNo} > ${maxBatchNo}`);
-        }
       }
+
+      // Defensive: if we fetched rows but didn't consume anything, we'd loop forever.
+      if (!progressed) {
+        throw new Error('Failed to consume credits: no progress');
+      }
+    }
+
+    if (remainingToConsume > 0) {
+      // Shouldn't happen because we pre-check the balance, but keep it as a hard guard.
+      throw new Error('Insufficient credits');
     }
 
     // 3. create consumed credit
     const consumedCredit: NewCredit = {
       id: getUuid(),
-      transactionNo: getSnowId(),
+      transactionNo: idempotentTxnNo || getSnowId(),
       transactionType: CreditTransactionType.CONSUME,
       transactionScene: scene,
       userId: userId,
@@ -281,6 +419,13 @@ export async function consumeCredits({
     return consumedCredit;
   });
 
+  return result;
+}
+
+export async function findCreditByTransactionNo(transactionNo: string) {
+  const txn = String(transactionNo || '').trim();
+  if (!txn) return undefined;
+  const [result] = await db().select().from(credit).where(eq(credit.transactionNo, txn)).limit(1);
   return result;
 }
 
@@ -332,6 +477,12 @@ export async function refundCredits({ creditId }: { creditId: string }) {
 // get remaining credits
 // 计算用户当前可用的剩余积分总额
 export async function getRemainingCredits(userId: string): Promise<number> {
+  try {
+    await ensureCurrentSubscriptionCreditBatch(userId);
+  } catch {
+    // Best-effort: do not fail the caller due to subscription credit issuance.
+  }
+
   const currentTime = new Date();
 
   const [result] = await db()
@@ -345,6 +496,7 @@ export async function getRemainingCredits(userId: string): Promise<number> {
         eq(credit.transactionType, CreditTransactionType.GRANT),
         eq(credit.status, CreditStatus.ACTIVE),
         gt(credit.remainingCredits, 0),
+        or(isNull(credit.availableAt), lte(credit.availableAt, currentTime)),
         or(
           isNull(credit.expiresAt), // Never expires
           gt(credit.expiresAt, currentTime) // Not yet expired
@@ -353,6 +505,26 @@ export async function getRemainingCredits(userId: string): Promise<number> {
     );
 
   return parseInt(result?.total || '0');
+}
+
+export async function hasActivePromoEntitlement(userId: string): Promise<boolean> {
+  const currentTime = new Date();
+  const transactionNo = getPromoEntitlementTransactionNo(userId);
+
+  const [result] = await db()
+    .select({ expiresAt: credit.expiresAt })
+    .from(credit)
+    .where(
+      and(
+        eq(credit.transactionNo, transactionNo),
+        eq(credit.status, CreditStatus.ACTIVE),
+        // Must have a future expiry to be considered active.
+        gt(credit.expiresAt, currentTime)
+      )
+    )
+    .limit(1);
+
+  return Boolean(result?.expiresAt);
 }
 
 /**
@@ -380,16 +552,13 @@ export async function deleteCredit(id: string) {
   if (!creditRecord) {
     throw new Error('Credit record not found');
   }
-  // 不想等说明已经被消费了
+  // Safety: never delete/modify a GRANT record that has been consumed (partially or fully).
+  // It would break refund/audit correctness because CONSUME records reference GRANTs by id.
   if (creditRecord.credits !== creditRecord.remainingCredits) {
     const consumed = creditRecord.credits - creditRecord.remainingCredits;
-    await db().update(credit).set({ status: CreditStatus.DELETED }).where(eq(credit.id, id));
     return { canDelete: false, consumed };
   }
 
   await db().delete(credit).where(eq(credit.id, id));
   return { canDelete: true };
 }
-
-
-

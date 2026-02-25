@@ -5,102 +5,224 @@
   },
   "pricing": {
     "id": "pricing",
-    "sr_only_title": "【这声】价格表",
+    "sr_only_title": "SoulDub 价格表",
     "title": "价格",
-    "description": "获取【这声】的全部功能，随时随地、随心所欲翻译任何视频。",
+    "description": "让全世界听见你的声音，用你自己的嗓音。按积分计费：视频翻译按分钟向上取整（默认 3 积分/分钟）。订阅含每月额度 + 优先处理；充值积分可累计，按批次 12 个月有效。",
     "groups": [
-      {
-        "name": "credits",
-        "title": "买积分"
-      },
       {
         "name": "monthly",
         "title": "包月",
-        "is_featured": true,
-        "label": "立省15%"
+        "is_featured": true
       },
       {
         "name": "yearly",
-        "title": "包年"
+        "title": "包年",
+        "label": "两个月免费"
+      },
+      {
+        "name": "credits",
+        "title": "买积分"
       }
     ],
     "items": [
       {
-        "title": "100积分",
-        "description": "适合轻度使用用户",
+        "title": "限时特惠（3天）",
+        "description": "3 天完整体验，低成本验证效果",
+        "label": "限时特惠",
         "features_title": "包含",
         "features": [
-          "上传视频大小：500M",
-          "翻译时长：50分钟（100积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持",
-          "有效期60天"
+          "300 积分（约 100 分钟视频翻译）",
+          "有效期内任务优先处理",
+          "完整工作流：翻译、校对、编辑、高清导出",
+          "有效期 3 天，到期自动失效（不结转）"
+        ],
+        "interval": "one-time",
+        "amount": 599,
+        "currency": "USD",
+        "price": "$5.99",
+        "unit": "",
+        "is_featured": true,
+        "tip": "3 天把效果与流程跑通",
+        "button": {
+          "title": "立即购买",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "promo-3d",
+        "product_name": "限时特惠（3天）",
+        "credits": 300,
+        "valid_days": 3,
+        "group": "monthly"
+      },
+      {
+        "title": "标准版",
+        "description": "稳定更新，每月自动续满额度",
+        "features_title": "包含",
+        "features": [
+          "300 积分/月（约 100 分钟视频翻译）",
+          "订阅期内任务优先处理",
+          "翻译 + 校对 + 编辑 + 高清导出",
+          "可随时叠加充值积分（可累计，按批次 12 个月有效）"
+        ],
+        "interval": "month",
+        "amount": 3900,
+        "currency": "USD",
+        "price": "$39",
+        "original_price": "$59",
+        "unit": "/ 月",
+        "is_featured": false,
+        "tip": "稳定产出更省心",
+        "button": {
+          "title": "立即订阅",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "standard-monthly",
+        "product_name": "标准版（包月）",
+        "plan_name": "标准版",
+        "credits": 300,
+        "valid_days": 30,
+        "group": "monthly"
+      },
+      {
+        "title": "高级版",
+        "description": "适合批量处理/多语言需求的创作者",
+        "label": "热门",
+        "features_title": "包含",
+        "features": [
+          "750 积分/月（约 250 分钟视频翻译）",
+          "订阅期内任务优先处理",
+          "翻译 + 校对 + 编辑 + 高清导出",
+          "可随时叠加充值积分（可累计，按批次 12 个月有效）"
+        ],
+        "interval": "month",
+        "amount": 7900,
+        "currency": "USD",
+        "price": "$79",
+        "original_price": "$89",
+        "unit": "/ 月",
+        "is_featured": false,
+        "tip": "高频创作者首选",
+        "button": {
+          "title": "立即订阅",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "premium-monthly",
+        "product_name": "高级版（包月）",
+        "plan_name": "高级版",
+        "credits": 750,
+        "valid_days": 30,
+        "group": "monthly"
+      },
+      {
+        "title": "标准版",
+        "description": "年付省 2 个月，长期更划算",
+        "features_title": "包含",
+        "features": [
+          "年付 = 10 个月价格，省 $78",
+          "每月约 100 分钟 AI 翻译额度",
+          "订阅期内任务优先处理",
+          "可随时叠加充值积分（可累计，按批次 12 个月有效）"
+        ],
+        "interval": "year",
+        "amount": 39000,
+        "currency": "USD",
+        "price": "$390",
+        "original_price": "$468",
+        "unit": "/ 年",
+        "is_featured": true,
+        "tip": "计划型创作者更划算",
+        "button": {
+          "title": "立即订阅",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "standard-yearly",
+        "product_name": "标准版（包年）",
+        "plan_name": "标准版",
+        "credits": 300,
+        "valid_days": 30,
+        "group": "yearly"
+      },
+      {
+        "title": "高级版",
+        "description": "年付省 2 个月，高频更划算",
+        "features_title": "包含",
+        "features": [
+          "年付 = 10 个月价格，省 $158",
+          "每月约 250 分钟 AI 翻译额度",
+          "订阅期内任务优先处理",
+          "可随时叠加充值积分（可累计，按批次 12 个月有效）"
+        ],
+        "interval": "year",
+        "amount": 79000,
+        "currency": "USD",
+        "price": "$790",
+        "original_price": "$948",
+        "unit": "/ 年",
+        "is_featured": false,
+        "tip": "全年高频更省",
+        "button": {
+          "title": "立即订阅",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "premium-yearly",
+        "product_name": "高级版（包年）",
+        "plan_name": "高级版",
+        "credits": 750,
+        "valid_days": 30,
+        "group": "yearly"
+      },
+      {
+        "title": "60积分",
+        "description": "应急补量，不绑定订阅",
+        "features_title": "包含",
+        "features": [
+          "约 20 分钟视频翻译",
+          "充值积分可累计（不按月清零）",
+          "按批次 12 个月有效",
+          "可与订阅积分叠加使用"
         ],
         "interval": "one-time",
         "amount": 1200,
         "currency": "USD",
         "price": "$12",
-        "original_price": "$20",
-        "currencies": [
-          {
-            "currency": "CNY",
-            "amount": 8600,
-            "price": "¥86",
-            "original_price": "¥144",
-            "payment_providers": ["stripe"]
-          }
-        ],
+        "original_price": "$12",
         "unit": "",
         "is_featured": false,
-        "tip": "购买积分，畅享任意视频翻译！",
+        "tip": "不绑订阅，随时补足",
         "button": {
           "title": "立即充值",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "credits-100",
-        "product_name": "100积分充值",
-        "credits": 100,
-        "valid_days": 60,
+        "product_id": "credits-60",
+        "product_name": "60积分充值",
+        "credits": 60,
+        "valid_days": 365,
         "group": "credits"
       },
       {
         "title": "200积分",
-        "description": "适合中度使用用户",
+        "description": "更高性价比，一次更省",
         "label": "热门",
-        "features_title": "包含入门版功能，此外",
+        "features_title": "包含",
         "features": [
-          "上传视频大小：500M",
-          "翻译时长：100分钟（200积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持",
-          "有效期90天"
+          "约 65 分钟视频翻译",
+          "省 $2（比单买更划算）",
+          "充值积分可累计，按批次 12 个月有效",
+          "可与订阅积分叠加使用"
         ],
         "interval": "one-time",
-        "amount": 2400,
+        "amount": 3800,
         "currency": "USD",
-        "price": "$24",
+        "price": "$38",
         "original_price": "$40",
-        "currencies": [
-          {
-            "currency": "CNY",
-            "amount": 17300,
-            "price": "¥173",
-            "original_price": "¥288",
-            "payment_providers": ["stripe"]
-          }
-        ],
         "unit": "",
         "is_featured": true,
-        "tip": "购买积分，畅享任意视频翻译！",
+        "tip": "更划算的补充选项",
         "button": {
           "title": "立即充值",
           "url": "/#pricing",
@@ -109,257 +231,37 @@
         "product_id": "credits-200",
         "product_name": "200积分充值",
         "credits": 200,
-        "valid_days": 90,
+        "valid_days": 365,
         "group": "credits"
       },
       {
-        "title": "300积分",
-        "description": "适合重度使用用户",
-        "features_title": "包含标准版功能，此外",
+        "title": "500积分",
+        "description": "适合批量处理一系列视频",
+        "features_title": "包含",
         "features": [
-          "上传视频大小：500M",
-          "翻译时长：150分钟（300积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持",
-          "有效期120天"
+          "约 165 分钟视频翻译",
+          "省 $10（最大折扣）",
+          "充值积分可累计，按批次 12 个月有效",
+          "可与订阅积分叠加使用"
         ],
         "interval": "one-time",
-        "amount": 3600,
+        "amount": 9000,
         "currency": "USD",
-        "price": "$36",
-        "original_price": "$60",
-        "currencies": [
-          {
-            "currency": "CNY",
-            "amount": 25900,
-            "price": "¥259",
-            "original_price": "¥432",
-            "payment_providers": ["stripe", "creem"]
-          }
-        ],
+        "price": "$90",
+        "original_price": "$100",
         "unit": "",
         "is_featured": false,
-        "tip": "购买积分，畅享任意视频翻译！",
+        "tip": "大额度，少操心",
         "button": {
           "title": "立即充值",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "credits-300",
-        "product_name": "300积分充值",
-        "credits": 300,
-        "valid_days": 120,
-        "group": "credits"
-      },
-      {
-        "title": "包月用户入门版",
-        "description": "适合普通用户",
-        "features_title": "包含",
-        "features": [
-          "上传视频大小：500M",
-          "翻译时长：150分钟（300积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：480p",
-          "水印：无",
-          "高级编辑：支持"
-        ],
-        "interval": "month",
-        "amount": 2900,
-        "currency": "USD",
-        "price": "$29",
-        "original_price": "$49",
-        "unit": "/ 月",
-        "is_featured": false,
-        "tip": "按月付费，随心所欲翻译任何视频。",
-        "button": {
-          "title": "立即订阅",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "prod_TNz3WUCRLsqg6l",
-        "product_name": "包月注册用户",
-        "credits": 300,
-        "valid_days": 30,
-        "group": "monthly",
-        "plan_name": "包月入门版"
-      },
-      {
-        "title": "包月用户标准版",
-        "description": "适合高频使用用户",
-        "label": "热门",
-        "features_title": "包含",
-        "features": [
-          "上传视频大小：500M",
-          "翻译时长：200分钟（400积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持"
-        ],
-        "interval": "month",
-        "amount": 3900,
-        "currency": "USD",
-        "price": "$39",
-        "original_price": "$59",
-        "unit": "/ 月",
-        "is_featured": true,
-        "tip": "按月付费，随心所欲翻译任何视频。",
-        "button": {
-          "title": "立即订阅",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "monthly-standard",
-        "product_name": "包月标准用户",
-        "credits": 400,
-        "valid_days": 30,
-        "group": "monthly",
-        "plan_name": "包月标准版"
-      },
-      {
-        "title": "包月用户高级版",
-        "description": "适合专业用户",
-        "features_title": "包含",
-        "features": [
-          "上传视频大小：500M",
-          "翻译时长：250分钟（500积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持"
-        ],
-        "interval": "month",
-        "amount": 4900,
-        "currency": "USD",
-        "price": "$49",
-        "original_price": "$89",
-        "unit": "/ 月",
-        "is_featured": false,
-        "tip": "按月付费，随心所欲翻译任何视频。",
-        "button": {
-          "title": "立即订阅",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "monthly-premium",
-        "product_name": "包月高级用户",
+        "product_id": "credits-500",
+        "product_name": "500积分充值",
         "credits": 500,
-        "valid_days": 30,
-        "group": "monthly",
-        "plan_name": "包月用户"
-      },
-      {
-        "title": "包年用户入门版",
-        "description": "适合普通用户",
-        "features_title": "包含",
-        "features": [
-          "上传视频大小：500M",
-          "翻译时长：1800分钟（3600积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持"
-        ],
-        "interval": "year",
-        "amount": 29000,
-        "currency": "USD",
-        "price": "$290",
-        "original_price": "$390",
-        "unit": "/ 年",
-        "is_featured": false,
-        "tip": "按年付费，随心所欲翻译任何视频。",
-        "button": {
-          "title": "立即订阅",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "yearly-basic",
-        "product_name": "包年基础用户",
-        "credits": 3600,
         "valid_days": 365,
-        "group": "yearly",
-        "plan_name": "包年用户入门版"
-      },
-      {
-        "title": "包年用户标准版",
-        "description": "适合高频使用用户",
-        "label": "热门",
-        "features_title": "包含入门版功能，此外",
-        "features": [
-          "上传视频大小：500M",
-          "翻译时长：2400分钟（4800积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持"
-        ],
-        "interval": "year",
-        "amount": 39000,
-        "currency": "USD",
-        "price": "$390",
-        "original_price": "$490",
-        "unit": "/ 年",
-        "is_featured": true,
-        "tip": "按年付费，随心所欲翻译任何视频。",
-        "button": {
-          "title": "立即订阅",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "yearly-standard",
-        "product_name": "包年标准用户",
-        "credits": 4800,
-        "valid_days": 365,
-        "group": "yearly",
-        "plan_name": "包年用户标准版"
-      },
-      {
-        "title": "包年用户高级版",
-        "description": "适合专业用户",
-        "features_title": "包含",
-        "features": [
-          "上传视频大小：500M",
-          "翻译时长：3000分钟（6000积分）",
-          "多语言支持：中英",
-          "下载视频：允许",
-          "在线预览：支持",
-          "清晰度：1080p",
-          "水印：无",
-          "高级编辑：支持"
-        ],
-        "interval": "year",
-        "amount": 49000,
-        "currency": "USD",
-        "price": "$490",
-        "original_price": "$590",
-        "unit": "/ 年",
-        "is_featured": false,
-        "tip": "按年付费，随心所欲翻译任何视频。",
-        "button": {
-          "title": "立即订阅",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "yearly-premium",
-        "product_name": "包年高级用户",
-        "credits": 6000,
-        "valid_days": 365,
-        "group": "yearly",
-        "plan_name": "包年用户高级版"
+        "group": "credits"
       }
     ]
   },

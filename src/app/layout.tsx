@@ -1,6 +1,5 @@
 import '@/config/style/global.css';
 
-import { Plus_Jakarta_Sans, JetBrains_Mono, Merriweather } from 'next/font/google';
 import { getLocale, setRequestLocale } from 'next-intl/server';
 import NextTopLoader from 'nextjs-toploader';
 
@@ -11,22 +10,6 @@ import { getAdsManagerWithConfigs } from '@/shared/services/ads';
 import { getAffiliateManagerWithConfigs } from '@/shared/services/affiliate';
 import { getAnalyticsManagerWithConfigs } from '@/shared/services/analytics';
 import { getCustomerServiceWithConfigs } from '@/shared/services/customer_service';
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
-
-const merriweather = Merriweather({
-  subsets: ['latin'],
-  weight: ['300', '400', '700', '900'],
-  variable: '--font-serif',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-});
 
 export default async function RootLayout({
   children,
@@ -94,7 +77,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`dark ${plusJakartaSans.variable} ${merriweather.variable} ${jetbrainsMono.variable}`}
+      className="dark"
       suppressHydrationWarning
     >
       <head>
@@ -173,7 +156,8 @@ export default async function RootLayout({
           crawlSpeed={200}
           height={3}
           crawl={true}
-          showSpinner={true}
+          // Avoid double loaders (we also have a full-screen session verifier overlay).
+          showSpinner={false}
           easing="ease"
           speed={200}
         />

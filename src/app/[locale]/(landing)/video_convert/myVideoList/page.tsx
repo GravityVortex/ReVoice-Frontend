@@ -24,6 +24,7 @@ export default function VideoConvertPage() {
 
   const [selectedVideo, setSelectedVideo] = useState<VideoListItem | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [selectedVideoUrlCandidates, setSelectedVideoUrlCandidates] = useState<string[]>([]);
   const [videoList, setVideoList] = useState<VideoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -45,10 +46,20 @@ export default function VideoConvertPage() {
     console.log("点击播放视频，handlePlayVideo--->", item);
     const len = item.tasks?.length || 0;
     if (item.status === "completed" && len > 0) {
-      // 列表中最后一个task的final视频地址
-      item.videoUrl = getVideoR2PathName(
-        user?.id || "", item.tasks?.[len - 1].id || '', 'merge_audio_video/video/video_new.mp4'
-      )
+      // DB is the source of truth; do not rely on 404/onError as the main existence probe.
+      const task: any = item.tasks?.[len - 1];
+      const taskId = task?.id || '';
+      const userId = user?.id || "";
+      const finalFiles: any[] = task?.finalFileList || [];
+      const r2Key480p = finalFiles.find((f) => f.fileType === 'video_480p')?.r2Key as string | undefined;
+      const r2KeySource =
+        (finalFiles.find((f) => f.fileType === 'video')?.r2Key as string | undefined) ||
+        'merge_audio_video/video/video_new.mp4';
+      const primaryKey = r2Key480p || r2KeySource;
+      const primary = getVideoR2PathName(userId, taskId, primaryKey);
+      const fallback = getVideoR2PathName(userId, taskId, r2KeySource);
+      setSelectedVideoUrlCandidates(primary === fallback ? [primary] : [primary, fallback]);
+      item.videoUrl = primary;
     }
 
     setSelectedVideo(item);
@@ -96,6 +107,7 @@ export default function VideoConvertPage() {
   const handleClosePlayer = () => {
     setIsPlayerOpen(false);
     setSelectedVideo(null);
+    setSelectedVideoUrlCandidates([]);
   };
 
   // 修改项目后更新列表数据
@@ -298,6 +310,7 @@ export default function VideoConvertPage() {
           isOpen={isPlayerOpen}
           onClose={handleClosePlayer}
           videoUrl={selectedVideo.videoUrl}
+          videoUrlCandidates={selectedVideoUrlCandidates}
           title={selectedVideo.fileName}
         />
       )}

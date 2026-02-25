@@ -13,7 +13,9 @@ export type Configs = Record<string, string>;
 const CONFIG_CACHE_MS = 30_000;
 // We use configs to enrich the page (ads/analytics/etc). If the DB is slow/unreachable,
 // don't block the entire request for ~10s connect timeouts.
-const CONFIG_DB_TIMEOUT_MS = 1_500;
+// NOTE: These configs are also used by admin settings + auth/payment pages, so this
+// must be long enough to survive a cold DB connection handshake (e.g. pgbouncer/TLS).
+const CONFIG_DB_TIMEOUT_MS = 5_000;
 let cachedDbConfigs: Configs | null = null;
 let cachedDbConfigsAt = 0;
 let cachedDbConfigsErrorAt = 0;

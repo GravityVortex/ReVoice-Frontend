@@ -1,5 +1,5 @@
 {
-  "title": "活动",
+  "title": "使用记录",
   "nav": {
     "items": [
       {
@@ -17,7 +17,7 @@
   "top_nav": {
     "items": [
       {
-        "title": "活动",
+        "title": "使用记录",
         "url": "/activity",
         "icon": "Activity"
       },

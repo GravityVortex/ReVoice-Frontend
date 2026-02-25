@@ -8,6 +8,8 @@ import { Button } from "@/shared/components/ui/button";
 import { useSignInRedirect } from "@/shared/hooks/use-sign-in-redirect";
 import { useTranslations } from "next-intl";
 
+import { DashboardHeader } from "@/shared/blocks/dashboard/header";
+
 export default function DashboardLayout({
     children,
 }: {
@@ -28,7 +30,7 @@ export default function DashboardLayout({
                     </div>
                 </div>
                 {/* Main Content Skeleton */}
-                <div className="flex-1 p-8 space-y-6">
+                <div className="flex-1 p-4 sm:p-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <Skeleton className="h-10 w-48" />
                         <Skeleton className="h-10 w-10 rounded-full" />
@@ -48,9 +50,6 @@ export default function DashboardLayout({
                     <h1 className="text-xl font-semibold text-foreground">
                         {t("sign_in_description")}
                     </h1>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        {t("guest_sign_in_description")}
-                    </p>
                     <div className="mt-6 flex justify-center">
                         <Button onClick={() => redirectToSignIn()}>
                             {t("sign_in_title")}
@@ -83,11 +82,8 @@ export default function DashboardLayout({
             <DashboardSidebar />
             {/* SidebarProvider locks body scroll; make inset the scroll container. */}
             <SidebarInset className="bg-background/40 min-h-0 overflow-auto backdrop-blur-xl">
-                {/* Mobile sidebar trigger */}
-                <header className="bg-background/40 sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-white/10 px-4 backdrop-blur-xl md:hidden">
-                    <SidebarTrigger />
-                </header>
-                <div className="flex min-h-0 flex-1 flex-col gap-4 p-8 pt-6">
+                <DashboardHeader />
+                <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-4 sm:p-6 sm:pt-6 lg:p-8">
                     {children}
                 </div>
             </SidebarInset>

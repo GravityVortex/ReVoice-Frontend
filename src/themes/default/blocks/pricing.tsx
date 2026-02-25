@@ -101,62 +101,129 @@ const PAYMENT_PROVIDER_OPTIONS: PaymentProviderOption[] = [
   { name: 'creem', title: 'Creem', iconUrl: '/imgs/icons/creem.png' },
 ];
 
-function PaymentMethodPills({
-  productId,
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
+
+function PaymentButton({
   options,
-  primaryProvider,
-  label,
+  defaultProvider,
+  onCheckout,
+  onProviderChange,
   disabled,
-  onPay,
+  isLoading,
+  isFeatured,
+  buttonTitle,
 }: {
-  productId: string;
   options: PaymentProviderOption[];
-  primaryProvider: PaymentProviderName;
-  label?: string;
+  defaultProvider: PaymentProviderName;
+  onCheckout: (provider: PaymentProviderName) => void;
+  onProviderChange?: (provider: PaymentProviderName) => void;
   disabled: boolean;
-  onPay: (provider: PaymentProviderName) => void;
+  isLoading: boolean;
+  isFeatured: boolean;
+  buttonTitle: string;
 }) {
-  const alternatives = options.filter((p) => p.name !== primaryProvider);
-  if (alternatives.length === 0) return null;
+  const [selectedProvider, setSelectedProvider] = useState<PaymentProviderName>(defaultProvider);
+  const selectedMeta = options.find((p) => p.name === selectedProvider);
+  const hasMultipleOptions = options.length > 1;
+
+  // Update selected provider when default changes (e.g., from cookie)
+  useEffect(() => {
+    setSelectedProvider(defaultProvider);
+  }, [defaultProvider]);
+
+  const handleSelectProvider = (provider: PaymentProviderName) => {
+    setSelectedProvider(provider);
+    onProviderChange?.(provider);
+  };
 
   return (
-    <div className="mt-3 space-y-2">
-      {label ? (
-        <div className="text-left text-[11px] font-medium text-white/50">
-          {label}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        {alternatives.map((provider) => (
-          <button
-            key={`${productId}-${provider.name}`}
-            type="button"
-            disabled={disabled}
-            onClick={() => onPay(provider.name)}
-            className={cn(
-              'group inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5',
-              'text-xs font-semibold text-white/70 transition-colors',
-              'hover:border-white/20 hover:bg-black/35 hover:text-white',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15',
-              disabled && 'pointer-events-none opacity-60'
-            )}
-            aria-label={`Pay with ${provider.title}`}
-          >
-            <span className="relative inline-flex size-5 items-center justify-center">
-              <span className="absolute inset-0 rounded-full bg-white/5 opacity-0 blur-sm transition-opacity group-hover:opacity-100" />
+    <div className="mt-6 flex w-full items-stretch gap-0">
+      {/* Main payment button */}
+      <Button
+        onClick={() => onCheckout(selectedProvider)}
+        disabled={disabled}
+        className={cn(
+          'flex-1 h-12 transition-all duration-300',
+          hasMultipleOptions ? 'rounded-l-full rounded-r-none' : 'rounded-full',
+          isFeatured
+            ? 'bg-white text-black hover:bg-white/90 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] border-none'
+            : 'bg-white/5 text-white hover:bg-white/10 border border-white/10 hover:border-white/20',
+          hasMultipleOptions && isFeatured && 'border-r border-black/10',
+          hasMultipleOptions && !isFeatured && 'border-r-0'
+        )}
+      >
+        {isLoading ? (
+          <div className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
+            <span>Processing...</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2">
+            {selectedMeta && (
               <Image
-                src={provider.iconUrl}
+                src={selectedMeta.iconUrl}
                 alt=""
                 width={16}
                 height={16}
-                className="relative z-10 rounded-full opacity-90"
+                className="rounded-sm"
               />
-            </span>
-            <span className="leading-none">{provider.title}</span>
-          </button>
-        ))}
-      </div>
+            )}
+            <span>{buttonTitle}</span>
+          </div>
+        )}
+      </Button>
+
+      {/* Dropdown for switching payment method */}
+      {hasMultipleOptions && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              disabled={disabled}
+              className={cn(
+                'h-12 w-12 rounded-r-full rounded-l-none px-3',
+                isFeatured
+                  ? 'bg-white text-black hover:bg-white/90 border-none'
+                  : 'bg-white/5 text-white hover:bg-white/10 border border-white/10 border-l-0 hover:border-white/20'
+              )}
+            >
+              <ChevronDown className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="min-w-[160px] border-white/10 bg-black/90 backdrop-blur-xl"
+          >
+            {options.map((provider) => (
+              <DropdownMenuItem
+                key={provider.name}
+                onClick={() => handleSelectProvider(provider.name)}
+                className={cn(
+                  'flex items-center gap-2 cursor-pointer text-white/80 hover:text-white focus:text-white focus:bg-white/10',
+                  provider.name === selectedProvider && 'bg-white/10 text-white'
+                )}
+              >
+                <Image
+                  src={provider.iconUrl}
+                  alt=""
+                  width={16}
+                  height={16}
+                  className="rounded-sm"
+                />
+                <span>{provider.title}</span>
+                {provider.name === selectedProvider && (
+                  <Check className="ml-auto size-4 text-primary" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }
@@ -477,12 +544,12 @@ export function Pricing({
         body: JSON.stringify(params),
       });
 
-	      if (response.status === 401) {
-	        setIsLoading(false);
-	        setProductId(null);
-	        redirectToSignIn();
-	        return;
-	      }
+      if (response.status === 401) {
+        setIsLoading(false);
+        setProductId(null);
+        redirectToSignIn();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`request failed with status ${response.status}`);
@@ -530,16 +597,28 @@ export function Pricing({
   return (
     <section
       id={pricing.id}
-      className={cn('py-24 md:py-36', pricing.className, className)}
+      className={cn(
+        'relative isolate overflow-hidden py-24 md:py-36',
+        pricing.className,
+        className
+      )}
     >
+      {/* Background Ambience - Vozo Style Radial Glow */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[800px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[80px] opacity-40 pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      </div>
+
       <div className="mx-auto mb-12 px-4 text-center md:px-8">
         {pricing.sr_only_title && (
           <h1 className="sr-only">{pricing.sr_only_title}</h1>
         )}
-        <h2 className="mb-6 text-3xl font-bold text-pretty lg:text-4xl">
-          {pricing.title}
+        <h2 className="mb-5 text-balance font-sans text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl text-white">
+          <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70">
+            {pricing.title}
+          </span>
         </h2>
-        <p className="text-muted-foreground mx-auto mb-4 max-w-xl lg:max-w-none lg:text-lg">
+        <p className="mx-auto mb-4 max-w-xl text-white/70 lg:max-w-none lg:text-lg">
           {pricing.description}
         </p>
       </div>
@@ -547,36 +626,36 @@ export function Pricing({
       <div className="container">
         {pricing.groups && pricing.groups.length > 0 && (
           <div className="mx-auto mt-8 mb-8 flex w-full justify-center">
-            <div className="inline-flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 p-1.5 backdrop-blur-md">
+            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md">
               {pricing.groups.map((item, i) => {
                 const isActive = group === (item.name || '');
                 return (
-                  <div key={i} className="flex items-center relative">
-                    {i > 0 && <div className="mx-1 h-6 w-px bg-white/10" />}
-                    <button
-                      onClick={() => setGroup(item.name || '')}
-                      className={cn(
-                        "relative z-10 flex min-w-[100px] items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors duration-300",
-                        isActive
-                          ? "text-white"
-                          : "text-muted-foreground hover:text-white"
-                      )}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="group-active"
-                          className="absolute inset-0 z-[-1] rounded-lg bg-white/10 border border-white/20 backdrop-blur-md shadow-lg shadow-black/5"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
-                      )}
-                      <span className="relative z-10">{item.title}</span>
-                      {item.label && (
-                        <span className="relative z-10 ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)] backdrop-blur-sm">
+                  <button
+                    key={i}
+                    onClick={() => setGroup(item.name || '')}
+                    className={cn(
+                      "relative z-10 flex min-w-[100px] items-center justify-center gap-2 rounded-full px-6 py-2 text-sm font-medium transition-colors duration-300",
+                      isActive
+                        ? "text-white"
+                        : "text-white/60 hover:text-white"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="group-active"
+                        className="absolute inset-0 z-[-1] rounded-full bg-white/10 backdrop-blur-md"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <span className="relative z-10">{item.title}</span>
+                    {item.label && (
+                      <span className="relative z-10 ml-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+                        <span className="bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
                           {item.label}
                         </span>
-                      )}
-                    </button>
-                  </div>
+                      </span>
+                    )}
+                  </button>
                 );
               })}
             </div>
@@ -596,176 +675,134 @@ export function Pricing({
 
             // Get currency state for this item
             const currencyState = itemCurrencies[item.product_id];
-	            const displayedItem = currencyState?.displayedItem || item;
-	            const selectedCurrency =
-	              currencyState?.selectedCurrency || item.currency;
-	            const currencies = getCurrenciesFromItem(item);
-	            const availableProviders =
-	              getAvailablePaymentProviders(displayedItem);
-	            const primaryProvider = getPrimaryProviderForItem(availableProviders);
-	            const primaryProviderMeta = primaryProvider
-	              ? availableProviders.find((p) => p.name === primaryProvider) || null
-	              : null;
+            const displayedItem = currencyState?.displayedItem || item;
+            const selectedCurrency =
+              currencyState?.selectedCurrency || item.currency;
+            const currencies = getCurrenciesFromItem(item);
+            const availableProviders =
+              getAvailablePaymentProviders(displayedItem);
+            const primaryProvider = getPrimaryProviderForItem(availableProviders);
+            const primaryProviderMeta = primaryProvider
+              ? availableProviders.find((p) => p.name === primaryProvider) || null
+              : null;
 
-	            return (
-	              <Card key={item.product_id || idx} className="relative flex flex-col h-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-black/20 backdrop-blur-md">
+            const isFeatured = Boolean(item.is_featured);
+            return (
+              <div key={item.product_id || idx} className="relative h-full">
                 {item.label && (
-                  <div className="absolute -top-4 left-0 right-0 mx-auto w-fit">
-                    <span className="flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-background px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                      <Zap className="size-3.5 fill-purple-300" />
-                      {item.label}
+                  <div className="absolute top-0 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white backdrop-blur-xl shadow-lg shadow-primary/20">
+                      <span className="bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+                        {item.label}
+                      </span>
                     </span>
                   </div>
                 )}
 
-                <CardHeader className="flex-none">
-                  <CardTitle className="font-medium">
-                    <h3 className="text-sm font-medium">{item.title}</h3>
-                  </CardTitle>
+                <Card
+                  className={cn(
+                    'relative flex h-full flex-col overflow-hidden rounded-3xl border backdrop-blur-xl transition-all duration-300',
+                    'hover:border-primary/50 hover:shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.3)]',
+                    isFeatured
+                      ? 'border-primary/50 bg-gradient-to-b from-primary/10 via-white/5 to-transparent shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.3)]'
+                      : 'border-white/10 bg-white/5'
+                  )}
+                >
 
-                  <div className="my-3 flex items-center gap-3">
-                    {displayedItem.original_price && (
-                      <span className="text-muted-foreground text-sm line-through">
-                        {displayedItem.original_price}
+                  <CardHeader className="flex-none">
+                    <CardTitle className="font-medium">
+                      <h3 className="text-sm font-medium">{item.title}</h3>
+                    </CardTitle>
+
+                    <div className="my-3 flex items-center gap-3">
+                      {displayedItem.original_price && (
+                        <span className="text-muted-foreground text-sm line-through">
+                          {displayedItem.original_price}
+                        </span>
+                      )}
+
+                      <div className="block text-4xl font-bold leading-none tracking-tight text-white">
+                        <span>
+                          {displayedItem.price}
+                        </span>{' '}
+                        {displayedItem.unit ? (
+                          <span className="text-white/50 text-base font-normal">
+                            {displayedItem.unit}
+                          </span>
+                        ) : (
+                          ''
+                        )}
+                      </div>
+
+                      <CurrencySwitch
+                        productId={item.product_id}
+                        currencies={currencies}
+                        selectedCurrency={selectedCurrency}
+                        onSelect={(currency) =>
+                          handleCurrencyChange(item.product_id, currency)
+                        }
+                      />
+                    </div>
+
+                    <CardDescription className="text-sm">
+                      {item.description}
+                    </CardDescription>
+                    {item.tip && (
+                      <span className="text-muted-foreground text-sm">
+                        {item.tip}
                       </span>
                     )}
 
-                    <div className="block text-2xl font-semibold leading-none">
-                      <span className="text-primary">
-                        {displayedItem.price}
-                      </span>{' '}
-                      {displayedItem.unit ? (
-                        <span className="text-muted-foreground text-sm font-normal">
-                          {displayedItem.unit}
+                    {isCurrentPlan ? (
+                      <Button
+                        variant="outline"
+                        className="mt-6 h-12 w-full rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                        disabled
+                      >
+                        <span className="text-sm font-medium">
+                          {t('current_plan')}
                         </span>
-                      ) : (
-                        ''
-                      )}
-                    </div>
+                      </Button>
+                    ) : primaryProvider ? (
+                      <PaymentButton
+                        options={availableProviders}
+                        defaultProvider={primaryProvider}
+                        onCheckout={(provider) => {
+                          handleCheckout(displayedItem, provider);
+                        }}
+                        onProviderChange={rememberPreferredProvider}
+                        disabled={isLoading}
+                        isLoading={isLoading && item.product_id === productId}
+                        isFeatured={isFeatured}
+                        buttonTitle={item.button?.title || 'Buy Now'}
+                      />
+                    ) : null}
+                  </CardHeader>
 
-                    <CurrencySwitch
-                      productId={item.product_id}
-                      currencies={currencies}
-                      selectedCurrency={selectedCurrency}
-                      onSelect={(currency) =>
-                        handleCurrencyChange(item.product_id, currency)
-                      }
-                    />
-                  </div>
+                  <CardContent className="space-y-4 flex-1">
+                    <hr className="border-dashed" />
 
-                  <CardDescription className="text-sm">
-                    {item.description}
-                  </CardDescription>
-                  {item.tip && (
-                    <span className="text-muted-foreground text-sm">
-                      {item.tip}
-                    </span>
-                  )}
-
-                  {isCurrentPlan ? (
-                    <Button
-                      variant="outline"
-                      className="mt-4 h-9 w-full px-4 py-2"
-                      disabled
-                    >
-                      <span className="hidden text-sm md:block">
-                        {t('current_plan')}
-                      </span>
-                    </Button>
-	                  ) : (
-	                    <Button
-	                      onClick={() => {
-	                        if (!primaryProvider) return;
-	                        handleCheckout(displayedItem, primaryProvider);
-	                      }}
-	                      disabled={isLoading || !primaryProvider}
-	                      className={cn(
-	                        'focus-visible:ring-ring inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
-	                        'mt-4 h-9 w-full px-4 py-2',
-	                        'bg-primary text-primary-foreground hover:bg-primary/90 border-[0.5px] border-[rgba(255,255,255,0.25)] shadow-md shadow-black/20'
-	                      )}
-	                    >
-	                      {isLoading && item.product_id === productId ? (
-	                        <>
-	                          <Loader2 className="size-4 animate-spin" />
-	                          <span className="block">{t('processing')}</span>
-	                        </>
-	                      ) : (
-	                        <div className="flex w-full items-center gap-2">
-	                          {item.button?.icon ? (
-	                            <SmartIcon
-	                              name={item.button?.icon as string}
-	                              className="size-4"
-	                            />
-	                          ) : null}
-
-	                          <span className="block flex-1 text-left">
-	                            {item.button?.title}
-	                          </span>
-
-	                          {primaryProviderMeta ? (
-	                            <span
-	                              className={cn(
-	                                'ml-auto inline-flex items-center gap-1 rounded-full',
-	                                'border border-white/15 bg-white/10 px-2 py-1',
-	                                'text-[11px] font-semibold text-white/85'
-	                              )}
-	                            >
-	                              <Image
-	                                src={primaryProviderMeta.iconUrl}
-	                                alt=""
-	                                width={14}
-	                                height={14}
-	                                className="rounded-full opacity-90"
-	                              />
-	                              <span className="leading-none">
-	                                {primaryProviderMeta.title}
-	                              </span>
-	                            </span>
-	                          ) : null}
-	                        </div>
-	                      )}
-	                    </Button>
-	                  )}
-
-	                  {!isCurrentPlan &&
-	                  configs.select_payment_enabled === 'true' &&
-	                  primaryProvider ? (
-	                    <PaymentMethodPills
-	                      productId={item.product_id}
-	                      options={availableProviders}
-	                      primaryProvider={primaryProvider}
-	                      label={t('payment_methods')}
-	                      disabled={isLoading}
-	                      onPay={(provider) => {
-	                        rememberPreferredProvider(provider);
-	                        handleCheckout(displayedItem, provider);
-	                      }}
-	                    />
-	                  ) : null}
-	                </CardHeader>
-
-                <CardContent className="space-y-4 flex-1">
-                  <hr className="border-dashed" />
-
-                  {item.features_title && (
-                    <p className="text-sm font-medium">{item.features_title}</p>
-                  )}
-                  <ul className="list-outside space-y-3 text-sm">
-                    {item.features?.map((item, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <Check className="size-3" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+                    {item.features_title && (
+                      <p className="text-sm font-medium">{item.features_title}</p>
+                    )}
+                    <ul className="list-outside space-y-3 text-sm">
+                      {item.features?.map((item, index) => (
+                        <li key={index} className="flex items-start gap-3 text-white/70">
+                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Check className="size-3" />
+                          </div>
+                          <span className="flex-1">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
             );
           })}
         </div>
-      </div>
+      </div >
 
-	    </section>
-	  );
-	}
+    </section >
+  );
+}

@@ -21,10 +21,6 @@
     "email_sign_in": "Sign in with Email",
     "google_sign_in_title": "Sign in with Google",
     "github_sign_in_title": "Sign in with GitHub",
-    "guest_sign_in_title": "Try as Guest",
-    "guest_sign_in_description": "No registration required, valid for 7 days",
-    "guest_login_success_title": "Guest Login Successful",
-    "guest_login_success_desc": "You are now logged in as a guest. Enjoy your 7-day free trial!",
     "close_title": "Close",
     "cancel_title": "Cancel",
     "sign_out_title": "Sign Out",
@@ -51,6 +47,10 @@
     "privacy_policy": "Privacy Policy",
     "legal_agreement": "By signing in, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>."
   },
+  "plans": {
+    "standard": "Standard",
+    "pro": "Pro"
+  },
   "payment": {
     "choose_payment_method": "Choose Payment Method",
     "choose_payment_method_description": "",
@@ -68,7 +68,9 @@
       "user_nav": {
         "video": "My Videos",
         "billing": "Billing",
-        "activity": "Activity"
+        "activity": "Activity",
+        "settings": "Settings",
+        "support": "Support Center"
       }
     },
     "home": {

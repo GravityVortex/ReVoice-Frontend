@@ -33,12 +33,12 @@
       "show_name": true,
       "show_credits": true,
       "show_sign_out": true,
-      "items": [
-        {
-          "title": "账单",
-          "url": "/settings/billing",
-          "icon": "CreditCard"
-        }
+    "items": [
+      {
+        "title": "订阅管理",
+        "url": "/settings/billing",
+        "icon": "CreditCard"
+      }
       ]
     },
     "show_sign": true,
@@ -231,7 +231,7 @@
   },
   "usage": {
     "id": "usage",
-    "title": "三步完成视频翻译：上传 → 配置 → 剪辑导出",
+    "title": "三步完成视频翻译",
     "description": "拖拽上传视频，选择翻译方向与说话人数，一键创建任务。完成后可在线编辑字幕与语音，重新合成导出。",
     "image": {
       "src": "/imgs/features/1.png",

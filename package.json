@@ -1,6 +1,7 @@
 {
   "name": "shipany-template-two",
   "version": "1.2.0",
+  "packageManager": "pnpm@9.9.0",
   "private": true,
   "author": "ShipAny.ai",
   "homepage": "https://shipany.ai",
@@ -17,12 +18,20 @@
     "ai-saas-development"
   ],
   "scripts": {
-    "dev": "next dev --turbopack",
-    "dev:prod": "NODE_ENV=production next dev --turbopack",
-    "build": "next build",
-    "build:fast": "NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "start": "next start",
+    "dev": "NEXT_DIST_DIR=.next.codex next dev --webpack",
+    "dev:turbo": "NEXT_DIST_DIR=.next.codex next dev --turbopack",
+    "dev:prod": "NODE_ENV=production NEXT_DIST_DIR=.next.codex next dev --webpack",
+    "dev:prod:turbo": "NODE_ENV=production NEXT_DIST_DIR=.next.codex next dev --turbopack",
+    "build": "rm -rf .next.build && NEXT_DIST_DIR=.next.build next build",
+    "build:fast": "rm -rf .next.build && NODE_OPTIONS='--max-old-space-size=4096' NEXT_DIST_DIR=.next.build next build",
+    "start": "NEXT_DIST_DIR=.next.build next start",
     "lint": "eslint .",
+    "test": "vitest run --passWithNoTests --no-file-parallelism --maxWorkers=1",
+    "test:watch": "vitest",
+    "test:db": "npx tsx scripts/test-db-connection.ts",
+    "test:multipart": "npx tsx scripts/test-multipart-key-contract.ts && npx tsx scripts/test-multipart-gateway.ts && npx tsx scripts/test-java-r2-multipart-service.ts && npx tsx scripts/test-multipart-uploader.ts",
+    "test:e2e:java-multipart": "npx tsx scripts/e2e-java-multipart-contract.ts",
+    "mock:java-multipart": "npx tsx scripts/mock-java-r2-multipart-server.ts --port 18080 --prefix /video",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "npx drizzle-kit generate --config=src/core/db/config.ts",
@@ -49,6 +58,9 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fingerprintjs/fingerprintjs": "^5.0.1",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
+    "@fontsource/merriweather": "^5.2.11",
     "@hookform/resolvers": "^5.2.1",
     "@libsql/client": "^0.15.9",
     "@next/bundle-analyzer": "16.0.0",
@@ -143,6 +155,7 @@
     "use-stick-to-bottom": "^1.1.1",
     "uuid": "^13.0.0",
     "vaul": "^1.1.2",
+    "wavesurfer.js": "^7.12.1",
     "zod": "^4.1.5"
   },
   "devDependencies": {
@@ -169,6 +182,7 @@
     "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5",
+    "vitest": "^4.0.18",
     "wrangler": "^4.34.0"
   },
   "pnpm": {

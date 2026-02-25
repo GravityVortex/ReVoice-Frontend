@@ -44,14 +44,14 @@
   },
   "audio": {
     "title": "音频",
-    "description": "视频转换成功后，音频也可以单独下载，在下载前，建议您先试听一下。",
+    "description": "下载前建议先试听",
     "preview": "试听",
     "download": "字幕音频",
     "downloadBg": "背景音频"
   },
   "subtitle": {
     "title": "字幕",
-    "description": "视频转换成功后，字幕可以单独下载，翻译后的字幕可以和原视频字幕对比。",
+    "description": "支持原文、译文、双语",
     "compare": "双语对比",
     "download_yuan": "原字幕",
     "download_tran": "翻译字幕",
@@ -108,9 +108,41 @@
   "ui": {
     "back": "返回",
     "preview": "预览",
+    "currentRun": "当前运行",
+    "previewTools": {
+      "title": "预览工具",
+      "speed": "播放速度",
+      "loop": "循环"
+    },
     "outputs": "交付物",
     "runs": "转换记录",
+    "addRun": {
+      "button": "新增翻译",
+      "title": "新增翻译任务",
+      "description": "同一语种组合仅可创建一次（失败/取消可重新创建）",
+      "sourceLanguage": "源语言",
+      "targetLanguage": "目标语言",
+      "speakerCount": "说话人数量",
+      "create": "开始转换",
+      "creating": "创建中...",
+      "costTitle": "预计消耗",
+      "costDuration": "视频时长约 {minutes} 分钟",
+      "costPerMinute": "按 {points} 积分/分钟计费",
+      "duplicate": "该语种组合已存在",
+      "goToExisting": "查看记录",
+      "noAvailable": "没有可创建的语种组合",
+      "createdToast": "任务已创建",
+      "duplicateToast": "该语种组合已存在，已切换到对应记录",
+      "failedToast": "创建失败，请稍后重试",
+      "recreateHint": "上次失败/取消，可重新创建"
+    },
     "noPreview": "暂无预览",
+    "statusHint": {
+      "pending": "已加入队列，马上开始处理。你可以先离开页面，系统会自动继续。",
+      "processing": "正在处理中（后台持续运行）。你可以先去忙别的，完成后这里会自动更新。",
+      "completed": "已完成。可以直接下载交付物，或进入编辑继续微调。",
+      "failed": "处理失败。请查看错误提示，或稍后重试。"
+    },
     "startConvert": "开始转换",
     "emptyRuns": "还没有转换记录",
     "downloadSubtitles": "下载字幕",
@@ -128,7 +160,31 @@
     },
     "finalVideo": {
       "title": "成品视频",
-      "description": "配音合成 + 保留背景音（可直接交付）"
+      "description": "可直接交付使用"
+    },
+    "compareModal": {
+      "title": "双语对比",
+      "description": "共 {count} 条字幕，可对照原文/译文，并支持试听与复制。",
+      "empty": {
+        "title": "暂无可对比字幕",
+        "description": "该任务还未生成字幕，或暂无可对比内容。"
+      },
+      "columns": {
+        "original": "原文",
+        "translated": "译文"
+      },
+      "actions": {
+        "playOriginal": "播放原文音频",
+        "copyOriginal": "复制原文",
+        "playTranslated": "播放译文音频",
+        "copyTranslated": "复制译文"
+      },
+      "toast": {
+        "audioUnavailable": "音频暂不可用，请稍后重试",
+        "empty": "没有可复制的内容",
+        "copied": "已复制到剪贴板",
+        "copyFailed": "复制失败，请手动复制"
+      }
     },
     "progressLoadFailed": "加载进度失败，请稍后重试",
     "progressEmpty": "暂无进度日志",

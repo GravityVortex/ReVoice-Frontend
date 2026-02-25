@@ -12,7 +12,6 @@
     "fileSize": "文件大小",
     "duration": "时长",
     "maxSize": "最大支持上传",
-    "guestAccount": "访客账号",
     "currentAccount": "当前账号",
     "selectVideo": "请选择视频文件",
     "onlyMp4": "仅支持 .mp4 文件",
@@ -46,8 +45,6 @@
     "insufficientCredits": "积分不足，只够处理前{minutes}分钟！",
     "remainingCredits": "剩余",
     "credits": "积分",
-    "register": "认证",
-    "registerTip": "注册得更多积分",
     "subscribe": "订阅",
     "subscribeTip": "订阅享受多权益",
     "estimatedTime": "提示：转换任务根据视频大小不同预计需要 3-10 分钟完成。"

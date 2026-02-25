@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
     //   }
     // ]
 
-    // DOEND 真实请求
-    // if (USE_JAVA_REQUEST) {
+    // 真实请求
     const subtitleData = await getVtTaskSubtitleListByTaskIdAndStepName(
         taskId, ['gen_srt', 'translate_srt']);
     if (!subtitleData || subtitleData.length === 0) {
@@ -87,22 +86,6 @@ export async function GET(request: NextRequest) {
       preUrl,
       env: process.env.ENV || 'dev'
     });
-    // }
-    // 模拟
-    // else {
-    //   // 读取同目录下 mock_srt_compare.json 并直接返回其内容
-    //   const mockPath = path.join(
-    //       process.cwd(),
-    //       'src/app/api/video-task/getCompareSrtList/mock_srt_compare.json');
-    //   const mockRaw = fs.readFileSync(mockPath, 'utf-8');
-    //   const mockJson = JSON.parse(mockRaw);
-
-    //   // 延迟1秒
-    //   // await new Promise(resolve => setTimeout(resolve, 1500));
-    //   return respData(mockJson);
-    // }
-
-
 
   } catch (error) {
     console.error('获取字幕对比列表失败:', error);

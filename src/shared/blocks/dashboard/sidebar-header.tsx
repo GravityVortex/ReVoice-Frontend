@@ -14,32 +14,46 @@ import { SidebarHeader as SidebarHeaderType } from '@/shared/types/blocks/dashbo
 export function SidebarHeader({ header }: { header: SidebarHeaderType }) {
   const { open } = useSidebar();
   return (
-    <SidebarHeaderComponent className="mb-0 border-b border-white/10 px-3 py-3">
+    <SidebarHeaderComponent className="mb-0 border-b border-white/10 px-3 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
       <SidebarMenu>
-        <SidebarMenuItem className="flex items-center justify-between">
-          {(open || !header.show_trigger) && (
+        <SidebarMenuItem className="flex items-center gap-2">
+          {(
             <SidebarMenuButton
               asChild
-              className="h-16 w-full rounded-xl p-1 hover:bg-white/[0.04]"
+              className={
+                open
+                  ? "h-16 w-auto flex-1 rounded-xl p-1 hover:bg-white/[0.04] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-0!"
+                  : "h-12 w-12 rounded-lg p-0 hover:bg-transparent group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-0!"
+              }
             >
               {header.brand && (
                 <Link href={header.brand.url || ''} className="flex h-full w-full items-center justify-center">
                   {header.brand.logo && (
-                    <Image
-                      src={header.brand.logo.src}
-                      alt={header.brand.logo.alt || ''}
-                      width={120}
-                      height={120}
-                      className="max-w-[80%] h-full w-auto object-contain transition-transform duration-300 hover:scale-110"
-                    />
+                    <span
+                      className={
+                        open
+                          ? "flex h-full w-full items-center justify-center"
+                          : "flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-white/[0.06] to-transparent ring-1 ring-primary/25 shadow-[0_10px_28px_rgba(0,0,0,0.35)]"
+                      }
+                    >
+                      <Image
+                        src={open ? header.brand.logo.src : '/big.png'}
+                        alt={header.brand.logo.alt || ''}
+                        width={open ? 120 : 28}
+                        height={open ? 120 : 28}
+                        className={open
+                          ? "max-w-[80%] h-full w-auto object-contain transition-transform duration-300 hover:scale-110"
+                          : "h-7 w-7 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.18)]"
+                        }
+                      />
+                    </span>
                   )}
                   <span className="sr-only">{header.brand.title}</span>
                 </Link>
               )}
             </SidebarMenuButton>
           )}
-          <div className="flex-1"></div>
-          {header.show_trigger && <SidebarTrigger />}
+          {header.show_trigger && open && <SidebarTrigger className="ml-auto" />}
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarHeaderComponent>

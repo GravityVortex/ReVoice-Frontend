@@ -48,6 +48,11 @@ export default async function PaymentsPage({
     }),
   ]);
 
+  const ordersView = orders.map((item) => ({
+    ...item,
+    paymentTypeLabel: item.paymentType ? t(`list.tabs.${item.paymentType}`) : '-',
+  }));
+
   const table: Table = {
     title: t('list.title'),
     columns: [
@@ -64,7 +69,7 @@ export default async function PaymentsPage({
         ),
       },
       {
-        name: 'paymentType',
+        name: 'paymentTypeLabel',
         title: t('fields.type'),
         type: 'label',
         metadata: { variant: 'outline' },
@@ -94,6 +99,12 @@ export default async function PaymentsPage({
         name: 'createdAt',
         title: t('fields.created_at'),
         type: 'time',
+        metadata: {
+          format: {
+            zh: 'YYYY年MM月DD日',
+            en: 'MMM D, YYYY',
+          },
+        },
       },
       {
         name: 'actions',
@@ -121,7 +132,7 @@ export default async function PaymentsPage({
         },
       },
     ],
-    data: orders,
+    data: ordersView,
     pagination: {
       total,
       page,

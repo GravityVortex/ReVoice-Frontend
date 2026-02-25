@@ -221,7 +221,7 @@
   },
   "usage": {
     "id": "usage",
-    "title": "3 Steps to Video Translation: Upload -> Configure -> Edit & Export",
+    "title": "Video Translation in 3 Steps",
     "description": "Upload your video, choose translation direction and speaker count, then start. After it finishes, edit subtitles/voice and export the final video.",
     "image": {
       "src": "/imgs/features/1.png",

@@ -1,7 +1,6 @@
 import { vtTaskMain, vtFileOriginal } from '@/config/db/schema';
 import { db } from '@/core/db';
 import { eq, desc, and, count, inArray } from 'drizzle-orm';
-import { progress } from 'framer-motion';
 
 export type VtTaskMain = typeof vtTaskMain.$inferSelect;
 export type NewVtTaskMain = typeof vtTaskMain.$inferInsert;
@@ -14,6 +13,26 @@ export async function insertVtTaskMain(data: NewVtTaskMain) {
 export async function findVtTaskMainById(id: string) {
   const [result] = await db()
     .select()
+    .from(vtTaskMain)
+    .where(and(eq(vtTaskMain.id, id), eq(vtTaskMain.delStatus, 0)))
+    .limit(1);
+  return result;
+}
+
+// Lightweight selector for polling/progress UIs (avoid SELECT *).
+export async function findVtTaskMainProgressById(id: string) {
+  const [result] = await db()
+    .select({
+      id: vtTaskMain.id,
+      userId: vtTaskMain.userId,
+      status: vtTaskMain.status,
+      progress: vtTaskMain.progress,
+      currentStep: vtTaskMain.currentStep,
+      sourceLanguage: vtTaskMain.sourceLanguage,
+      targetLanguage: vtTaskMain.targetLanguage,
+      speakerCount: vtTaskMain.speakerCount,
+      errorMessage: vtTaskMain.errorMessage,
+    })
     .from(vtTaskMain)
     .where(and(eq(vtTaskMain.id, id), eq(vtTaskMain.delStatus, 0)))
     .limit(1);
@@ -71,9 +90,12 @@ export async function getVtTaskMainListByFileIds(fileIds: string[], userId: stri
       targetLanguage: vtTaskMain.targetLanguage,
       speakerCount: vtTaskMain.speakerCount,
       processDurationSeconds: vtTaskMain.processDurationSeconds,
+      creditsConsumed: vtTaskMain.creditsConsumed,
+      errorMessage: vtTaskMain.errorMessage,
       startedAt: vtTaskMain.startedAt,
       completedAt: vtTaskMain.completedAt,
       createdBy: vtTaskMain.createdBy,
+      createdAt: vtTaskMain.createdAt,
       // delStatus: vtTaskMain.delStatus,
     })
     .from(vtTaskMain)

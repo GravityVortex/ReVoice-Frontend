@@ -4,26 +4,17 @@ import { createAuthClient } from 'better-auth/react';
 
 type AuthClient = ReturnType<typeof createAuthClient>;
 
-declare global {
-  // Prevent dev/HMR from spawning multiple session refresh timers.
-  // eslint-disable-next-line no-var
-  var __betterAuthClient: AuthClient | undefined;
-}
-
-function createClient(): AuthClient {
-  return createAuthClient({
-    // /api/auth/get-session is the "hot path" and should not be polled.
-    // Refresh explicitly after auth mutations (sign-in/out) instead.
-    sessionOptions: {
-      refetchOnWindowFocus: false,
-      refetchInterval: 0,
-    },
-  });
-}
-
-// auth client for client-side use
-export const authClient: AuthClient =
-  globalThis.__betterAuthClient ?? (globalThis.__betterAuthClient = createClient());
+// NOTE: Avoid caching this client on `globalThis`.
+// Turbopack HMR can invalidate module factories; holding onto old client instances
+// across hot updates is a good way to get hard-to-reproduce runtime crashes.
+export const authClient: AuthClient = createAuthClient({
+  // /api/auth/get-session is the "hot path" and should not be polled.
+  // Refresh explicitly after auth mutations (sign-in/out) instead.
+  sessionOptions: {
+    refetchOnWindowFocus: false,
+    refetchInterval: 0,
+  },
+});
 
 // export auth client methods
 export const { signIn, signUp, signOut, useSession } = authClient;

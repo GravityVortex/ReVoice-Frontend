@@ -66,7 +66,9 @@ export function SocialProviders({
 
   const providers: ButtonType[] = [];
 
-  if (configs.google_auth_enabled === 'true') {
+  // OAuth is actually usable only when the provider is configured server-side.
+  // The client can safely infer this from the public client id presence.
+  if (configs.google_client_id) {
     providers.push({
       name: 'google',
       title: t('google_sign_in_title'),
@@ -75,26 +77,13 @@ export function SocialProviders({
     });
   }
 
-  if (configs.github_auth_enabled === 'true') {
+  if (configs.github_client_id) {
     providers.push({
       name: 'github',
       title: t('github_sign_in_title'),
       icon: <RiGithubFill />,
       onClick: () => handleSignIn({ provider: 'github' }),
     });
-  }
-
-  // Show loading skeleton if configs haven't been loaded yet
-  const isConfigsLoaded = Object.keys(configs).length > 0;
-
-  if (!isConfigsLoaded) {
-    return (
-      <div className={cn('flex w-full items-center gap-2', 'flex-col justify-between')}>
-        {/* Skeleton loaders for potential social buttons */}
-        <div className="w-full h-10 bg-white/5 animate-pulse rounded-md" />
-        <div className="w-full h-10 bg-white/5 animate-pulse rounded-md" />
-      </div>
-    );
   }
 
   // Don't render anything if no providers are enabled

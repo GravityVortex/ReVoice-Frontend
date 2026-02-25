@@ -1,16 +1,9 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-import { R2Provider } from '@/extensions/storage';
-import { generatePrivateR2SignUrl } from '@/extensions/storage/privateR2Util';
-import { getSystemConfigByKey, JAVA_SERVER_BASE_URL, USE_JAVA_REQUEST } from '@/shared/cache/system-config';
+import { getSystemConfigByKey } from '@/shared/cache/system-config';
+import { getVtFileFinalListByTaskId } from '@/shared/models/vt_file_final';
 import { findVtFileOriginalById } from '@/shared/models/vt_file_original';
-import { getVtFileTaskListByTaskId, VtFileTask } from '@/shared/models/vt_file_task';
-import { findVtSystemConfigByKey } from '@/shared/models/vt_system_config';
-import { findVtTaskMainById, VtTaskMain } from '@/shared/models/vt_task_main';
-import { getVtTaskSubtitleListByTaskIdAndStepName, VtTaskSubtitle } from '@/shared/models/vt_task_subtitle';
+import { findVtTaskMainById } from '@/shared/models/vt_task_main';
+import { getVtTaskSubtitleListByTaskIdAndStepName } from '@/shared/models/vt_task_subtitle';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
-import { getStorageService } from '@/shared/services/storage';
 
 /**
  * 查出真实数据供前端视频剪辑音频字幕。
@@ -78,27 +71,34 @@ export const getDBJsonData = async (taskMainId: string) => {
     // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
     // let env = process.env.ENV || 'dev';
     let backgroundAudioUrl = `${taskMainItem.userId}/${taskMainId}/split_vocal_bkground/audio/audio_bkground.wav`;
-    let noSoundVideoUrl = `${taskMainItem.userId}/${taskMainId}/split_audio_video/video/video_nosound.mp4`;
+    // Optional: vocal stem (used as waveform reference in the editor). If it does not exist,
+    // the signed URL may still be returned but will 404 on access - UI handles it gracefully.
+    let vocalAudioUrl = `${taskMainItem.userId}/${taskMainId}/split_vocal_bkground/audio/audio_vocal.wav`;
+    // Production-grade: DB is the source of truth for which 480p assets are ready.
+    // 禁止 probe（避免 Cloudflare/R2 请求次数超限）。
+    const finalFiles = await getVtFileFinalListByTaskId(taskMainId, taskMainItem.userId);
+    const nosound480pFinal = finalFiles.find((f) => f.fileType === 'nosound_480p');
+    const noSoundR2Key = nosound480pFinal?.r2Key || 'split_audio_video/video/video_nosound.mp4';
+    // nosound_480p is a file-scope shared asset stored under {userId}/{originalFileId}/...
+    // fallback (source nosound) is task-scope under {userId}/{taskId}/...
+    const noSoundVideoKey = nosound480pFinal
+      ? `${taskMainItem.userId}/${taskMainItem.originalFileId}/${noSoundR2Key}`
+      : `${taskMainItem.userId}/${taskMainId}/${noSoundR2Key}`;
+    let noSoundVideoUrl = '';
     // if (!backgroundAudioFile) {
     //   return { error: '背景音频不存在' };
     // }
 
-    if (USE_JAVA_REQUEST) {
-      const params: SignUrlItem[] = [
-        { path: noSoundVideoUrl, operation: 'download', expirationMinutes:  24 * 60 }, // 无声视频
-        { path: backgroundAudioUrl, operation: 'download', expirationMinutes:  24 * 60 }, // 背景音频
-      ];
-      const resUrlArr = await getPreSignedUrl(params);
-      noSoundVideoUrl = resUrlArr[0].url;
-      backgroundAudioUrl = resUrlArr[1].url;
-    } else {
-      // 调用自己的接口
-      const r2KeyArr = [noSoundVideoUrl, backgroundAudioUrl];
-      const resUrlArr = await generatePrivateR2SignUrl(r2KeyArr, 86400); // 24小时有效期
-      noSoundVideoUrl = resUrlArr[0];
-      backgroundAudioUrl = resUrlArr[1];
-    }
-    console.log('[getDBJsonData] 步骤7 - 生成背景音频URL耗时:', Date.now() - step7Start, 'ms, 使用Java:', USE_JAVA_REQUEST);
+    const params: SignUrlItem[] = [
+      { path: noSoundVideoKey, operation: 'download', expirationMinutes: 24 * 60 }, // 无声视频（DB 决策：nosound_480p 或 source）
+      { path: backgroundAudioUrl, operation: 'download', expirationMinutes: 24 * 60 }, // 背景音频
+      { path: vocalAudioUrl, operation: 'download', expirationMinutes: 24 * 60 }, // 人声(可选)
+    ];
+    const resUrlArr = await getPreSignedUrl(params);
+    noSoundVideoUrl = resUrlArr[0]?.url || '';
+    backgroundAudioUrl = resUrlArr[1]?.url || '';
+    vocalAudioUrl = resUrlArr[2]?.url || '';
+    console.log('[getDBJsonData] 步骤7 - 生成背景音频URL耗时:', Date.now() - step7Start, 'ms');
 
     // 8、过滤步骤为"split_audio"，当做原字幕音频(公桶)(几百条)
     // const step8Start = Date.now();
@@ -164,9 +164,6 @@ export const getDBJsonData = async (taskMainId: string) => {
     const totalTime = Date.now() - startTime;
     console.log('[getDBJsonData] 总耗时:', totalTime, 'ms');
 
-    // 每日限制视频合并最大次数
-    const dayMaxNum = await getSystemConfigByKey('limit.day.video_merge_num') || '3';
-
     return {
       code: '0',
       publicBaseUrl,
@@ -187,10 +184,9 @@ export const getDBJsonData = async (taskMainId: string) => {
         startedAt: taskMainItem.startedAt,
         completedAt: taskMainItem.completedAt,
         metadata: taskMainItem.metadata,
-        dayMaxNum: parseInt(dayMaxNum),
-        dayPayCredit: 2,// 每日超次数后扣积分
         noSoundVideoUrl,
         backgroundAudioUrl,
+        vocalAudioUrl,
         srt_source_arr: originalSubtitleItem?.subtitleData || [],
         srt_convert_arr: translatedSubtitleItem?.subtitleData || [],
 
@@ -199,7 +195,6 @@ export const getDBJsonData = async (taskMainId: string) => {
       },
       performance: {
         totalTime,
-        useJavaSignUrl: USE_JAVA_REQUEST,
       },
     };
   } catch (error) {

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, UserRound } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
-import { stripLocalePrefix } from '@/core/i18n/href';
-import { Link, useRouter } from '@/core/i18n/navigation';
+import { Link } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -16,8 +15,6 @@ import { useAppContext } from '@/shared/contexts/app';
 import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 
 import { SocialProviders } from './social-providers';
-import { generateVisitorId, getVisitorInfo } from '@/shared/lib/fingerprint';
-import { GuestLoginToast } from '@/shared/components/guest-login-toast';
 
 export function SignInForm({
   callbackUrl = '/',
@@ -31,14 +28,13 @@ export function SignInForm({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { configs, refreshSession } = useAppContext();
-  const router = useRouter();
+  const { configs } = useAppContext();
 
-  const isGoogleAuthEnabled = configs.google_auth_enabled === 'true';
-  const isGithubAuthEnabled = configs.github_auth_enabled === 'true';
+  const hasGoogleProvider = Boolean(configs.google_client_id);
+  const hasGithubProvider = Boolean(configs.github_client_id);
   const isEmailAuthEnabled =
     configs.email_auth_enabled !== 'false' ||
-    (!isGoogleAuthEnabled && !isGithubAuthEnabled); // no social providers enabled, auto enable email auth
+    (!hasGoogleProvider && !hasGithubProvider); // no social providers configured, auto enable email auth
 
   const locale = useLocale();
   const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/');
@@ -50,8 +46,6 @@ export function SignInForm({
   ) {
     localizedCallbackUrl = `/${locale}${safeCallbackUrl}`;
   }
-
-  const callbackHref = stripLocalePrefix(localizedCallbackUrl);
 
   const handleSignIn = async () => {
     if (loading) {
@@ -88,53 +82,6 @@ export function SignInForm({
     } catch (e: any) {
       toast.error(e.message || 'sign in failed');
     } finally {
-      setLoading(false);
-    }
-  };
-  // 访客登录 - 使用稳定的跨浏览器访客 ID
-  // 法一：调用自己后台接口处理
-  const handleGuestLogin = async () => {
-    if (loading) {
-      return;
-    }
-    try {
-      setLoading(true);
-      // 生成稳定的访客 ID（基于硬件指纹，跨浏览器一致）
-      const visitorId = await generateVisitorId();
-      const visitorInfo = await getVisitorInfo();
-
-      // 调用访客登录 API 获取/创建访客凭证
-      // 硬件指纹在同一台电脑的不同浏览器上是一致的
-      const response = await fetch('/api/auth/guest-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          visitorId,
-          fingerprint: visitorId, // backward compatibility
-          metadata: visitorInfo.metadata,
-        }),
-      });
-
-      const result = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(result?.message || 'Guest login failed');
-      }
-      if (!result || result.code !== 0) {
-        throw new Error(result?.message || 'Guest login failed');
-      }
-
-      // Guest login endpoint sets the auth cookie. Refetch session so UI updates immediately.
-      void refreshSession();
-
-      toast.custom((t_id) => (
-        <GuestLoginToast t={t} onDismiss={() => toast.dismiss(t_id)} />
-      ));
-
-      setLoading(false);
-      router.push(callbackHref);
-      router.refresh();
-    } catch (e: any) {
-      toast.error(e.message || 'Guest login failed');
       setLoading(false);
     }
   };
@@ -209,22 +156,6 @@ export function SignInForm({
           loading={loading}
           setLoading={setLoading}
         />
-
-        {/* Guest Login Button */}
-        <Button
-          variant="outline"
-          className="h-auto w-full flex-col gap-1 py-4 hover:border-primary/50 hover:bg-accent/50"
-          onClick={handleGuestLogin}
-          disabled={loading}
-        >
-          <div className="flex items-center gap-2">
-            <UserRound className="h-4 w-4" />
-            <span className="font-medium">{t('guest_sign_in_title')}</span>
-          </div>
-          <span className="text-xs font-normal text-muted-foreground/80">
-            {t('guest_sign_in_description')}
-          </span>
-        </Button>
       </div>
       {isEmailAuthEnabled && (
         <div className="flex w-full justify-center border-t py-4">

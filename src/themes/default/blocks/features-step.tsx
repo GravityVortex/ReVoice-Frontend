@@ -41,7 +41,7 @@ export function FeaturesStep({
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(99,102,241,0.25),transparent_60%),radial-gradient(900px_circle_at_80%_30%,rgba(16,185,129,0.14),transparent_55%)]" />
           <div className="pointer-events-none absolute inset-0 bg-grid-white/[0.03]" />
 
-          <div className="@container relative container py-14 md:py-20">
+          <div className="@container relative w-full max-w-7xl mx-auto px-4 py-14 md:py-20">
             <ScrollAnimation>
               <div className="mx-auto max-w-3xl text-center">
                 {features.label && (
@@ -62,7 +62,7 @@ export function FeaturesStep({
 
             <ScrollAnimation delay={0.2}>
               <div className="relative mt-14 md:mt-16">
-                <div className="pointer-events-none absolute left-8 right-8 top-6 hidden h-px bg-gradient-to-r from-transparent via-white/15 to-transparent lg:block" />
+
 
                 <ol className="grid gap-6 lg:grid-cols-3">
                   {features.items?.map((item, idx) => {

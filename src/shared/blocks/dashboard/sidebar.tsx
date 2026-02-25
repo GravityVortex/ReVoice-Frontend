@@ -25,7 +25,6 @@ import { Nav } from './nav';
 import { SidebarButtons } from './sidebar-buttons';
 import { SidebarFooter } from './sidebar-footer';
 import { SidebarHeader } from './sidebar-header';
-import { SidebarUser } from './sidebar-user';
 
 export function Sidebar({
   sidebar,
@@ -70,20 +69,20 @@ export function Sidebar({
         ],
       },
     ],
-    user: {
-      show_email: false,
-      show_signout: true,
-      signin_callback: '/dashboard',
-      signout_callback: '/',
-      nav: {
-        items: [
-          {
-            title: t('user_nav.billing'),
-            url: '/settings/billing',
-            icon: 'CreditCard',
-          },
-        ],
-      },
+    bottom_nav: {
+      items: [
+        {
+          title: t('user_nav.settings'),
+          url: '/settings',
+          icon: 'Settings',
+        },
+        {
+          title: t('user_nav.support'),
+          url: 'https://docs.souldub.ai/',
+          icon: 'HelpCircle',
+          target: '_blank',
+        },
+      ],
     },
     variant: 'floating',
     collapsible: 'icon',
@@ -121,9 +120,8 @@ export function Sidebar({
         {bottomNav ? <Nav nav={bottomNav} className="mt-auto" /> : null}
       </SidebarContent>
 
-      {(resolvedSidebar.user || resolvedSidebar.footer) ? (
+      {(resolvedSidebar.footer) ? (
         <SidebarShellFooter className="p-0 border-t border-white/10">
-          {resolvedSidebar.user ? <SidebarUser user={resolvedSidebar.user} /> : null}
           {resolvedSidebar.footer ? <SidebarFooter footer={resolvedSidebar.footer} /> : null}
         </SidebarShellFooter>
       ) : null}

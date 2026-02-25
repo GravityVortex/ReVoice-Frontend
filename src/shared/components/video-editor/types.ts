@@ -56,15 +56,13 @@ export interface ConvertObj {
   metadata: string;
   noSoundVideoUrl: string;
   backgroundAudioUrl: string;
+  vocalAudioUrl?: string;
   srt_source_arr: any[];
   srt_convert_arr: any[];
 
   srt_double_arr: any[];// 两个字幕合成的字段
   r2preUrl?:string; // 组装进来的，公桶前缀
   env?:string; // 组装进来的，dev、pro
-
-  dayMaxNum?:string;// 组装进来的，每日合并限制次数
-  dayPayCredit?:string;// 组装进来的，超次合并扣积分
 
   // convertId: string;
   // video_nosound: string;

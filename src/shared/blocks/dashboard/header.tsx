@@ -1,91 +1,105 @@
-import { Fragment } from 'react';
+'use client';
+
+import { ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { Link } from '@/core/i18n/navigation';
-import {
-  LocaleSelector,
-  SmartIcon,
-  ThemeToggler,
-} from '@/shared/blocks/common';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/shared/components/ui/breadcrumb';
-import { Button } from '@/shared/components/ui/button';
-import { Separator } from '@/shared/components/ui/separator';
 import { SidebarTrigger } from '@/shared/components/ui/sidebar';
-import { Button as ButtonType, Crumb } from '@/shared/types/blocks/common';
+import { LocaleSelector, ThemeToggler } from '@/shared/blocks/common';
+import { Crumb } from '@/shared/types/blocks/common';
+import { SidebarUser as SidebarUserType } from '@/shared/types/blocks/dashboard';
 
-export function Header({
-  title,
-  crumbs,
-  buttons,
-  show_locale,
-  show_theme,
-}: {
-  title?: string;
+import { UserNav } from './user-nav';
+
+export interface HeaderProps {
   crumbs?: Crumb[];
-  buttons?: ButtonType[];
-  show_locale?: boolean;
-  show_theme?: boolean;
-}) {
+}
+
+export function Header({ crumbs }: HeaderProps) {
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <div className="flex items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1" />
-        {crumbs && crumbs.length > 0 && (
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-        )}
-        {crumbs && crumbs.length > 0 && (
-          <Breadcrumb>
-            <BreadcrumbList>
-              {crumbs.map((crumb, index) => (
-                <Fragment key={index}>
-                  <BreadcrumbItem className="hidden md:block">
-                    {crumb.is_active ? (
-                      <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+
+        {crumbs && crumbs.length > 0 ? (
+          <nav aria-label="Breadcrumb" className="ml-2">
+            <ol className="flex items-center gap-1 text-sm text-muted-foreground">
+              {crumbs.map((c, idx) => {
+                const title = c.title || c.name || c.text || '';
+                const isActive = Boolean(c.is_active);
+                const href = c.url || '';
+
+                return (
+                  <li key={`${idx}-${href}-${title}`} className="flex items-center">
+                    {idx > 0 ? (
+                      <ChevronRight className="mx-1 h-4 w-4 text-muted-foreground/70" />
+                    ) : null}
+
+                    {href && !isActive ? (
+                      <Link
+                        href={href}
+                        target={c.target}
+                        className="hover:text-foreground"
+                      >
+                        {title}
+                      </Link>
                     ) : (
-                      <Link href={crumb.url || ''}>{crumb.title}</Link>
+                      <span className={isActive ? 'text-foreground' : ''}>
+                        {title}
+                      </span>
                     )}
-                  </BreadcrumbItem>
-                  {index < crumbs.length - 1 && (
-                    <BreadcrumbSeparator className="hidden md:block" />
-                  )}
-                </Fragment>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
-        )}
-        <div className="ml-auto flex items-center gap-4">
-          {buttons && buttons.length > 0 && (
-            <div className="flex items-center gap-4">
-              {buttons.map((button, idx) => (
-                <Button
-                  key={idx}
-                  variant={button.variant || 'outline'}
-                  size="sm"
-                >
-                  <Link
-                    href={button.url || ''}
-                    target={button.target || '_self'}
-                    className="flex items-center gap-2"
-                  >
-                    {button.icon && <SmartIcon name={button.icon as string} />}
-                    {button.title}
-                  </Link>
-                </Button>
-              ))}
-            </div>
-          )}
-          {show_theme && <ThemeToggler />}
-          {show_locale !== false && <LocaleSelector type="button" />}
-        </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+        ) : null}
+      </div>
+
+      <div className="flex-1" />
+
+      <div className="flex items-center gap-2 px-4">
+        <ThemeToggler />
+        <LocaleSelector />
+      </div>
+    </header>
+  );
+}
+
+export interface DashboardHeaderProps {
+  user?: SidebarUserType | null;
+}
+
+export function DashboardHeader({ user }: DashboardHeaderProps) {
+  const t = useTranslations('common.dashboard.sidebar');
+
+  // Fallback user config if not provided, though typically passed from layout
+  const resolvedUser = user ?? {
+    show_email: false,
+    show_signout: true,
+    signin_callback: '/dashboard',
+    signout_callback: '/',
+    nav: {
+      items: [
+        {
+          title: t('user_nav.billing'),
+          url: '/settings/billing',
+          icon: 'CreditCard',
+        },
+      ],
+    },
+  };
+
+  return (
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <div className="flex items-center gap-2 px-4">
+        <SidebarTrigger className="-ml-1" />
+      </div>
+      <div className="flex-1" />
+      <div className="flex items-center gap-2 px-4">
+        <ThemeToggler />
+        <LocaleSelector />
+        <UserNav user={resolvedUser} />
       </div>
     </header>
   );

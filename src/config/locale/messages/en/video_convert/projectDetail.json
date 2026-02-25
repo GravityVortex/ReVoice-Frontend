@@ -44,18 +44,18 @@
   },
   "audio": {
     "title": "Audio",
-    "description": "After successful conversion, audio can be downloaded separately. We recommend previewing before downloading.",
+    "description": "We recommend previewing before downloading.",
     "preview": "Preview",
-    "download": "Download Subtitle",
-    "downloadBg": "Download Background"
+    "download": "Subtitle Audio",
+    "downloadBg": "Background Audio"
   },
   "subtitle": {
     "title": "Subtitle",
-    "description": "After successful conversion, subtitles can be downloaded separately and compared with original subtitles.",
-    "compare": "Compare",
-    "download_yuan": "Original Subtitle",
-    "download_tran": "Translated Subtitle",
-    "download_double": "Bilingual Subtitle"
+    "description": "Supports original, translated, and bilingual subtitles.",
+    "compare": "Bilingual Compare",
+    "download_yuan": "Original Subtitles",
+    "download_tran": "Translated Subtitles",
+    "download_double": "Bilingual Subtitles"
   },
   "buttons": {
     "download": "Download",
@@ -108,9 +108,41 @@
   "ui": {
     "back": "Back",
     "preview": "Preview",
+    "currentRun": "Current run",
+    "previewTools": {
+      "title": "Preview tools",
+      "speed": "Speed",
+      "loop": "Loop"
+    },
     "outputs": "Outputs",
     "runs": "Runs",
+    "addRun": {
+      "button": "New translation",
+      "title": "New translation run",
+      "description": "Each language pair can only be created once (failed/cancelled can be recreated).",
+      "sourceLanguage": "Source language",
+      "targetLanguage": "Target language",
+      "speakerCount": "Speakers",
+      "create": "Start",
+      "creating": "Creating...",
+      "costTitle": "Estimated cost",
+      "costDuration": "Duration ~{minutes} min",
+      "costPerMinute": "{points} credits/min",
+      "duplicate": "This language pair already exists",
+      "goToExisting": "View run",
+      "noAvailable": "No available language pairs",
+      "createdToast": "Run created",
+      "duplicateToast": "Run already exists. Switched to the existing one.",
+      "failedToast": "Failed to create. Please try again.",
+      "recreateHint": "Previous run failed/cancelled. You can recreate it."
+    },
     "noPreview": "No preview available",
+    "statusHint": {
+      "pending": "Queued. We'll start automatically - feel free to leave this page.",
+      "processing": "Processing in the background. You can close this page and come back later.",
+      "completed": "Done. Download the outputs, or open the editor to refine.",
+      "failed": "Failed. Check the error message and try again."
+    },
     "startConvert": "Start conversion",
     "emptyRuns": "No conversion runs yet",
     "downloadSubtitles": "Download subtitles",
@@ -128,7 +160,31 @@
     },
     "finalVideo": {
       "title": "Final video",
-      "description": "Dubbed voice + preserved background audio (ready to deliver)"
+      "description": "Ready to deliver."
+    },
+    "compareModal": {
+      "title": "Bilingual Compare",
+      "description": "{count} subtitle cues. Compare original vs translated, with preview and copy.",
+      "empty": {
+        "title": "No subtitles to compare",
+        "description": "This run has no subtitles yet, or there's nothing to compare."
+      },
+      "columns": {
+        "original": "Original",
+        "translated": "Translated"
+      },
+      "actions": {
+        "playOriginal": "Play original audio",
+        "copyOriginal": "Copy original text",
+        "playTranslated": "Play translated audio",
+        "copyTranslated": "Copy translated text"
+      },
+      "toast": {
+        "audioUnavailable": "Audio unavailable. Please try again later.",
+        "empty": "Nothing to copy",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Copy failed. Please copy manually."
+      }
     },
     "progressLoadFailed": "Failed to load progress. Please try again later.",
     "progressEmpty": "No progress logs yet.",

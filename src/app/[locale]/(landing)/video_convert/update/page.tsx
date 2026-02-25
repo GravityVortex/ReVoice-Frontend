@@ -1,13 +1,14 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { ArrowLeft, Save } from "lucide-react";
+import { usePausedVideoPrefetch } from "@/shared/hooks/use-paused-video-prefetch";
 
 export default function VideoUpdatePage() {
   const searchParams = useSearchParams();
@@ -27,6 +28,17 @@ export default function VideoUpdatePage() {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState("");
+  const sourceVideoRef = useRef<HTMLVideoElement>(null);
+  const resultVideoRef = useRef<HTMLVideoElement>(null);
+
+  usePausedVideoPrefetch(sourceVideoRef, {
+    enabled: Boolean(formData.source_vdo_url),
+    minBufferedAheadSeconds: 8,
+  });
+  usePausedVideoPrefetch(resultVideoRef, {
+    enabled: Boolean(formData.result_vdo_url),
+    minBufferedAheadSeconds: 8,
+  });
 
   // 组件首次加载时从API加载视频数据
   useEffect(() => {
@@ -155,20 +167,6 @@ export default function VideoUpdatePage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* 封面图URL */}
-              {false && (
-                <div className="space-y-2">
-                  <Label htmlFor="cover_url">封面图URL</Label>
-                  <Input
-                    id="cover_url"
-                    value={formData.cover_url}
-                    onChange={(e) => handleChange("cover_url", e.target.value)}
-                    placeholder="https://example.com/cover.jpg"
-                    type="url"
-                  />
-                </div>
-              )}
-
               {/* 封面预览 */}
               {formData.cover_url && (
                 <div className="space-y-2">
@@ -220,23 +218,6 @@ export default function VideoUpdatePage() {
               </div>
 
 
-              {/* 视频时长 */}
-              {false && (
-                <div className="space-y-2">
-                  <Label htmlFor="duration">视频时长（秒）</Label>
-                  <Input
-                    id="duration"
-                    value={formData.duration}
-                    onChange={(e) => handleChange("duration", e.target.value)}
-                    placeholder="例如: 123"
-                    type="number"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    请输入视频时长的秒数
-                  </p>
-                </div>
-              )}
-
               {/* 提交按钮 */}
               <div className="flex gap-3">
                 <Button type="submit" disabled={loading} className="flex-1">
@@ -266,8 +247,10 @@ export default function VideoUpdatePage() {
               <div className="space-y-2">
                 <Label>原视频</Label>
                 <video
+                  ref={sourceVideoRef}
                   src={formData.source_vdo_url}
                   controls
+                  preload="auto"
                   className="w-full rounded-lg border"
                   style={{ maxHeight: "300px" }}>
                   您的浏览器不支持视频播放
@@ -287,8 +270,10 @@ export default function VideoUpdatePage() {
               <div className="space-y-2">
                 <Label>转换后的视频</Label>
                 <video
+                  ref={resultVideoRef}
                   src={formData.result_vdo_url}
                   controls
+                  preload="auto"
                   className="w-full rounded-lg border"
                   style={{ maxHeight: "300px" }}
                 >
@@ -303,7 +288,7 @@ export default function VideoUpdatePage() {
 
             {/* 视频信息 <strong>视频ID:</strong> {videoId} {formData.title} */}
             <div className="space-y-2 text-sm text-gray-600">
-              {true && formData.duration && (
+              {formData.duration && (
                 <div className="flex flex-row justify-between">
                   <div>
                     <strong>视频时长：{formData.duration}秒</strong> 

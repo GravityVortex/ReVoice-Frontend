@@ -7,11 +7,6 @@
     "coming_soon": "Coming soon",
     "go_to_profile": "Go to Profile"
   },
-  "guest": {
-    "title": "Guest account",
-    "description": "Verify your account from Profile to unlock full features and secure your data.",
-    "button": "Go to Profile"
-  },
   "fields": {
     "email": "Email",
     "password": "Password",

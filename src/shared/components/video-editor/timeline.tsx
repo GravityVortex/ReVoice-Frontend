@@ -1,286 +1,278 @@
-"use client";
+'use client';
 
-import React, { useRef, useCallback } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
+
 import { cn } from '@/shared/lib/utils';
 
-interface TimelineProps {
+type TimelineProps = {
+  className?: string;
   currentTime: number;
   totalDuration: number;
-  zoom: number;
-  onTimeChange: (newTime: number) => void;
-  onTimeLineClick?: (newTime: number) => void;
-  className?: string;
-  onDragging?: (isDragging: boolean) => void;// 是否正在拖拽红色指针
-  onDragStop?: (newTime: number) => void;// 拖拽停止时的回调
+  zoom?: number;
+  onTimeLineClick?: (time: number) => void;
+  onTimeChange?: (time: number) => void;
+  onDragging?: (dragging: boolean) => void;
+  onDragStop?: (time: number) => void;
+  playheadHeightPx?: number;
+};
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds)) return '00:00';
+  const total = Math.max(0, seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = Math.floor(total % 60);
+  if (h > 0) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+const LABEL_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600] as const;
+const MINOR_TICK_STEPS = [0.25, 0.5, 1, 1.5, 2, 2.5, 4, 5, 8, 10, 15, 30, 60, 120, 300, 600] as const;
+
+function pickLabelStepSeconds(totalDuration: number, zoom: number) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  // UX baseline: at 100% zoom we want a readable "2s per mark" ruler.
+  // When zooming out, labels can be sparser; when zooming in, 1s labels are enough.
+  const target = 2 / z;
+  let best: number = LABEL_STEPS[0];
+  let bestDelta = Math.abs(best - target);
+  for (const step of LABEL_STEPS) {
+    const d = Math.abs(step - target);
+    if (d < bestDelta) {
+      best = step;
+      bestDelta = d;
+    }
+  }
+  return best;
+}
+
+function pickMinorTickSeconds(zoom: number) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const target = 2 / z; // default: 2s per tick at 100%
+  let best: number = MINOR_TICK_STEPS[0];
+  let bestDelta = Math.abs(best - target);
+  for (const step of MINOR_TICK_STEPS) {
+    const d = Math.abs(step - target);
+    if (d < bestDelta) {
+      best = step;
+      bestDelta = d;
+    }
+  }
+  return best;
 }
 
 export function Timeline({
+  className,
   currentTime,
   totalDuration,
-  zoom,
-  onTimeChange,
+  zoom = 1,
   onTimeLineClick,
+  onTimeChange,
   onDragging,
   onDragStop,
-  className,
+  playheadHeightPx,
 }: TimelineProps) {
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [dragStartX, setDragStartX] = React.useState(0);
-  const [dragStartTime, setDragStartTime] = React.useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const startXRef = useRef<number>(0);
+  const didDragRef = useRef(false);
 
-  // 格式化时间显示 - 时间轴专用
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
+  // Throttle drag emits: this avoids turning pointermove into a full-react render loop.
+  const lastEmitMsRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
+  const latestTimeRef = useRef(0);
 
-    if (mins > 0) {
-      return `${mins}:${secs.toString().padStart(2, '0')}`;
-    } else {
-      return `${secs}s`;
+  const safeTotal = Math.max(0.001, totalDuration);
+
+  // User expectation: keep the ruler readable and predictable.
+  // Fixed tick grid: 2s per minor mark, 10s per major mark.
+  // (Zoom changes the spacing in px, not the "seconds per tick".)
+  const minorStepSeconds = 2;
+  const majorStepSeconds = 10;
+  // Labels are much more expensive than ticks; keep them sparse so playback doesn't stutter.
+  // (Still consistent with a 2s grid: label every major mark.)
+  const labelStepSeconds = 10;
+
+  const minorStepPct = useMemo(() => Math.min(100, (minorStepSeconds / safeTotal) * 100), [minorStepSeconds, safeTotal]);
+  const majorStepPct = useMemo(() => Math.min(100, (majorStepSeconds / safeTotal) * 100), [majorStepSeconds, safeTotal]);
+
+  const labels = useMemo(() => {
+    const out: Array<{ t: number; leftPct: number; label: string }> = [];
+    const count = Math.floor(safeTotal / labelStepSeconds);
+    for (let i = 0; i <= count; i++) {
+      const t = i * labelStepSeconds;
+      out.push({ t, leftPct: (t / safeTotal) * 100, label: formatTime(t) });
     }
-  };
+    return out;
+  }, [labelStepSeconds, safeTotal]);
 
-  // 格式化当前时间显示 - 播放头专用
-  const formatCurrentTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 100);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-  };
-
-  // 处理时间轴点击
-  const handleTimelineClick = useCallback((e: React.MouseEvent) => {
-    if (!timelineRef.current || isDragging) return;
-
-    const rect = timelineRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const timelineWidth = rect.width;
-    const newTime = (clickX / timelineWidth) * totalDuration;
-    // 调用回调函数
-    onTimeLineClick?.(Math.max(0, Math.min(newTime, totalDuration)));
-  }, [totalDuration, onTimeLineClick, isDragging]);
-
-  // 处理播放头拖动开始
-  const handlePlayheadMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setIsDragging(true);
-    console.log('拖动指针开始---->', e.clientX);
-    onDragging?.(true);
-    setDragStartX(e.clientX);
-    setDragStartTime(currentTime);
-
-    document.body.style.cursor = 'ew-resize';
-  }, [currentTime, onDragging]);
-
-  // 处理拖动过程
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !timelineRef.current) return;
-
-    const rect = timelineRef.current.getBoundingClientRect();
-    const deltaX = e.clientX - dragStartX;
-    const timelineWidth = rect.width;
-    const deltaTime = (deltaX / timelineWidth) * totalDuration;
-    const newTime = dragStartTime + deltaTime;
-
-    onTimeChange(Math.max(0, Math.min(newTime, totalDuration)));
-  }, [isDragging, dragStartX, dragStartTime, totalDuration, onTimeChange]);
-
-  // 处理拖动结束
-  const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(false);
-      onDragging?.(false);
-      onDragStop?.(currentTime);
-      console.log('拖动结束---->', currentTime);
-      document.body.style.cursor = '';
-    }
-  }, [isDragging, currentTime, onDragging, onDragStop]);
-
-  // 添加全局事件监听器
-  React.useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-
-      // 防止拖动时选中文本
-      document.body.style.userSelect = 'none';
-      document.body.style.webkitUserSelect = 'none';
-
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.userSelect = '';
-        document.body.style.webkitUserSelect = '';
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  // 防止拖动时的默认行为
-  React.useEffect(() => {
-    const preventDragStart = (e: DragEvent) => {
-      if (isDragging) {
-        e.preventDefault();
-      }
-    };
-
-    document.addEventListener('dragstart', preventDragStart);
-    return () => document.removeEventListener('dragstart', preventDragStart);
-  }, [isDragging]);
-
-  // 生成时间刻度
-  const generateTimeMarkers = () => {
-    const markers = [];
-
-    // 根据缩放级别和总时长智能调整刻度密度，最小显示刻度1秒
-    let step: number;
-    let mainStep: number;
-    let showAllSecondLabels = false; // 是否显示所有秒数标签
-
-
-    if (zoom >= 4) {
-      step = 1;    // 1秒间隔（最小刻度）
-      mainStep = 1;  // 每1秒显示时间标签
-      showAllSecondLabels = true; // 高缩放时显示所有秒数
-    } else if (zoom >= 3) {
-      step = 1;    // 1秒间隔（最小刻度）
-      mainStep = 2;  // 每2秒显示时间标签
-    } else if (zoom >= 2) {
-      step = 1;    // 1秒间隔（最小刻度）
-      mainStep = 5;  // 每5秒显示时间标签
-    } else if (zoom >= 1) {
-      step = 1;    // 2秒间隔
-      mainStep = 5; // 每10秒显示时间标签
-    } else {
-      step = 5;    // 5秒间隔
-      mainStep = 15; // 每15秒显示时间标签
-    }
-
-    for (let i = 0; i <= totalDuration; i += step) {
-      const leftPercent = (i / totalDuration) * 100;
-      const isMainMarker = i % mainStep === 0;
-      const isSecondaryMarker = i % (step * 2) === 0 && !isMainMarker;
-      const showLabel = showAllSecondLabels ? (step === 1) : isMainMarker;
-
-      markers.push(
-        <div
-          key={i}
-          className={cn(
-            "absolute top-0 border-l",
-            isMainMarker
-              ? "border-gray-300 h-full"
-              : isSecondaryMarker
-                ? "border-gray-500 h-3"
-                : "border-gray-600 h-2"
-          )}
-          style={{ left: `${leftPercent}%` }}
-        >
-          {showLabel && (
-            <span className={cn(
-              "absolute top-1 left-1 text-xs whitespace-nowrap font-medium",
-              showAllSecondLabels && step === 1
-                ? "font-medium" // 高缩放时的秒数标签更亮
-                : "font-medium"
-            )}>
-              {showAllSecondLabels && step === 1
-                ? `${i}s` // 显示秒数格式如 "1s", "2s"
-                : formatTime(i) // 显示时间格式如 "00:01"
-              }
-            </span>
-          )}
-        </div>
-      );
-    }
-
-    return markers;
-  };
-
-  // 只显示时间轴内容，不显示左侧标签
-  return (
-    <div className={cn("h-full bg-background relative", className)} style={{ zIndex: 40 }}>
+  // Memoize the heavy label tree so `currentTime` updates mainly move the playhead.
+  const labelEls = useMemo(() => {
+    return labels.map((l) => (
       <div
-        ref={timelineRef}
-        className="h-full cursor-pointer relative select-none"
-        onClick={handleTimelineClick}
-        style={{
-          width: `${100 * zoom}%`,
-          minWidth: '100%'
-        }}
+        key={l.t}
+        className="absolute -translate-x-1/2 text-[10px] font-mono tabular-nums text-muted-foreground/80"
+        style={{ left: `${l.leftPct}%` }}
       >
-        {/* 时间刻度 - 默认显示 */}
-        {generateTimeMarkers()}
+        {l.label}
+      </div>
+    ));
+  }, [labels]);
 
-        {/* 播放头 - 横跨四轨道，可拖动 */}
+  const timeAtClientX = useCallback(
+    (clientX: number) => {
+      const el = rootRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const x = clamp(clientX - rect.left, 0, rect.width);
+      const pct = rect.width <= 0 ? 0 : x / rect.width;
+      return clamp(pct * safeTotal, 0, safeTotal);
+    },
+    [safeTotal]
+  );
+
+  const stopRaf = useCallback(() => {
+    if (rafIdRef.current == null) return;
+    cancelAnimationFrame(rafIdRef.current);
+    rafIdRef.current = null;
+  }, []);
+
+  const scheduleDragEmit = useCallback(() => {
+    if (rafIdRef.current != null) return;
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      const now = performance.now();
+      // 30fps feels smooth enough without hammering the whole editor.
+      if (now - lastEmitMsRef.current < 1000 / 30) return;
+      lastEmitMsRef.current = now;
+      onTimeChange?.(latestTimeRef.current);
+    });
+  }, [onTimeChange]);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0) return;
+      pointerIdRef.current = e.pointerId;
+      startXRef.current = e.clientX;
+      didDragRef.current = false;
+      latestTimeRef.current = timeAtClientX(e.clientX);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [timeAtClientX]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (pointerIdRef.current == null || e.pointerId !== pointerIdRef.current) return;
+      const dx = Math.abs(e.clientX - startXRef.current);
+      latestTimeRef.current = timeAtClientX(e.clientX);
+
+      if (!didDragRef.current && dx >= 3) {
+        didDragRef.current = true;
+        lastEmitMsRef.current = 0;
+        onDragging?.(true);
+        // Emit immediately so the UI "sticks" to the pointer.
+        onTimeChange?.(latestTimeRef.current);
+        return;
+      }
+
+      if (didDragRef.current) {
+        scheduleDragEmit();
+      }
+    },
+    [onDragging, onTimeChange, scheduleDragEmit, timeAtClientX]
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (pointerIdRef.current == null || e.pointerId !== pointerIdRef.current) return;
+      const time = timeAtClientX(e.clientX);
+      stopRaf();
+      pointerIdRef.current = null;
+
+      if (didDragRef.current) {
+        didDragRef.current = false;
+        onDragging?.(false);
+        onDragStop?.(time);
+        return;
+      }
+
+      onTimeLineClick?.(time);
+    },
+    [onDragStop, onDragging, onTimeLineClick, stopRaf, timeAtClientX]
+  );
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    stopRaf();
+    pointerIdRef.current = null;
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      onDragging?.(false);
+      // Treat pointer-cancel like a drag-stop so parents can clear their "drag pause" flags.
+      onDragStop?.(latestTimeRef.current);
+    }
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  }, [onDragStop, onDragging, stopRaf]);
+
+  const playheadLeftPct = useMemo(() => clamp((currentTime / safeTotal) * 100, 0, 100), [currentTime, safeTotal]);
+  const playheadH = playheadHeightPx ?? undefined;
+
+  return (
+    <div
+      ref={rootRef}
+      className={cn(
+        'relative h-full w-full select-none',
+        // Grid ticks.
+        '[background-image:linear-gradient(to_right,rgba(148,163,184,0.10)_1px,transparent_1px),linear-gradient(to_right,rgba(148,163,184,0.16)_1px,transparent_1px)]',
+        className
+      )}
+      style={{
+        backgroundSize: `${minorStepPct}% 100%, ${majorStepPct}% 100%`,
+        backgroundRepeat: 'repeat',
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+    >
+      {/* Labels */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1">
+        {labelEls}
+      </div>
+
+      {/* Playhead (pro-editor style: crisp line + compact handle; overflows downward into tracks). */}
+      <div
+        aria-hidden
+        className={cn(
+          'absolute top-0 z-30 w-px',
+          'bg-primary',
+          'shadow-[0_0_0_1px_rgba(0,0,0,0.55),0_0_14px_rgba(0,0,0,0.25)]'
+        )}
+        style={{
+          left: `calc(${playheadLeftPct}% - 0.5px)`,
+          height: playheadH ?? '100%',
+        }}
+      />
+      <div aria-hidden className="absolute top-0 z-40 -translate-x-1/2" style={{ left: `${playheadLeftPct}%` }}>
         <div
           className={cn(
-            "absolute top-0 w-0.5 bg-red-500 cursor-ew-resize group shadow-lg",
-            isDragging ? "transition-none bg-red-600 shadow-xl" : "transition-all duration-100 ease-out"
+            'relative mt-1 h-4 w-6 rounded-[7px]',
+            'bg-primary',
+            'shadow-[0_10px_30px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.14)]'
           )}
-          style={{
-            left: `${(currentTime / totalDuration) * 100}%`,
-            height: '320px', // 四轨道高度(320px)
-            zIndex: 9999,
-            boxShadow: isDragging ? '0 0 10px rgba(239, 68, 68, 0.5)' : '0 0 5px rgba(239, 68, 68, 0.3)',
-            position: 'absolute',
-            top: '0',
-            pointerEvents: 'auto'
-          }}
-          onMouseDown={handlePlayheadMouseDown}
         >
-          {/* 播放头顶部三角形 - 可拖动区域 */}
-          <div
-            className={cn(
-              "absolute top-4 -left-[15px] w-8 h-8 gap-0.5 flex items-center justify-center cursor-ew-resize",
-              "hover:scale-110 transition-transform duration-150",
-              isDragging && "scale-120"
-            )}
-            onMouseDown={handlePlayheadMouseDown}
-          >
-            <div className="w-0 h-0 border-6 border-t-transparent border-b-transparent border-l-transparent border-r-red-500" />
-            <div className="w-0 h-0 border-6 border-t-transparent border-b-transparent border-r-transparent border-l-red-500" />
-          </div>
-
-          {/* 播放头线条 - 增强拖动区域 */}
-          <div
-            className="absolute -left-1 top-0 w-2 h-full cursor-ew-resize hover:bg-red-400/20 transition-colors duration-150"
-            onMouseDown={handlePlayheadMouseDown}
-          />
-
-          {/* 播放头底部指示器 */}
-          <div className={cn(
-            "absolute -bottom-1 -left-1.5 w-0 h-0 border-l-[6px] border-r-[6px] border-t-8 border-l-transparent border-r-transparent border-t-red-500",
-            "transition-all duration-150",
-            isDragging && "scale-110"
-          )} />
-
-          {/* 拖动时的阴影效果 */}
-          {isDragging && (
-            <div className="absolute -left-1 top-0 w-2 h-full bg-red-500/30 animate-pulse" />
-          )}
-        </div>
-
-        {/* 当前时间显示 */}
-        <div
-          className={cn(
-            "absolute -top-8 bg-red-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none shadow-lg",
-            isDragging ? "scale-110 bg-red-600 shadow-xl transition-none" : "transition-all duration-100 ease-out"
-          )}
-          style={{
-            left: `${(currentTime / totalDuration) * 100}%`,
-            transform: 'translateX(-50%)',
-            zIndex: 60
-          }}
-        >
-          {formatCurrentTime(currentTime)}
-
-          {/* 拖动时的指示箭头 */}
-          {isDragging && (
-            <div className="absolute h-4 px-1 top-13 -left-3 bg-red-800 text-white text-xs rounded whitespace-nowrap" >
-              {currentTime.toFixed(2)}
-            </div>
-          )}
+          {/* Grip */}
+          <div className="absolute inset-x-1.5 top-1 h-[2px] rounded bg-white/25" />
+          {/* Pointer */}
+          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-l-[7px] border-r-[7px] border-t-[8px] border-l-transparent border-r-transparent border-t-primary" />
         </div>
       </div>
     </div>

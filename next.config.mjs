@@ -15,6 +15,10 @@ const withNextIntl = createNextIntlPlugin({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // output: process.env.VERCEL ? undefined : 'standalone',
+  // Allow local builds to override the output directory (useful if `.next` has bad permissions).
+  // Default remains `.next`.
+  // On Vercel, keep the default `.next` directory to match the platform's build/runtime expectations.
+  distDir: process.env.VERCEL ? '.next' : process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: false,
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   images: {

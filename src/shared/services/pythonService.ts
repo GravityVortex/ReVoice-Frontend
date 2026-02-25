@@ -1,4 +1,35 @@
-import { MODAL_KEY, MODAL_SECRET, PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-config';
+import { PYTHON_SERVER_BASE_URL } from '@/shared/cache/system-config';
+
+import { buildPythonAuthHeaders } from '@/shared/services/pythonAuth';
+
+type ModalRequestOptions = {
+  idempotencyKey?: string;
+};
+
+function resolveTtsBaseUrl(): string {
+  // 单条字幕音频重生成已迁移到 TTS 服务：
+  // - 优先使用 TTS_SERVER_BASE_URL（避免影响其它仍走 VAP 的接口）
+  // - 未配置时回退 PYTHON_SERVER_BASE_URL（兼容旧环境/快速回滚）
+  const ttsBaseUrl = String(process.env.TTS_SERVER_BASE_URL || '').trim();
+  const baseUrl = ttsBaseUrl || String(PYTHON_SERVER_BASE_URL || '').trim();
+  return baseUrl;
+}
+
+function resolveLegacyPythonBaseUrl(): string {
+  return String(PYTHON_SERVER_BASE_URL || '').trim();
+}
+
+async function fetchWithOptionalFallback(
+  primaryUrl: string,
+  init: RequestInit,
+  fallbackUrl: string
+): Promise<Response> {
+  const primary = await fetch(primaryUrl, init);
+  // 兼容：新 TTS 服务可能还未实现 jobs 接口；遇到 404/405 时回退到旧 PYTHON_SERVER_BASE_URL。
+  if (primary.status !== 404 && primary.status !== 405) return primary;
+  if (!fallbackUrl || fallbackUrl === primaryUrl) return primary;
+  return await fetch(fallbackUrl, init);
+}
 
 /**
  * 1.1、原视频字幕文字翻译
@@ -22,8 +53,7 @@ export async function pyOriginalTxtTranslate(param: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Modal-Key': MODAL_KEY,
-      'Modal-Secret': MODAL_SECRET,
+      ...buildPythonAuthHeaders(),
     },
     body: JSON.stringify(params),
   });
@@ -44,6 +74,52 @@ export async function pyOriginalTxtTranslate(param: any) {
 }
 
 /**
+ * Job: 原视频字幕文字翻译（避免 Modal Web Endpoint 超时）
+ */
+export async function pyOriginalTxtTranslateJobStart(param: any, opts: ModalRequestOptions = {}) {
+  const params = {
+    text: param.text,
+    prev_text: param.prev_text,
+    theme_desc: param.theme_desc || '',
+    language_target: param.languageTarget,
+  };
+
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitle/single/translate/jobs`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+      ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`原字幕翻译任务提交失败${msg}`);
+  }
+  return await response.json();
+}
+
+export async function pyOriginalTxtTranslateJobStatus(jobId: string) {
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitle/single/translate/jobs/${jobId}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`原字幕翻译任务查询失败${msg}`);
+  }
+  return await response.json();
+}
+
+/**
  * 1.2、翻译后的字幕文字转语音tts
  * @param params
  * @returns
@@ -58,17 +134,16 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
   };
 
   // console.log('解密明文--->', requestData);
-  // 请求python服务器
-  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitles/translated/tts`;
-  console.log('请求python服务器--->', url);
-  console.log('请求python服务器--params--->', params);
+  const baseUrl = resolveTtsBaseUrl();
+  const url = `${baseUrl}/api/internal/subtitles/translated/tts`;
+  console.log('请求tts服务器--->', url);
+  console.log('请求tts服务器--params--->', params);
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Modal-Key': MODAL_KEY,
-      'Modal-Secret': MODAL_SECRET,
+      ...buildPythonAuthHeaders(),
     },
     body: JSON.stringify(params),
   });
@@ -95,7 +170,7 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
  * @param taskId 
  * @returns 
  */
-export async function pyMergeVideo(taskId: string, nameArray: any) {
+export async function pyMergeVideo(taskId: string, nameArray: string[]) {
   // 请求数据测试
   const params = {
     task_id: taskId,
@@ -110,8 +185,7 @@ export async function pyMergeVideo(taskId: string, nameArray: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Modal-Key': MODAL_KEY,
-      'Modal-Secret': MODAL_SECRET,
+      ...buildPythonAuthHeaders(),
     },
     body: JSON.stringify(params),
   });
@@ -128,4 +202,108 @@ export async function pyMergeVideo(taskId: string, nameArray: any) {
   // { code: 200, message: '任务已触发，正在分析处理中' }
   console.log('python服务器返回--->', backJO);
   return backJO;
+}
+
+/**
+ * Job: 翻译后的字幕文字转语音（避免 Next API route / 平台超时）
+ */
+export async function pyConvertTxtGenerateVoiceJobStart(
+  taskId: string,
+  txt: string,
+  subtitleName: string,
+  opts: ModalRequestOptions = {}
+) {
+  const params = {
+    text: txt,
+    subtitle_name: subtitleName,
+    task_id: taskId,
+  };
+  const baseUrl = resolveTtsBaseUrl();
+  const legacyBaseUrl = resolveLegacyPythonBaseUrl();
+  const url = `${baseUrl}/api/internal/subtitles/translated/tts/jobs`;
+  const fallbackUrl = legacyBaseUrl ? `${legacyBaseUrl}/api/internal/subtitles/translated/tts/jobs` : '';
+
+  const response = await fetchWithOptionalFallback(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+      ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+    },
+    body: JSON.stringify(params),
+  }, fallbackUrl);
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`字幕TTS任务提交失败${msg}`);
+  }
+  return await response.json();
+}
+
+export async function pyConvertTxtGenerateVoiceJobStatus(jobId: string) {
+  const baseUrl = resolveTtsBaseUrl();
+  const legacyBaseUrl = resolveLegacyPythonBaseUrl();
+  const url = `${baseUrl}/api/internal/subtitles/translated/tts/jobs/${jobId}`;
+  const fallbackUrl = legacyBaseUrl ? `${legacyBaseUrl}/api/internal/subtitles/translated/tts/jobs/${jobId}` : '';
+
+  const response = await fetchWithOptionalFallback(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+    },
+  }, fallbackUrl);
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`字幕TTS任务查询失败${msg}`);
+  }
+  return await response.json();
+}
+
+/**
+ * Job: 合成视频（避免 Next API route / 平台超时）
+ */
+export async function pyMergeVideoJobStart(
+  taskId: string,
+  nameArray: string[],
+  opts: ModalRequestOptions = {}
+) {
+  const params = {
+    task_id: taskId,
+    audio_clips: nameArray,
+  };
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/audios/video/merge/jobs`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+      ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`视频合成任务提交失败${msg}`);
+  }
+  return await response.json();
+}
+
+export async function pyMergeVideoJobStatus(jobId: string) {
+  const url = `${PYTHON_SERVER_BASE_URL}/api/internal/audios/video/merge/jobs/${jobId}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`视频合成任务查询失败${msg}`);
+  }
+  return await response.json();
 }

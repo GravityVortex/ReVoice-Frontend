@@ -42,7 +42,7 @@ export function SignUser({
   showStartCreate?: boolean;
 }) {
   const t = useTranslations('common.sign');
-  const { isCheckSign, user, configs } = useAppContext();
+  const { isAuthLoading, user, configs } = useAppContext();
   const router = useRouter();
   const redirectToSignIn = useSignInRedirect();
 
@@ -51,8 +51,8 @@ export function SignUser({
     (user?.souldubAccess ??
       checkSoulDubAccess(user?.email, configs, false));
 
-  if (!user && isCheckSign) {
-    // Session is still loading; avoid flashing the signed-out UI.
+  if (!user && isAuthLoading) {
+    // Auth state is still resolving; avoid flashing the signed-out UI.
     return (
       <>
         <Skeleton

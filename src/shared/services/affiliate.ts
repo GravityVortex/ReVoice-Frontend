@@ -13,10 +13,16 @@ export function getAffiliateManagerWithConfigs(configs: Configs) {
 
   // affonso
   if (configs.affonso_enabled === 'true' && configs.affonso_id) {
+    const cookieDurationRaw = Number(configs.affonso_cookie_duration);
+    const cookieDuration =
+      Number.isFinite(cookieDurationRaw) && cookieDurationRaw > 0
+        ? cookieDurationRaw
+        : 30;
+
     affiliateManager.addProvider(
       new AffonsoAffiliateProvider({
         affonsoId: configs.affonso_id,
-        cookieDuration: Number(configs.affonso_cookie_duration) ?? 30,
+        cookieDuration,
       })
     );
   }

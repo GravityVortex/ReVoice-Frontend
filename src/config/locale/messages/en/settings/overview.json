@@ -54,6 +54,7 @@
     "upgrade": "Upgrade",
     "manage": "Manage",
     "buy_credits": "Buy credits",
+    "view_all": "View all",
     "view": "View",
     "docs": "Docs"
   },
@@ -61,6 +62,7 @@
     "current_plan": "Current plan",
     "no_subscription": "No active subscription",
     "remaining_credits": "Remaining credits",
+    "points_unit": "pts",
     "recent_orders": "Recent orders",
     "renews_on": "Renews on {date}",
     "no_orders": "No orders yet"

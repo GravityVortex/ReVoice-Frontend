@@ -52,7 +52,6 @@ export class StripeProvider implements PaymentProvider {
   }: {
     order: PaymentOrder;
   }): Promise<CheckoutSession> {
-    try {
       // check payment price
       if (!order.price) {
         throw new Error('price is required');
@@ -187,9 +186,6 @@ export class StripeProvider implements PaymentProvider {
         checkoutResult: session,
         metadata: order.metadata || {},
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   /**
@@ -200,7 +196,6 @@ export class StripeProvider implements PaymentProvider {
   }: {
     sessionId: string;
   }): Promise<PaymentSession> {
-    try {
       if (!sessionId) {
         throw new Error('sessionId is required');
       }
@@ -208,16 +203,12 @@ export class StripeProvider implements PaymentProvider {
       const session = await this.client.checkout.sessions.retrieve(sessionId);
 
       return await this.buildPaymentSessionFromCheckoutSession(session);
-    } catch (error) {
-      throw error;
-    }
   }
 
   /**
    * Get payment event from webhook notification
    */
   async getPaymentEvent({ req }: { req: Request }): Promise<PaymentEvent> {
-    try {
       const rawBody = await req.text();
       const signature = req.headers.get('stripe-signature') as string;
 
@@ -266,9 +257,6 @@ export class StripeProvider implements PaymentProvider {
         eventResult: event,
         paymentSession: paymentSession,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async getPaymentInvoice({
@@ -276,7 +264,6 @@ export class StripeProvider implements PaymentProvider {
   }: {
     invoiceId: string;
   }): Promise<PaymentInvoice> {
-    try {
       const invoice = await this.client.invoices.retrieve(invoiceId);
       if (!invoice.id) {
         throw new Error('Invoice not found');
@@ -288,9 +275,6 @@ export class StripeProvider implements PaymentProvider {
         amount: invoice.amount_paid,
         currency: invoice.currency,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async getPaymentBilling({
@@ -300,7 +284,6 @@ export class StripeProvider implements PaymentProvider {
     customerId: string;
     returnUrl?: string;
   }): Promise<PaymentBilling> {
-    try {
       const billing = await this.client.billingPortal.sessions.create({
         customer: customerId,
         return_url: returnUrl,
@@ -313,9 +296,6 @@ export class StripeProvider implements PaymentProvider {
       return {
         billingUrl: billing.url,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async cancelSubscription({
@@ -323,7 +303,6 @@ export class StripeProvider implements PaymentProvider {
   }: {
     subscriptionId: string;
   }): Promise<PaymentSession> {
-    try {
       if (!subscriptionId) {
         throw new Error('subscriptionId is required');
       }
@@ -336,9 +315,6 @@ export class StripeProvider implements PaymentProvider {
       }
 
       return await this.buildPaymentSessionFromSubscription(subscription);
-    } catch (error) {
-      throw error;
-    }
   }
 
   private mapStripeEventType(eventType: string): PaymentEventType {
@@ -440,30 +416,41 @@ export class StripeProvider implements PaymentProvider {
 
   // build payment session from invoice
   private async buildPaymentSessionFromInvoice(
-    invoice: Stripe.Response<Stripe.Invoice>
+    invoice: Stripe.Invoice
   ): Promise<PaymentSession> {
-    let subscription: Stripe.Response<Stripe.Subscription> | undefined =
-      undefined;
-    let billingUrl = '';
+    // IMPORTANT:
+    // Webhook handlers should be self-contained and not depend on extra Stripe API calls.
+    // For invoices, the billing period is present on the invoice line item `period`.
+    // Use that to build a minimal SubscriptionInfo for renewal processing.
+    let subscriptionId = '';
+    const parentSub = invoice.parent?.subscription_details?.subscription;
+    if (typeof parentSub === 'string') {
+      subscriptionId = parentSub;
+    } else if (parentSub && typeof parentSub === 'object') {
+      subscriptionId = parentSub.id;
+    }
+    let periodStartSec: number | undefined;
+    let periodEndSec: number | undefined;
 
-    if (invoice.lines.data.length > 0) {
-      const data = invoice.lines.data[0];
-      let subscriptionId = '';
-
-      // get subscription id from invoice line data
-      if (data.subscription) {
-        subscriptionId = data.subscription as string;
-      } else if (
-        data.parent &&
-        data.parent.subscription_item_details &&
-        data.parent.subscription_item_details.subscription
-      ) {
-        subscriptionId = data.parent.subscription_item_details
-          .subscription as string;
+    for (const line of invoice.lines?.data || []) {
+      if (!subscriptionId) {
+        const lineSub = line.subscription;
+        if (typeof lineSub === 'string') {
+          subscriptionId = lineSub;
+        } else if (lineSub && typeof lineSub === 'object') {
+          subscriptionId = lineSub.id;
+        } else if (line.parent?.subscription_item_details?.subscription) {
+          subscriptionId = line.parent.subscription_item_details.subscription;
+        }
       }
 
-      if (subscriptionId) {
-        subscription = await this.client.subscriptions.retrieve(subscriptionId);
+      if (line.period?.start && line.period?.end) {
+        periodStartSec = line.period.start;
+        periodEndSec = line.period.end;
+      }
+
+      if (subscriptionId && periodStartSec && periodEndSec) {
+        break;
       }
     }
 
@@ -497,10 +484,18 @@ export class StripeProvider implements PaymentProvider {
       metadata: invoice.metadata,
     };
 
-    if (subscription) {
-      result.subscriptionId = subscription.id;
-      result.subscriptionInfo = await this.buildSubscriptionInfo(subscription);
-      result.subscriptionResult = subscription;
+    if (subscriptionId && periodStartSec && periodEndSec) {
+      result.subscriptionId = subscriptionId;
+      result.subscriptionInfo = {
+        subscriptionId,
+        currentPeriodStart: new Date(periodStartSec * 1000),
+        currentPeriodEnd: new Date(periodEndSec * 1000),
+      };
+      result.subscriptionResult = {
+        id: subscriptionId,
+        current_period_start: periodStartSec,
+        current_period_end: periodEndSec,
+      };
     }
 
     return result;
@@ -527,23 +522,36 @@ export class StripeProvider implements PaymentProvider {
   private async buildSubscriptionInfo(
     subscription: Stripe.Response<Stripe.Subscription>
   ): Promise<SubscriptionInfo> {
-    // subscription data
-    const data = subscription.items.data[0];
+    const item = subscription.items.data[0];
+    if (!item?.price) {
+      throw new Error('Invalid Stripe subscription: missing price');
+    }
+
+    const recurring =
+      item.price.recurring ||
+      (item.plan
+        ? { interval: item.plan.interval, interval_count: item.plan.interval_count }
+        : null);
+
+    if (!recurring?.interval) {
+      throw new Error('Invalid Stripe subscription: missing interval');
+    }
 
     const subscriptionInfo: SubscriptionInfo = {
       subscriptionId: subscription.id,
-      productId: data.price.product as string,
-      planId: data.price.id,
+      productId: item.price.product as string,
+      planId: item.price.id,
       description: '',
-      amount: data.price.unit_amount || 0,
-      currency: data.price.currency,
-      currentPeriodStart: new Date(data.current_period_start * 1000),
-      currentPeriodEnd: new Date(data.current_period_end * 1000),
-      interval: data.plan.interval as PaymentInterval,
-      intervalCount: data.plan.interval_count || 1,
+      amount: item.price.unit_amount ?? item.plan?.amount ?? 0,
+      currency: item.price.currency,
+      currentPeriodStart: new Date(item.current_period_start * 1000),
+      currentPeriodEnd: new Date(item.current_period_end * 1000),
+      interval: recurring.interval as PaymentInterval,
+      intervalCount: recurring.interval_count || 1,
       metadata: subscription.metadata,
     };
 
+    // Normalize Stripe status into our smaller internal enum.
     if (subscription.status === 'active') {
       if (subscription.cancel_at) {
         subscriptionInfo.status = SubscriptionStatus.PENDING_CANCEL;
@@ -552,9 +560,7 @@ export class StripeProvider implements PaymentProvider {
           (subscription.canceled_at || 0) * 1000
         );
         // cancel end date
-        subscriptionInfo.canceledEndAt = new Date(
-          subscription.cancel_at * 1000
-        );
+        subscriptionInfo.canceledEndAt = new Date(subscription.cancel_at * 1000);
         subscriptionInfo.canceledReason =
           subscription.cancellation_details?.comment || '';
         subscriptionInfo.canceledReasonType =
@@ -562,8 +568,15 @@ export class StripeProvider implements PaymentProvider {
       } else {
         subscriptionInfo.status = SubscriptionStatus.ACTIVE;
       }
+    } else if (subscription.status === 'trialing') {
+      subscriptionInfo.status = SubscriptionStatus.TRIALING;
+    } else if (
+      subscription.status === 'past_due' ||
+      subscription.status === 'unpaid' ||
+      subscription.status === 'paused'
+    ) {
+      subscriptionInfo.status = SubscriptionStatus.PAUSED;
     } else if (subscription.status === 'canceled') {
-      // subscription canceled
       subscriptionInfo.status = SubscriptionStatus.CANCELED;
       subscriptionInfo.canceledAt = new Date(
         (subscription.canceled_at || 0) * 1000
@@ -573,9 +586,7 @@ export class StripeProvider implements PaymentProvider {
       subscriptionInfo.canceledReasonType =
         subscription.cancellation_details?.feedback || '';
     } else {
-      throw new Error(
-        `Unknown Stripe subscription status: ${subscription.status}`
-      );
+      throw new Error(`Unknown Stripe subscription status: ${subscription.status}`);
     }
 
     return subscriptionInfo;

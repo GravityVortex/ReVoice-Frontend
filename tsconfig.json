@@ -38,12 +38,18 @@
     ".next/types/**/*.ts",
     "next.config.mjs",
     ".next/dev/types/**/*.ts",
-    ".next.local/types/**/*.ts",
-    ".next.local/dev/types/**/*.ts"
+    ".next.codex/types/**/*.ts",
+    ".next.build/types/**/*.ts",
+    ".next.build/dev/types/**/*.ts",
+    ".next.codex/dev/types/**/*.ts",
+    ".next.devtmp/types/**/*.ts",
+    ".next.devtmp/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     ".next",
+    ".next.build",
+    ".next.codex/dev",
     "out",
     "dist"
   ]

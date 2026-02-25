@@ -31,6 +31,7 @@
     "title": "Subscriptions History",
     "tabs": {
       "all": "All",
+      "pending": "Pending",
       "active": "Active",
       "pending_cancel": "Pending Cancel",
       "canceled": "Canceled",
@@ -38,6 +39,13 @@
       "paused": "Paused",
       "expired": "Expired"
     }
+  },
+  "intervals": {
+    "one-time": "One-time",
+    "day": "{count, plural, one {# day} other {# days}}",
+    "week": "{count, plural, one {# week} other {# weeks}}",
+    "month": "{count, plural, one {# month} other {# months}}",
+    "year": "{count, plural, one {# year} other {# years}}"
   },
   "cancel": {
     "title": "Cancel Subscription",

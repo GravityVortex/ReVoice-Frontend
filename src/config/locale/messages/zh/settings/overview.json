@@ -54,6 +54,7 @@
     "upgrade": "升级",
     "manage": "管理",
     "buy_credits": "购买积分",
+    "view_all": "查看全部",
     "view": "查看",
     "docs": "文档"
   },
@@ -61,6 +62,7 @@
     "current_plan": "当前套餐",
     "no_subscription": "暂无有效订阅",
     "remaining_credits": "剩余积分",
+    "points_unit": "积分",
     "recent_orders": "最近订单",
     "renews_on": "{date} 续费",
     "no_orders": "暂无订单"

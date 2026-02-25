@@ -33,7 +33,7 @@ import {
 import { useAppContext } from '@/shared/contexts/app';
 import { useChatContext } from '@/shared/contexts/chat';
 
-export function ChatLibrary({}) {
+export function ChatLibrary() {
   const { isMobile } = useSidebar();
 
   const t = useTranslations('ai.chat.library');

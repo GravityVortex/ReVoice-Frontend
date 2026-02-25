@@ -12,7 +12,6 @@
     "fileSize": "File Size",
     "duration": "Duration",
     "maxSize": "Maximum upload size",
-    "guestAccount": "Guest Account",
     "currentAccount": "Current Account",
     "selectVideo": "Please select a video file",
     "onlyMp4": "Only .mp4 files are supported",
@@ -46,8 +45,6 @@
     "insufficientCredits": "Insufficient credits, only enough for the first {minutes} minutes!",
     "remainingCredits": "Remaining",
     "credits": "Credits",
-    "register": "Verify",
-    "registerTip": "Register for more credits",
     "subscribe": "Subscribe",
     "subscribeTip": "Subscribe for more benefits",
     "estimatedTime": "💡 Tip: Conversion tasks take approximately 3-10 minutes depending on video size."

@@ -2,12 +2,14 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
+import { usePausedVideoPrefetch } from "@/shared/hooks/use-paused-video-prefetch";
 
 
 export interface VideoPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
   videoUrl: string;
+  videoUrlCandidates?: string[];
   title: string;
 }
 
@@ -15,38 +17,69 @@ export function VideoPlayerModal({
   isOpen,
   onClose,
   videoUrl,
+  videoUrlCandidates,
   title,
 }: VideoPlayerModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [finalUrl, setFinalUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  usePausedVideoPrefetch(videoRef, {
+    enabled: isOpen && Boolean(finalUrl),
+    minBufferedAheadSeconds: 10,
+  });
+
+  const candidates = (videoUrlCandidates && videoUrlCandidates.length > 0 ? videoUrlCandidates : [videoUrl]).filter(
+    (it) => typeof it === "string" && it.trim().length > 0
+  );
+  const activeCandidate = candidates[candidateIndex] || "";
+
+  // Reset candidate selection when the source changes / modal opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    setCandidateIndex(0);
+  }, [isOpen, videoUrl, videoUrlCandidates]);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchUrl = async () => {
-      if (videoUrl.startsWith("http")) {
-        setFinalUrl(videoUrl);
+      if (!activeCandidate) {
+        setFinalUrl("");
+        return;
+      }
+      if (activeCandidate.startsWith("http")) {
+        setFinalUrl(activeCandidate);
         return;
       }
 
       setLoading(true);
       try {
-        const res = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(videoUrl)}`);
+        const res = await fetch(`/api/storage/privater2-url?key=${encodeURIComponent(activeCandidate)}`);
         const data = await res.json();
         if (data.code === 0) {
           console.log('获取私桶预览地址--->', data.data.url)
           setFinalUrl(data.data.url);
+          return;
         }
       } catch (error) {
         console.error("Failed to fetch video URL:", error);
       } finally {
         setLoading(false);
       }
+
+      // If signing fails (or key is missing), fall back to the next candidate.
+      if (candidateIndex + 1 < candidates.length) {
+        setFinalUrl("");
+        setCandidateIndex((prev) => prev + 1);
+      } else {
+        setFinalUrl("");
+      }
     };
 
     fetchUrl();
-  }, [isOpen, videoUrl]);
+  }, [isOpen, activeCandidate]);
 
   useEffect(() => {
     if (!isOpen && videoRef.current) {
@@ -113,6 +146,14 @@ export function VideoPlayerModal({
               autoPlay
               className="min-h-[50vh] max-h-[calc(100vh-200px)] w-full"
               controlsList="nodownload"
+              preload="auto"
+              onError={() => {
+                // Try the next candidate on failure (old tasks may not have 480p objects).
+                if (candidateIndex + 1 < candidates.length) {
+                  setFinalUrl("");
+                  setCandidateIndex((prev) => prev + 1);
+                }
+              }}
             >
               您的浏览器不支持视频播放。
             </video>

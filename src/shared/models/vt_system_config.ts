@@ -42,12 +42,6 @@ export async function getSystemLimitByIdArr(idArr = [
 }
 
 export async function getSystemLimitByConfigKeyArr(keyArr = [
-    'quota.guest.credits_per_30d',
-    'quota.registered.credits_per_30d',
-    'quota.monthly.credits_per_30d',
-    'quota.yearly.credits_per_30d',
-
-    'limit.guest.file_size_mb',
     'limit.registered.file_size_mb',
     'limit.monthly.file_size_mb',
     'limit.yearly.file_size_mb',

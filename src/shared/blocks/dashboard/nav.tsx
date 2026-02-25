@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 
-import { Link, usePathname, useRouter } from '@/core/i18n/navigation';
+import { Link, usePathname } from '@/core/i18n/navigation';
 import { SmartIcon } from '@/shared/blocks/common/smart-icon';
 import {
   Collapsible,
@@ -26,7 +26,6 @@ import { NavItem, type Nav as NavType } from '@/shared/types/blocks/common';
 
 export function Nav({ nav, className }: { nav: NavType; className?: string }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -41,8 +40,13 @@ export function Nav({ nav, className }: { nav: NavType; className?: string }) {
           {nav.items.map((item: NavItem | undefined) => {
             const itemUrl = item?.url as string | undefined;
             const isRootDashboard = itemUrl === '/dashboard';
+            const isVideoConvert = Boolean(mounted && pathname?.startsWith('/video_convert'));
+            const treatVideoConvertAsProjects = Boolean(
+              itemUrl === '/dashboard/projects' && isVideoConvert
+            );
             const isActive = Boolean(
               item?.is_active ||
+              treatVideoConvertAsProjects ||
               (mounted &&
                 itemUrl &&
                 (isRootDashboard

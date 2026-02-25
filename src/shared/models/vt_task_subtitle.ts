@@ -19,6 +19,20 @@ export async function findVtTaskSubtitleById(id: string) {
   return result;
 }
 
+export async function findVtTaskSubtitleByTaskIdAndStepName(taskId: string, stepName: string) {
+  const [result] = await db()
+    .select()
+    .from(vtTaskSubtitle)
+    .where(and(
+      eq(vtTaskSubtitle.taskId, taskId),
+      eq(vtTaskSubtitle.stepName, stepName),
+      eq(vtTaskSubtitle.delStatus, 0),
+    ))
+    .orderBy(desc(vtTaskSubtitle.createdAt))
+    .limit(1);
+  return result;
+}
+
 export async function updateVtTaskSubtitle(id: string, data: Partial<NewVtTaskSubtitle>) {
   const [result] = await db()
     .update(vtTaskSubtitle)
@@ -97,6 +111,66 @@ export async function updateSingleSubtitleItem(taskId: string, stepName: string,
             END
           )
           FROM jsonb_array_elements(subtitle_data) elem
+        ),
+        updated_at = NOW()
+        WHERE task_id = ${taskId} AND step_name = ${stepName}
+        RETURNING *`
+  );
+  return result;
+}
+
+/**
+ * patch字幕数组中的单条记录（按 id 匹配，原子更新，避免并发丢数据）
+ * @param taskId 任务ID
+ * @param stepName 步骤名
+ * @param id 字幕id（例如 0001_00-00-00-000_00-00-04-000）
+ * @param patch 需要merge进该item的字段（jsonb "||" 语义：patch覆盖同名key）
+ */
+export async function patchSubtitleItemById(
+  taskId: string,
+  stepName: string,
+  id: string,
+  patch: Record<string, any>,
+) {
+  const patchObj = patch ?? {};
+  const entries = Object.entries(patchObj).filter(([k]) => typeof k === 'string' && k.length > 0);
+  if (entries.length === 0) {
+    return;
+  }
+
+  // Build a nested jsonb_set(...) expression so all values stay parameterized (no SQL injection).
+  let expr = sql`elem`;
+  for (const [k, v] of entries) {
+    // Undefined is not a JSON value; treat as null.
+    const vv = typeof v === 'undefined' ? null : v;
+    let jsonbValueExpr;
+    if (vv === null) {
+      // jsonb_set(new_value=NULL) returns SQL NULL, which would nuke the whole object.
+      // Use JSON null instead.
+      jsonbValueExpr = sql`'null'::jsonb`;
+    } else if (typeof vv === 'number') {
+      // Store numbers as JSON numbers (not strings).
+      jsonbValueExpr = sql`to_jsonb(${vv}::numeric)`;
+    } else if (typeof vv === 'boolean') {
+      jsonbValueExpr = sql`to_jsonb(${vv}::boolean)`;
+    } else {
+      // Default: JSON string.
+      jsonbValueExpr = sql`to_jsonb(${String(vv)}::text)`;
+    }
+    expr = sql`jsonb_set(${expr}, ARRAY[${k}]::text[], ${jsonbValueExpr}, true)`;
+  }
+
+  const result = await db().execute(
+    sql`UPDATE vt_task_subtitle
+        SET subtitle_data = (
+          SELECT jsonb_agg(
+            CASE
+              WHEN elem->>'id' = ${id} THEN ${expr}
+              ELSE elem
+            END
+            ORDER BY ord
+          )
+          FROM jsonb_array_elements(subtitle_data) WITH ORDINALITY AS t(elem, ord)
         ),
         updated_at = NOW()
         WHERE task_id = ${taskId} AND step_name = ${stepName}

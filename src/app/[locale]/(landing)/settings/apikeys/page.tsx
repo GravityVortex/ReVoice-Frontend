@@ -75,6 +75,12 @@ export default async function ApiKeysPage({
         name: 'createdAt',
         title: t('fields.created_at'),
         type: 'time',
+        metadata: {
+          format: {
+            zh: 'YYYY年MM月DD日',
+            en: 'MMM D, YYYY',
+          },
+        },
       },
       {
         name: 'action',

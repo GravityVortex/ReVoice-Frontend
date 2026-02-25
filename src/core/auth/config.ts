@@ -5,9 +5,8 @@ import bcrypt from 'bcryptjs';
 import { db } from '@/core/db';
 import { envConfigs } from '@/config';
 import * as schema from '@/config/db/schema';
-import { getUuid, getShortUUID } from '@/shared/lib/hash';
+import { getUuid } from '@/shared/lib/hash';
 import { getAllConfigs } from '@/shared/models/config';
-import { createCredit, CreditStatus, CreditTransactionType } from '@/shared/models/credit';
 
 // Static auth options - NO database connection
 // This ensures zero database calls during build time
@@ -24,7 +23,7 @@ export const authOptions = {
   emailAndPassword: {
     enabled: true,
     password: {
-      // 使用 bcrypt 进行密码加密，确保与访客认证 API 一致
+      // Use bcrypt for password hashing.
       hash: async (password: string) => {
         return await bcrypt.hash(password, 10);
       },
@@ -56,7 +55,7 @@ export async function getAuthOptions() {
     emailAndPassword: {
       enabled: configs.email_auth_enabled !== 'false',
       password: {
-        // 使用 bcrypt 进行密码加密，确保与访客认证 API 一致
+        // Use bcrypt for password hashing.
         hash: async (password: string) => {
           return await bcrypt.hash(password, 10);
         },

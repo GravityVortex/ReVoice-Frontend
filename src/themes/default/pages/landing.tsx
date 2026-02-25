@@ -25,9 +25,19 @@ export default async function LandingPage({
     <>
       {page.hero && <Hero hero={page.hero} />}
 
+      {page.showcases && (
+        <Showcases
+          showcases={page.showcases}
+          className="bg-background py-24"
+        />
+      )}
 
-
-
+      {page.introduce && (
+        <FeaturesList
+          features={page.introduce}
+          className="bg-background"
+        />
+      )}
 
       {page.usage && (
         <FeaturesStep
@@ -36,24 +46,10 @@ export default async function LandingPage({
         />
       )}
 
-      {page.showcases && (
-        <Showcases
-          showcases={page.showcases}
-          className="bg-background py-24"
-        />
-      )}
-
       {page.features && (
         <Features
           features={page.features}
           className="bg-muted/10"
-        />
-      )}
-
-      {page.introduce && (
-        <FeaturesList
-          features={page.introduce}
-          className="bg-background"
         />
       )}
 

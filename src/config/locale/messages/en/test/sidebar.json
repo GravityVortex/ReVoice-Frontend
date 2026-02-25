@@ -27,23 +27,6 @@
           ]
         },
         {
-          "title": "GuestID指纹生成",
-          "icon": "FileText",
-          "is_expand": true,
-          "children": [
-            {
-              "title": "guestID生成",
-              "icon": "Folder",
-              "url": "/test/guest-id-create"
-            },
-            {
-              "title": "浏览器测试",
-              "icon": "FileText",
-              "url": "/test/xxx0"
-            }
-          ]
-        },
-        {
           "title": "R2文件管理器",
           "icon": "FileText",
           "is_expand": true,

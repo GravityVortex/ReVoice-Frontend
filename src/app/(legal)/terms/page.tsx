@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import NextLink from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | SoulDub.ai',
@@ -153,9 +154,9 @@ export default function TermsPage() {
       <h2>Privacy Policy</h2>
       <p>
         Please review our Privacy Policy at{' '}
-        <a href="/privacy">
+        <NextLink href="/privacy">
           <strong>https://www.souldub.ai/privacy</strong>
-        </a>
+        </NextLink>
         . By using the Services, you agree to be bound by its terms.
       </p>
 
@@ -262,4 +263,3 @@ export default function TermsPage() {
     </>
   );
 }
-

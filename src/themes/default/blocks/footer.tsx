@@ -22,44 +22,6 @@ export function Footer({ footer }: { footer: FooterType }) {
     // overflow-x-hidden防止-footer-撑出水平滚动条
     >
       <div className="container space-y-4 overflow-x-hidden">
-        {false && (
-          <div className="grid min-w-0 gap-12 md:grid-cols-5 ">
-            <div className="min-w-0 space-y-4 break-words md:col-span-2 md:space-y-6">
-              {/* logo图片 */}
-              {footer.brand && <BrandLogo brand={footer.brand!} />}
-              {/* logo图片下描述 */}
-              {footer.brand?.description && (
-                <p
-                  className="text-muted-foreground text-sm text-balance break-words"
-                  dangerouslySetInnerHTML={{ __html: footer.brand!.description! }}
-                />
-              )}
-            </div>
-
-            <div className="col-span-3 grid min-w-0 gap-6 sm:grid-cols-3">
-              {footer.nav?.items.map((item, idx) => (
-                <div key={idx} className="min-w-0 space-y-4 text-sm break-words">
-                  <span className="block font-medium break-words">
-                    {item.title}
-                  </span>
-
-                  <div className="flex min-w-0 flex-wrap gap-4 sm:flex-col">
-                    {item.children?.map((subItem, iidx) => (
-                      <Link
-                        key={iidx}
-                        href={subItem.url || ''}
-                        target={subItem.target || ''}
-                        className="text-muted-foreground hover:text-primary block break-words duration-150"
-                      >
-                        <span className="break-words">{subItem.title || ''}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>)}
-
         <div className="flex min-w-0 flex-wrap items-center gap-4 sm:gap-8">
           {/* {footer.show_built_with !== false ? <BuiltWith /> : null} */}
           {/* <div className="min-w-0 flex-1" /> */}

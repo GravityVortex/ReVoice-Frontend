@@ -8,9 +8,10 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from 'next-intl';
 // 视频上传：仅 mp4，预览 + 按钮上传，限制 300MB
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useAppContext } from "@/shared/contexts/app";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { usePausedVideoPrefetch } from "@/shared/hooks/use-paused-video-prefetch";
 
 function formatMB(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(2) + " MB";
@@ -34,11 +35,16 @@ export default function UploadMp4() {
   const [description, setDescription] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [duration, setDuration] = useState<number>(0);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   const router = useRouter();
   const { user } = useAppContext();
 
   const MAX_SIZE = 300 * 1024 * 1024; // 300MB
+  usePausedVideoPrefetch(previewVideoRef, {
+    enabled: Boolean(previewUrl) && !uploadedUrl,
+    minBufferedAheadSeconds: 8,
+  });
 
   // 文件信息
   const fileInfo = useMemo(() => {
@@ -241,7 +247,7 @@ export default function UploadMp4() {
           {previewUrl && !uploadedUrl && (
             <div>
               {/* <p className="text-sm mb-2">本地预览</p> w-full max-w-2xl */}
-              <video src={previewUrl} controls className="max-h-[50vh] rounded" />
+              <video ref={previewVideoRef} src={previewUrl} controls preload="auto" className="max-h-[50vh] rounded" />
               {fileInfo && <div className="text-sm text-green-500 mt-1 mb-2">{fileInfo}</div>}
               {error && <div className="text-sm text-red-600 mt-1 mb-2">{error}</div>}
             </div>
@@ -257,18 +263,6 @@ export default function UploadMp4() {
             </Button>
           </div>
 
-          {/* 上传成功后用远程地址预览 */}
-          {false && uploadedUrl && (
-            <div>
-              <p className="text-sm mb-2">上传成功（远程预览）</p>
-              <video src={uploadedUrl} controls className="w-full max-w-2xl rounded" />
-              <div className="text-sm mt-2">
-                <a className="text-blue-600 underline" href={uploadedUrl} target="_blank" rel="noreferrer">
-                  {uploadedUrl}
-                </a>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

@@ -23,7 +23,6 @@ interface CostEstimateModalProps {
     cost: number;
     durationMinutes: number;
     pointsPerMinute: number;
-    isGuest: boolean;
     // 配置信息
     sourceLanguage: string;
     targetLanguage: string;
@@ -37,7 +36,6 @@ export function CostEstimateModal({
     cost,
     durationMinutes,
     pointsPerMinute,
-    isGuest,
     sourceLanguage,
     targetLanguage,
     speakerCount
@@ -68,21 +66,21 @@ export function CostEstimateModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto border-0 bg-black/95 backdrop-blur-2xl shadow-[0_0_80px_-15px_rgba(99,102,241,0.6)] border border-white/20">
+            <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-2xl shadow-[0_0_90px_-20px_rgba(245,158,11,0.28)] border border-white/15">
                 {/* Background glow effects */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[300px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent blur-3xl pointer-events-none" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[300px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-200/20 via-transparent to-transparent blur-3xl pointer-events-none" />
 
                 <DialogHeader className="relative z-10">
                     <motion.div
-                        className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30 flex items-center justify-center mb-6 border-2 border-primary/40 relative overflow-hidden"
+                        className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-amber-200/25 to-emerald-500/20 flex items-center justify-center mb-6 border-2 border-amber-200/35 relative overflow-hidden"
                         initial={{ scale: 0, rotate: -180 }}
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ type: "spring", stiffness: 200, damping: 15 }}
                     >
-                        <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse" />
-                        <Rocket className="w-10 h-10 text-primary drop-shadow-[0_0_10px_rgba(99,102,241,0.8)] relative z-10" />
+                        <div className="absolute inset-0 bg-amber-200/15 blur-xl animate-pulse" />
+                        <Rocket className="w-10 h-10 text-amber-200 drop-shadow-[0_0_14px_rgba(245,158,11,0.45)] relative z-10" />
                     </motion.div>
-                    <DialogTitle className="text-center text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/60">
+                    <DialogTitle className="text-center text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-50 to-white/65 font-serif tracking-tight">
                         {t('steps.confirmConvert')}
                     </DialogTitle>
                     <DialogDescription className="text-center text-white/60">
@@ -98,12 +96,12 @@ export function CostEstimateModal({
                         transition={{ delay: 0.1 }}
                         className="grid grid-cols-4 gap-3 p-5 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm relative overflow-hidden"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-500/5" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-amber-200/10 via-transparent to-emerald-400/10" />
 
                         {[
                             { icon: Clock, label: t('confirm.videoDuration'), value: `${durationMinutes} ${t('ui.minutes')}`, color: 'blue' },
                             { icon: Languages, label: t('confirm.sourceLanguage'), value: getLanguageLabel(sourceLanguage), color: 'green' },
-                            { icon: Languages, label: t('confirm.targetLanguage'), value: getLanguageLabel(targetLanguage), color: 'purple' },
+                            { icon: Languages, label: t('confirm.targetLanguage'), value: getLanguageLabel(targetLanguage), color: 'amber' },
                             { icon: Users, label: t('confirm.speakerCount'), value: getSpeakerLabel(speakerCount), color: 'orange' },
                         ].map((item, idx) => (
                             <motion.div
@@ -117,14 +115,14 @@ export function CostEstimateModal({
                                     "mx-auto w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm",
                                     item.color === 'blue' && "bg-blue-500/10 border border-blue-500/30",
                                     item.color === 'green' && "bg-green-500/10 border border-green-500/30",
-                                    item.color === 'purple' && "bg-purple-500/10 border border-purple-500/30",
+                                    item.color === 'amber' && "bg-amber-500/10 border border-amber-500/30",
                                     item.color === 'orange' && "bg-orange-500/10 border border-orange-500/30"
                                 )}>
                                     <item.icon className={cn(
                                         "w-5 h-5",
                                         item.color === 'blue' && "text-blue-400",
                                         item.color === 'green' && "text-green-400",
-                                        item.color === 'purple' && "text-purple-400",
+                                        item.color === 'amber' && "text-amber-300",
                                         item.color === 'orange' && "text-orange-400"
                                     )} />
                                 </div>
@@ -139,10 +137,10 @@ export function CostEstimateModal({
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="p-6 bg-gradient-to-br from-primary/10 via-white/5 to-purple-500/10 rounded-2xl border-2 border-primary/30 backdrop-blur-sm relative overflow-hidden"
+                        className="p-6 bg-gradient-to-br from-amber-200/10 via-white/5 to-emerald-500/10 rounded-2xl border-2 border-amber-200/25 backdrop-blur-sm relative overflow-hidden"
                     >
                         {/* Animated glow */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-purple-500/20 opacity-50 animate-pulse" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-200/18 via-transparent to-emerald-500/16 opacity-50 animate-pulse" />
 
                         <div className="grid grid-cols-2 gap-6 mb-5 relative z-10">
                             {/* 剩余积分 */}
@@ -155,8 +153,8 @@ export function CostEstimateModal({
                                     transition={{ type: "spring", stiffness: 200 }}
                                 >
                                     <span className={cn(
-                                        "text-5xl font-extrabold tabular-nums drop-shadow-[0_0_15px_rgba(99,102,241,0.6)]",
-                                        isInsufficient ? "text-red-400" : "text-primary"
+                                        "text-5xl font-extrabold tabular-nums drop-shadow-[0_0_15px_rgba(245,158,11,0.28)]",
+                                        isInsufficient ? "text-red-400" : "text-amber-200"
                                     )}>
                                         {currentBalance}
                                     </span>
@@ -181,7 +179,7 @@ export function CostEstimateModal({
                                     </span>
                                     <span className="text-sm font-medium text-white/50 mb-2">{t('confirm.credits')}</span>
                                 </motion.div>
-                                <p className="text-xs text-blue-400 mt-2 flex items-center justify-center gap-1">
+                                <p className="text-xs text-emerald-200/90 mt-2 flex items-center justify-center gap-1">
                                     <Zap className="w-3 h-3" />
                                     {t('confirm.creditsPerMinute', { points: pointsPerMinute })}
                                 </p>
@@ -192,7 +190,7 @@ export function CostEstimateModal({
                         <div className="relative h-4 w-full bg-white/10 rounded-full overflow-hidden border border-white/20 backdrop-blur-sm">
                             {/* 剩余积分底色 */}
                             <motion.div
-                                className="absolute top-0 left-0 h-full bg-primary/30"
+                                className="absolute top-0 left-0 h-full bg-amber-200/25"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.min(100, (currentBalance / Math.max(currentBalance, cost)) * 100)}%` }}
                                 transition={{ duration: 0.8, delay: 0.4 }}
@@ -203,7 +201,7 @@ export function CostEstimateModal({
                                     "absolute top-0 left-0 h-full",
                                     isInsufficient
                                         ? "bg-gradient-to-r from-red-500 to-red-600 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
-                                        : "bg-gradient-to-r from-primary to-purple-500 shadow-[0_0_20px_rgba(99,102,241,0.5)]"
+                                        : "bg-gradient-to-r from-amber-200 to-emerald-300 shadow-[0_0_20px_rgba(245,158,11,0.22)]"
                                 )}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.min(100, (cost / Math.max(currentBalance, cost)) * 100)}%` }}
@@ -226,7 +224,7 @@ export function CostEstimateModal({
                             </motion.div>
                         ) : (
                             <p className="mt-4 text-sm text-white/60 text-center">
-                                消费后剩余: <span className="font-bold text-primary drop-shadow-[0_0_8px_rgba(99,102,241,0.6)]">{balanceAfter}</span> 积分
+                                消费后剩余: <span className="font-bold text-amber-200 drop-shadow-[0_0_10px_rgba(245,158,11,0.25)]">{balanceAfter}</span> 积分
                             </p>
                         )}
                     </motion.div>
@@ -236,9 +234,9 @@ export function CostEstimateModal({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.6 }}
-                        className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/20 backdrop-blur-sm"
+                        className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20 backdrop-blur-sm"
                     >
-                        <p className="text-sm text-blue-300 text-center flex items-center justify-center gap-2">
+                        <p className="text-sm text-emerald-200/90 text-center flex items-center justify-center gap-2">
                             <Clock className="w-4 h-4" />
                             {t('confirm.estimatedTime')}
                         </p>
@@ -265,10 +263,8 @@ export function CostEstimateModal({
                             <Button
                                 className={cn(
                                     "w-full text-base h-14 font-bold transition-all duration-300 border-0 relative overflow-hidden group",
-                                    "shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]",
-                                    isGuest
-                                        ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 bg-[length:200%_100%] hover:bg-[position:100%_0] text-white"
-                                        : "bg-gradient-to-r from-primary via-purple-600 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] text-white"
+                                    "shadow-[0_0_34px_-8px_rgba(245,158,11,0.35)] hover:shadow-[0_0_44px_-8px_rgba(245,158,11,0.45)]",
+                                    "bg-gradient-to-r from-amber-200 via-amber-100 to-emerald-200 bg-[length:200%_100%] hover:bg-[position:100%_0] text-black"
                                 )}
                                 onClick={onConfirm}
                             >

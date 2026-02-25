@@ -1,208 +1,68 @@
 {
   "metadata": {
     "title": "SoulDub AI Video Translator - Native Voice Translation | Pricing",
-    "description": "Start with a plan"
+    "description": "Pick a plan and start creating"
   },
   "pricing": {
     "id": "pricing",
     "sr_only_title": "SoulDub Pricing",
     "title": "Pricing",
-    "description": "Get all features of SoulDub, translate any video anytime, anywhere.",
+    "description": "Turn any video into any language—priced by credits. Video translation is billed per minute (rounded up; default 3 credits/min). Subscriptions include monthly credits + priority processing; top-ups stack with 12-month validity per batch.",
     "groups": [
-      {
-        "name": "credits",
-        "title": "Buy Credits"
-      },
       {
         "name": "monthly",
         "title": "Monthly",
-        "is_featured": true,
-        "label": "save 15%"
+        "is_featured": true
       },
       {
         "name": "yearly",
-        "title": "Annually"
+        "title": "Yearly",
+        "label": "2 months free"
+      },
+      {
+        "name": "credits",
+        "title": "Buy Credits"
       }
     ],
     "items": [
       {
-        "title": "100 Credits",
-        "description": "For light users",
+        "title": "Limited Offer (3 days)",
+        "description": "3 days to unlock all features at minimal cost",
+        "label": "Limited Offer",
         "features_title": "Includes",
         "features": [
-          "Upload video size: 500M",
-          "Translation duration: 50 minutes (100 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported",
-          "Valid for 60 days"
+          "300 credits (~100 minutes of video translation)",
+          "Priority processing during the promo window",
+          "Full workflow: Translate, Edit, HD Export",
+          "Valid for 3 days (no carry-over)"
         ],
         "interval": "one-time",
-        "amount": 1200,
+        "amount": 599,
         "currency": "USD",
-        "price": "$12",
-        "original_price": "$20",
-        "currencies": [
-          {
-            "currency": "CNY",
-            "amount": 8600,
-            "price": "¥86",
-            "original_price": "¥144",
-            "payment_providers": ["stripe"]
-          }
-        ],
-        "unit": "",
-        "is_featured": false,
-        "tip": "Buy credits, enjoy unlimited video translation!",
-        "button": {
-          "title": "Buy Now",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "credits-100",
-        "product_name": "100 Credits Top-up",
-        "credits": 100,
-        "valid_days": 60,
-        "group": "credits"
-      },
-      {
-        "title": "200 Credits",
-        "description": "For moderate users",
-        "label": "Popular",
-        "features_title": "Everything in Starter, plus",
-        "features": [
-          "Upload video size: 500M",
-          "Translation duration: 100 minutes (200 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported",
-          "Valid for 90 days"
-        ],
-        "interval": "one-time",
-        "amount": 2400,
-        "currency": "USD",
-        "price": "$24",
-        "original_price": "$40",
-        "currencies": [
-          {
-            "currency": "CNY",
-            "amount": 17300,
-            "price": "¥173",
-            "original_price": "¥288",
-            "payment_providers": ["stripe"]
-          }
-        ],
+        "price": "$5.99",
         "unit": "",
         "is_featured": true,
-        "tip": "Buy credits, enjoy unlimited video translation!",
+        "tip": "A fast 3-day trial",
         "button": {
           "title": "Buy Now",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "credits-200",
-        "product_name": "200 Credits Top-up",
-        "credits": 200,
-        "valid_days": 90,
-        "group": "credits"
-      },
-      {
-        "title": "300 Credits",
-        "description": "For heavy users",
-        "features_title": "Everything in Standard, plus",
-        "features": [
-          "Upload video size: 500M",
-          "Translation duration: 150 minutes (300 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported",
-          "Valid for 120 days"
-        ],
-        "interval": "one-time",
-        "amount": 3600,
-        "currency": "USD",
-        "price": "$36",
-        "original_price": "$60",
-        "currencies": [
-          {
-            "currency": "CNY",
-            "amount": 25900,
-            "price": "¥259",
-            "original_price": "¥432",
-            "payment_providers": ["stripe", "creem"]
-          }
-        ],
-        "unit": "",
-        "is_featured": false,
-        "tip": "Buy credits, enjoy unlimited video translation!",
-        "button": {
-          "title": "Buy Now",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "credits-300",
-        "product_name": "300 Credits Top-up",
+        "product_id": "promo-3d",
+        "product_name": "Limited Offer (3 days)",
         "credits": 300,
-        "valid_days": 120,
-        "group": "credits"
+        "valid_days": 3,
+        "group": "monthly"
       },
       {
-        "title": "Monthly Starter",
-        "description": "For regular users",
+        "title": "Standard",
+        "description": "Steady output, auto-refill each month",
         "features_title": "Includes",
         "features": [
-          "Upload video size: 500M",
-          "Translation duration: 150 minutes (300 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 480p",
-          "Watermark: None",
-          "Advanced editing: Supported"
-        ],
-        "interval": "month",
-        "amount": 2900,
-        "currency": "USD",
-        "price": "$29",
-        "original_price": "$49",
-        "unit": "/ month",
-        "is_featured": false,
-        "tip": "Pay monthly. Translate any video as you wish.",
-        "button": {
-          "title": "Subscribe Now",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "prod_TNz3WUCRLsqg6l",
-        "product_name": "Monthly Registered User",
-        "credits": 300,
-        "valid_days": 30,
-        "group": "monthly",
-        "plan_name": "Monthly Starter"
-      },
-      {
-        "title": "Monthly Standard",
-        "description": "For frequent users",
-        "label": "Popular",
-        "features_title": "Includes",
-        "features": [
-          "Upload video size: 500M",
-          "Translation duration: 200 minutes (400 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported"
+          "~100 minutes of AI translation per month",
+          "Priority processing while subscribed",
+          "Translate + Edit + HD Export",
+          "Top up anytime, stackable"
         ],
         "interval": "month",
         "amount": 3900,
@@ -210,161 +70,203 @@
         "price": "$39",
         "original_price": "$59",
         "unit": "/ month",
-        "is_featured": true,
-        "tip": "Pay monthly. Translate any video as you wish.",
+        "is_featured": false,
+        "tip": "Stay consistent, stay flexible",
         "button": {
-          "title": "Subscribe Now",
+          "title": "Subscribe",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "monthly-standard",
-        "product_name": "Monthly Standard User",
-        "credits": 400,
+        "product_id": "standard-monthly",
+        "product_name": "Standard (Monthly)",
+        "plan_name": "Standard",
+        "credits": 300,
         "valid_days": 30,
-        "group": "monthly",
-        "plan_name": "Monthly Standard"
+        "group": "monthly"
       },
       {
-        "title": "Monthly Premium",
-        "description": "For professional users",
+        "title": "Pro",
+        "description": "For power creators: batch work, multiple languages",
+        "label": "Popular",
         "features_title": "Includes",
         "features": [
-          "Upload video size: 500M",
-          "Translation duration: 250 minutes (500 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported"
+          "750 credits per billing month (~250 minutes)",
+          "Priority processing while subscribed",
+          "Translate + Edit + HD Export",
+          "Top up anytime, stackable"
         ],
         "interval": "month",
-        "amount": 4900,
+        "amount": 7900,
         "currency": "USD",
-        "price": "$49",
+        "price": "$79",
         "original_price": "$89",
         "unit": "/ month",
         "is_featured": false,
-        "tip": "Pay monthly. Translate any video as you wish.",
+        "tip": "Built for heavy usage",
         "button": {
-          "title": "Subscribe Now",
+          "title": "Subscribe",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "monthly-premium",
-        "product_name": "Monthly Premium User",
-        "credits": 500,
+        "product_id": "premium-monthly",
+        "product_name": "Pro (Monthly)",
+        "plan_name": "Pro",
+        "credits": 750,
         "valid_days": 30,
-        "group": "monthly",
-        "plan_name": "Monthly User"
+        "group": "monthly"
       },
       {
-        "title": "Yearly Starter",
-        "description": "For regular users",
+        "title": "Standard",
+        "description": "2 months free, best long-term value",
         "features_title": "Includes",
         "features": [
-          "Upload video size: 500M",
-          "Translation duration: 1800 minutes (3600 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported"
-        ],
-        "interval": "year",
-        "amount": 29000,
-        "currency": "USD",
-        "price": "$290",
-        "original_price": "$390",
-        "unit": "/ year",
-        "is_featured": false,
-        "tip": "Pay annually. Translate any video as you wish.",
-        "button": {
-          "title": "Subscribe Now",
-          "url": "/#pricing",
-          "icon": "RiFlashlightFill"
-        },
-        "product_id": "yearly-basic",
-        "product_name": "Yearly Basic User",
-        "credits": 3600,
-        "valid_days": 365,
-        "group": "yearly",
-        "plan_name": "Yearly Starter"
-      },
-      {
-        "title": "Yearly Standard",
-        "description": "For frequent users",
-        "label": "Popular",
-        "features_title": "Everything in Starter, plus",
-        "features": [
-          "Upload video size: 500M",
-          "Translation duration: 2400 minutes (4800 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported"
+          "Pay for 10 months, save $78",
+          "~100 minutes of AI translation per month",
+          "Priority processing all year",
+          "Top up anytime, stackable"
         ],
         "interval": "year",
         "amount": 39000,
         "currency": "USD",
         "price": "$390",
-        "original_price": "$490",
+        "original_price": "$468",
         "unit": "/ year",
         "is_featured": true,
-        "tip": "Pay annually. Translate any video as you wish.",
+        "tip": "Best value for planners",
         "button": {
-          "title": "Subscribe Now",
+          "title": "Subscribe",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "yearly-standard",
-        "product_name": "Yearly Standard User",
-        "credits": 4800,
-        "valid_days": 365,
-        "group": "yearly",
-        "plan_name": "Yearly Standard"
+        "product_id": "standard-yearly",
+        "product_name": "Standard (Yearly)",
+        "plan_name": "Standard",
+        "credits": 300,
+        "valid_days": 30,
+        "group": "yearly"
       },
       {
-        "title": "Yearly Premium",
-        "description": "For professional users",
+        "title": "Pro",
+        "description": "2 months free, power users save big",
         "features_title": "Includes",
         "features": [
-          "Upload video size: 500M",
-          "Translation duration: 3000 minutes (6000 credits)",
-          "Multi-language support: Chinese & English",
-          "Download video: Allowed",
-          "Online preview: Supported",
-          "Resolution: 1080p",
-          "Watermark: None",
-          "Advanced editing: Supported"
+          "Pay for 10 months, save $158",
+          "~250 minutes of AI translation per month",
+          "Priority processing all year",
+          "Top up anytime, stackable"
         ],
         "interval": "year",
-        "amount": 49000,
+        "amount": 79000,
         "currency": "USD",
-        "price": "$490",
-        "original_price": "$590",
+        "price": "$790",
+        "original_price": "$948",
         "unit": "/ year",
         "is_featured": false,
-        "tip": "Pay annually. Translate any video as you wish.",
+        "tip": "The yearly power plan",
         "button": {
-          "title": "Subscribe Now",
+          "title": "Subscribe",
           "url": "/#pricing",
           "icon": "RiFlashlightFill"
         },
-        "product_id": "yearly-premium",
-        "product_name": "Yearly Premium User",
-        "credits": 6000,
+        "product_id": "premium-yearly",
+        "product_name": "Pro (Yearly)",
+        "plan_name": "Pro",
+        "credits": 750,
+        "valid_days": 30,
+        "group": "yearly"
+      },
+      {
+        "title": "60 Credits",
+        "description": "Quick top-up, no subscription needed",
+        "features_title": "Includes",
+        "features": [
+          "~20 minutes of video translation",
+          "Credits accumulate, never reset monthly",
+          "Valid 12 months",
+          "Stackable with subscription credits"
+        ],
+        "interval": "one-time",
+        "amount": 1200,
+        "currency": "USD",
+        "price": "$12",
+        "original_price": "$12",
+        "unit": "",
+        "is_featured": false,
+        "tip": "No subscription required",
+        "button": {
+          "title": "Top Up",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "credits-60",
+        "product_name": "60 Credits Top-up",
+        "credits": 60,
         "valid_days": 365,
-        "group": "yearly",
-        "plan_name": "Yearly Premium"
+        "group": "credits"
+      },
+      {
+        "title": "200 Credits",
+        "description": "Better value, smarter top-up",
+        "label": "Popular",
+        "features_title": "Includes",
+        "features": [
+          "~65 minutes of video translation",
+          "Save $2 (better per-credit price)",
+          "Credits accumulate, valid 12 months",
+          "Stackable with subscription credits"
+        ],
+        "interval": "one-time",
+        "amount": 3800,
+        "currency": "USD",
+        "price": "$38",
+        "original_price": "$40",
+        "unit": "",
+        "is_featured": true,
+        "tip": "Best value top-up",
+        "button": {
+          "title": "Top Up",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "credits-200",
+        "product_name": "200 Credits Top-up",
+        "credits": 200,
+        "valid_days": 365,
+        "group": "credits"
+      },
+      {
+        "title": "500 Credits",
+        "description": "For batch processing many videos",
+        "features_title": "Includes",
+        "features": [
+          "~165 minutes of video translation",
+          "Save $10 (biggest discount)",
+          "Credits accumulate, valid 12 months",
+          "Stackable with subscription credits"
+        ],
+        "interval": "one-time",
+        "amount": 9000,
+        "currency": "USD",
+        "price": "$90",
+        "original_price": "$100",
+        "unit": "",
+        "is_featured": false,
+        "tip": "Stock up, stay calm",
+        "button": {
+          "title": "Top Up",
+          "url": "/#pricing",
+          "icon": "RiFlashlightFill"
+        },
+        "product_id": "credits-500",
+        "product_name": "500 Credits Top-up",
+        "credits": 500,
+        "valid_days": 365,
+        "group": "credits"
       }
     ]
   },
   "page": {
-    "current_plan": "Current Plan",
+    "current_plan": "Current plan",
     "processing": "Processing",
     "payment_methods": "Payment methods",
     "pay_with_paypal": "Pay with PayPal"

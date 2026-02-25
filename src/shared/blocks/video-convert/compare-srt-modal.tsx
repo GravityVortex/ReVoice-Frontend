@@ -1,11 +1,28 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Play, Pause, Copy, Download } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { ChevronDown, Copy, Download, Pause, Play, X } from 'lucide-react';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { useAppContext } from '@/shared/contexts/app';
+import { cn } from '@/shared/lib/utils';
 
 interface CompareSrtModalProps {
   isOpen: boolean;
@@ -22,144 +39,447 @@ interface SubtitleItem {
   tra_txt: string;
 }
 
-export function CompareSrtModal({ isOpen, onClose, taskId, onDownBtnsClick }: CompareSrtModalProps) {
+function formatTimeLen(value: string) {
+  const str = (value || '').trim();
+  if (!str) return '';
+  const main = str.length > 9 ? str.split(',')[0] : str;
+
+  // Compact display: for most short videos, MM:SS is more readable than 00:MM:SS.
+  // Keep hours when it's not "00".
+  if (/^\d{2}:\d{2}:\d{2}$/.test(main) && main.startsWith('00:')) {
+    return main.slice(3);
+  }
+
+  return main;
+}
+
+function formatTimeRange(item: SubtitleItem) {
+  const start = formatTimeLen(item.start);
+  const end = formatTimeLen(item.end);
+  if (start && end) return `${start} - ${end}`;
+  return start || end || '-';
+}
+
+export function CompareSrtModal({
+  isOpen,
+  onClose,
+  taskId,
+  onDownBtnsClick,
+}: CompareSrtModalProps) {
+  const t = useTranslations('video_convert.projectDetail');
   const { user } = useAppContext();
+
   const [subtitles, setSubtitles] = useState<SubtitleItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [playingAudio, setPlayingAudio] = useState<{ id: string; type: 'gen' | 'tra' } | null>(null);
+  const [playingAudio, setPlayingAudio] = useState<{
+    id: string;
+    type: 'gen' | 'tra';
+  } | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const onDownBtnsClickRef = useRef(onDownBtnsClick);
+
   const [preUrl, setPreUrl] = useState<string>();
   const [env, setEnv] = useState<string>();
 
   useEffect(() => {
-    if (isOpen && taskId) {
-      fetchSubtitles();
-    }
+    onDownBtnsClickRef.current = onDownBtnsClick;
+  }, [onDownBtnsClick]);
+
+  useEffect(() => {
+    if (!isOpen || !taskId) return;
+    void fetchSubtitles();
   }, [isOpen, taskId]);
+
+  useEffect(() => {
+    if (isOpen) return;
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setPlayingAudio(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, []);
 
   const fetchSubtitles = async () => {
     setLoading(true);
     try {
-      // let tempId = 'b09ff18a-c03d-4a27-9f41-6fa5d33fdb9b';
-      const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${taskId}`);
-      // const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${tempId}`);
+      const response = await fetch(
+        `/api/video-task/getCompareSrtList?taskId=${taskId}`
+      );
       const result = await response.json();
-      if (result.code === 0) {
-        setSubtitles(result.data.list || []);
-        setPreUrl(result.data.preUrl);
-        setEnv(result.data.env);
+      if (result?.code === 0) {
+        setSubtitles(result?.data?.list || []);
+        setPreUrl(result?.data?.preUrl);
+        setEnv(result?.data?.env);
+      } else {
+        setSubtitles([]);
+        toast.error(result?.message || t('ui.progressLoadFailed'));
       }
     } catch (error) {
-      console.error('获取字幕失败:', error);
+      console.error('[CompareSrtModal] Failed to fetch subtitles:', error);
+      setSubtitles([]);
+      toast.error(t('ui.progressLoadFailed'));
     } finally {
       setLoading(false);
     }
   };
 
-  const formatTimeLen = (str: string) => {
-    if(str.length > 9) return str.split(',')[0];
-    return str;
-  };
-
   const handlePlayAudio = (id: string, type: 'gen' | 'tra') => {
     const userId = user?.id || '';
+    if (!userId || !preUrl || !env || !taskId) {
+      toast.error(t('ui.compareModal.toast.audioUnavailable'));
+      return;
+    }
+
     const folder = type === 'gen' ? 'split_audio/audio' : 'adj_audio_time';
-    const audioUrl =  `${preUrl}/${env}/${userId}/${taskId}/${folder}/${id}.wav`;
-    console.log('audioUrl--->', audioUrl)
+    const audioUrl = `${preUrl}/${env}/${userId}/${taskId}/${folder}/${id}.wav`;
 
     if (playingAudio?.id === id && playingAudio?.type === type) {
       audioRef.current?.pause();
       setPlayingAudio(null);
-    } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
+      return;
+    }
+
+    audioRef.current?.pause();
+
+    const audio = new Audio(audioUrl);
+    audio.onended = () => setPlayingAudio(null);
+    audio
+      .play()
+      .then(() => {
+        audioRef.current = audio;
+        setPlayingAudio({ id, type });
+      })
+      .catch((e) => {
+        console.warn('[CompareSrtModal] Audio play failed:', e);
+        setPlayingAudio(null);
+        toast.error(t('ui.compareModal.toast.audioUnavailable'));
+      });
+  };
+
+  const handleCopy = async (value: string) => {
+    const text = (value || '').trim();
+    if (!text) {
+      toast.error(t('ui.compareModal.toast.empty'));
+      return;
+    }
+
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        throw new Error('clipboard not available');
       }
-      const audio = new Audio(audioUrl);
-      audio.onended = () => setPlayingAudio(null);
-      audio.play();
-      audioRef.current = audio;
-      setPlayingAudio({ id, type });
+      await navigator.clipboard.writeText(text);
+      toast.success(t('ui.compareModal.toast.copied'));
+    } catch (e) {
+      console.warn('[CompareSrtModal] Copy failed:', e);
+      toast.error(t('ui.compareModal.toast.copyFailed'));
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="min-w-[800px] max-w-6xl max-h-[90vh] min-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="border-b pb-4">
-          <DialogTitle className="text-2xl">字幕翻译前后比较</DialogTitle>
-        </DialogHeader>
+  const canDownload = !loading && subtitles.length > 0;
 
-        <div className="flex-1 overflow-auto">
-          {loading ? (
-            <div className="space-y-4 p-4">
-              <div className="grid grid-cols-2 gap-4 mb-4 font-semibold text-center">
-                <div>视频原字幕</div>
-                <div>翻译后字幕</div>
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => (open ? null : onClose())}>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          'flex h-screen h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 bg-background p-0 shadow-none',
+          'top-0 left-0',
+          'overflow-hidden sm:top-[50%] sm:left-[50%] sm:h-[92vh] sm:max-h-[92vh] sm:h-[92dvh] sm:max-h-[92dvh] sm:w-[calc(100vw-1.5rem)] sm:max-w-6xl sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl sm:border sm:bg-background/95 sm:shadow-2xl sm:backdrop-blur-xl'
+        )}
+      >
+        <div className="flex h-full flex-col">
+          {/* Top bar: fixed actions + close (best practice for long, scrollable dialogs). */}
+          <div className="shrink-0 border-b bg-background/70 px-4 py-3 backdrop-blur sm:px-6">
+            <div className="flex items-start justify-between gap-3">
+              <DialogHeader className="min-w-0 flex-1 gap-1 text-left">
+                <DialogTitle className="truncate text-base font-semibold tracking-tight sm:text-lg">
+                  {t('ui.compareModal.title')}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {t('ui.compareModal.description', {
+                    count: subtitles.length || 0,
+                  })}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canDownload}
+                      className="gap-1.5"
+                      aria-label={t('buttons.download')}
+                    >
+                      <Download className="size-4" />
+                      <span className="hidden sm:inline">
+                        {t('buttons.download')}
+                      </span>
+                      <ChevronDown className="size-4 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-48">
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        onDownBtnsClickRef.current?.(e, 'gen_srt');
+                      }}
+                    >
+                      <Download className="size-4" />
+                      {t('subtitle.download_yuan')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        onDownBtnsClickRef.current?.(e, 'translate_srt');
+                      }}
+                    >
+                      <Download className="size-4" />
+                      {t('subtitle.download_tran')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        onDownBtnsClickRef.current?.(e, 'double_srt');
+                      }}
+                    >
+                      <Download className="size-4" />
+                      {t('subtitle.download_double')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-full"
+                  onClick={onClose}
+                  aria-label={t('buttons.cancel')}
+                >
+                  <X className="size-4" />
+                </Button>
               </div>
-              {[...Array(5)].map((_, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4">
-                  <div className="border-2 rounded-lg p-4 bg-card">
-                    <Skeleton className="h-8 w-full mb-2" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                  <div className="border-2 rounded-lg p-4 bg-card">
-                    <Skeleton className="h-8 w-full mb-2" />
-                    <Skeleton className="h-16 w-full" />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1">
+            <ScrollArea className="h-full">
+              {loading ? (
+                <div className="space-y-3 p-4 sm:p-6">
+                  <div className="rounded-xl border bg-card/40 p-3">
+                    <div className="hidden md:grid md:grid-cols-[96px_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
+                      <Skeleton className="h-4 w-14 rounded-full" />
+                      <Skeleton className="h-4 w-28 rounded-full" />
+                      <Skeleton className="h-4 w-28 rounded-full" />
+                    </div>
+                    <div className="divide-y">
+                      {Array.from({ length: 8 }).map((_, idx) => (
+                        <div key={idx} className="py-3">
+                          <div className="md:grid md:grid-cols-[96px_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-4 w-10 rounded-full" />
+                              <Skeleton className="h-4 w-16 rounded-full" />
+                            </div>
+
+                            <div className="mt-3 space-y-2 md:mt-0">
+                              <Skeleton className="h-3 w-20 rounded-full md:hidden" />
+                              <Skeleton className="h-4 w-full rounded-md" />
+                              <Skeleton className="h-4 w-4/5 rounded-md" />
+                            </div>
+
+                            <div className="mt-3 space-y-2 md:mt-0">
+                              <Skeleton className="h-3 w-20 rounded-full md:hidden" />
+                              <Skeleton className="h-4 w-full rounded-md" />
+                              <Skeleton className="h-4 w-3/4 rounded-md" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4 p-4">
-              <div className="grid grid-cols-2 gap-4 mb-4 font-semibold text-center">
-                <div>视频原字幕</div>
-                <div>翻译后字幕</div>
-              </div>
-
-              {subtitles.map((item, index) => {
-                const original = item?.gen_txt || '';
-                const translated = item?.tra_txt || '';
-                const isPlayingGen = playingAudio?.id === item.id && playingAudio?.type === 'gen';
-                const isPlayingTra = playingAudio?.id === item.id && playingAudio?.type === 'tra';
-                return (
-                  <div key={index} className="grid grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4 bg-card">
-                      <div className="flex items-center justify-between mb-2">
-                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => handlePlayAudio(item.id, 'gen')}>
-                          {isPlayingGen ? <Pause className="size-4 mr-1" /> : <Play className="size-4 mr-1" />}
-                          {formatTimeLen(item.start)} - {formatTimeLen(item.end)}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Copy className="size-4" />
-                        </Button>
-                      </div>
-                      <div className="text-sm leading-relaxed">{original}</div>
+              ) : subtitles.length === 0 ? (
+                <div className="p-4 sm:p-6">
+                  <div className="rounded-xl border bg-card/40 p-10 text-center">
+                    <div className="text-sm font-semibold text-foreground">
+                      {t('ui.compareModal.empty.title')}
                     </div>
-
-                    <div className="border rounded-lg p-4 bg-card">
-                      <div className="flex items-center justify-between mb-2">
-                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => handlePlayAudio(item.id, 'tra')}>
-                          {isPlayingTra ? <Pause className="size-4 mr-1" /> : <Play className="size-4 mr-1" />}
-                          {formatTimeLen(item.start)} - {formatTimeLen(item.end)}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Copy className="size-4" />
-                        </Button>
-                      </div>
-                      <div className="text-sm leading-relaxed">{translated}</div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {t('ui.compareModal.empty.description')}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </div>
+              ) : (
+                <div className="p-4 sm:p-6">
+                  <div className="rounded-xl border bg-card/40">
+                    {/* Sticky header (desktop). */}
+                    <div className="sticky top-0 z-10 hidden border-b bg-background/70 backdrop-blur md:block">
+                      <div className="grid grid-cols-[96px_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-3 py-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        <div />
+                        <div className="flex items-center gap-2">
+                          <span
+                            aria-hidden
+                            className="h-2 w-2 rounded-full bg-muted-foreground/30"
+                          />
+                          {t('ui.compareModal.columns.original')}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            aria-hidden
+                            className="h-2 w-2 rounded-full bg-primary/40"
+                          />
+                          {t('ui.compareModal.columns.translated')}
+                        </div>
+                      </div>
+                    </div>
 
-        <div className="border-t pt-4 flex justify-end gap-6">
-          <Button variant="outline" onClick={(e)=>{onDownBtnsClickRef.current?.(e, 'gen_srt');}}><Download className="size-4" />原字幕</Button>
-          <Button variant="outline" onClick={(e)=>{onDownBtnsClickRef.current?.(e, 'translate_srt');}}><Download className="size-4" />翻译字幕</Button>
-          <Button variant="outline" onClick={(e)=>{onDownBtnsClickRef.current?.(e, 'double_srt');}}><Download className="size-4" />双语字幕</Button>
+                    <div className="divide-y">
+                      {subtitles.map((item, index) => {
+                        const original = item?.gen_txt || '';
+                        const translated = item?.tra_txt || '';
+                        const isPlayingGen =
+                          playingAudio?.id === item.id &&
+                          playingAudio?.type === 'gen';
+                        const isPlayingTra =
+                          playingAudio?.id === item.id &&
+                          playingAudio?.type === 'tra';
+                        const timeRange = formatTimeRange(item);
+
+                        return (
+                          <div
+                            key={item.id || String(index)}
+                            className={cn(
+                              'group px-3 py-3 transition-colors hover:bg-muted/20 focus-within:bg-muted/20 md:py-4',
+                              (isPlayingGen || isPlayingTra) && 'bg-muted/10'
+                            )}
+                          >
+                            <div className="md:grid md:grid-cols-[96px_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
+                              {/* Meta + mobile actions */}
+                              <div className="flex items-start justify-between gap-3 md:block">
+                              <div className="flex min-w-0 items-center gap-2 pt-0.5">
+                                <span className="text-[11px] font-mono text-muted-foreground">
+                                  #{index + 1}
+                                </span>
+                                <span className="rounded-full bg-muted/40 px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+                                  {timeRange}
+                                </span>
+                              </div>
+                            </div>
+
+                              {/* Original */}
+                              <div className="mt-3 md:mt-0">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground md:hidden">
+                                    <span
+                                      aria-hidden
+                                      className="h-2 w-2 rounded-full bg-muted-foreground/30"
+                                    />
+                                    {t('ui.compareModal.columns.original')}
+                                  </div>
+
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className={cn(
+                                        'rounded-full opacity-80 transition-opacity hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100',
+                                        isPlayingGen && 'opacity-100'
+                                      )}
+                                      onClick={() =>
+                                        handlePlayAudio(item.id, 'gen')
+                                      }
+                                      aria-label={t(
+                                        'ui.compareModal.actions.playOriginal'
+                                      )}
+                                    >
+                                      {isPlayingGen ? (
+                                        <Pause className="size-4" />
+                                      ) : (
+                                        <Play className="size-4" />
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className="rounded-full opacity-80 transition-opacity hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                                      onClick={() => void handleCopy(original)}
+                                      aria-label={t(
+                                        'ui.compareModal.actions.copyOriginal'
+                                      )}
+                                    >
+                                      <Copy className="size-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                                  {original || '-'}
+                                </div>
+                              </div>
+
+                              {/* Translated */}
+                              <div className="mt-3 md:mt-0">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground md:hidden">
+                                    <span
+                                      aria-hidden
+                                      className="h-2 w-2 rounded-full bg-primary/40"
+                                    />
+                                    {t('ui.compareModal.columns.translated')}
+                                  </div>
+
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className={cn(
+                                        'rounded-full opacity-80 transition-opacity hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100',
+                                        isPlayingTra && 'opacity-100'
+                                      )}
+                                      onClick={() =>
+                                        handlePlayAudio(item.id, 'tra')
+                                      }
+                                      aria-label={t(
+                                        'ui.compareModal.actions.playTranslated'
+                                      )}
+                                    >
+                                      {isPlayingTra ? (
+                                        <Pause className="size-4" />
+                                      ) : (
+                                        <Play className="size-4" />
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className="rounded-full opacity-80 transition-opacity hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                                      onClick={() =>
+                                        void handleCopy(translated)
+                                      }
+                                      aria-label={t(
+                                        'ui.compareModal.actions.copyTranslated'
+                                      )}
+                                    >
+                                      <Copy className="size-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                                  {translated || '-'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

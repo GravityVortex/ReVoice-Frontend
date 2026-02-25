@@ -21,14 +21,10 @@
     "email_sign_in": "使用邮箱登录",
     "google_sign_in_title": "使用 Google 登录",
     "github_sign_in_title": "使用 GitHub 登录",
-    "guest_sign_in_title": "访客试用",
-    "guest_sign_in_description": "无需注册，有效期7天",
-    "guest_login_success_title": "访客登录成功",
-    "guest_login_success_desc": "您已作为访客登录。享受您的7天免费试用！",
     "close_title": "关闭",
     "cancel_title": "取消",
     "sign_out_title": "登出",
-    "billing_title": "账单",
+    "billing_title": "订阅管理",
     "name_title": "姓名",
     "name_placeholder": "请输入您的姓名",
     "admin_title": "管理后台",
@@ -51,6 +47,10 @@
     "privacy_policy": "隐私政策",
     "legal_agreement": "登录即代表您同意我们的<terms>服务条款</terms>和<privacy>隐私政策</privacy>。"
   },
+  "plans": {
+    "standard": "标准版",
+    "pro": "高级版"
+  },
   "payment": {
     "choose_payment_method": "选择支付方式",
     "choose_payment_method_description": "",
@@ -62,13 +62,15 @@
   },
   "dashboard": {
     "sidebar": {
-      "workstation": "仪表盘",
-      "projects": "视频翻译",
-      "create": "创建翻译",
+      "workstation": "工作台",
+      "projects": "翻译项目",
+      "create": "新建翻译",
       "user_nav": {
         "video": "我的视频",
-        "billing": "账单",
-        "activity": "活动"
+        "billing": "订阅管理",
+        "activity": "使用记录",
+        "settings": "设置",
+        "support": "帮助中心"
       }
     },
     "home": {

@@ -5,6 +5,10 @@
     "videoEditor": "Video Editor",
     "videoDetail": "Video Detail"
   },
+  "tabs": {
+    "subtitles": "Subtitles",
+    "translation": "Translation"
+  },
   "loading": "Loading conversion details...",
   "error": {
     "loadFailed": "Load Failed",
@@ -18,6 +22,7 @@
     "title": "Subtitle Audio Comparison",
     "save": "Save",
     "saveTooltip": "Regenerate video",
+    "pendingChanges": "{count} pending",
     "originalSubtitle": "Original Subtitle",
     "convertedSubtitle": "Converted Subtitle",
     "totalItems": "Total {count} subtitles",
@@ -31,6 +36,7 @@
       "generateSuccess": "Voice generated successfully, click to preview!",
       "generateFailed": "Failed to generate voice",
       "videoSaveSuccess": "The video synthesis task has been generated, please be patient as it may take some time",
+      "videoSaveCompleted": "Video synthesis completed!",
       "videoSaveFailed": "Video synthesis failed",
       "itemNotFound": "Subtitle item not found",
       "saveSuccess": "Saved successfully!",
@@ -48,10 +54,16 @@
       "pointerFollow": "Playback pointer visible follow",
       "exportPending": "Under development, stay tuned!"
     },
+    "hints": {
+      "timeline": "Drag the red playhead · Scroll to zoom · Shift + scroll to pan"
+    },
     "tracks": {
       "mainVideo": "Main Video",
       "bgm": "Background Music",
       "subtitle": "Subtitle",
+      "subtitleTranslated": "Translated subtitles",
+      "subtitleOriginal": "Original subtitles",
+      "reference": "Reference",
       "backgroundVideo": "Background Video"
     },
     "tooltips": {
@@ -67,19 +79,33 @@
       "addVideo": "Add video",
       "regenerateVideo": "Regenerate video"
     },
+    "waveform": {
+      "loading": "Waveform loading",
+      "ready": "Waveform ready",
+      "failed": "Waveform failed"
+    },
     "placeholder": {
       "addVideoToTrack": "Please add video file to video track"
     }
   },
   "subtitleRow": {
+    "actions": {
+      "retranslate": "Retranslate",
+      "regenVoice": "Regenerate voice",
+      "applyVoice": "Apply voice"
+    },
     "placeholder": {
       "original": "Original subtitle content",
       "converted": "Converted subtitle content"
     },
     "tooltips": {
+      "playOriginal": "Play original audio",
+      "playConverted": "Play translated audio",
       "retranslate": "Retranslate subtitle",
+      "retranslateWithCost": "Retranslate subtitle ({credits} credits)",
       "saveVoice": "Save subtitle voice",
-      "updateVoice": "Update subtitle voice"
+      "updateVoice": "Update subtitle voice",
+      "updateVoiceWithCost": "Regenerate voice ({credits} credits)"
     }
   },
   "dialog": {

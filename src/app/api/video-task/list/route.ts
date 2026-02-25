@@ -2,6 +2,7 @@ import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { getUserInfo } from '@/shared/models/user';
 import { getVtFileOriginalList, getVtFileOriginalTotal } from '@/shared/models/vt_file_original';
+import { getVtFileFinalListByTaskIds } from '@/shared/models/vt_file_final';
 import { getVtTaskMainListByFileIds } from '@/shared/models/vt_task_main';
 import { hasPermission } from '@/shared/services/rbac';
 
@@ -41,11 +42,21 @@ export async function GET(req: Request) {
     // 3. 查询这些视频的任务列表
     const taskList = await getVtTaskMainListByFileIds(fileIds, userId);
 
+    // 3.1 查询任务对应的最终文件列表（DB 为准，前端禁 probe）
+    const taskIdArr = taskList.map((task) => task.id);
+    const finalFileList = taskIdArr.length > 0 ? await getVtFileFinalListByTaskIds(taskIdArr) : [];
+
+    // 3.2 将 finalFileList 注入到每个 task 上（保持与 detail API 一致）
+    const taskListWithFinalFiles = taskList.map((task) => ({
+      ...task,
+      finalFileList: finalFileList.filter((finalFile: any) => finalFile.taskId === task.id),
+    }));
+
     // 4. 按 original_file_id 分组任务到对应视频的 tasks 集合
     const videoListWithTasks = videoList.map(
       video => ({
         ...video,
-        tasks: taskList.filter(task => task.originalFileId === video.id),
+        tasks: taskListWithFinalFiles.filter(task => task.originalFileId === video.id),
       }));
     // 5. 获取R2前缀URL
     const preUrl = await getSystemConfigByKey('r2.public.base_url');

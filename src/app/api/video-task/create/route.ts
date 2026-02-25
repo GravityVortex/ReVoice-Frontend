@@ -1,11 +1,10 @@
 import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { getUuid } from '@/shared/lib/hash';
 import { respData, respErr } from '@/shared/lib/resp';
-import { consumeCredits, getRemainingCredits } from '@/shared/models/credit';
-import { isGuestEmail } from '@/shared/models/guest-user';
-import { getUserSubscriptionType } from '@/shared/models/order';
+import { consumeCredits, refundCredits, hasActivePromoEntitlement } from '@/shared/models/credit';
+import { getCurrentSubscription } from '@/shared/models/subscription';
 import { getUserInfo } from '@/shared/models/user';
-import { insertVtFileOriginal } from '@/shared/models/vt_file_original';
+import { deleteFileOriginalById, insertVtFileOriginal } from '@/shared/models/vt_file_original';
 import { insertVtTaskMain } from '@/shared/models/vt_task_main';
 
 export const runtime = 'nodejs';
@@ -21,7 +20,6 @@ export async function POST(req: Request) {
     }
 
     const userId = user.id;
-    const userType = isGuestEmail(user.email) ? 'guest' : 'registered';
     const fileName = formData.get('fileName') as string;
     const fileSizeBytes = parseInt(formData.get('fileSizeBytes') as string);
     const fileType = formData.get('fileType') as string;
@@ -49,84 +47,75 @@ export async function POST(req: Request) {
     }
 
     // Don't trust client-provided credits; derive from duration + server config.
-    const pointsPerMinuteRaw = (await getSystemConfigByKey('credit.points_per_minute')) || '2';
+    const pointsPerMinuteRaw = (await getSystemConfigByKey('credit.points_per_minute')) || '3';
     const pointsPerMinute = Number.parseInt(pointsPerMinuteRaw, 10);
     const durationInMinutes = Math.max(1, Math.ceil(videoDurationSeconds / 60));
-    const credits = durationInMinutes * (Number.isFinite(pointsPerMinute) && pointsPerMinute > 0 ? pointsPerMinute : 2);
-
-    // 1. 消耗积分
-    // DOEND 积分不足也扣，只处理部分视频时长
-    const remainingCredits = await getRemainingCredits(userId);
-    let finalCredits = credits;
-    let finalHandlerTime = videoDurationSeconds;
-    // 积分不足，按2积分/分钟计算可处理时长
-    if (remainingCredits < credits) {
-      finalCredits = remainingCredits;
-      finalHandlerTime = (finalCredits / 2) * 60; // 按2积分/分钟计算可处理时长
-    }
+    const credits = durationInMinutes * (Number.isFinite(pointsPerMinute) && pointsPerMinute > 0 ? pointsPerMinute : 3);
 
     let creditRecord;
     try {
       creditRecord = await consumeCredits({
         userId,
-        credits: finalCredits,
+        credits,
         scene: 'convert_video',
         description: '视频转换任务消耗积分',
-        metadata: JSON.stringify({ credits: credits, finalCredits: finalCredits }),
+        metadata: JSON.stringify({ credits, durationInMinutes }),
       });
     } catch (e: any) {
       return respErr(e.message || '积分不足');
     }
 
-    // 2. 插入vt_file_original表
-    const fileOriginal = await insertVtFileOriginal({
-      id: fileId, //getUuid(),
-      userId,
-      fileName,
-      fileSizeBytes,
-      fileType,
-      r2Key,
-      r2Bucket,
-      videoDurationSeconds,
-      checksumSha256,
-      uploadStatus,
-      createdBy: userId,
-      updatedBy: userId,
-    });
+    try {
+      // 2. 插入vt_file_original表
+      const fileOriginal = await insertVtFileOriginal({
+        id: fileId, //getUuid(),
+        userId,
+        fileName,
+        fileSizeBytes,
+        fileType,
+        r2Key,
+        r2Bucket,
+        videoDurationSeconds,
+        checksumSha256,
+        uploadStatus,
+        createdBy: userId,
+        updatedBy: userId,
+      });
 
-    // DOEND 未区分包月和包年用户，设置任务优先级（注册用户registered）或 4（匿名用户guest）.
-    let priorityV = 4;
-    if (userType === 'registered') {
-      const { type } = await getUserSubscriptionType(userId);
-      if (type === 'month') {
+      // Task priority (smaller is higher priority).
+      // Keep it simple: any active subscription gets better scheduling; billing cycle does not matter.
+      let priorityV = 4;
+      const sub = await getCurrentSubscription(userId).catch(() => undefined);
+      const hasPromo = await hasActivePromoEntitlement(userId).catch(() => false);
+      if (sub || hasPromo) {
         priorityV = 2;
-      } else if (type === 'year') {
-        priorityV = 1;
       }
-    }
-    // 匿名用户
-    else {
-      priorityV = 4;
-    }
 
-    // 3. 插入vt_task_main表
-    const taskMain = await insertVtTaskMain({
-      id: getUuid(),
-      userId,
-      originalFileId: fileOriginal.id,
-      status: 'pending',
-      priority: priorityV,
-      sourceLanguage,
-      targetLanguage,
-      speakerCount,
-      processDurationSeconds: finalHandlerTime, // 根据积分消耗调整
-      creditId: creditRecord.id,
-      creditsConsumed: finalCredits,
-      createdBy: userId,
-      updatedBy: userId,
-    });
+      // 3. 插入vt_task_main表
+      const taskMain = await insertVtTaskMain({
+        id: getUuid(),
+        userId,
+        originalFileId: fileOriginal.id,
+        status: 'pending',
+        priority: priorityV,
+        sourceLanguage,
+        targetLanguage,
+        speakerCount,
+        processDurationSeconds: videoDurationSeconds,
+        creditId: creditRecord.id,
+        creditsConsumed: credits,
+        createdBy: userId,
+        updatedBy: userId,
+      });
 
-    return respData(taskMain);
+      return respData(taskMain);
+    } catch (e) {
+      // If we have already charged credits but failed to create records, refund best-effort.
+      await refundCredits({ creditId: creditRecord.id }).catch(() => {});
+      // Also soft-delete the uploaded file record if it was created.
+      await deleteFileOriginalById(fileId).catch(() => {});
+      throw e;
+    }
   } catch (e) {
     console.log('failed:', e);
     return respErr('failed');

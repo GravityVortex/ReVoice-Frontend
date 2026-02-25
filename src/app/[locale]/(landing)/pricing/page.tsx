@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { AudioWaveform } from 'lucide-react';
 
 import { PERMISSIONS } from '@/core/rbac';
 import { Link } from '@/core/i18n/navigation';
@@ -60,17 +61,17 @@ export default async function PricingPage({
       <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black text-white selection:bg-white/20">
         {/* Background Gradients */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute top-[-20%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-[120px]" />
-          <div className="absolute bottom-[-20%] right-[-10%] h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[120px]" />
+          <div className="absolute top-[-20%] left-[-10%] h-[520px] w-[520px] rounded-full bg-amber-500/10 blur-[120px]" />
+          <div className="absolute bottom-[-20%] right-[-10%] h-[520px] w-[520px] rounded-full bg-emerald-500/10 blur-[120px]" />
         </div>
 
         {/* Content Container */}
         <div className="z-10 flex max-w-2xl flex-col items-center gap-8 px-4 text-center">
           {/* Icon/Badge */}
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-xl" />
+            <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-amber-400/20 to-emerald-400/20 blur-xl" />
             <div className="relative rounded-full border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-transform hover:scale-105">
-              <span className="text-5xl">✨</span>
+              <AudioWaveform className="h-10 w-10 text-amber-200" />
             </div>
           </div>
 

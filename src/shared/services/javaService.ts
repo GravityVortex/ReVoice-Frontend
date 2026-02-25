@@ -2,10 +2,109 @@ import { JAVA_EMAIL_URL, JAVA_SERVER_BASE_URL, SECRET_EMAIL } from '@/shared/cac
 
 import EncryptionUtil from '../lib/EncryptionUtil';
 
+type JavaApiResponse<T> = {
+  code?: number;
+  message?: string;
+  data?: T;
+};
+
+type JavaSubtitleSingleTranslateData = {
+  textTranslated?: string;
+};
+
 export interface SignUrlItem {
   path: string;
   operation: 'upload' | 'download';
   expirationMinutes: number; // 分钟
+}
+
+/**
+ * Java 单句字幕翻译（Next.js 专用加密接口）
+ */
+export async function javaSubtitleSingleTranslate(args: {
+  text: string;
+  prevText?: string;
+  languageTarget: string;
+  themeDesc?: string;
+  deadlineMs?: number;
+}) {
+  const payload = {
+    text: args.text,
+    prevText: args.prevText ?? '',
+    languageTarget: args.languageTarget,
+    themeDesc: args.themeDesc ?? '',
+  };
+
+  const encryptedRequestData = EncryptionUtil.encryptRequest(payload);
+  const response = await fetch(`${JAVA_SERVER_BASE_URL}/api/nextjs/subtitle/single/translate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain',
+      ...(args.deadlineMs && Number.isFinite(args.deadlineMs)
+        ? { 'X-Request-Deadline-Ms': String(Math.trunc(args.deadlineMs)) }
+        : {}),
+    },
+    body: encryptedRequestData,
+  });
+
+  const rawText = await response.text();
+  let json: JavaApiResponse<JavaSubtitleSingleTranslateData> | undefined;
+  try {
+    json = rawText ? (JSON.parse(rawText) as JavaApiResponse<JavaSubtitleSingleTranslateData>) : undefined;
+  } catch {
+    // ignore
+  }
+
+  if (!response.ok) {
+    const msg =
+      json?.message ||
+      (rawText && rawText.trim()) ||
+      `Java subtitle translate failed (${response.status} ${response.statusText})`;
+    throw new Error(msg);
+  }
+
+  if (!json || typeof json !== 'object') {
+    throw new Error('Java subtitle translate returned invalid response');
+  }
+  if (json.code !== 200) {
+    throw new Error(json.message || `Java subtitle translate failed (${json.code ?? 'unknown'})`);
+  }
+
+  const translated = String(json.data?.textTranslated || '').trim();
+  if (!translated) {
+    throw new Error(json.message || 'Java subtitle translate returned empty text');
+  }
+
+  return { textTranslated: translated };
+}
+
+// In-memory cache for presigned URLs to reduce roundtrips to the Java control-plane.
+// This is best-effort: on serverless it only helps warm instances, but it's still worth it.
+const presignedUrlCache = new Map<string, { urls: any[]; expiresAtMs: number }>();
+const PRESIGNED_CACHE_MAX = 200;
+const PRESIGNED_CACHE_SAFETY_MS = 60_000; // don't serve URLs close to expiry
+
+function getPresignedCacheKey(itemArr: SignUrlItem[]) {
+  // Keep it deterministic and compact; order is significant.
+  return JSON.stringify(
+    itemArr.map((i) => ({
+      p: i.path,
+      o: i.operation,
+      e: i.expirationMinutes,
+    }))
+  );
+}
+
+function parseExpiresAtMs(urls: any[], fallbackMinutes: number) {
+  const now = Date.now();
+  let minMs = Number.POSITIVE_INFINITY;
+  for (const u of urls || []) {
+    const exp = typeof u?.expiresAt === 'string' ? Date.parse(u.expiresAt) : NaN;
+    if (Number.isFinite(exp) && exp > 0) minMs = Math.min(minMs, exp);
+  }
+  if (minMs !== Number.POSITIVE_INFINITY) return minMs;
+  const mins = Number.isFinite(fallbackMinutes) && fallbackMinutes > 0 ? fallbackMinutes : 60;
+  return now + mins * 60_000;
 }
 
 /**
@@ -14,22 +113,20 @@ export interface SignUrlItem {
  * @returns
  */
 export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
-  // 请求数据测试
+  const cacheKey = getPresignedCacheKey(itemArr);
+  const cached = presignedUrlCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && cached.expiresAtMs - PRESIGNED_CACHE_SAFETY_MS > now) {
+    return cached.urls;
+  }
+
   const requestDataPre = {
     requests: itemArr,
     // time: 1702345678,// 加密中会补充time时间
   };
 
-  // 加密响应
-  // console.log('加密明文--->', requestDataPre)
   const encryptedRequestData = EncryptionUtil.encryptRequest(requestDataPre);
-  console.log('加密密文--->', encryptedRequestData);
-  // 解密并验证请求
-  // const requestData = EncryptionUtil.decryptRequest(encryptedRequestData);
-  // console.log('解密明文--->', requestData);
-  // 请求java服务器
   const url = `${JAVA_SERVER_BASE_URL}/api/nextjs/presigned-urls`;
-  console.log('请求java服务器--->', url);
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -39,9 +136,7 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   });
 
   if (!response.ok) {
-    // console.log('java服务器返回--->', response.statusText);
-    console.log('java服务器返回--->', await response.text());
-    throw new Error(`Failed to get pre-signed URL`);
+    throw new Error(`Failed to get pre-signed URL: http ${response.status}`);
   }
   // {
   //   "code": 200,
@@ -64,13 +159,24 @@ export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
   //   }
   // }
   const backJO = await response.json();
-  console.log('java服务器返回--->', backJO);
-  if (backJO.code !== 200) {
-    console.log('java服务器返回--->', await response.text());
-    throw new Error(`Failed to get pre-signed URL`);
+  if (backJO?.code !== 200 || !Array.isArray(backJO?.data?.urls)) {
+    throw new Error(`Failed to get pre-signed URL: code ${backJO?.code ?? 'unknown'}`);
   }
   const urls = backJO.data.urls;
-  console.log('java服务器返回urls--->', urls);
+
+  try {
+    const fallbackMinutes = Math.min(...(itemArr || []).map((i) => i.expirationMinutes || 0).filter((n) => n > 0));
+    const expiresAtMs = parseExpiresAtMs(urls, fallbackMinutes);
+    presignedUrlCache.set(cacheKey, { urls, expiresAtMs });
+    // Simple FIFO eviction (good enough).
+    if (presignedUrlCache.size > PRESIGNED_CACHE_MAX) {
+      const firstKey = presignedUrlCache.keys().next().value as string | undefined;
+      if (firstKey) presignedUrlCache.delete(firstKey);
+    }
+  } catch {
+    // Never fail the request because of caching logic.
+  }
+
   return urls;
 }
 
@@ -83,9 +189,7 @@ export async function getTaskProgress(taskId: string) {
   const requestDataPre = {
     taskIds: [taskId],
   };
-  // 加密响应
   const encryptedRequestData = EncryptionUtil.encryptRequest(requestDataPre);
-  console.log('加密密文--->', encryptedRequestData);
   const response = await fetch(`${JAVA_SERVER_BASE_URL}/api/nextjs/tasks/status`, {
     method: 'POST',
     headers: {
@@ -161,9 +265,7 @@ export async function javaR2MoveFile(sourcePath: string, targetPath: string, buc
     targetPath: targetPath,
     bucket: bucket,
   };
-  // 加密响应
   const encryptedRequestData = EncryptionUtil.encryptRequest(params);
-  console.log('加密密文--->', encryptedRequestData);
   const response = await fetch(`${JAVA_SERVER_BASE_URL}/api/nextjs/move-file`, {
     method: 'POST',
     headers: {
@@ -206,11 +308,8 @@ export async function javaR2CoverWriteFile(sourcePath: string, targetPath: strin
     targetPath: targetPath,
     bucket: bucket,
   };
-  // 加密响应
   const encryptedRequestData = EncryptionUtil.encryptRequest(params);
-  // console.log('加密密文--->', encryptedRequestData);
   const url = `${JAVA_SERVER_BASE_URL}/api/nextjs/overwrite-file`;
-  console.log('请求java服务器--->', url);
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -226,7 +325,6 @@ export async function javaR2CoverWriteFile(sourcePath: string, targetPath: strin
   }
 
   const backJO = await response.json();
-  console.log('java服务器返回--->', backJO);
 
 // {
 //     "code": 200,

@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import NextLink from 'next/link';
 
 import { envConfigs } from '@/config';
 import { defaultLocale } from '@/config/locale';
@@ -129,14 +130,20 @@ export default async function SignInPage({
           <p className="px-8 text-center text-sm text-muted-foreground/80 leading-7 mt-4">
             {t.rich('legal_agreement', {
               terms: (chunks) => (
-                <a href="/terms" className="underline underline-offset-4 hover:text-primary">
+                <NextLink
+                  href="/terms"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
                   {chunks}
-                </a>
+                </NextLink>
               ),
               privacy: (chunks) => (
-                <a href="/privacy" className="underline underline-offset-4 hover:text-primary">
+                <NextLink
+                  href="/privacy"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
                   {chunks}
-                </a>
+                </NextLink>
               ),
             })}
           </p>

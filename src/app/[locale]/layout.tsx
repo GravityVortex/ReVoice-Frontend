@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
-import { setRequestLocale } from 'next-intl/server';
+import { getMessages, setRequestLocale } from 'next-intl/server';
 
 import { routing } from '@/core/i18n/config';
 import { ThemeProvider } from '@/core/theme/provider';
 import { Toaster } from '@/shared/components/ui/sonner';
 import { AppContextProvider } from '@/shared/contexts/app';
+import NextTopLoader from 'nextjs-toploader';
+import { AppLoader } from '@/shared/components/app-loader';
 import { getMetadata } from '@/shared/lib/seo';
 import { checkSoulDubAccess } from '@/shared/lib/souldub';
 import { getAllConfigs, getPublicConfigs } from '@/shared/models/config';
@@ -51,6 +53,9 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
+  // Explicitly pass messages so client components can always resolve translations.
+  // This avoids subtle edge-cases where the provider may mount without messages in dev/hot reload.
+  const messages = await getMessages();
 
   const initialConfigsPromise = getPublicConfigs();
   const initialUserPromise = (async (): Promise<User | null> => {
@@ -93,11 +98,18 @@ export default async function LocaleLayout({
   ]);
 
   return (
-    <NextIntlClientProvider locale={locale}>
+    <NextIntlClientProvider locale={locale} messages={messages}>
       <ThemeProvider>
         <AppContextProvider initialUser={initialUser} initialConfigs={initialConfigs}>
+          <NextTopLoader showSpinner={false} color="hsl(var(--primary))" />
+          <AppLoader />
           {children}
-          <Toaster position="top-center" richColors />
+          <Toaster
+            position="top-center"
+            offset={{ top: 'var(--toast-offset-top, 12px)' }}
+            visibleToasts={3}
+            closeButton
+          />
         </AppContextProvider>
       </ThemeProvider>
     </NextIntlClientProvider>

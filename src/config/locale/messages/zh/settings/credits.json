@@ -22,6 +22,25 @@
       "deleted": "退还"
     }
   },
+  "labels": {
+    "refunded": "已退"
+  },
+  "descriptions": {
+    "consume": {
+      "convert_video": "视频转换消耗积分",
+      "subtitle_retranslate": "字幕段重翻译消耗积分",
+      "audio_regen": "音频段重生成消耗积分",
+      "ai_task": "AI 生成（{mediaType}）消耗积分"
+    },
+    "grant": {
+      "payment": "充值获得积分",
+      "subscription": "订阅发放积分",
+      "renewal": "续费发放积分",
+      "promo": "限时优惠赠送积分",
+      "promo_entitlement": "限时优惠权益",
+      "admin": "管理员赠送积分"
+    }
+  },
   "view": {
     "title": "积分余额",
     "buttons": {

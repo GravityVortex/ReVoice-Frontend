@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Empty } from '@/shared/blocks/common';
 import { ConsolePageHeader } from '@/shared/blocks/console/page-header';
@@ -27,13 +27,51 @@ export default async function BillingPage({
 
   const userPromise = getUserInfo();
   const translationsPromise = getTranslations('settings.billing');
+  const commonTranslationsPromise = getTranslations('common');
+  const localePromise = getLocale();
 
   const user = await userPromise;
   if (!user) {
     return <Empty message="no auth" />;
   }
 
-  const t = await translationsPromise;
+  const [t, tCommon, locale] = await Promise.all([
+    translationsPromise,
+    commonTranslationsPromise,
+    localePromise,
+  ]);
+  const momentLocale = locale === 'zh' ? 'zh-cn' : locale;
+  const dateFormat = locale === 'zh' ? 'YYYY年MM月DD日' : 'MMM D, YYYY';
+  const now = new Date();
+
+  const formatDate = (value?: string | Date | null) => {
+    if (!value) return '-';
+    return moment(value).locale(momentLocale).format(dateFormat);
+  };
+
+  const getPlanDisplayName = (item?: Pick<Subscription, 'planName' | 'productName' | 'productId'> | null) => {
+    if (!item) return '-';
+
+    const candidates = [item.planName, item.productName, item.productId].filter(
+      (v): v is string => typeof v === 'string' && v.trim().length > 0
+    );
+
+    for (const raw of candidates) {
+      const normalized = raw.trim().toLowerCase();
+      if (normalized.includes('standard') || raw.includes('标准')) {
+        return tCommon('plans.standard');
+      }
+      if (
+        normalized.includes('pro') ||
+        normalized.includes('premium') ||
+        raw.includes('高级')
+      ) {
+        return tCommon('plans.pro');
+      }
+    }
+
+    return item.planName || item.productName || '-';
+  };
 
   const [currentSubscription, total, subscriptions] = await Promise.all([
     getCurrentSubscription(user.id),
@@ -49,6 +87,15 @@ export default async function BillingPage({
     }),
   ]);
 
+  const subscriptionsView = subscriptions.map((item) => ({
+    ...item,
+    statusLabel: item.status ? t(`list.tabs.${item.status}`) : '-',
+  }));
+
+  const currentSubscriptionStatusLabel = currentSubscription?.status
+    ? t(`list.tabs.${currentSubscription.status}`)
+    : undefined;
+
   const table: Table = {
     title: t('list.title'),
     columns: [
@@ -56,7 +103,7 @@ export default async function BillingPage({
         name: 'planName',
         title: t('fields.plan'),
         callback: function (item: Subscription) {
-          const title = item.planName || item.productName || '-';
+          const title = getPlanDisplayName(item);
           return (
             <div className="min-w-0">
               <div className="truncate font-medium">{title}</div>
@@ -68,7 +115,7 @@ export default async function BillingPage({
         },
       },
       {
-        name: 'status',
+        name: 'statusLabel',
         title: t('fields.status'),
         type: 'label',
         metadata: { variant: 'outline' },
@@ -104,7 +151,7 @@ export default async function BillingPage({
           if (!item.interval || !item.intervalCount) {
             return '-';
           }
-          return <div>{`${item.intervalCount}-${item.interval}`}</div>;
+          return <div>{t(`intervals.${item.interval}`, { count: item.intervalCount })}</div>;
         },
         className: 'hidden md:table-cell',
       },
@@ -112,28 +159,44 @@ export default async function BillingPage({
         name: 'createdAt',
         title: t('fields.created_at'),
         type: 'time',
+        metadata: {
+          format: {
+            zh: 'YYYY年MM月DD日',
+            en: 'MMM D, YYYY',
+          },
+        },
         className: 'hidden lg:table-cell',
       },
       {
         title: t('fields.current_period'),
         callback: function (item) {
-          let period = (
+          if (!item.currentPeriodStart || !item.currentPeriodEnd) {
+            return '-';
+          }
+
+          return (
             <div>
-              {`${moment(item.currentPeriodStart).format('YYYY-MM-DD')}`} ~
+              {formatDate(item.currentPeriodStart)} ~
               <br />
-              {`${moment(item.currentPeriodEnd).format('YYYY-MM-DD')}`}
+              {formatDate(item.currentPeriodEnd)}
             </div>
           );
-
-          return period;
         },
         className: 'hidden xl:table-cell',
       },
       {
         title: t('fields.end_time'),
         callback: function (item) {
-          if (item.canceledEndAt) {
-            return <div>{moment(item.canceledEndAt).format('YYYY-MM-DD')}</div>;
+          const endAt =
+            item.canceledEndAt ||
+            (item.status === SubscriptionStatus.PENDING_CANCEL
+              ? item.currentPeriodEnd
+              : null);
+
+          if (endAt) {
+            return (
+              <div>{formatDate(endAt)}</div>
+            );
           }
           return '-';
         },
@@ -150,19 +213,32 @@ export default async function BillingPage({
             return null;
           }
 
-          return [
-            {
+          const actions: any[] = [];
+
+          // Always allow going to the provider billing portal when available.
+          // This is safer than exposing cancellation for stale records.
+          if (item.paymentUserId) {
+            actions.push({
+              title: t('view.buttons.manage'),
+              url: `/settings/billing/retrieve?subscription_no=${item.subscriptionNo}`,
+              icon: 'Settings',
+            });
+          }
+
+          // Only offer cancellation when the current billing period is still valid.
+          if (item.currentPeriodEnd && item.currentPeriodEnd > now) {
+            actions.push({
               title: t('view.buttons.cancel'),
               url: `/settings/billing/cancel?subscription_no=${item.subscriptionNo}`,
               icon: 'Ban',
-              size: 'sm',
-              variant: 'outline',
-            },
-          ];
+            });
+          }
+
+          return actions.length > 0 ? actions : null;
         },
       },
     ],
-    data: subscriptions,
+    data: subscriptionsView,
     pagination: {
       total,
       page,
@@ -258,13 +334,15 @@ export default async function BillingPage({
 
       <div className="flex flex-col gap-6">
         <PanelCard
-          label={currentSubscription?.status}
+          label={currentSubscriptionStatusLabel}
           title={t('view.title')}
           buttons={buttons}
           className="w-full"
         >
           <div className="text-primary text-3xl font-bold">
-            {currentSubscription?.planName || t('view.no_subscription')}
+            {currentSubscription
+              ? getPlanDisplayName(currentSubscription)
+              : t('view.no_subscription')}
           </div>
           {currentSubscription ? (
             <>
@@ -272,17 +350,20 @@ export default async function BillingPage({
                 currentSubscription?.status === SubscriptionStatus.TRIALING ? (
                 <div className="text-muted-foreground mt-4 text-sm font-normal">
                   {t('view.tip', {
-                    date: moment(currentSubscription?.currentPeriodEnd).format(
-                      'YYYY-MM-DD'
-                    ),
+                    date: formatDate(currentSubscription?.currentPeriodEnd),
                   })}
                 </div>
               ) : (
                 <div className="text-destructive mt-4 text-sm font-normal">
                   {t('view.end_tip', {
-                    date: moment(currentSubscription?.canceledEndAt).format(
-                      'YYYY-MM-DD'
-                    ),
+                    date:
+                      (currentSubscription?.canceledEndAt ||
+                        currentSubscription?.currentPeriodEnd)
+                        ? formatDate(
+                            currentSubscription?.canceledEndAt ||
+                              currentSubscription?.currentPeriodEnd
+                          )
+                      : '-',
                   })}
                 </div>
               )}

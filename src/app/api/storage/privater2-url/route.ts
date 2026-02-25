@@ -1,11 +1,9 @@
 import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
 
 import { getAuth } from '@/core/auth';
-import { getPrivateR2SignUrl } from '@/extensions/storage/privateR2Util';
-import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
+import { hasPermission } from '@/shared/services/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,7 +20,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     // temp_test/test3.mp4
     const key = searchParams.get('key');
-    const timeOut = parseInt(searchParams.get("timeOut") || '3600');
+    const timeoutRaw = Number.parseInt(searchParams.get('timeOut') || '', 10);
+    const timeOutSeconds = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 3600;
 
     if (!key) {
       return respErr('key is required');
@@ -30,30 +29,22 @@ export async function GET(request: Request) {
     if (key.includes('..') || key.startsWith('/')) {
       return respErr('invalid key');
     }
-    // Only allow signing objects under the current user's prefix.
-    if (!key.startsWith(`${session.user.id}/`)) {
-      return respErr('Forbidden');
+    const ownerUserId = key.split('/')[0] || '';
+    if (!ownerUserId) {
+      return respErr('invalid key');
     }
-    // DOEND: 调用java接口获取私桶中文件访问url
-    let url = '';
-    if (USE_JAVA_REQUEST) {
-      const params: SignUrlItem[] = [
-        { path: key, operation: 'download', expirationMinutes: 240 }, // 视频
-      ];
-      const resUrlArr = await getPreSignedUrl(params);
-      url = resUrlArr[0].url;
-    } else {
-      // const storageService = await getStorageService();
-      // const provider = storageService.getProvider('r2');
-      // if (!provider || provider.name !== 'r2') {
-      //   return NextResponse.json({error: 'R2 not configured'}, {status: 500});
-      // }
-      // 获得r2的配置信息
-      // const r2Config = (provider as any).configs;
-      // 多个存储桶公用一个
-      url = await getPrivateR2SignUrl(key, timeOut);
-      // console.log('Generated presigned URL--->', url);
+    // Allow admins to inspect/sign another user's private media.
+    if (ownerUserId !== session.user.id) {
+      const isAdmin = await hasPermission(session.user.id, 'admin.access');
+      if (!isAdmin) {
+        return respErr('Forbidden');
+      }
     }
+    // Always sign via Java (centralized control-plane).
+    const expirationMinutes = Math.max(1, Math.min(24 * 60, Math.ceil(timeOutSeconds / 60)));
+    const params: SignUrlItem[] = [{ path: key, operation: 'download', expirationMinutes }];
+    const resUrlArr = await getPreSignedUrl(params);
+    const url = resUrlArr[0].url;
 
     return respData({ url });
   } catch (e) {

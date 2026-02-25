@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getShortUUID, getUuid } from '@/shared/lib/hash';
 import { createCredit, CreditStatus, CreditTransactionType, NewCredit } from '@/shared/models/credit';
 import { findUserByEmail, getUserInfo } from '@/shared/models/user';
+import { PERMISSIONS } from '@/core/rbac';
+import { hasPermission } from '@/shared/services/rbac';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +14,10 @@ export async function POST(request: NextRequest) {
     const user = await getUserInfo();
     if (!user) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+    }
+    const canWrite = await hasPermission(user.id, PERMISSIONS.CREDITS_WRITE).catch(() => false);
+    if (!canWrite) {
+      return NextResponse.json({ success: false, error: 'Permission denied' }, { status: 403 });
     }
 
     if (!email) {

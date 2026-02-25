@@ -56,6 +56,47 @@ export default async function CreditsPage({
     getRemainingCredits(user.id),
   ]);
 
+  const safeParseJson = (value: unknown) => {
+    if (!value || typeof value !== 'string') return null;
+    try {
+      return JSON.parse(value) as Record<string, any>;
+    } catch {
+      return null;
+    }
+  };
+
+  const getCreditDescription = (item: Credit) => {
+    const raw = item.description || '';
+    const scene = (item.transactionScene || '').trim();
+    const meta = safeParseJson(item.metadata);
+
+    // AI tasks: description is often hard-coded in English. Prefer metadata when present.
+    if (meta?.type === 'ai-task') {
+      return t('descriptions.consume.ai_task', {
+        mediaType: meta?.mediaType || scene || raw || 'AI',
+      });
+    }
+
+    if (item.transactionType === CreditTransactionType.CONSUME) {
+      if (scene === 'convert_video') return t('descriptions.consume.convert_video');
+      if (scene === 'subtitle_retranslate') return t('descriptions.consume.subtitle_retranslate');
+      if (scene === 'audio_regen') return t('descriptions.consume.audio_regen');
+      return raw || '-';
+    }
+
+    if (item.transactionType === CreditTransactionType.GRANT) {
+      if (scene === 'payment') return t('descriptions.grant.payment');
+      if (scene === 'subscription') return t('descriptions.grant.subscription');
+      if (scene === 'renewal') return t('descriptions.grant.renewal');
+      if (scene === 'promo') return t('descriptions.grant.promo');
+      if (scene === 'promo_entitlement') return t('descriptions.grant.promo_entitlement');
+      if (scene === 'admin give') return t('descriptions.grant.admin');
+      return raw || '-';
+    }
+
+    return raw || '-';
+  };
+
   const table: Table = {
     title: t('list.title'),
     columns: [
@@ -64,7 +105,7 @@ export default async function CreditsPage({
         title: t('fields.description'),
         callback: (item: Credit) => (
           <div className="min-w-0">
-            <div className="truncate font-medium">{item.description || '-'}</div>
+            <div className="truncate font-medium">{getCreditDescription(item)}</div>
             <div className="text-muted-foreground truncate text-xs">
               {item.transactionNo}
             </div>
@@ -83,7 +124,9 @@ export default async function CreditsPage({
           } else {
             return <div className="text-red-500">
               {item.credits}
-              {item.status === 'deleted' ? <span className='text-green-500'>(已退)</span> : ''}
+              {item.status === CreditStatus.DELETED ? (
+                <span className="text-green-500">({t('labels.refunded')})</span>
+              ) : null}
             </div>;
           }
         },
@@ -93,13 +136,24 @@ export default async function CreditsPage({
         title: t('fields.expires_at'),
         type: 'time',
         placeholder: '-',
-        metadata: { format: 'YYYY-MM-DD HH:mm:ss' },
+        metadata: {
+          format: {
+            zh: 'YYYY年MM月DD日 HH:mm',
+            en: 'MMM D, YYYY HH:mm',
+          },
+        },
         className: 'hidden lg:table-cell',
       },
       {
         name: 'createdAt',
         title: t('fields.created_at'),
         type: 'time',
+        metadata: {
+          format: {
+            zh: 'YYYY年MM月DD日',
+            en: 'MMM D, YYYY',
+          },
+        },
       },
     ],
     data: credits,
@@ -133,7 +187,7 @@ export default async function CreditsPage({
       title: t('list.tabs.deleted'),
       name: 'deleted',
       url: '/settings/credits?type=consume&stu=deleted',
-      is_active: type === 'deleted',
+      is_active: type === 'consume' && statusFilter === CreditStatus.DELETED,
     },
   ];
 

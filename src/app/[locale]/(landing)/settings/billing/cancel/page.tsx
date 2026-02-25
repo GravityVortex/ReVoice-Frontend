@@ -20,9 +20,18 @@ export default async function CancelBillingPage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ subscription_no: string }>;
 }) {
-  const t = await getTranslations('settings.billing.cancel');
+  const billingTranslationsPromise = getTranslations('settings.billing');
+  const cancelTranslationsPromise = getTranslations('settings.billing.cancel');
+
   const { locale } = await params;
   const { subscription_no } = await searchParams;
+  const momentLocale = locale === 'zh' ? 'zh-cn' : locale;
+  const dateFormat = locale === 'zh' ? 'YYYY年MM月DD日' : 'MMM D, YYYY';
+
+  const formatDate = (value?: string | Date | null) => {
+    if (!value) return '-';
+    return moment(value).locale(momentLocale).format(dateFormat);
+  };
 
   if (!subscription_no) {
     return <Empty message="invalid subscription no" />;
@@ -32,6 +41,11 @@ export default async function CancelBillingPage({
   if (!user) {
     return <Empty message="no auth, please sign in" />;
   }
+
+  const [tBilling, t] = await Promise.all([
+    billingTranslationsPromise,
+    cancelTranslationsPromise,
+  ]);
 
   const subscription = await findSubscriptionBySubscriptionNo(subscription_no);
   if (!subscription) {
@@ -92,6 +106,15 @@ export default async function CancelBillingPage({
       throw new Error('subscription is not active or trialing');
     }
 
+    // Don't cancel an already-ended period. This is either a no-op or a stale record.
+    if (subscription.currentPeriodEnd && subscription.currentPeriodEnd <= new Date()) {
+      throw new Error(
+        locale === 'zh'
+          ? '订阅周期已结束，无法取消'
+          : 'Subscription period has ended. Cancellation is unavailable.'
+      );
+    }
+
     const paymentService = await getPaymentService();
     const paymentProvider = paymentService.getProvider(
       subscription.paymentProvider
@@ -132,19 +155,28 @@ export default async function CancelBillingPage({
       {
         name: 'intervalTip',
         title: t('fields.interval_cycle'),
-        value: `every ${subscription.intervalCount} ${subscription.interval}`,
+        value: subscription.interval
+          ? tBilling(`intervals.${subscription.interval}`, {
+              count: subscription.intervalCount ?? 1,
+            })
+          : '-',
         attributes: { disabled: true },
       },
       {
         name: 'subscriptionCreatedAt',
         title: t('fields.subscription_created_at'),
-        value: moment(subscription.createdAt).format('YYYY-MM-DD'),
+        value: subscription.createdAt
+          ? formatDate(subscription.createdAt)
+          : '-',
         attributes: { disabled: true },
       },
       {
         name: 'currentPeriod',
         title: t('fields.current_period'),
-        value: `${moment(subscription.currentPeriodStart).format('YYYY-MM-DD')} ~ ${moment(subscription.currentPeriodEnd).format('YYYY-MM-DD')}`,
+        value:
+          subscription.currentPeriodStart && subscription.currentPeriodEnd
+            ? `${formatDate(subscription.currentPeriodStart)} ~ ${formatDate(subscription.currentPeriodEnd)}`
+            : '-',
         attributes: { disabled: true },
       },
     ],

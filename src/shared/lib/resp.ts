@@ -7,11 +7,12 @@ export function respOk() {
 }
 
 export function respErr(message: string) {
-  return respJson(-1, message);
+  // Keep wrapper shape stable for callers that always read `resp.data`.
+  return respJson(-1, message, null);
 }
 
 export function respJson(code: number, message: string, data?: any) {
-  let json = {
+  const json: any = {
     code: code,
     message: message,
     data: data,

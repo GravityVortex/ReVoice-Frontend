@@ -23,8 +23,9 @@ import {
     SelectValue,
 } from "@/shared/components/ui/select";
 import { useAppContext } from "@/shared/contexts/app";
-import { Check, ChevronRight, Languages, Clock, Video, Droplet, BookText, Plus, Trash2, Upload, Link, BadgeDollarSign, Crown, CircleDollarSign, MailCheck } from 'lucide-react';
+import { Check, ChevronRight, Languages, Clock, Video, Droplet, BookText, Plus, Trash2, Upload, Link, BadgeDollarSign, Crown, CircleDollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
 
 
 // 语言选项
@@ -41,7 +42,6 @@ const PEOPLES_OPTIONS = [
 interface Config {
     maxFileSizeMB: number;
     pointsPerMinute: number;
-    userType: string;
 }
 
 interface VideoUploadData {
@@ -115,8 +115,11 @@ export function ProjectAddConvertModal({
     });
     const [config, setConfig] = useState<Config>({
         maxFileSizeMB: 300 * 1024 * 1024,
-        pointsPerMinute: 2,
-        userType: 'guest',
+        pointsPerMinute: 3,
+    });
+    usePausedVideoPrefetch(videoRef, {
+        enabled: isOpen && Boolean(formData.videoUpload.videoUrl),
+        minBufferedAheadSeconds: 10,
     });
 
 
@@ -128,23 +131,18 @@ export function ProjectAddConvertModal({
             const backJO = await res.json();
             console.log("接口获取配置--->", backJO);
             console.log("当前用户--->", user);
-            const isGuest = user?.email.startsWith('guest_') && user?.email.endsWith('@temp.local');
-            // 默认值
+            // 默认值（guest 已移除，只保留注册/订阅用户）
             const tempConfig: Config = {
-                userType: isGuest ? 'guest' : 'registered',
                 maxFileSizeMB: 300 * 1024 * 1024,
-                pointsPerMinute: 2
+                pointsPerMinute: 3,
             };
             for (const item of backJO?.data?.list || []) {
-                if (item.configKey === 'limit.guest.file_size_mb' && isGuest) {
-                    tempConfig.maxFileSizeMB = parseInt(item.configValue) * 1024 * 1024;
-                } else if (item.configKey === 'limit.registered.file_size_mb' && !isGuest) {
+                if (item.configKey === 'limit.registered.file_size_mb') {
                     tempConfig.maxFileSizeMB = parseInt(item.configValue) * 1024 * 1024;
                 } else if (item.configKey === "credit.points_per_minute") {
                     tempConfig.pointsPerMinute = parseInt(item.configValue);
                 }
             }
-            // tempConfig.userType = 'guest'
             // tempConfig.pointsPerMinute = 8;
             setConfig(tempConfig)
             console.log("最终配置--->", tempConfig);
@@ -179,7 +177,7 @@ export function ProjectAddConvertModal({
         // const resolutionCredits = RESOLUTIONS.find(r => r.value === formData.resolution)?.credits || 0;
         // const watermarkCredits = PEOPLES_OPTIONS.find(w => w.value === formData.peoples)?.credits || 0;
         const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
-        const durationCredits = durationInMinutes * config.pointsPerMinute; // 1分钟2积分
+        const durationCredits = durationInMinutes * config.pointsPerMinute; // duration (minutes) * pointsPerMinute
         return durationCredits;
     };
 
@@ -195,15 +193,10 @@ export function ProjectAddConvertModal({
         let jf = user?.credits?.remainingCredits || 0;
         // let jf = 0;
         if (jf <= 0) return 0;
-        let duration = Math.floor(jf / 2); // 每分钟2积分
+        const ppm = Number.isFinite(config.pointsPerMinute) && config.pointsPerMinute > 0 ? config.pointsPerMinute : 3;
+        let duration = Math.floor(jf / ppm);
         return duration;
     }
-
-    // 获取时长积分
-    // const getDurationCredits = () => {
-    //     const durationInMinutes = Math.ceil(formData.videoUpload.videoDuration / 60);
-    //     return durationInMinutes * 2; // 1分钟2积分
-    // };
 
     // 保存到本地缓存
     const saveToCache = () => {
@@ -242,6 +235,7 @@ export function ProjectAddConvertModal({
 
     // 处理视频文件选择
     const handleVideoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        console.log('>>> handleVideoSelect TRIGGERED - V2 Multipart <<<');
         const file = event.target.files?.[0];
         if (!file) {
             resetVideoData(false);
@@ -301,98 +295,23 @@ export function ProjectAddConvertModal({
 
 
         try {
+            // 使用分片上传（Multipart Upload）
+            // - 默认配置见 MultipartUploader（分片+并发+重试）
+            const { MultipartUploader } = await import('@/shared/lib/multipart-upload');
+            const uploader = new MultipartUploader();
 
-            const res = await fetch('/api/storage/presigned-url', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: file.name, contentType: file.type }),
+            const result = await uploader.upload(file, {
+                onProgress: (progress) => {
+                    setProgress2(progress);
+                },
+                onStatus: (status) => {
+                    console.log('[Multipart Upload]', status);
+                },
             });
 
-            if (!res.ok) {
-                resetVideoData(false);
-                throw new Error('Failed to get presigned URL');
-            }
-
-            // 获取上传签名url
-            const { presignedUrl, key, publicUrl, r2Bucket, fileId } = await res.json();
-            console.log('上传视频key--->', key)
-            
-            // 前端直接上传
-            const xhr = new XMLHttpRequest();
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    setProgress2(Math.round((e.loaded / e.total) * 100));
-                }
-            });
-
-            await new Promise((resolve, reject) => {
-                xhr.onload = () => {
-                    if (xhr.status === 200) resolve(xhr.response);
-                    else reject(new Error(`Upload failed: ${xhr.status}`));
-                };
-                xhr.onerror = () => reject(new Error('Upload failed'));
-
-                xhr.open('PUT', presignedUrl);
-                xhr.setRequestHeader('Content-Type', file.type);
-                xhr.send(file);
-            });
-
-            //setResult2(`上传成功！\n文件 URL: ${publicUrl}\n\n注意：需要在 R2 Bucket 设置 CORS 规则才能正常工作`);
-
-
-            const videoUrl = publicUrl;
-            const videoKey = key;
+            const videoUrl = result.publicUrl;
+            const videoKey = result.key;
             const videoSize = file.size;
-
-            // 创建临时视频元素获取时长
-            // const video = document.createElement('video');
-            // video.preload = 'metadata';
-            // video.src = videoUrl;
-
-            // video.onloadedmetadata = () => {
-            //     // const durationInMinutes = Math.ceil(video.duration / 60);
-            //     // setVideoDuration(durationInMinutes);
-            //     // URL.revokeObjectURL(video.src);
-            //     // console.log('视频时长（分钟）:', durationInMinutes);
-
-            //     window.URL.revokeObjectURL(video.src);
-            //     const videoDuration = video.duration;// 单位秒
-            //     // 保留1位小数
-            //     const formattedDuration = Math.round(videoDuration * 10) / 10;
-            //     // 更新表单项
-            //     setFormData(prev => ({
-            //         ...prev,
-            //         videoUpload: {
-            //             ...prev.videoUpload,
-            //             videoDuration: formattedDuration,
-            //         },
-            //     }));
-            //     console.log('视频时长--->', formattedDuration, '秒');
-            // };
-
-            // 尝试截取封面（可能失败）
-            // video.currentTime = 1; // 截取第1秒的画面
-            // video.onseeked = () => {
-            //     try {
-            //         const canvas = document.createElement('canvas');
-            //         canvas.width = video.videoWidth;
-            //         canvas.height = video.videoHeight;
-            //         const ctx = canvas.getContext('2d');
-            //         if (ctx) {
-            //             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            //             const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-            //             setFormData(prev => ({
-            //                 ...prev,
-            //                 videoUpload: {
-            //                     ...prev.videoUpload,
-            //                     thumbnailUrl,
-            //                 },
-            //             }));
-            //         }
-            //     } catch (error) {
-            //         console.log('截取封面失败（忽略）:', error);
-            //     }
-            // };
 
             // 更新表单项
             setFormData(prev => ({
@@ -405,9 +324,9 @@ export function ProjectAddConvertModal({
 
                     fileName: file.name,
                     fileType: file.type,
-                    r2Key: key,
-                    r2Bucket: r2Bucket, // || 'video-store',
-                    fileId: fileId,
+                    r2Key: result.keyV,
+                    r2Bucket: result.bucket,
+                    fileId: result.fileId,
                 },
             }));
             toast.success(t('upload.uploadSuccess'));
@@ -421,6 +340,7 @@ export function ProjectAddConvertModal({
             }
         }
     };
+
 
 
     const resetVideoDataClick = (e: any, showTip = true) => {
@@ -530,7 +450,6 @@ export function ProjectAddConvertModal({
         fd.append("sourceLanguage", formData.sourceLanguage); // 
         fd.append("targetLanguage", formData.targetLanguage); // 
         fd.append("speakerCount", formData.peoples); // 
-        fd.append("userType", config.userType); // 'guest' : 'registered'
         fd.append("fileId", formData.videoUpload.fileId); // 文件Id
 
         // fd.append("prefix", "video-convert"); // 可选：自定义存储前缀
@@ -691,6 +610,7 @@ export function ProjectAddConvertModal({
                                                 ref={videoRef}
                                                 src={formData.videoUpload.videoUrl}
                                                 controls
+                                                preload="auto"
                                                 className="w-full object-cover aspect-video h-auto rounded-lg border"
                                             />
                                             <Button
@@ -708,7 +628,7 @@ export function ProjectAddConvertModal({
                                         </div>
                                     )}
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        {config.userType === 'guest' ? t('upload.guestAccount') : t('upload.currentAccount')}
+                                        {t('upload.currentAccount')}
                                         {`${t('upload.maxSize')} ${(config?.maxFileSizeMB / 1024 / 1024).toFixed(0)} MB`}
                                     </p>
                                 </div>
@@ -867,12 +787,6 @@ export function ProjectAddConvertModal({
                                                     <span className="text-lg text-muted-foreground">{t('confirm.credits')}</span>
                                                 </div>
                                                 <div className="flex justify-center items-baseline gap-2">
-                                                    {config.userType === 'guest' && (<a href="/settings/profile" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
-                                                        <MailCheck className="text-sm text-blue-600 hover:underline">
-                                                            {t('confirm.register')}
-                                                        </MailCheck>
-                                                        {t('confirm.registerTip')}
-                                                    </a>)}
                                                     <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
                                                         <Crown className="text-sm text-blue-600 hover:underline">
                                                             {t('confirm.subscribe')}

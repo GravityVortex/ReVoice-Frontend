@@ -12,6 +12,7 @@ import { UploadCloud, Clock, Settings2, Zap, Loader2, X, ArrowRight, Languages, 
 import { toast } from 'sonner';
 import { useRouter } from '@/core/i18n/navigation';
 import { CostEstimateModal } from './cost-estimate-modal';
+import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
 
 type Lang = 'zh' | 'en';
 
@@ -24,7 +25,6 @@ const PEOPLES_OPTIONS = [
 interface Config {
     maxFileSizeBytes: number;
     pointsPerMinute: number;
-    userType: string;
 }
 
 interface VideoUploadData {
@@ -59,6 +59,7 @@ export function ProjectCreateFlow() {
     const [submitting, setSubmitting] = useState(false);
     const { user } = useAppContext();
     const videoInputRef = useRef<HTMLInputElement>(null);
+    const previewVideoRef = useRef<HTMLVideoElement>(null);
 
     // 视频上传状态
     const [uploading, setUploading] = useState(false);
@@ -89,11 +90,14 @@ export function ProjectCreateFlow() {
 
     const [config, setConfig] = useState<Config>({
         maxFileSizeBytes: 300 * 1024 * 1024,
-        pointsPerMinute: 2,
-        userType: 'guest',
+        pointsPerMinute: 3,
     });
 
     const currentBalance = user?.credits?.remainingCredits || 0;
+    usePausedVideoPrefetch(previewVideoRef, {
+        enabled: Boolean(formData.videoUpload.videoUrl),
+        minBufferedAheadSeconds: 10,
+    });
 
     // Load Config & Cache
     useEffect(() => {
@@ -101,18 +105,14 @@ export function ProjectCreateFlow() {
             try {
                 const res = await fetch("/api/video-task/getconfig");
                 const backJO = await res.json();
-                const isGuest = user?.email.startsWith('guest_') && user?.email.endsWith('@temp.local');
 
                 const tempConfig: Config = {
-                    userType: isGuest ? 'guest' : 'registered',
                     maxFileSizeBytes: 300 * 1024 * 1024,
-                    pointsPerMinute: 2
+                    pointsPerMinute: 3
                 };
 
                 for (const item of backJO?.data?.list || []) {
-                    if (item.configKey === 'limit.guest.file_size_mb' && isGuest) {
-                        tempConfig.maxFileSizeBytes = parseInt(item.configValue) * 1024 * 1024;
-                    } else if (item.configKey === 'limit.registered.file_size_mb' && !isGuest) {
+                    if (item.configKey === 'limit.registered.file_size_mb') {
                         tempConfig.maxFileSizeBytes = parseInt(item.configValue) * 1024 * 1024;
                     } else if (item.configKey === "credit.points_per_minute") {
                         tempConfig.pointsPerMinute = parseInt(item.configValue);
@@ -235,42 +235,24 @@ export function ProjectCreateFlow() {
                 };
             });
 
-            // Upload
-            const res = await fetch('/api/storage/presigned-url', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: file.name, contentType: file.type }),
-            });
-
-            if (!res.ok) throw new Error('Failed to get upload URL');
-
-            const { presignedUrl, key, publicUrl, r2Bucket, fileId } = await res.json();
-
-            const xhr = new XMLHttpRequest();
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    setProgress(Math.round((e.loaded / e.total) * 100));
-                }
-            });
-
-            await new Promise((resolve, reject) => {
-                xhr.onload = () => xhr.status === 200 ? resolve(xhr.response) : reject(new Error(`Upload failed: ${xhr.status}`));
-                xhr.onerror = () => reject(new Error('Network error during upload'));
-                xhr.open('PUT', presignedUrl);
-                xhr.setRequestHeader('Content-Type', file.type);
-                xhr.send(file);
+            // Upload (multipart upload with parallel chunks)
+            const { MultipartUploader } = await import('@/shared/lib/multipart-upload');
+            const uploader = new MultipartUploader();
+            const result = await uploader.upload(file, {
+                onProgress: (p) => setProgress(p),
+                onStatus: (status) => console.log('[Multipart Upload]', status),
             });
 
             setFormData(prev => ({
                 ...prev,
                 videoUpload: {
                     ...prev.videoUpload,
-                    videoUrl: publicUrl,
-                    videoKey: key,
+                    videoUrl: result.publicUrl,
+                    videoKey: result.key,
                     fileType: file.type,
-                    r2Key: key,
-                    r2Bucket: r2Bucket,
-                    fileId: fileId,
+                    r2Key: result.keyV,
+                    r2Bucket: result.bucket,
+                    fileId: result.fileId,
                 },
             }));
             toast.success(t('upload.uploadSuccess'));
@@ -336,7 +318,6 @@ export function ProjectCreateFlow() {
         fd.append("sourceLanguage", formData.sourceLanguage);
         fd.append("targetLanguage", formData.targetLanguage);
         fd.append("speakerCount", formData.peoples);
-        fd.append("userType", config.userType);
         fd.append("fileId", formData.videoUpload.fileId);
 
         try {
@@ -344,10 +325,15 @@ export function ProjectCreateFlow() {
             const data = await res.json();
 
             if (data?.code === 0) {
+                const fileId = (data?.data?.originalFileId as string | undefined) || formData.videoUpload.fileId;
+                if (!fileId) {
+                    toast.error(t('messages.submitFailed'));
+                    return;
+                }
                 clearCache();
                 resetFormData();
                 toast.success(t('messages.taskCreated'));
-                router.push('/dashboard/projects');
+                router.replace(`/dashboard/projects/${encodeURIComponent(fileId)}`);
             } else {
                 toast.error(data?.message || t('messages.submitFailed'));
             }
@@ -441,8 +427,10 @@ export function ProjectCreateFlow() {
                                 <div className="relative w-full flex-1 bg-black/50 overflow-hidden group flex items-center justify-center">
                                     <div className="absolute inset-0 bg-grid-white/[0.02]" />
                                     <video
+                                        ref={previewVideoRef}
                                         src={formData.videoUpload.videoUrl}
                                         controls
+                                        preload="auto"
                                         className="w-full h-full max-h-full object-contain relative z-10"
                                     />
                                     <Button
@@ -599,7 +587,6 @@ export function ProjectCreateFlow() {
                 cost={credits}
                 durationMinutes={durationMinutes}
                 pointsPerMinute={config.pointsPerMinute}
-                isGuest={config.userType === 'guest'}
                 sourceLanguage={formData.sourceLanguage}
                 targetLanguage={formData.targetLanguage}
                 speakerCount={formData.peoples}

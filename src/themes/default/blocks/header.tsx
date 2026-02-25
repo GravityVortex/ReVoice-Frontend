@@ -59,6 +59,15 @@ export function Header({ header }: { header: HeaderType }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+	  useEffect(() => {
+	    // Keep toasts out of the fixed marketing header area on landing pages.
+	    const root = document.documentElement;
+	    root.style.setProperty('--toast-offset-top', 'calc(var(--site-header-h) + 0px)');
+	    return () => {
+	      root.style.removeProperty('--toast-offset-top');
+	    };
+	  }, []);
+
   // Navigation menu for large screens
   const NavMenu = () => {
     const menuRef = useRef<React.ElementRef<typeof NavigationMenu>>(null);

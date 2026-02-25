@@ -20,16 +20,26 @@ export function Time({
     return null;
   }
 
-  let locale = useLocale();
-  if (locale === 'zh') {
-    locale = 'zh-cn';
+  const uiLocale = useLocale();
+  const momentLocale = uiLocale === 'zh' ? 'zh-cn' : uiLocale;
+
+  const rawFormat = metadata?.format as unknown;
+  let format: string | undefined;
+  if (typeof rawFormat === 'string') {
+    format = rawFormat;
+  } else if (rawFormat && typeof rawFormat === 'object') {
+    const map = rawFormat as Record<string, unknown>;
+    const candidate = map[uiLocale] ?? map[momentLocale] ?? map.default;
+    if (typeof candidate === 'string' && candidate.trim()) {
+      format = candidate;
+    }
   }
 
   return (
     <div className={className}>
-      {metadata?.format
-        ? moment(value).locale(locale).format(metadata?.format)
-        : moment(value).locale(locale).fromNow()}
+      {format
+        ? moment(value).locale(momentLocale).format(format)
+        : moment(value).locale(momentLocale).fromNow()}
     </div>
   );
 }

@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { deleteCredit } from '@/shared/models/credit';
 import { getUserInfo } from '@/shared/models/user';
+import { PERMISSIONS } from '@/core/rbac';
+import { hasPermission } from '@/shared/services/rbac';
 
 export async function DELETE(request: NextRequest) {
   try {
     const user = await getUserInfo();
     if (!user) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+    }
+    const canWrite = await hasPermission(user.id, PERMISSIONS.CREDITS_WRITE).catch(() => false);
+    if (!canWrite) {
+      return NextResponse.json({ success: false, error: 'Permission denied' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -20,11 +26,14 @@ export async function DELETE(request: NextRequest) {
     const result = await deleteCredit(id);
 
     if (!result.canDelete) {
-      return NextResponse.json({
-        success: true,
-        msg: `该积分已被消费 ${result.consumed} 积分，已标记删除，剩余积分无法再使用。`,
-        consumed: result.consumed,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Credit already consumed (${result.consumed}). Refusing to delete for ledger safety.`,
+          consumed: result.consumed,
+        },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({ success: true });

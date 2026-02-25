@@ -72,6 +72,11 @@ export function SidebarUser({ user }: { user: SidebarUserType }) {
   }
 
   if (authedUser) {
+    const avatarLetter = (authedUser.name || authedUser.email || 'U')
+      .trim()
+      .charAt(0)
+      .toUpperCase();
+
     return (
       <SidebarMenu className="gap-4 px-3">
         <SidebarMenuItem>
@@ -81,15 +86,18 @@ export function SidebarUser({ user }: { user: SidebarUserType }) {
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage
-                    src={authedUser.image || ''}
-                    alt={authedUser.name}
-                  />
-                  <AvatarFallback className="rounded-lg">
-                    {authedUser.name?.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-border/60 bg-background/40 shadow-sm">
+                  <Avatar className="h-8 w-8 rounded-full">
+                    <AvatarImage
+                      src={authedUser.image || ''}
+                      alt={authedUser.name || authedUser.email || 'User'}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="rounded-full bg-primary/10 text-primary font-semibold">
+                      {avatarLetter}
+                    </AvatarFallback>
+                  </Avatar>
+                </span>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">
                     {authedUser.name}
@@ -109,15 +117,18 @@ export function SidebarUser({ user }: { user: SidebarUserType }) {
             >
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage
-                      src={authedUser.image || ''}
-                      alt={authedUser.name}
-                    />
-                    <AvatarFallback className="rounded-lg">
-                      {authedUser.name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-border/60 bg-background/40 shadow-sm">
+                    <Avatar className="h-8 w-8 rounded-full">
+                      <AvatarImage
+                        src={authedUser.image || ''}
+                        alt={authedUser.name || authedUser.email || 'User'}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="rounded-full bg-primary/10 text-primary font-semibold">
+                        {avatarLetter}
+                      </AvatarFallback>
+                    </Avatar>
+                  </span>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
                       {authedUser.name}

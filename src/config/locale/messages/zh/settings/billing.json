@@ -31,6 +31,7 @@
     "title": "订阅记录",
     "tabs": {
       "all": "全部",
+      "pending": "待生效",
       "active": "活跃",
       "pending_cancel": "待取消",
       "canceled": "已取消",
@@ -38,6 +39,13 @@
       "paused": "暂停中",
       "expired": "已过期"
     }
+  },
+  "intervals": {
+    "one-time": "一次性",
+    "day": "{count} 天",
+    "week": "{count} 周",
+    "month": "{count} 个月",
+    "year": "{count} 年"
   },
   "cancel": {
     "title": "取消订阅",
@@ -53,7 +61,7 @@
     },
     "crumbs": {
       "settings": "设置",
-      "billing": "账单",
+      "billing": "订阅管理",
       "cancel": "取消订阅"
     },
     "buttons": {

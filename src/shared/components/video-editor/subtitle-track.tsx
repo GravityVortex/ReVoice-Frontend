@@ -1,228 +1,406 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, Type, Trash2 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
 import { SubtitleTrackItem } from './types';
+import { moveClipNoOverlap } from '@/shared/lib/timeline/collision';
+import { WaveformBackdrop, type WaveformBackdropStatus } from './waveform-backdrop';
 
 interface SubtitleTrackProps {
   items: SubtitleTrackItem[];
   onAddItem?: () => void;
   totalDuration: number;
-  zoom: number;
+  currentTime?: number;
+  zoom?: number;
   selectedItem?: string;
   onSelectItem?: (id: string) => void;
+  onSegmentClick?: (time: number) => void;
   onUpdateItem?: (id: string, updates: Partial<SubtitleTrackItem>) => void;
+  onItemsChange?: (nextItems: SubtitleTrackItem[]) => void;
   onDeleteItem?: (id: string) => void;
   className?: string;
   playingIndex?: number; // 正在播放的字幕索引
+  variant?: 'converted' | 'original';
+
+  // Enhancements (must never block editing)
+  waveform?: {
+    url: string;
+    minPxPerSec: number;
+    tone?: 'vocal' | 'bgm';
+    onStatusChange?: (s: WaveformBackdropStatus) => void;
+  };
+  audioDurationMsById?: Record<string, number | undefined>;
+  audioOverrunToleranceMs?: number;
 }
 
-export function SubtitleTrack({
+export const SubtitleTrack = memo(function SubtitleTrack({
   items,
-  onAddItem,
   totalDuration,
-  zoom,
+  currentTime,
+  zoom = 1,
   selectedItem,
   onSelectItem,
-  onUpdateItem,
-  onDeleteItem,
+  onSegmentClick,
+  onItemsChange,
   className,
-  playingIndex = -1
+  playingIndex = -1,
+  variant = 'converted',
+  waveform,
+  audioDurationMsById,
+  audioOverrunToleranceMs = 80,
 }: SubtitleTrackProps) {
-  const [dragItem, setDragItem] = useState<string | null>(null);
-  const [dragType, setDragType] = useState<'move' | 'resize-left' | 'resize-right' | null>(null);
-  const [dragStart, setDragStart] = useState({ x: 0, startTime: 0, duration: 0 });
+  const safeTotalDuration = Math.max(0.001, totalDuration);
+  const canEdit = typeof onItemsChange === 'function';
 
-  // 处理鼠标按下事件
-  // const handleMouseDown = useCallback((e: React.MouseEvent, itemId: string, type: 'move' | 'resize-left' | 'resize-right') => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const collisionRef = useRef<HTMLDivElement>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
+  const activeDragRef = useRef<{
+    pointerId: number;
+    clipId: string;
+    clipIndex: number;
+    baseStartTime: number;
+    duration: number;
+    startClientX: number;
+    trackWidthPx: number;
+    secPerPx: number;
+    prevEnd: number;
+    nextStart: number | null;
+    maxStartVideo: number;
+    didDrag: boolean;
+    latestStartTime: number;
+    latestWantsRipple: boolean;
+    blockedByNext: boolean;
+    showRippleHint: boolean;
+    el: HTMLElement;
+  } | null>(null);
 
-  //   const item = items.find(i => i.id === itemId);
-  //   if (!item) return;
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [rippleHint, setRippleHint] = useState<{ id: string } | null>(null);
 
-  //   setDragItem(itemId);
-  //   setDragType(type);
-  //   setDragStart({ 
-  //     x: e.clientX, 
-  //     startTime: item.startTime,
-  //     duration: item.duration
-  //   });
-  //   onSelectItem(itemId);
-  // }, [items, onSelectItem]);
+  // Cleanup in case the component unmounts mid-drag.
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+      activeDragRef.current = null;
+    };
+  }, []);
 
-  // 处理鼠标移动事件
-  // const handleMouseMove = useCallback((e: MouseEvent) => {
-  //   if (!dragItem || !dragType) return;
+  const scheduleDragVisual = useCallback(() => {
+    if (rafIdRef.current != null) return;
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      const st = activeDragRef.current;
+      if (!st) return;
 
-  //   const deltaX = e.clientX - dragStart.x;
-  //   // 获取轨道容器的实际宽度来精确计算时间偏移
-  //   const trackContainer = document.getElementById('unified-scroll-container');
-  //   const trackWidth = trackContainer ? trackContainer.clientWidth : window.innerWidth * 0.6;
-  //   const deltaTime = (deltaX / trackWidth) * totalDuration / zoom;
+      const left0 = (st.baseStartTime / safeTotalDuration) * st.trackWidthPx;
+      const left1 = (st.latestStartTime / safeTotalDuration) * st.trackWidthPx;
+      const dx = left1 - left0;
+      st.el.style.transform = `translate3d(${dx}px, 0, 0)`;
 
-  //   const item = items.find(i => i.id === dragItem);
-  //   if (!item) return;
+      const collisionEl = collisionRef.current;
+      if (collisionEl) {
+        const nextStart = st.nextStart;
+        const show = st.blockedByNext && !st.latestWantsRipple && nextStart != null;
+        if (show && nextStart != null) {
+          collisionEl.style.opacity = '1';
+          collisionEl.style.left = `${(nextStart / safeTotalDuration) * 100}%`;
+        } else {
+          collisionEl.style.opacity = '0';
+        }
+      }
+    });
+  }, [safeTotalDuration]);
 
-  //   switch (dragType) {
-  //     case 'move': {
-  //       let newStartTime = Math.max(0, dragStart.startTime + deltaTime);
-  //       const maxStartTime = Math.max(0, totalDuration - item.duration);
-  //       newStartTime = Math.min(newStartTime, maxStartTime);
-  //       // 添加网格吸附功能，每0.5秒为一个吸附点，让拖动更精确
-  //       const snapInterval = 0.5;
-  //       newStartTime = Math.round(newStartTime / snapInterval) * snapInterval;
-  //       onUpdateItem(dragItem, {
-  //         startTime: newStartTime
-  //       });
-  //       break;
-  //     }
-  //     case 'resize-left': {
-  //       const newStartTime = Math.max(0, dragStart.startTime + deltaTime);
-  //       const maxStartTime = dragStart.startTime + dragStart.duration - 0.1;
-  //       const clampedStartTime = Math.min(newStartTime, maxStartTime);
-  //       const newDuration = dragStart.duration - (clampedStartTime - dragStart.startTime);
+  const endDrag = useCallback(() => {
+    const st = activeDragRef.current;
+    activeDragRef.current = null;
+    if (!st) return;
+    try {
+      st.el.releasePointerCapture(st.pointerId);
+    } catch {
+      // ignore
+    }
+    st.el.style.transform = '';
+    st.el.style.willChange = '';
+    st.el.style.cursor = '';
+    setDraggingId(null);
+    const collisionEl = collisionRef.current;
+    if (collisionEl) collisionEl.style.opacity = '0';
+  }, []);
 
-  //       if (newDuration > 0.1) {
-  //         onUpdateItem(dragItem, {
-  //           startTime: clampedStartTime,
-  //           duration: newDuration
-  //         });
-  //       }
-  //       break;
-  //     }
-  //     case 'resize-right': {
-  //       const newDuration = Math.max(0.1, dragStart.duration + deltaTime);
-  //       const maxDuration = totalDuration - dragStart.startTime;
-  //       onUpdateItem(dragItem, {
-  //         duration: Math.min(newDuration, maxDuration)
-  //       });
-  //       break;
-  //     }
-  //   }
-  // }, [dragItem, dragType, dragStart, totalDuration, zoom, items, onUpdateItem]);
+  // Match the ruler: fixed, predictable grid (2s minor / 10s major).
+  const minorStepSeconds = 2;
+  const majorStepSeconds = 10;
+  const minorStepPct = Math.min(100, (minorStepSeconds / safeTotalDuration) * 100);
+  const majorStepPct = Math.min(100, (majorStepSeconds / safeTotalDuration) * 100);
 
-  // 处理鼠标释放事件
-  // const handleMouseUp = useCallback(() => {
-  //   setDragItem(null);
-  //   setDragType(null);
-  // }, []);
+  const baseColors =
+    variant === 'original'
+      ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+      : 'border-sky-200/20 bg-sky-500/15 hover:bg-sky-500/20';
 
-  // 添加全局事件监听器
-  // useEffect(() => {
-  //   if (dragItem) {
-  //     document.addEventListener('mousemove', handleMouseMove);
-  //     document.addEventListener('mouseup', handleMouseUp);
-  //     return () => {
-  //       document.removeEventListener('mousemove', handleMouseMove);
-  //       document.removeEventListener('mouseup', handleMouseUp);
-  //     };
-  //   }
-  // }, [dragItem, handleMouseMove, handleMouseUp]);
+  return (
+    <div
+      ref={rootRef}
+      className={cn(
+        'relative h-16 overflow-hidden bg-muted/20',
+        className
+      )}
+    >
+      {waveform?.url ? (
+        <WaveformBackdrop
+          url={waveform.url}
+          minPxPerSec={waveform.minPxPerSec}
+          tone={waveform.tone}
+          onStatusChange={waveform.onStatusChange}
+          className="opacity-90"
+        />
+      ) : null}
 
-  // 处理双击删除
-  // const handleDoubleClick = (itemId: string) => {
-  //   if (confirm('确定要删除这个字幕吗？')) {
-  //     onDeleteItem(itemId);
-  //   }
-  // };
+      {/* Collision indicator (only when clamped against the next clip). */}
+      <div
+        ref={collisionRef}
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-y-2 z-30 w-px',
+          'bg-destructive/70 shadow-[0_0_0_1px_rgba(0,0,0,0.4)]',
+          'opacity-0 transition-opacity duration-150'
+        )}
+        style={{ left: '0%' }}
+      />
 
-  // 渲染轨道项目的函数
-  const renderTrackItems = () => (
-    <>
-      {/* 网格线 */}
-      <div className="absolute inset-0 pointer-events-none">
-        {Array.from({ length: Math.ceil(totalDuration / 5) + 1 }, (_, i) => (
-          <div
-            key={i}
-            className="absolute top-0 h-full border-l border-gray-700 opacity-30"
-            style={{ left: `${(i * 5 / totalDuration) * 100}%` }}
-          />
-        ))}
-      </div>
+      {/* Grid */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-45"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px), linear-gradient(to right, rgba(148, 163, 184, 0.18) 1px, transparent 1px)',
+          backgroundSize: `${minorStepPct}% 100%, ${majorStepPct}% 100%`,
+          backgroundRepeat: 'repeat',
+        }}
+      />
 
-      {/* 字幕项目 */}
+      {/* Items */}
       {items.map((item, index) => {
-        const leftPercent = (item.startTime / totalDuration) * 100;
-        const widthPercent = (item.duration / totalDuration) * 100;
+        const leftPercent = (item.startTime / safeTotalDuration) * 100;
+        const widthPercent = (item.duration / safeTotalDuration) * 100;
         const isSelected = selectedItem === item.id;
         const isPlaying = playingIndex === index;
+        const isDragging = draggingId === item.id;
+        const audioMs = audioDurationMsById?.[item.id];
+        const windowMs = Math.max(0, Math.round(item.duration * 1000));
+        const isOverrun =
+          typeof audioMs === 'number' &&
+          Number.isFinite(audioMs) &&
+          audioMs > windowMs + audioOverrunToleranceMs;
 
         return (
-
           <div
             key={item.id}
             className={cn(
-              "absolute top-2 h-12 rounded cursor-pointer border-2 flex items-center justify-center px-0 transition-all duration-200 hover:brightness-110",
-              isPlaying ? "bg-red-600 border-red-500 shadow-lg shadow-red-500/50" : "bg-yellow-600 border-yellow-500",
-              isSelected ? "border-yellow-400 shadow-lg shadow-yellow-400/30" : "border-transparent",
-              dragItem === item.id ? "z-10" : "z-0"
+              'absolute top-2.5 h-11 rounded-md cursor-pointer border px-2.5',
+              'transition-[background-color,border-color,box-shadow] duration-150',
+              baseColors,
+              isPlaying
+                ? 'bg-primary/18 border-primary/35 shadow-[0_0_0_1px_rgba(167,139,250,0.14),0_10px_30px_rgba(167,139,250,0.10)]'
+                : null,
+              isSelected ? 'border-primary/55 shadow-[0_0_0_1px_rgba(167,139,250,0.16)]' : null,
+              isDragging ? 'z-40 cursor-grabbing ring-1 ring-primary/40 shadow-[0_18px_40px_rgba(0,0,0,0.35)]' : null
             )}
             style={{
               left: `calc(${leftPercent}% + 1px)`,
-              width: `calc(${widthPercent}% - 1px)`,
+              width: `calc(${Math.max(widthPercent, 0.5)}% - 1px)`,
+              minWidth: '18px',
             }}
-            // onMouseDown={(e) => handleMouseDown(e, item.id, 'move')}
-            // onDoubleClick={() => handleDoubleClick(item.id)}
-            title={`${item.text} (${item.startTime.toFixed(1)}s - ${(item.startTime + item.duration).toFixed(1)}s)`}
-          >
-            {/* 左侧调整手柄 */}
-            {/* <div
-              className="absolute left-0 top-0 w-2 h-full bg-purple-500/20 cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                handleMouseDown(e, item.id, 'resize-left');
-              }}
-              title="调整开始时间"
-            >
-              <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-0.5 h-8 bg-purple-400 rounded-full opacity-80" />
-            </div> */}
+            title={[
+              `${item.text} (${item.startTime.toFixed(1)}s - ${(item.startTime + item.duration).toFixed(1)}s)`,
+              isOverrun
+                ? `Overrun / 超窗: audio ${(audioMs! / 1000).toFixed(2)}s > window ${(windowMs / 1000).toFixed(2)}s. Tip: extend this clip or hold Shift to ripple.`
+                : null,
+            ]
+              .filter(Boolean)
+              .join('\n')}
+            onPointerDown={(e) => {
+              if (!canEdit) return;
+              if (e.button !== 0) return;
 
-            {/* 只显示时长，隐藏字幕文字 */}
-            <div className="flex items-center justify-center">
-              <span className="text-[rgba(255,255,255,0.9)] text-xs font-medium">
-                {item.duration > 1 ? `${item.duration.toFixed(0)}s` : ''}
+              const el = e.currentTarget as HTMLElement;
+              const trackEl = rootRef.current;
+              if (!trackEl) return;
+
+              const rect = trackEl.getBoundingClientRect();
+              const trackWidthPx = Math.max(1, rect.width);
+              const secPerPx = safeTotalDuration / trackWidthPx;
+              const prev = index > 0 ? items[index - 1] : null;
+              const next = index + 1 < items.length ? items[index + 1] : null;
+              const prevEnd = prev ? prev.startTime + prev.duration : 0;
+              const maxStartVideo = Math.max(0, safeTotalDuration - item.duration);
+
+              activeDragRef.current = {
+                pointerId: e.pointerId,
+                clipId: item.id,
+                clipIndex: index,
+                baseStartTime: item.startTime,
+                duration: item.duration,
+                startClientX: e.clientX,
+                trackWidthPx,
+                secPerPx,
+                prevEnd,
+                nextStart: next ? next.startTime : null,
+                maxStartVideo,
+                didDrag: false,
+                latestStartTime: item.startTime,
+                latestWantsRipple: false,
+                blockedByNext: false,
+                showRippleHint: false,
+                el,
+              };
+
+              el.setPointerCapture(e.pointerId);
+              el.style.willChange = 'transform';
+              el.style.cursor = 'grabbing';
+              setDraggingId(item.id);
+            }}
+            onPointerMove={(e) => {
+              const st = activeDragRef.current;
+              if (!st || e.pointerId !== st.pointerId) return;
+              const dx = e.clientX - st.startClientX;
+              if (!st.didDrag && Math.abs(dx) >= 3) st.didDrag = true;
+              if (!st.didDrag) return;
+
+              const wantsRipple = e.shiftKey === true;
+              let candidateStart = st.baseStartTime + dx * st.secPerPx;
+              candidateStart = Math.max(0, Math.min(candidateStart, st.maxStartVideo));
+
+              const nextStart = st.nextStart;
+              const maxStartClamp = nextStart == null ? st.maxStartVideo : Math.min(st.maxStartVideo, nextStart - st.duration);
+              st.blockedByNext = false;
+
+              // Clamp against previous always (we do not "ripple backwards").
+              if (wantsRipple) {
+                candidateStart = Math.max(candidateStart, st.prevEnd);
+              } else {
+                const clamped = Math.max(st.prevEnd, Math.min(candidateStart, maxStartClamp));
+                const isBlockedByNext = nextStart != null && candidateStart > maxStartClamp + 1e-6;
+                candidateStart = clamped;
+                st.blockedByNext = isBlockedByNext;
+
+                // One-shot hint: if the user hits the next clip, tell them Shift can push.
+                if (isBlockedByNext && !st.showRippleHint) {
+                  st.showRippleHint = true;
+                  setRippleHint({ id: st.clipId });
+                  window.setTimeout(() => setRippleHint(null), 1200);
+                }
+              }
+
+              st.latestStartTime = candidateStart;
+              st.latestWantsRipple = wantsRipple;
+              scheduleDragVisual();
+            }}
+            onPointerUp={(e) => {
+              const st = activeDragRef.current;
+              if (!st || e.pointerId !== st.pointerId) return;
+              const didDrag = st.didDrag;
+              const wantsRipple = st.latestWantsRipple;
+              const finalStartTime = st.latestStartTime;
+              const clipId = st.clipId;
+
+              if (didDrag) suppressClickRef.current = true;
+              endDrag();
+
+              if (!didDrag) return;
+
+              // Commit: compute a stable, no-overlap result (including ripple if requested).
+              const res = moveClipNoOverlap({
+                clips: items.map((x) => ({ id: x.id, startTime: x.startTime, duration: x.duration })),
+                clipId,
+                candidateStartTime: finalStartTime,
+                mode: wantsRipple ? 'ripple' : 'clamp',
+              });
+
+              const byId = new Map(items.map((x) => [x.id, x]));
+              const nextItems = res.clips.map((c) => {
+                const base = byId.get(c.id);
+                if (!base) return null;
+                return c.startTime === base.startTime ? base : { ...base, startTime: c.startTime };
+              }).filter(Boolean) as SubtitleTrackItem[];
+
+              if (nextItems.length === items.length) {
+                onItemsChange?.(nextItems);
+              }
+            }}
+            onPointerCancel={(e) => {
+              const st = activeDragRef.current;
+              if (!st || e.pointerId !== st.pointerId) return;
+              endDrag();
+            }}
+            onClick={() => {
+              if (suppressClickRef.current) {
+                suppressClickRef.current = false;
+                return;
+              }
+              onSelectItem?.(item.id);
+            onSegmentClick?.(item.startTime);
+          }}
+        >
+            {isOverrun ? (
+              <span
+                aria-hidden
+                className={cn(
+                  'absolute right-1 top-1 z-40 inline-flex items-center gap-1',
+                  'rounded-md border border-amber-400/25 bg-amber-500/10 px-1.5 py-0.5',
+                  'text-[10px] font-mono tabular-nums text-amber-300/90'
+                )}
+              >
+                <span className="size-1.5 rounded-full bg-amber-400/90 animate-pulse motion-reduce:animate-none" />
+                +{Math.max(0, Math.round(audioMs! - windowMs))}ms
               </span>
-            </div>
+            ) : null}
 
-            {/* 右侧调整手柄 */}
-            {/* <div
-              className="absolute right-0 top-0 w-2 h-full bg-purple-500/20 cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                handleMouseDown(e, item.id, 'resize-right');
-              }}
-              title="调整持续时间"
-            >
-              <div className="absolute right-0.5 top-1/2 transform -translate-y-1/2 w-0.5 h-8 bg-purple-400 rounded-full opacity-80" />
-            </div> */}
+            {rippleHint?.id === item.id ? (
+              <div
+                aria-hidden
+                className={cn(
+                  'pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2',
+                  'rounded-full border border-white/10 bg-black/60 px-2 py-1 text-[10px]',
+                  'text-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur'
+                )}
+              >
+                <span className="mr-1 rounded border border-white/10 bg-white/[0.06] px-1 py-0.5 font-mono text-[10px] text-white/85">
+                  Shift
+                </span>
+                推开后续
+              </div>
+            ) : null}
+
+            <div className="relative flex min-w-0 items-center gap-2">
+              {isPlaying ? (
+                <span
+                  aria-hidden
+                  className="size-1.5 shrink-0 rounded-full bg-primary/80 animate-pulse motion-reduce:animate-none"
+                />
+              ) : null}
+
+              <div className="relative min-w-0 flex-1">
+                <div className="min-w-0 overflow-hidden whitespace-nowrap text-[11px] font-medium leading-tight text-foreground/90">
+                  {item.text}
+                </div>
+              </div>
+            </div>
           </div>
         );
       })}
 
-      {/* 空轨道提示 */}
-      {items.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm pointer-events-none">
-          {"轨道字幕"}
+      {items.length === 0 ? (
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm pointer-events-none">
+          —
         </div>
-      )}
-    </>
-  );
-
-  // 只显示轨道内容，不显示标签
-  return (
-    <div className={cn("h-16 bg-muted border-y border-muted-foreground relative", className)} style={{ zIndex: 1 }}>
-      <div
-        className="relative h-full bg-muted/90"
-        style={{
-          width: `${Math.max(100 * zoom, 100)}%`,
-          minWidth: '100%'
-        }}
-      >
-        {renderTrackItems()}
-      </div>
+      ) : null}
     </div>
   );
-}
+});
+
+SubtitleTrack.displayName = 'SubtitleTrack';

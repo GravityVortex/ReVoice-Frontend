@@ -60,9 +60,7 @@ export function getMetadata(
 
     // image url
     let imageUrl = options.imageUrl || '/logo.png';
-    if (imageUrl.startsWith('http')) {
-      imageUrl = imageUrl;
-    } else {
+    if (!imageUrl.startsWith('http')) {
       imageUrl = `${envConfigs.app_url}${imageUrl}`;
     }
 
@@ -133,10 +131,7 @@ async function getCanonicalUrl(canonicalUrl: string, locale: string) {
     canonicalUrl = '/';
   }
 
-  if (canonicalUrl.startsWith('http')) {
-    // full url
-    canonicalUrl = canonicalUrl;
-  } else {
+  if (!canonicalUrl.startsWith('http')) {
     // relative path
     if (!canonicalUrl.startsWith('/')) {
       canonicalUrl = `/${canonicalUrl}`;

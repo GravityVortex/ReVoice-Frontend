@@ -42,11 +42,11 @@ export function SignUp({
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const isGoogleAuthEnabled = configs.google_auth_enabled === 'true';
-  const isGithubAuthEnabled = configs.github_auth_enabled === 'true';
+  const hasGoogleProvider = Boolean(configs.google_client_id);
+  const hasGithubProvider = Boolean(configs.github_client_id);
   const isEmailAuthEnabled =
     configs.email_auth_enabled !== 'false' ||
-    (!isGoogleAuthEnabled && !isGithubAuthEnabled); // no social providers enabled, auto enable email auth
+    (!hasGoogleProvider && !hasGithubProvider); // no social providers configured, auto enable email auth
 
   const locale = useLocale();
   const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/');
@@ -154,17 +154,6 @@ export function SignUp({
         },
         onSuccess: async (ctx) => {
           console.log('sign up success--->', ctx);
-
-          // Grant credits for email registration
-          try {
-            await fetch('/api/user/signup-email-credits', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email }),
-            });
-          } catch (error) {
-            console.error('Failed to grant credits:', error);
-          }
 
           // report affiliate
           reportAffiliate({ userEmail: email });

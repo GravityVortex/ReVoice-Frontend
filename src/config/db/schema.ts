@@ -313,6 +313,9 @@ export const credit = pgTable(
     credits: integer('credits').notNull(), // credits amount, n or -n
     remainingCredits: integer('remaining_credits').notNull().default(0), // remaining credits amount
     description: text('description'), // transaction description
+    // When this credit becomes usable. NULL means immediately available.
+    // Used by promo credits to enforce "next window starts" semantics without extra statuses.
+    availableAt: timestamp('available_at'),
     expiresAt: timestamp('expires_at'), // transaction expires at
     status: text('status').notNull(), // transaction status
     createdAt: timestamp('created_at').defaultNow().notNull(),

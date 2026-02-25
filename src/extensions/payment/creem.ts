@@ -49,7 +49,6 @@ export class CreemProvider implements PaymentProvider {
   }: {
     order: PaymentOrder;
   }): Promise<CheckoutSession> {
-    try {
       if (!order.productId) {
         throw new Error('productId is required');
       }
@@ -101,9 +100,6 @@ export class CreemProvider implements PaymentProvider {
         checkoutResult: result,
         metadata: order.metadata || {},
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   // get payment by session id
@@ -113,7 +109,6 @@ export class CreemProvider implements PaymentProvider {
   }: {
     sessionId: string;
   }): Promise<PaymentSession> {
-    try {
       // retrieve payment
       const session = await this.makeRequest(
         `/v1/checkouts?checkout_id=${sessionId}`,
@@ -125,13 +120,9 @@ export class CreemProvider implements PaymentProvider {
       }
 
       return await this.buildPaymentSessionFromCheckoutSession(session);
-    } catch (error) {
-      throw error;
-    }
   }
 
   async getPaymentEvent({ req }: { req: Request }): Promise<PaymentEvent> {
-    try {
       const rawBody = await req.text();
       const signature = req.headers.get('creem-signature') as string;
 
@@ -190,9 +181,6 @@ export class CreemProvider implements PaymentProvider {
         eventResult: event,
         paymentSession: paymentSession,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async getPaymentBilling({
@@ -202,7 +190,6 @@ export class CreemProvider implements PaymentProvider {
     customerId: string;
     returnUrl?: string;
   }): Promise<PaymentBilling> {
-    try {
       const billing = await this.makeRequest('/v1/customers/billing', 'POST', {
         customer_id: customerId,
       });
@@ -214,9 +201,6 @@ export class CreemProvider implements PaymentProvider {
       return {
         billingUrl: billing.customer_portal_link,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async cancelSubscription({
@@ -224,7 +208,6 @@ export class CreemProvider implements PaymentProvider {
   }: {
     subscriptionId: string;
   }): Promise<PaymentSession> {
-    try {
       const result = await this.makeRequest(
         `/v1/subscriptions/${subscriptionId}/cancel`,
         'POST'
@@ -235,9 +218,6 @@ export class CreemProvider implements PaymentProvider {
       }
 
       return await this.buildPaymentSessionFromSubscription(result);
-    } catch (error) {
-      throw error;
-    }
   }
 
   private async generateSignature(

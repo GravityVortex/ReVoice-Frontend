@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getPrivateR2DownLoadSignUrl } from '@/extensions/storage/privateR2Util';
-import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { getUserInfo } from '@/shared/models/user';
+import { getVtFileFinalListByTaskId } from '@/shared/models/vt_file_final';
 import { findVtTaskMainById } from '@/shared/models/vt_task_main';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
 import { hasPermission } from '@/shared/services/rbac';
@@ -17,6 +16,8 @@ export async function GET(request: NextRequest) {
     const key = searchParams.get('key');
     const expiresInParam = searchParams.get('expiresIn');
     const taskId = searchParams.get('taskId');
+    const variantRaw = (searchParams.get('variant') || 'source').toLowerCase();
+    const variant = variantRaw === '480p' ? '480p' : 'source';
 
     const user = await getUserInfo();
     if (!user) {
@@ -39,61 +40,25 @@ export async function GET(request: NextRequest) {
     }
 
     // 解析过期时间（默认 1 小时）
-    const expiresIn = expiresInParam ? parseInt(expiresInParam, 10) : 3600;
+    const expiresInRaw = Number.parseInt(expiresInParam || '', 10);
+    const expiresIn = Number.isFinite(expiresInRaw) && expiresInRaw > 0 ? expiresInRaw : 3600;
+    const expirationMinutes = Math.max(1, Math.min(24 * 60, Math.ceil(expiresIn / 60)));
 
     let downloadUrl;
 
-    const keyToSign = `${task.userId}/${taskId}/merge_audio_video/video/video_new.mp4`;
+    const finals = await getVtFileFinalListByTaskId(taskId, task.userId);
+    const r2Key480p = finals.find((f) => f.fileType === 'video_480p')?.r2Key;
+    const r2KeySource =
+      finals.find((f) => f.fileType === 'video')?.r2Key || 'merge_audio_video/video/video_new.mp4';
+    const relative = variant === '480p' && r2Key480p ? r2Key480p : r2KeySource;
+    const keyToSign = `${task.userId}/${taskId}/${relative}`;
 
-    // DOEND: 调用java获取视频下载签名地址
-    if (USE_JAVA_REQUEST) {
-      // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
-      // let env = process.env.ENV || 'dev';
-      // 合成的原视频
-      const params: SignUrlItem[] = [
-        { path: keyToSign, operation: 'download', expirationMinutes: expiresIn / 60 }, // 最终视频
-      ];
-      const resUrlArr = await getPreSignedUrl(params);
-      downloadUrl = resUrlArr[0].url;
-    } else {
-      let env = process.env.ENV || 'dev';
-      const keyTemp = `${env}/${keyToSign}`;
-      // 从zhesheng私有桶获取下载地址
-      downloadUrl = await getPrivateR2DownLoadSignUrl(keyTemp, expiresIn);
-
-      // 解析 URL 检查过期参数
-      // const urlObj = new URL(downloadUrl);
-      // const amzExpires = urlObj.searchParams.get('X-Amz-Expires');
-      // const amzDate = urlObj.searchParams.get('X-Amz-Date');
-      // const amzSignature = urlObj.searchParams.get('X-Amz-Signature');
-
-      // if (amzDate && amzExpires) {
-      //   try {
-      //     // X-Amz-Date 格式: 20231128T123456Z
-      //     const year = parseInt(amzDate.substring(0, 4));
-      //     const month = parseInt(amzDate.substring(4, 6)) - 1;
-      //     const day = parseInt(amzDate.substring(6, 8));
-      //     const hour = parseInt(amzDate.substring(9, 11));
-      //     const minute = parseInt(amzDate.substring(11, 13));
-      //     const second = parseInt(amzDate.substring(13, 15));
-
-      //     const signedTime = new Date(Date.UTC(year, month, day, hour, minute, second));
-      //     expiresAt = new Date(signedTime.getTime() + parseInt(amzExpires) * 1000);
-      //   } catch (e) {
-      //     console.error('[Download API] 解析过期时间失败:', e);
-      //   }
-      // }
-
-      // console.log('[Download API] 生成下载链接成功:', {
-      //   key,
-      //   requestedExpiresIn: expiresIn,
-      //   amzExpires,
-      //   amzDate,
-      //   expiresAt: expiresAt?.toISOString(),
-      //   hasSignature: !!amzSignature,
-      //   url: downloadUrl.substring(0, 150) + '...',
-      // });
-    }
+    // Always sign via Java (centralized control-plane).
+    const params: SignUrlItem[] = [
+      { path: keyToSign, operation: 'download', expirationMinutes },
+    ];
+    const resUrlArr = await getPreSignedUrl(params);
+    downloadUrl = resUrlArr[0].url;
 
     return NextResponse.json({
       code: 0,

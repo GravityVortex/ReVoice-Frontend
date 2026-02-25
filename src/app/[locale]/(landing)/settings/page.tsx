@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import {
   CreditCard,
   FileText,
@@ -45,7 +45,49 @@ function formatMoney(amountInCents: number | null | undefined, currency?: string
 }
 
 export default async function SettingsOverviewPage() {
-  const t = await getTranslations('settings.overview');
+  const translationsPromise = getTranslations('settings.overview');
+  const commonTranslationsPromise = getTranslations('common');
+  const localePromise = getLocale();
+  const [t, tCommon, locale] = await Promise.all([
+    translationsPromise,
+    commonTranslationsPromise,
+    localePromise,
+  ]);
+  const momentLocale = locale === 'zh' ? 'zh-cn' : locale;
+  const dateFormat = locale === 'zh' ? 'YYYY年MM月DD日' : 'MMM D, YYYY';
+
+  const formatDate = (value?: string | Date | null) => {
+    if (!value) return '-';
+    return moment(value).locale(momentLocale).format(dateFormat);
+  };
+
+  const getPlanDisplayName = (item?: {
+    planName?: string | null;
+    productName?: string | null;
+    productId?: string | null;
+  } | null) => {
+    if (!item) return '-';
+
+    const candidates = [item.planName, item.productName, item.productId].filter(
+      (v): v is string => typeof v === 'string' && v.trim().length > 0
+    );
+
+    for (const raw of candidates) {
+      const normalized = raw.trim().toLowerCase();
+      if (normalized.includes('standard') || raw.includes('标准')) {
+        return tCommon('plans.standard');
+      }
+      if (
+        normalized.includes('pro') ||
+        normalized.includes('premium') ||
+        raw.includes('高级')
+      ) {
+        return tCommon('plans.pro');
+      }
+    }
+
+    return item.planName || item.productName || '-';
+  };
 
   const user = await getUserInfo();
   if (!user) {
@@ -76,6 +118,11 @@ export default async function SettingsOverviewPage() {
     );
   }
 
+  const avatarLetter = (user.name || user.email || 'U')
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
   const [currentSubscription, remainingCredits, recentOrders] =
     await Promise.all([
       getCurrentSubscription(user.id),
@@ -87,7 +134,7 @@ export default async function SettingsOverviewPage() {
     currentSubscription?.currentPeriodEnd &&
       (currentSubscription.status === SubscriptionStatus.ACTIVE ||
         currentSubscription.status === SubscriptionStatus.TRIALING)
-      ? moment(currentSubscription.currentPeriodEnd).format('YYYY-MM-DD')
+      ? formatDate(currentSubscription.currentPeriodEnd)
       : null;
 
   return (
@@ -106,9 +153,9 @@ export default async function SettingsOverviewPage() {
           <div className="p-8 flex flex-col items-center justify-center text-center space-y-4 bg-background/50">
             <div className="relative">
               <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
-                <AvatarImage src={user.image || ''} />
+                <AvatarImage src={user.image || ''} alt={user.name || user.email || 'User'} />
                 <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">
-                  {user.name?.charAt(0).toUpperCase()}
+                  {avatarLetter}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute bottom-0 right-0 bg-green-500 h-5 w-5 rounded-full border-4 border-background" />
@@ -137,7 +184,9 @@ export default async function SettingsOverviewPage() {
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary fill-current" />
                 <span className="text-2xl font-bold tracking-tight text-foreground">
-                  {currentSubscription?.planName || t('labels.no_subscription')}
+                  {currentSubscription
+                    ? getPlanDisplayName(currentSubscription)
+                    : t('labels.no_subscription')}
                 </span>
               </div>
               {nextRenewal && (
@@ -174,7 +223,7 @@ export default async function SettingsOverviewPage() {
               <span className="text-4xl font-black tabular-nums tracking-tighter text-foreground">
                 {remainingCredits}
               </span>
-              <span className="text-sm font-medium text-muted-foreground">pts</span>
+              <span className="text-sm font-medium text-muted-foreground">{t('labels.points_unit')}</span>
             </div>
 
             <Button asChild variant="ghost" size="sm" className="rounded-full text-primary hover:text-primary hover:bg-primary/10 group">
@@ -194,7 +243,7 @@ export default async function SettingsOverviewPage() {
           <h3 className="text-lg font-semibold tracking-tight">{t('cards.recent_orders.title')}</h3>
           <Button asChild variant="link" className="text-muted-foreground hover:text-foreground h-auto p-0 text-sm">
             <Link href="/settings/invoices" className="flex items-center gap-1">
-              View All <ChevronRight className="h-3 w-3" />
+              {t('actions.view_all')} <ChevronRight className="h-3 w-3" />
             </Link>
           </Button>
         </div>
@@ -216,7 +265,7 @@ export default async function SettingsOverviewPage() {
                         {o.productName || o.orderNo}
                       </div>
                       <div className="text-muted-foreground text-xs font-medium">
-                        {moment(o.createdAt).format('MMM D, YYYY')}
+                        {formatDate(o.createdAt)}
                       </div>
                     </div>
                   </div>

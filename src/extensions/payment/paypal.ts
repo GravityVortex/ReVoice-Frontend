@@ -15,6 +15,7 @@ import {
   type PaymentSession,
   type SubscriptionInfo,
 } from '.';
+import { addDays, addMonths, addYears } from 'date-fns';
 
 /**
  * PayPal payment provider configs
@@ -1013,22 +1014,22 @@ export class PayPalProvider implements PaymentProvider {
     if (billingInfo?.next_billing_time) {
       currentPeriodEnd = new Date(billingInfo.next_billing_time);
     } else {
-      currentPeriodEnd = new Date(currentPeriodStart);
       switch (interval) {
         case PaymentInterval.DAY:
-          currentPeriodEnd.setDate(currentPeriodEnd.getDate() + intervalCount);
+          currentPeriodEnd = addDays(currentPeriodStart, intervalCount);
           break;
         case PaymentInterval.WEEK:
-          currentPeriodEnd.setDate(currentPeriodEnd.getDate() + intervalCount * 7);
+          currentPeriodEnd = addDays(currentPeriodStart, intervalCount * 7);
           break;
         case PaymentInterval.MONTH:
-          currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + intervalCount);
+          // Month arithmetic must follow "same day, else month end" semantics.
+          currentPeriodEnd = addMonths(currentPeriodStart, intervalCount);
           break;
         case PaymentInterval.YEAR:
-          currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + intervalCount);
+          currentPeriodEnd = addYears(currentPeriodStart, intervalCount);
           break;
         default:
-          currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+          currentPeriodEnd = addMonths(currentPeriodStart, 1);
       }
     }
 
@@ -1079,4 +1080,3 @@ export class PayPalProvider implements PaymentProvider {
 export function createPayPalProvider(configs: PayPalConfigs): PayPalProvider {
   return new PayPalProvider(configs);
 }
-

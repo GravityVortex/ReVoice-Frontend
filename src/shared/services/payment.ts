@@ -7,7 +7,17 @@ import {
   PayPalProvider,
   StripeProvider,
 } from '@/extensions/payment';
+import { eq } from 'drizzle-orm';
+import { addDays } from 'date-fns';
+
+import { credit as creditTable, order as orderTable } from '@/config/db/schema';
+import { db } from '@/core/db';
 import { Configs, getAllConfigs } from '@/shared/models/config';
+import {
+  PROMO_PRODUCT_ID,
+  getPromoEntitlementTransactionNo,
+  getPromoPurchaseTransactionNo,
+} from '@/shared/lib/promo';
 
 import { getSnowId, getUuid } from '../lib/hash';
 import {
@@ -147,6 +157,12 @@ export async function handleCheckoutSuccess({
       paymentUserId: session.paymentInfo?.paymentUserId,
     };
 
+    // Anchor one-time credit validity to the actual payment time (paidAt).
+    // Fallback to "now" if provider doesn't return a timestamp.
+    const paidAt = session.paymentInfo?.paidAt
+      ? new Date(session.paymentInfo.paidAt)
+      : new Date();
+
     // new subscription
     let newSubscription: NewSubscription | undefined = undefined;
     const subscriptionInfo = session.subscriptionInfo;
@@ -188,15 +204,170 @@ export async function handleCheckoutSuccess({
       );
     }
 
+    // Promo (limited offer): one-time purchase with "subscription-like" extension.
+    // Purchasing again extends the entitlement by N days from the current end (顺延).
+    // Each purchase grants a credit batch that expires at the end of its purchased period.
+    if (
+      order.paymentType === PaymentType.ONE_TIME &&
+      order.productId === PROMO_PRODUCT_ID
+    ) {
+      const promoCredits = order.creditsAmount || 0;
+      const promoValidDays = order.creditsValidDays || 0;
+
+      if (promoCredits > 0 && promoValidDays > 0) {
+        const promoPurchaseTxnNo = getPromoPurchaseTransactionNo(orderNo);
+        const promoEntitlementTxnNo = getPromoEntitlementTransactionNo(
+          order.userId
+        );
+
+        await db().transaction(async (tx) => {
+          // Always update order (idempotent).
+          await tx
+            .update(orderTable)
+            .set(updateOrder)
+            .where(eq(orderTable.orderNo, orderNo));
+
+          // Order-level idempotency + concurrency safety:
+          // only the transaction that inserts this unique credit row is allowed to extend entitlement.
+          const [insertedPurchaseCredit] = await tx
+            .insert(creditTable)
+            .values({
+              id: getUuid(),
+              userId: order.userId,
+              userEmail: order.userEmail,
+              orderNo,
+              subscriptionNo: null,
+              transactionNo: promoPurchaseTxnNo,
+              transactionType: CreditTransactionType.GRANT,
+              transactionScene: 'promo',
+              credits: promoCredits,
+              remainingCredits: promoCredits,
+              description: 'Grant promo credits',
+              // temporary; will be overwritten after entitlement is extended
+              availableAt: paidAt,
+              expiresAt: addDays(paidAt, promoValidDays),
+              status: CreditStatus.ACTIVE,
+              consumedDetail: '',
+              metadata: JSON.stringify({
+                productId: order.productId,
+                validDays: promoValidDays,
+                paidAt: paidAt.toISOString(),
+              }),
+            })
+            .onConflictDoNothing({ target: creditTable.transactionNo })
+            .returning();
+
+          if (!insertedPurchaseCredit) {
+            // Already processed this promo order; do not extend again.
+            return;
+          }
+
+          // Lock entitlement row so concurrent purchases serialize and never lose extension.
+          const [entitlement] = await tx
+            .select()
+            .from(creditTable)
+            .where(eq(creditTable.transactionNo, promoEntitlementTxnNo))
+            .for('update');
+
+          const baseEnd =
+            entitlement?.expiresAt && entitlement.expiresAt > paidAt
+              ? entitlement.expiresAt
+              : paidAt;
+          let newEnd = addDays(baseEnd, promoValidDays);
+
+          if (!entitlement) {
+            const [createdEntitlement] = await tx
+              .insert(creditTable)
+              .values({
+                id: getUuid(),
+                userId: order.userId,
+                userEmail: order.userEmail,
+                orderNo: null,
+                subscriptionNo: null,
+                transactionNo: promoEntitlementTxnNo,
+                transactionType: CreditTransactionType.GRANT,
+                transactionScene: 'promo_entitlement',
+                credits: 0,
+                remainingCredits: 0,
+                description: 'Promo entitlement',
+                expiresAt: newEnd,
+                status: CreditStatus.ACTIVE,
+                consumedDetail: '',
+                metadata: JSON.stringify({
+                  productId: order.productId,
+                  tier: 'standard',
+                }),
+              })
+              .onConflictDoNothing({ target: creditTable.transactionNo })
+              .returning();
+
+            if (!createdEntitlement) {
+              // Another transaction created the entitlement concurrently; lock and extend again.
+              const [lockedEntitlement] = await tx
+                .select()
+                .from(creditTable)
+                .where(eq(creditTable.transactionNo, promoEntitlementTxnNo))
+                .for('update');
+
+              const lockedBaseEnd =
+                lockedEntitlement?.expiresAt && lockedEntitlement.expiresAt > paidAt
+                  ? lockedEntitlement.expiresAt
+                  : paidAt;
+              newEnd = addDays(lockedBaseEnd, promoValidDays);
+
+              await tx
+                .update(creditTable)
+                .set({ expiresAt: newEnd })
+                .where(eq(creditTable.transactionNo, promoEntitlementTxnNo));
+            }
+          } else {
+            await tx
+              .update(creditTable)
+              .set({ expiresAt: newEnd })
+              .where(eq(creditTable.transactionNo, promoEntitlementTxnNo));
+          }
+
+          // Align this purchase credits to the purchased period end.
+          await tx
+            .update(creditTable)
+            .set({
+              // Promo credits are active in their own 3-day window only.
+              // No stacking: purchases extend the window; each purchase maps to exactly one window.
+              status: CreditStatus.ACTIVE,
+              availableAt: baseEnd,
+              expiresAt: newEnd,
+              metadata: JSON.stringify({
+                productId: order.productId,
+                validDays: promoValidDays,
+                periodStart: baseEnd.toISOString(),
+                periodEnd: newEnd.toISOString(),
+                paidAt: paidAt.toISOString(),
+              }),
+            })
+            .where(eq(creditTable.transactionNo, promoPurchaseTxnNo));
+        });
+
+        return;
+      }
+    }
+
     // grant credit for order
     let newCredit: NewCredit | undefined = undefined;
-    if (order.creditsAmount && order.creditsAmount > 0) {
+    // Subscription credits are issued per "subscription billing month" (including annual plans).
+    // Do NOT grant credits directly from the order here, otherwise yearly subscriptions would
+    // incorrectly get a long-lived batch.
+    if (
+      order.paymentType !== PaymentType.SUBSCRIPTION &&
+      order.creditsAmount &&
+      order.creditsAmount > 0
+    ) {
       const credits = order.creditsAmount;
       const expiresAt =
         credits > 0
           ? calculateCreditExpirationTime({
             creditsValidDays: order.creditsValidDays || 0,
             currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
+            baseTime: paidAt,
           })
           : null;
 
@@ -285,6 +456,11 @@ export async function handlePaymentSuccess({
       invoiceUrl: session.paymentInfo?.invoiceUrl,
     };
 
+    // Anchor one-time credit validity to the actual payment time (paidAt).
+    const paidAt = session.paymentInfo?.paidAt
+      ? new Date(session.paymentInfo.paidAt)
+      : new Date();
+
     // new subscription
     let newSubscription: NewSubscription | undefined = undefined;
     const subscriptionInfo = session.subscriptionInfo;
@@ -327,13 +503,18 @@ export async function handlePaymentSuccess({
 
     // grant credit for order
     let newCredit: NewCredit | undefined = undefined;
-    if (order.creditsAmount && order.creditsAmount > 0) {
+    if (
+      order.paymentType !== PaymentType.SUBSCRIPTION &&
+      order.creditsAmount &&
+      order.creditsAmount > 0
+    ) {
       const credits = order.creditsAmount;
       const expiresAt =
         credits > 0
           ? calculateCreditExpirationTime({
             creditsValidDays: order.creditsValidDays || 0,
             currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
+            baseTime: paidAt,
           })
           : null;
 
@@ -448,36 +629,9 @@ export async function handleSubscriptionRenewal({
     };
 
     // grant credit for renewal order
-    let newCredit: NewCredit | undefined = undefined;
-    if (order.creditsAmount && order.creditsAmount > 0) {
-      const credits = order.creditsAmount;
-      const expiresAt =
-        credits > 0
-          ? calculateCreditExpirationTime({
-            creditsValidDays: order.creditsValidDays || 0,
-            currentPeriodEnd: subscriptionInfo?.currentPeriodEnd,
-          })
-          : null;
-
-      newCredit = {
-        id: getUuid(),
-        userId: order.userId,
-        userEmail: order.userEmail,
-        orderNo: order.orderNo,
-        subscriptionNo: subscription.subscriptionNo,
-        transactionNo: getSnowId(),
-        transactionType: CreditTransactionType.GRANT,
-        transactionScene:
-          order.paymentType === PaymentType.SUBSCRIPTION
-            ? CreditTransactionScene.SUBSCRIPTION
-            : CreditTransactionScene.PAYMENT,
-        credits: credits,
-        remainingCredits: credits,
-        description: `Grant credit`,
-        expiresAt: expiresAt,
-        status: CreditStatus.ACTIVE,
-      };
-    }
+    // Subscription credits are issued per billing-month by our internal logic (including renewal).
+    // Do not grant credits directly from the yearly/monthly renewal order.
+    const newCredit: NewCredit | undefined = undefined;
 
     await updateSubscriptionInTransaction({
       subscriptionNo,

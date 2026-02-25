@@ -755,10 +755,14 @@ export async function getSettings() {
 
 export const publicSettingNames = [
   'email_auth_enabled',
-  'google_auth_enabled',
   'google_one_tap_enabled',
+  // OAuth providers are effectively enabled when their client id/secret exist.
+  // Keep client ids public (safe) so the UI can decide whether to render buttons.
+  // (Client secrets are intentionally NOT public.)
+  'google_auth_enabled',
   'google_client_id',
   'github_auth_enabled',
+  'github_client_id',
   'select_payment_enabled',
   'default_payment_provider',
   'stripe_enabled',

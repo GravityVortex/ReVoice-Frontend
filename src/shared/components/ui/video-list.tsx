@@ -58,12 +58,12 @@ export function VideoList({
   const colsClass = useMemo(() => {
     switch (cols) {
       case 1: return "grid-cols-1";
-      case 2: return "grid-cols-2";
-      case 3: return "grid-cols-3";
-      case 4: return "grid-cols-4";
-      case 5: return "grid-cols-5";
-      case 6: return "grid-cols-6";
-      default: return "grid-cols-3";
+      case 2: return "grid-cols-1 sm:grid-cols-2";
+      case 3: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+      case 4: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+      case 5: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5";
+      case 6: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
+      default: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
     }
   }, [cols]);
 
@@ -81,7 +81,7 @@ export function VideoList({
   };
 
   return (
-    <div className={cn("grid gap-6", colsClass, className)}>
+    <div className={cn("grid gap-4 sm:gap-6", colsClass, className)}>
       {items.map((it, index) => (
         <VideoCard
           key={it.id}
@@ -203,7 +203,8 @@ function VideoCard({
             {fileName}
           </h3>
 
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Mobile has no hover; keep actions reachable. */}
+          <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
               className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

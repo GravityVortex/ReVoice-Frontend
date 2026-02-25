@@ -1,8 +1,6 @@
 // 前端上传file到后端，后端生成presigned url，前端直接上传到R2，绕过4.5M的限制
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getPrivateR2UploadSignUrl } from '@/extensions/storage/privateR2Util';
-import { USE_JAVA_REQUEST } from '@/shared/cache/system-config';
 import { getPreSignedUrl, SignUrlItem } from '@/shared/services/javaService';
 import { getUuid } from '@/shared/lib/hash';
 import { getUserInfo } from '@/shared/models/user';
@@ -41,30 +39,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // DOEND: 调用java接口生成presigned url
-    if (USE_JAVA_REQUEST) {
-      const fileId = getUuid();
-      // let env = process.env.NODE_ENV === 'production' ? 'pro' : 'dev'; // dev、pro
-      // let env = process.env.ENV || 'dev';
-      const keyV = 'original/video/video_original.mp4';
-      const pathName = `${user.id}/${fileId}/${keyV}`;
-      const params: SignUrlItem[] = [{ path: pathName, operation: 'upload', expirationMinutes: 2 * 60 }];
-      const resUrlArr = await getPreSignedUrl(params);
-      const { path, operation, url, expiresAt } = resUrlArr[0];
+    // Always sign via Java (centralized control-plane).
+    const fileId = getUuid();
+    const keyV = 'original/video/video_original.mp4';
+    const pathName = `${user.id}/${fileId}/${keyV}`;
+    const params: SignUrlItem[] = [{ path: pathName, operation: 'upload', expirationMinutes: 2 * 60 }];
+    const resUrlArr = await getPreSignedUrl(params);
+    const { path, url } = resUrlArr[0];
 
-      // 预览URL
-      const params2: SignUrlItem[] = [
-        { path: path, operation: 'download', expirationMinutes: 240 }, // 预览视频
-      ];
-      const resUrlArr2 = await getPreSignedUrl(params2);
-      const publicUrl = resUrlArr2[0].url;
+    // 预览URL
+    const params2: SignUrlItem[] = [{ path, operation: 'download', expirationMinutes: 240 }];
+    const resUrlArr2 = await getPreSignedUrl(params2);
+    const publicUrl = resUrlArr2[0].url;
 
-      return NextResponse.json({ presignedUrl: url, key: keyV, publicUrl, r2Bucket: '', fileId });
-    } else {
-      const { presignedUrl, keyV, publicUrl, bucketName, fileId } =
-        await getPrivateR2UploadSignUrl(contentType, filename, user.id);
-      return NextResponse.json({ presignedUrl, key: keyV, publicUrl, r2Bucket: bucketName, fileId });
-    }
+    return NextResponse.json({ presignedUrl: url, key: keyV, publicUrl, r2Bucket: '', fileId });
 
     // const storageService = await getStorageService();
     // // const provider = storageService.getDefaultProvider();

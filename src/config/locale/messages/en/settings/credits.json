@@ -19,7 +19,26 @@
       "all": "All",
       "grant": "Grant",
       "consume": "Consume",
-      "deleted": "back"
+      "deleted": "Refunded"
+    }
+  },
+  "labels": {
+    "refunded": "Refunded"
+  },
+  "descriptions": {
+    "consume": {
+      "convert_video": "Credits used for video conversion",
+      "subtitle_retranslate": "Credits used for subtitle re-translation",
+      "audio_regen": "Credits used for audio regeneration",
+      "ai_task": "Credits used for AI generation ({mediaType})"
+    },
+    "grant": {
+      "payment": "Credits granted from top-up",
+      "subscription": "Subscription credits",
+      "renewal": "Renewal credits",
+      "promo": "Promo credits",
+      "promo_entitlement": "Promo entitlement",
+      "admin": "Admin granted credits"
     }
   },
   "view": {

@@ -95,11 +95,13 @@ class EncryptionUtil {
    */
   static encryptRequest(data: any): string {
     try {
-      // 添加时间戳
-      data.time = Math.floor(Date.now() / 1000);
-      console.log('java请求加密前params--->', data);
+      // 添加时间戳（避免原地修改入参，减少副作用）
+      const payload = {
+        ...(data && typeof data === 'object' ? data : {}),
+        time: Math.floor(Date.now() / 1000),
+      };
 
-      const jsonData = JSON.stringify(data);
+      const jsonData = JSON.stringify(payload);
       const randomKey = this.generateRandomKey(8);
       const finalKey = this.generateFinalKey(randomKey); // 这里返回的是Buffer
 
