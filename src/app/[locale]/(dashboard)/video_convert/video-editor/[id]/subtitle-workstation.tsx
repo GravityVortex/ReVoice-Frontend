@@ -19,6 +19,11 @@ interface SubtitleWorkstationProps {
     onPendingVoiceIdsChange?: (ids: string[]) => void;
     // 重新合成完成（成功）回调：用于父组件更新 lastMergedAtMs，让右上角按钮自动变灰
     onVideoMergeCompleted?: (args: { mergedAtMs: number }) => void;
+    // 字幕工作台试听：通知父组件驱动视频画面（仅影响画面/传输，不替代本地 <audio> 播放）
+    onAuditionPlay?: (index: number, mode: 'source' | 'convert') => void;
+    onAuditionPause?: () => void;
+    onAuditionResume?: () => void;
+    onAuditionStop?: () => void;
     convertObj: ConvertObj | null;
     playingSubtitleIndex?: number;
     onSeekToSubtitle?: (time: number) => void;
@@ -27,7 +32,7 @@ interface SubtitleWorkstationProps {
 }
 
 export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Promise<boolean> }, SubtitleWorkstationProps>(
-    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
+    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, onAuditionPlay, onAuditionPause, onAuditionResume, onAuditionStop, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
         const t = useTranslations('video_convert.videoEditor.audioList');
         const { user, fetchUserCredits } = useAppContext();
 
@@ -400,6 +405,8 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             setIsAudioPlayEnded(false);
             setPlayingIndex(index);
             setPlayingType(type);
+            // 通知父组件：用视频画面辅助试听（audio 仍由工作台播放）
+            onAuditionPlay?.(index, type);
             // Hard-stop any previously playing clip immediately to avoid overlap when users click quickly.
             try {
                 el.pause();
@@ -424,6 +431,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                 console.error('Audio play failed:', err);
                 setIsAudioPlayEnded(true);
                 toast.error(t('toast.playFailed'));
+                onAuditionStop?.();
             });
         };
 
@@ -436,7 +444,11 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                 } else {
                     setPlayingIndex(-1);
                     setPlayingType(null);
+                    onAuditionStop?.();
                 }
+            } else {
+                // 单条模式：播放完即停止视频画面
+                onAuditionStop?.();
             }
         };
 
@@ -457,6 +469,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             setPlayingIndex(-1);
             setPlayingType(null);
             setIsAudioPlayEnded(false);
+            onAuditionStop?.();
         };
 
         const togglePlayback = (index: number, type: 'source' | 'convert') => {
@@ -474,11 +487,13 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                     // ignore
                 }
                 setIsAudioPlayEnded(true);
+                onAuditionPause?.();
                 return;
             }
 
             if (isSameClip && isAudioPlayEnded) {
                 setIsAudioPlayEnded(false);
+                onAuditionResume?.();
                 try {
                     if (el.ended || (Number.isFinite(el.duration) && el.duration > 0 && el.currentTime >= el.duration)) {
                         el.currentTime = 0;
@@ -491,6 +506,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                     console.error('Audio play failed:', err);
                     setIsAudioPlayEnded(true);
                     toast.error(t('toast.playFailed'));
+                    onAuditionStop?.();
                 });
                 return;
             }

@@ -187,6 +187,16 @@ export default function VideoEditorPage() {
   const workstationRef = useRef<{ onVideoSaveClick: () => Promise<boolean> }>(null);
   // Ignore stale video `play()` promise resolutions/rejections when users toggle quickly.
   const videoPlayTokenRef = useRef(0);
+
+  // 字幕工作台试听：到达该时间点（ms）自动停止视频画面（audio 由工作台自身播放）
+  const auditionStopAtMsRef = useRef<number | null>(null);
+  // 试听期间临时覆盖静音状态，结束时恢复
+  const auditionRestoreRef = useRef<{
+    subtitleMuted: boolean;
+    bgmMuted: boolean;
+    videoMuted: boolean;
+  } | null>(null);
+
   // Video transport buffering (waiting/stalled/seeking). When true, we freeze audio transport.
   const transportIsStalledRef = useRef(false);
   // Debounce <video> stall signals: short "waiting" blips shouldn't tear down transport.
@@ -1618,7 +1628,8 @@ export default function VideoEditorPage() {
     if (isSubtitleMutedRef.current) {
       if (lastVoiceSubtitleIndexRef.current !== -1) {
         lastVoiceSubtitleIndexRef.current = -1;
-        setPlayingSubtitleIndex(-1);
+        // 试听模式下（字幕静音由试听流程临时设置），保留工作台/画面的选中高亮
+        if (auditionStopAtMsRef.current == null) setPlayingSubtitleIndex(-1);
       }
       stopWebAudioVoice();
       return;
@@ -1980,6 +1991,25 @@ export default function VideoEditorPage() {
     if (videoEl.paused) return;
 
     const time = videoEl.currentTime;
+    // 字幕工作台试听：到点自动停住视频画面（audio 由工作台自身播放）
+    const auditionStopAtMs = auditionStopAtMsRef.current;
+    if (auditionStopAtMs != null) {
+      const timeMs = time * 1000;
+      if (Number.isFinite(timeMs) && timeMs >= auditionStopAtMs) {
+        // Cancel any in-flight warmup/play so it can't flip state later.
+        videoStartGateTokenRef.current += 1;
+        videoPlayTokenRef.current += 1;
+        transportIsStalledRef.current = false;
+        setIsVideoBuffering(false);
+        try {
+          videoEl.pause();
+        } catch {
+          // ignore
+        }
+        setIsPlaying(false);
+        return;
+      }
+    }
 
     // UI does not need perfect granularity; keep React renders bounded.
     if (Math.abs(time - lastUiTimeRef.current) >= 1 / 20) {
@@ -2565,6 +2595,83 @@ export default function VideoEditorPage() {
     setIsSubtitleMuted((v) => !v);
   }, []);
 
+  const handleAuditionPlay = useCallback((index: number, mode: 'source' | 'convert') => {
+    if (index < 0 || index >= subtitleTrackRef.current.length) return;
+    const item = subtitleTrackRef.current[index];
+
+    if (!auditionRestoreRef.current) {
+      auditionRestoreRef.current = {
+        subtitleMuted: isSubtitleMutedRef.current,
+        bgmMuted: isBgmMutedRef.current,
+        videoMuted: videoPreviewRef.current?.videoElement?.muted ?? false,
+      };
+    }
+
+    // Always mute page's generated voice track, let workstation provide the audio
+    setIsSubtitleMuted(true);
+
+    // Mute video to prevent echo with workstation's split_audio
+    const videoEl = videoPreviewRef.current?.videoElement;
+    if (videoEl) videoEl.muted = true;
+
+    setIsBgmMuted(mode === 'source');
+    handleSeek(item.startTime, false);
+
+    auditionStopAtMsRef.current = item.startTime * 1000 + item.duration * 1000;
+    setPlayingSubtitleIndex(index);
+
+    if (!videoEl || !(videoEl.currentSrc || videoEl.src)) return;
+    transportIsStalledRef.current = false;
+    void playVideoWithGate(videoEl, { reason: 'audition-play' });
+  }, [handleSeek, playVideoWithGate]);
+
+  const handleAuditionPause = useCallback(() => {
+    // Cancel any in-flight warmup/play so it can't flip state later.
+    videoStartGateTokenRef.current += 1;
+    videoPlayTokenRef.current += 1;
+    transportIsStalledRef.current = false;
+    setIsVideoBuffering(false);
+    try {
+      videoPreviewRef.current?.videoElement?.pause();
+    } catch {
+      // ignore
+    }
+    setIsPlaying(false);
+  }, []);
+
+  const handleAuditionResume = useCallback(() => {
+    const videoEl = videoPreviewRef.current?.videoElement;
+    if (!videoEl || !(videoEl.currentSrc || videoEl.src)) return;
+    transportIsStalledRef.current = false;
+    void playVideoWithGate(videoEl, { reason: 'audition-resume' });
+  }, [playVideoWithGate]);
+
+  const handleAuditionStop = useCallback(() => {
+    // Cancel any in-flight warmup/play so it can't flip state later.
+    videoStartGateTokenRef.current += 1;
+    videoPlayTokenRef.current += 1;
+    transportIsStalledRef.current = false;
+    setIsVideoBuffering(false);
+    try {
+      videoPreviewRef.current?.videoElement?.pause();
+    } catch {
+      // ignore
+    }
+    setIsPlaying(false);
+    auditionStopAtMsRef.current = null;
+    setPlayingSubtitleIndex(-1);
+
+    if (auditionRestoreRef.current) {
+      const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
+      setIsSubtitleMuted(subtitleMuted);
+      setIsBgmMuted(bgmMuted);
+      if (videoPreviewRef.current?.videoElement) {
+        videoPreviewRef.current.videoElement.muted = videoMuted;
+      }
+      auditionRestoreRef.current = null;
+    }
+  }, []);
+
   // --- RENDER ---
   if (isLoading) return <LoadingSkeleton />;
   if (error) return <ErrorDisplay error={error} />;
@@ -2822,6 +2929,10 @@ export default function VideoEditorPage() {
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
                   onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
                   onVideoMergeCompleted={handleVideoMergeCompleted}
+                  onAuditionPlay={handleAuditionPlay}
+                  onAuditionPause={handleAuditionPause}
+                  onAuditionResume={handleAuditionResume}
+                  onAuditionStop={handleAuditionStop}
                 />
               </div>
             }
