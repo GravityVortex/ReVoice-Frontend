@@ -119,6 +119,7 @@ export async function POST(req: Request) {
     }
 
     let updated = 0;
+    const nowMs = Date.now();
     const idMap = new Map<string, string>();
     const nextSubtitleData = subtitleData.map((row: any) => {
       const id = row?.id;
@@ -146,7 +147,8 @@ export async function POST(req: Request) {
       if (row.id === nextId && row.start === start && row.end === end) return row;
       updated += 1;
 
-      const out = { ...row, id: nextId, start, end };
+      // timing_rev_ms：只在时间轴真正发生变化并落库时更新，用于刷新后判断是否需要重新合成视频。
+      const out = { ...row, id: nextId, start, end, timing_rev_ms: nowMs };
       if (typeof out.audio_url === 'string' && m) {
         // Best-effort: keep derived paths consistent with the new id (if present).
         out.audio_url = out.audio_url.replaceAll(id, nextId);

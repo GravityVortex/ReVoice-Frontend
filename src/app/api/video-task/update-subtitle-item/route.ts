@@ -19,6 +19,16 @@ function stripVapFields(obj: any) {
   return out;
 }
 
+function isSafeSubtitleId(id: unknown): id is string {
+  return (
+    typeof id === 'string' &&
+    id.length > 0 &&
+    !id.includes('..') &&
+    !id.includes('/') &&
+    !id.includes('\\')
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -48,13 +58,15 @@ export async function POST(req: Request) {
     // 保存单条json数据
     // - 不把编辑期草稿字段(vap_*)固化到正式字幕item里（避免污染/兼容风险）
     const cleanItem = stripVapFields(item);
-    await updateSingleSubtitleItem(taskId, type, seq, cleanItem);
     
     // 移动r2中文件到新路径
     let sourcePath = '';
     let targetPath = '';
     // 翻译字幕
     if (type === 'translate_srt') {
+      if (!isSafeSubtitleId((cleanItem as any)?.id)) {
+        return respErr('invalid subtitle id');
+      }
       sourcePath = `${task.userId}/${taskId}/${pathName}`;
       targetPath = `${task.userId}/${taskId}/adj_audio_time/${cleanItem.id}.wav`;
     } else {
@@ -67,6 +79,12 @@ export async function POST(req: Request) {
     if (backJO.code !== 200) {
       return respErr('r2 file move save failed');
     }
+
+    // 合并任务输入版本号：
+    // - audio_rev_ms 只在“应用配音/落盘成功”后写入，用于刷新后判断是否需要重新合成视频。
+    const nowMs = Date.now();
+    const nextItem = { ...cleanItem, audio_rev_ms: nowMs };
+    await updateSingleSubtitleItem(taskId, type, seq, nextItem);
 
     return respData({ taskId, type, seq, message: '保存成功' });
   } catch (e) {
