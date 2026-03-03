@@ -200,7 +200,7 @@ export default function DashboardProjectsPage() {
     });
 
     return (
-        <div className="container mx-auto py-8">
+        <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-6 mb-8">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">{tDashboard('projects')}</h1>

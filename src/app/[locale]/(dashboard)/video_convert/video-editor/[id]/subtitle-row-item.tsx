@@ -147,7 +147,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                     {(localItem.order + 1).toString().padStart(3, '0')}
                 </div>
 
-                <div className="grid grid-cols-[minmax(0,1fr)_128px_minmax(0,1fr)] items-start gap-2 pl-10">
+                <div className="grid grid-cols-[minmax(0,1fr)_44px_minmax(0,1fr)] items-start gap-4 pl-10">
                     {/* Original */}
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -192,130 +192,98 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                         </div>
                     </div>
 
-                    {/* Actions (minimal, centered). */}
-                    <div className="flex flex-col items-stretch gap-1.5 pt-0.5">
-                        <button
-                            type="button"
-                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                if (isRowBusy) return;
-                                e.stopPropagation();
-                                onConvert(localItem, 'gen_srt');
-                            }}
-                            disabled={isRowBusy && convertingType !== 'gen_srt'}
-                            className={cn(
-                                'group/action relative inline-flex h-8 w-full items-center justify-between rounded-lg border px-2 overflow-hidden',
-                                'transition-all duration-300',
-                                convertingType === 'gen_srt'
-                                    ? 'border-primary/50 bg-primary/10 text-primary shadow-[0_0_12px_rgba(167,139,250,0.15)] ring-1 ring-primary/20 cursor-wait'
-                                    : 'border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
-                                isSelected && convertingType !== 'gen_srt' ? 'opacity-100' : (convertingType === 'gen_srt' ? 'opacity-100' : 'opacity-85'),
-                                isRowBusy && convertingType !== 'gen_srt' ? 'opacity-40 cursor-not-allowed' : null
-                            )}
-                            title={t('tooltips.retranslateWithCost', { credits: 1 })}
-                            aria-label={t('tooltips.retranslateWithCost', { credits: 1 })}
-                        >
-                            {convertingType === 'gen_srt' && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
-                            )}
-                            <span className="relative z-10 inline-flex items-center gap-1.5 text-[11px] font-medium">
+                    {/* Actions (Ultra-minimal icon dock). */}
+                    <div className="flex flex-col items-center justify-start pt-1 z-20">
+                        <div className={cn(
+                            "flex flex-col items-center gap-1.5 p-1 rounded-full border transition-all duration-300",
+                            (isSelected || isRowBusy || localItem.audioUrl_convert_custom)
+                                ? "border-white/10 bg-black/40 shadow-xl opacity-100"
+                                : "border-transparent bg-transparent opacity-40 group-hover:opacity-100 group-hover:border-white/5 group-hover:bg-black/20"
+                        )}>
+                            {/* Retranslate */}
+                            <button
+                                type="button"
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                    if (isRowBusy) return;
+                                    e.stopPropagation();
+                                    onConvert(localItem, 'gen_srt');
+                                }}
+                                disabled={isRowBusy && convertingType !== 'gen_srt'}
+                                className={cn(
+                                    "relative flex size-7 items-center justify-center rounded-full transition-all duration-300",
+                                    convertingType === 'gen_srt'
+                                        ? "bg-primary/20 text-primary shadow-[0_0_10px_rgba(167,139,250,0.3)] cursor-wait"
+                                        : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                                    isRowBusy && convertingType !== 'gen_srt' ? "opacity-30 cursor-not-allowed" : ""
+                                )}
+                                title={t('tooltips.retranslateWithCost', { credits: 1 })}
+                                aria-label={t('tooltips.retranslateWithCost', { credits: 1 })}
+                            >
                                 {convertingType === 'gen_srt' ? (
-                                    <Sparkles className="size-4 animate-pulse text-primary drop-shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+                                    <Sparkles className="size-3.5 animate-pulse" />
                                 ) : (
-                                    <RedoDot className="size-4" />
+                                    <RedoDot className="size-3.5" />
                                 )}
-                                {t('actions.retranslate')}
-                            </span>
+                            </button>
 
-                            {convertingType === 'gen_srt' ? (
-                                <span className="relative z-10 inline-flex items-center space-x-0.5">
-                                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                                </span>
-                            ) : (
-                                <span
-                                    aria-hidden
-                                    className="relative z-10 rounded-md border border-white/10 bg-muted/70 px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground/90"
-                                >
-                                    1
-                                </span>
-                            )}
-                        </button>
+                            {/* Divider line */}
+                            <div className="w-4 h-px bg-white/10 rounded-full" />
 
-                        <button
-                            type="button"
-                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                if (isRowBusy) return;
-                                e.stopPropagation();
-                                onConvert(localItem, 'translate_srt');
-                            }}
-                            disabled={isRowBusy && convertingType !== 'translate_srt'}
-                            className={cn(
-                                'group/action relative inline-flex h-8 w-full items-center justify-between rounded-lg border px-2 overflow-hidden',
-                                'transition-all duration-300',
-                                convertingType === 'translate_srt'
-                                    ? 'border-sky-500/50 bg-sky-500/10 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.15)] ring-1 ring-sky-500/20 cursor-wait'
-                                    : 'border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
-                                isRowBusy && convertingType !== 'translate_srt' ? 'opacity-40 cursor-not-allowed' : null
-                            )}
-                            title={t('tooltips.updateVoiceWithCost', { credits: 2 })}
-                            aria-label={t('tooltips.updateVoiceWithCost', { credits: 2 })}
-                        >
-                            {convertingType === 'translate_srt' && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-sky-500/10 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
-                            )}
-                            <span className="relative z-10 inline-flex items-center gap-1.5 text-[11px] font-medium">
+                            {/* Regen Voice */}
+                            <button
+                                type="button"
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                    if (isRowBusy) return;
+                                    e.stopPropagation();
+                                    onConvert(localItem, 'translate_srt');
+                                }}
+                                disabled={isRowBusy && convertingType !== 'translate_srt'}
+                                className={cn(
+                                    "relative flex size-7 items-center justify-center rounded-full transition-all duration-300",
+                                    convertingType === 'translate_srt'
+                                        ? "bg-sky-500/20 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.3)] cursor-wait"
+                                        : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                                    isRowBusy && convertingType !== 'translate_srt' ? "opacity-30 cursor-not-allowed" : ""
+                                )}
+                                title={t('tooltips.updateVoiceWithCost', { credits: 2 })}
+                                aria-label={t('tooltips.updateVoiceWithCost', { credits: 2 })}
+                            >
                                 {convertingType === 'translate_srt' ? (
-                                    <Activity className="size-4 animate-pulse text-sky-400 drop-shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
+                                    <Activity className="size-3.5 animate-pulse" />
                                 ) : (
-                                    <RefreshCw className="size-4" />
+                                    <RefreshCw className="size-3.5" />
                                 )}
-                                {t('actions.regenVoice')}
-                            </span>
+                            </button>
 
-                            {convertingType === 'translate_srt' ? (
-                                <span className="relative z-10 inline-flex items-center space-x-0.5">
-                                    <span className="w-1 h-1 bg-sky-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                    <span className="w-1 h-1 bg-sky-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                    <span className="w-1 h-1 bg-sky-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                                </span>
-                            ) : (
-                                <span
-                                    aria-hidden
-                                    className="relative z-10 rounded-md border border-white/10 bg-muted/70 px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground/90"
-                                >
-                                    2
-                                </span>
+                            {/* Divider line (only show if Save is relevant/visible) */}
+                            {localItem.audioUrl_convert_custom && (
+                                <>
+                                    <div className="w-4 h-px bg-white/10 rounded-full" />
+                                    <button
+                                        type="button"
+                                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                            if (isRowBusy) return;
+                                            e.stopPropagation();
+                                            onSave('translate_srt');
+                                        }}
+                                        disabled={isRowBusy || !localItem.audioUrl_convert_custom}
+                                        className={cn(
+                                            "relative flex size-7 items-center justify-center rounded-full transition-all duration-300",
+                                            "bg-primary/20 text-primary hover:bg-primary/30 hover:scale-110",
+                                            isSaving ? "cursor-wait" : ""
+                                        )}
+                                        title={t('tooltips.saveVoice')}
+                                        aria-label={t('tooltips.saveVoice')}
+                                    >
+                                        {isSaving ? (
+                                            <Loader2 className="size-3.5 animate-spin" />
+                                        ) : (
+                                            <Save className="size-3.5" />
+                                        )}
+                                    </button>
+                                </>
                             )}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                if (isRowBusy || !localItem.audioUrl_convert_custom) return;
-                                e.stopPropagation();
-                                onSave('translate_srt');
-                            }}
-                            disabled={isRowBusy || !localItem.audioUrl_convert_custom}
-                            className={cn(
-                                'inline-flex h-8 w-full items-center justify-center rounded-lg border px-2 transition-colors',
-                                localItem.audioUrl_convert_custom && !isRowBusy
-                                    ? 'border-white/10 bg-primary/10 text-primary hover:bg-primary/15'
-                                    : 'border-white/10 bg-white/[0.02] text-muted-foreground/40 cursor-not-allowed',
-                                isSaving ? 'cursor-wait' : null
-                            )}
-                            title={t('tooltips.saveVoice')}
-                            aria-label={t('tooltips.saveVoice')}
-                        >
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium">
-                                {isSaving ? (
-                                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-                                ) : (
-                                    <Save className="size-4" />
-                                )}
-                                {t('actions.applyVoice')}
-                            </span>
-                        </button>
+                        </div>
                     </div>
 
                     {/* Converted */}

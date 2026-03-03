@@ -83,7 +83,7 @@ export default function DashboardLayout({
             {/* SidebarProvider locks body scroll; make inset the scroll container. */}
             <SidebarInset className="bg-background/40 min-h-0 overflow-auto backdrop-blur-xl">
                 <DashboardHeader />
-                <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-4 sm:p-6 sm:pt-6 lg:p-8">
+                <div className="flex min-h-0 flex-1 flex-col">
                     {children}
                 </div>
             </SidebarInset>

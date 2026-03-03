@@ -19,7 +19,9 @@ interface SubtitleWorkstationProps {
     onPendingVoiceIdsChange?: (ids: string[]) => void;
     // 重新合成完成（成功）回调：用于父组件更新 lastMergedAtMs，让右上角按钮自动变灰
     onVideoMergeCompleted?: (args: { mergedAtMs: number }) => void;
-    // 字幕工作台试听：通知父组件驱动视频画面（仅影响画面/传输，不替代本地 <audio> 播放）
+    // 字幕工作台试听：通知父组件加载状态，挂起视频
+    onAuditionLoad?: (index: number, mode: 'source' | 'convert') => void;
+    // 字幕工作台试听：通知父组件驱动视频画面（真正开始播放时）
     onAuditionPlay?: (index: number, mode: 'source' | 'convert') => void;
     onAuditionPause?: () => void;
     onAuditionResume?: () => void;
@@ -32,7 +34,7 @@ interface SubtitleWorkstationProps {
 }
 
 export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Promise<boolean> }, SubtitleWorkstationProps>(
-    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, onAuditionPlay, onAuditionPause, onAuditionResume, onAuditionStop, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
+    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, onAuditionLoad, onAuditionPlay, onAuditionPause, onAuditionResume, onAuditionStop, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
         const t = useTranslations('video_convert.videoEditor.audioList');
         const { user, fetchUserCredits } = useAppContext();
 
@@ -45,7 +47,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
         const [isLoading, setIsLoading] = useState(false);
         const [error, setError] = useState<string | null>(null);
         const [isAutoPlayNext, setIsAutoPlayNext] = useState(false);
-        const [isAudioPlayEnded, setIsAudioPlayEnded] = useState(false);
+        const [isAudioPaused, setIsAudioPaused] = useState(false);
         const [convertingMap, setConvertingMap] = useState<Record<string, string>>({});
         const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
         const [searchText, setSearchText] = useState('');
@@ -56,7 +58,9 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
         const resumedJobsRef = useRef<Set<string>>(new Set());
         const ttsWarmupStartedRef = useRef(false);
         const rootRef = useRef<HTMLDivElement>(null);
-        // const scrollAreaRef = useRef<HTMLDivElement>(null);
+        // Refs for audition sync: avoid stale closures in <audio onPlay>
+        const playingIndexRef = useRef(-1);
+        const playingTypeRef = useRef<'source' | 'convert' | null>(null);
 
         type PendingJob = {
             subtitleId: string;
@@ -402,11 +406,14 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
 
             const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folderName}`;
             const el = audioRef.current;
-            setIsAudioPlayEnded(false);
+            setIsAudioPaused(false);
             setPlayingIndex(index);
             setPlayingType(type);
-            // 通知父组件：用视频画面辅助试听（audio 仍由工作台播放）
-            onAuditionPlay?.(index, type);
+            // Sync refs immediately so the <audio onPlay> handler always reads fresh values
+            playingIndexRef.current = index;
+            playingTypeRef.current = type;
+            // 通知父组件：音频开始加载，暂停视频并Seek
+            onAuditionLoad?.(index, type);
             // Hard-stop any previously playing clip immediately to avoid overlap when users click quickly.
             try {
                 el.pause();
@@ -429,26 +436,22 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                 // AbortError is expected when the user pauses/changes clips quickly.
                 if (err && typeof err === 'object' && (err as any).name === 'AbortError') return;
                 console.error('Audio play failed:', err);
-                setIsAudioPlayEnded(true);
+                stopPlayback();
                 toast.error(t('toast.playFailed'));
-                onAuditionStop?.();
             });
         };
 
         const handleAudioEnded = () => {
-            setIsAudioPlayEnded(true);
             if (isAutoPlayNext && playingType) {
                 const nextIndex = playingIndex + 1;
                 if (nextIndex < subtitleItems.length) {
                     playAudioAtIndex(nextIndex, playingType);
                 } else {
-                    setPlayingIndex(-1);
-                    setPlayingType(null);
-                    onAuditionStop?.();
+                    stopPlayback();
                 }
             } else {
-                // 单条模式：播放完即停止视频画面
-                onAuditionStop?.();
+                // 单条模式：播放完即停止并取消高亮
+                stopPlayback();
             }
         };
 
@@ -468,7 +471,9 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             }
             setPlayingIndex(-1);
             setPlayingType(null);
-            setIsAudioPlayEnded(false);
+            playingIndexRef.current = -1;
+            playingTypeRef.current = null;
+            setIsAudioPaused(false);
             onAuditionStop?.();
         };
 
@@ -477,7 +482,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             if (!el) return;
 
             const isSameClip = playingIndex === index && playingType === type;
-            const isActivelyPlaying = isSameClip && !isAudioPlayEnded;
+            const isActivelyPlaying = isSameClip && !isAudioPaused;
 
             if (isActivelyPlaying) {
                 // Pause, but keep current clip context so users can resume.
@@ -486,27 +491,19 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                 } catch {
                     // ignore
                 }
-                setIsAudioPlayEnded(true);
+                setIsAudioPaused(true);
                 onAuditionPause?.();
                 return;
             }
 
-            if (isSameClip && isAudioPlayEnded) {
-                setIsAudioPlayEnded(false);
+            if (isSameClip && isAudioPaused) {
+                setIsAudioPaused(false);
                 onAuditionResume?.();
-                try {
-                    if (el.ended || (Number.isFinite(el.duration) && el.duration > 0 && el.currentTime >= el.duration)) {
-                        el.currentTime = 0;
-                    }
-                } catch {
-                    // ignore
-                }
                 el.play().catch((err) => {
                     if (err && typeof err === 'object' && (err as any).name === 'AbortError') return;
-                    console.error('Audio play failed:', err);
-                    setIsAudioPlayEnded(true);
+                    console.error('Audio resume failed:', err);
+                    stopPlayback();
                     toast.error(t('toast.playFailed'));
-                    onAuditionStop?.();
                 });
                 return;
             }
@@ -763,11 +760,24 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             );
         }, [searchText, subtitleItems]);
 
-        const isActivelyPlaying = playingIndex >= 0 && playingType != null && !isAudioPlayEnded;
+        const isActivelyPlaying = playingIndex >= 0 && playingType != null && !isAudioPaused;
 
         return (
             <div ref={rootRef} className="flex flex-col h-full bg-background/40 backdrop-blur-sm">
-                <audio ref={audioRef} onEnded={handleAudioEnded} className="hidden" />
+                <audio
+                    ref={audioRef}
+                    onPlay={() => {
+                        // Use refs (not state) to avoid stale closure: state may not
+                        // have committed by the time the browser fires onPlay.
+                        const idx = playingIndexRef.current;
+                        const tp = playingTypeRef.current;
+                        if (idx >= 0 && tp) {
+                            onAuditionPlay?.(idx, tp);
+                        }
+                    }}
+                    onEnded={handleAudioEnded}
+                    className="hidden"
+                />
 
                 {/* Toolbar */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.04] bg-card/40 backdrop-blur-xl">
@@ -896,8 +906,8 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                 ref={(el: HTMLDivElement | null) => { itemRefs.current[item.order] = el; }}
                                 item={item}
                                 isSelected={selectedId === item.id}
-                                isPlayingSource={playingIndex === item.order && playingType === 'source' && !isAudioPlayEnded}
-                                isPlayingConvert={playingIndex === item.order && playingType === 'convert' && !isAudioPlayEnded}
+                                isPlayingSource={playingIndex === item.order && playingType === 'source' && !isAudioPaused}
+                                isPlayingConvert={playingIndex === item.order && playingType === 'convert' && !isAudioPaused}
                                 isPlayingFromVideo={playingSubtitleIndex === item.order}
                                 convertingType={convertingMap[item.id] || null}
                                 isSaving={savingIds.has(item.id)}

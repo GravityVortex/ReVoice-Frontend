@@ -138,7 +138,7 @@ export default async function SettingsOverviewPage() {
       : null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10 pb-10">
+    <div className="max-w-5xl mx-auto space-y-10 pb-10 px-4 sm:px-6 lg:px-8 mt-8">
       <ConsolePageHeader
         title={t('title')}
         description={t('description')}

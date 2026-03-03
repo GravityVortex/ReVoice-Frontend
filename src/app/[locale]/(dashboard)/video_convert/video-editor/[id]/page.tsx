@@ -2595,7 +2595,7 @@ export default function VideoEditorPage() {
     setIsSubtitleMuted((v) => !v);
   }, []);
 
-  const handleAuditionPlay = useCallback((index: number, mode: 'source' | 'convert') => {
+  const handleAuditionLoad = useCallback((index: number, mode: 'source' | 'convert') => {
     if (index < 0 || index >= subtitleTrackRef.current.length) return;
     const item = subtitleTrackRef.current[index];
 
@@ -2609,21 +2609,41 @@ export default function VideoEditorPage() {
 
     // Always mute page's generated voice track, let workstation provide the audio
     setIsSubtitleMuted(true);
+    isSubtitleMutedRef.current = true; // IMMEDIATELY sync ref to avoid WebAudio double-play race condition
 
     // Mute video to prevent echo with workstation's split_audio
     const videoEl = videoPreviewRef.current?.videoElement;
     if (videoEl) videoEl.muted = true;
 
-    setIsBgmMuted(mode === 'source');
+    const shouldMuteBgm = mode === 'source';
+    setIsBgmMuted(shouldMuteBgm);
+    isBgmMutedRef.current = shouldMuteBgm; // Sync ref immediately
     handleSeek(item.startTime, false);
 
     auditionStopAtMsRef.current = item.startTime * 1000 + item.duration * 1000;
     setPlayingSubtitleIndex(index);
 
+    // Freeze video playback while audio is buffering
+    transportIsStalledRef.current = true;
+    setIsVideoBuffering(true);
+  }, [handleSeek]);
+
+  const handleAuditionPlay = useCallback((_index: number, _mode: 'source' | 'convert') => {
+    // Audio is actually playing now — unfreeze master transport and start
+    // video IMMEDIATELY (no warmup gate). The gate waits for buffered data
+    // at the seeked position which can take seconds; during audition the
+    // user expects instant visual sync with the audio, so we skip it.
+    const videoEl = videoPreviewRef.current?.videoElement;
     if (!videoEl || !(videoEl.currentSrc || videoEl.src)) return;
     transportIsStalledRef.current = false;
-    void playVideoWithGate(videoEl, { reason: 'audition-play' });
-  }, [handleSeek, playVideoWithGate]);
+    setIsVideoBuffering(false);
+    videoEl.play().then(() => {
+      setIsPlaying(true);
+    }).catch((e) => {
+      if (isAbortError(e)) return;
+      console.warn('[Audition] video.play() failed, non-critical:', e);
+    });
+  }, []);
 
   const handleAuditionPause = useCallback(() => {
     // Cancel any in-flight warmup/play so it can't flip state later.
@@ -2640,11 +2660,17 @@ export default function VideoEditorPage() {
   }, []);
 
   const handleAuditionResume = useCallback(() => {
+    // Same as auditionPlay: skip the heavy gate for instant resume.
     const videoEl = videoPreviewRef.current?.videoElement;
     if (!videoEl || !(videoEl.currentSrc || videoEl.src)) return;
     transportIsStalledRef.current = false;
-    void playVideoWithGate(videoEl, { reason: 'audition-resume' });
-  }, [playVideoWithGate]);
+    videoEl.play().then(() => {
+      setIsPlaying(true);
+    }).catch((e) => {
+      if (isAbortError(e)) return;
+      console.warn('[Audition] resume video.play() failed:', e);
+    });
+  }, []);
 
   const handleAuditionStop = useCallback(() => {
     // Cancel any in-flight warmup/play so it can't flip state later.
@@ -2664,7 +2690,9 @@ export default function VideoEditorPage() {
     if (auditionRestoreRef.current) {
       const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
       setIsSubtitleMuted(subtitleMuted);
+      isSubtitleMutedRef.current = subtitleMuted; // Sync ref immediately
       setIsBgmMuted(bgmMuted);
+      isBgmMutedRef.current = bgmMuted; // Sync ref immediately
       if (videoPreviewRef.current?.videoElement) {
         videoPreviewRef.current.videoElement.muted = videoMuted;
       }
@@ -2677,7 +2705,7 @@ export default function VideoEditorPage() {
   if (error) return <ErrorDisplay error={error} />;
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-background/40 shadow-xl backdrop-blur-xl">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-background/40 shadow-xl backdrop-blur-xl m-1 sm:m-3">
       {/* Ambient backdrop: subtle motion + depth (keeps the editor feeling "alive" without being noisy). */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-48 left-1/2 h-[420px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[90px] opacity-70" />
@@ -2693,8 +2721,8 @@ export default function VideoEditorPage() {
       </div>
 
       {/* Header */}
-      <div className="relative flex items-start justify-between gap-4 border-b border-white/10 bg-card/40 px-4 py-3 backdrop-blur-xl">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="relative flex items-start justify-between gap-4 border-b border-white/10 bg-card/40 px-4 py-2.5 backdrop-blur-xl">
+        <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -2929,6 +2957,7 @@ export default function VideoEditorPage() {
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
                   onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
                   onVideoMergeCompleted={handleVideoMergeCompleted}
+                  onAuditionLoad={handleAuditionLoad}
                   onAuditionPlay={handleAuditionPlay}
                   onAuditionPause={handleAuditionPause}
                   onAuditionResume={handleAuditionResume}
