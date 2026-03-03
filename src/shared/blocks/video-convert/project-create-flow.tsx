@@ -15,6 +15,11 @@ import { CostEstimateModal } from './cost-estimate-modal';
 import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
 
 type Lang = 'zh' | 'en';
+type PreviewSource = 'local' | 'cloud';
+
+// 弱触发：播放中卡顿超过阈值（ms）自动切云端
+const PREVIEW_STALL_THRESHOLD_MS = 5000;
+const PREVIEW_STALL_EPSILON_SECONDS = 0.1;
 
 // 单人多人
 const PEOPLES_OPTIONS = [
@@ -28,7 +33,6 @@ interface Config {
 }
 
 interface VideoUploadData {
-    videoUrl: string;
     videoKey: string;
     videoSize: number;
     videoDuration: number;
@@ -61,6 +65,22 @@ export function ProjectCreateFlow() {
     const videoInputRef = useRef<HTMLInputElement>(null);
     const previewVideoRef = useRef<HTMLVideoElement>(null);
 
+    const [localPreviewUrl, setLocalPreviewUrl] = useState('');
+    const localPreviewUrlRef = useRef('');
+
+    const [previewSource, setPreviewSource] = useState<PreviewSource>('local');
+    const previewSourceRef = useRef<PreviewSource>('local');
+    const didAutoSwitchToCloudRef = useRef(false);
+    const pendingPlaybackRestoreRef = useRef<{
+        time: number;
+        paused: boolean;
+        playbackRate: number;
+    } | null>(null);
+    const stallTimerRef = useRef<number | null>(null);
+
+    const uploaderRef = useRef<{ abort?: () => void } | null>(null);
+    const uploadSessionIdRef = useRef(0);
+
     // 视频上传状态
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -72,7 +92,6 @@ export function ProjectCreateFlow() {
     // 表单数据
     const [formData, setFormData] = useState<ProjectCreateFormData>({
         videoUpload: {
-            videoUrl: '',
             videoKey: '',
             videoSize: 0,
             videoDuration: 0,
@@ -93,11 +112,131 @@ export function ProjectCreateFlow() {
         pointsPerMinute: 3,
     });
 
+    const isUploadComplete = Boolean(
+        formData.videoUpload.fileId &&
+        formData.videoUpload.videoKey &&
+        formData.videoUpload.r2Key &&
+        formData.videoUpload.r2Bucket
+    );
+    const cloudPreviewUrl = isUploadComplete
+        ? `/api/storage/stream?key=${encodeURIComponent(formData.videoUpload.videoKey)}`
+        : '';
+    const activePreviewUrl = previewSource === 'cloud' && cloudPreviewUrl ? cloudPreviewUrl : localPreviewUrl;
+    const hasPreview = Boolean(activePreviewUrl);
+
     const currentBalance = user?.credits?.remainingCredits || 0;
     usePausedVideoPrefetch(previewVideoRef, {
-        enabled: Boolean(formData.videoUpload.videoUrl),
+        enabled: previewSource === 'cloud' && Boolean(cloudPreviewUrl),
         minBufferedAheadSeconds: 10,
     });
+
+    useEffect(() => {
+        previewSourceRef.current = previewSource;
+    }, [previewSource]);
+
+    const clearStallTimer = () => {
+        if (stallTimerRef.current == null) return;
+        window.clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+    };
+
+    const abortUploadAndInvalidateSession = () => {
+        uploadSessionIdRef.current += 1;
+        try {
+            uploaderRef.current?.abort?.();
+        } catch {
+            // ignore
+        }
+        uploaderRef.current = null;
+    };
+
+    const revokeLocalPreviewUrl = () => {
+        const prev = localPreviewUrlRef.current;
+        localPreviewUrlRef.current = '';
+        if (!prev) return;
+        try {
+            URL.revokeObjectURL(prev);
+        } catch {
+            // ignore
+        }
+    };
+
+    const setNewLocalPreviewUrl = (url: string) => {
+        if (localPreviewUrlRef.current && localPreviewUrlRef.current !== url) {
+            revokeLocalPreviewUrl();
+        }
+        localPreviewUrlRef.current = url;
+        setLocalPreviewUrl(url);
+    };
+
+    const resetPreviewState = () => {
+        clearStallTimer();
+        pendingPlaybackRestoreRef.current = null;
+        didAutoSwitchToCloudRef.current = false;
+        previewSourceRef.current = 'local';
+        setPreviewSource('local');
+        revokeLocalPreviewUrl();
+        setLocalPreviewUrl('');
+    };
+
+    const switchToCloudPreview = (reason: 'error' | 'stall') => {
+        if (previewSourceRef.current === 'cloud') return;
+        if (!isUploadComplete) return;
+        if (didAutoSwitchToCloudRef.current) return;
+
+        didAutoSwitchToCloudRef.current = true;
+        clearStallTimer();
+
+        const video = previewVideoRef.current;
+        if (video) {
+            pendingPlaybackRestoreRef.current = {
+                time: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+                paused: video.paused,
+                playbackRate: Number.isFinite(video.playbackRate) ? video.playbackRate : 1,
+            };
+        }
+
+        console.warn('[CreatePreview] switch to cloud preview:', reason);
+        previewSourceRef.current = 'cloud';
+        setPreviewSource('cloud');
+    };
+
+    const armStallSwitchIfNeeded = () => {
+        clearStallTimer();
+        if (previewSourceRef.current !== 'local') return;
+        if (!isUploadComplete) return;
+        if (didAutoSwitchToCloudRef.current) return;
+
+        const video = previewVideoRef.current;
+        if (!video) return;
+        // playing 态 + 非 seeking 才触发弱兜底。
+        if (video.paused || video.seeking || video.ended) return;
+
+        const anchorTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+        stallTimerRef.current = window.setTimeout(() => {
+            stallTimerRef.current = null;
+
+            const v = previewVideoRef.current;
+            if (!v) return;
+            if (previewSourceRef.current !== 'local') return;
+            if (!isUploadComplete) return;
+            if (didAutoSwitchToCloudRef.current) return;
+            if (v.paused || v.seeking || v.ended) return;
+
+            const nowTime = Number.isFinite(v.currentTime) ? v.currentTime : 0;
+            if (Math.abs(nowTime - anchorTime) > PREVIEW_STALL_EPSILON_SECONDS) return;
+
+            switchToCloudPreview('stall');
+        }, PREVIEW_STALL_THRESHOLD_MS);
+    };
+
+    useEffect(() => {
+        return () => {
+            abortUploadAndInvalidateSession();
+            clearStallTimer();
+            revokeLocalPreviewUrl();
+        };
+    }, []);
 
     // Load Config & Cache
     useEffect(() => {
@@ -128,15 +267,35 @@ export function ProjectCreateFlow() {
         if (cached) {
             try {
                 const parsed = JSON.parse(cached);
+                const rawUpload = parsed?.videoUpload || {};
+                const normalizedUpload: VideoUploadData = {
+                    videoKey: String(rawUpload.videoKey || ''),
+                    videoSize: Number(rawUpload.videoSize || 0),
+                    videoDuration: Number(rawUpload.videoDuration || 0),
+                    // 不缓存 URL，这里仅做兜底兼容（历史缓存/数据结构变化）。
+                    thumbnailUrl: '',
+                    fileName: String(rawUpload.fileName || ''),
+                    fileType: String(rawUpload.fileType || ''),
+                    r2Key: String(rawUpload.r2Key || ''),
+                    r2Bucket: String(rawUpload.r2Bucket || ''),
+                    fileId: String(rawUpload.fileId || ''),
+                };
                 const sourceLanguage: Lang =
                     parsed?.sourceLanguage === 'en' || parsed?.sourceLanguage === 'zh'
                         ? parsed.sourceLanguage
                         : 'zh';
                 setFormData({
                     ...parsed,
+                    videoUpload: normalizedUpload,
                     sourceLanguage,
                     targetLanguage: getOppositeLanguage(sourceLanguage),
                 });
+
+                // 刷新后本地文件不可恢复：若已完成上传，默认展示云端预览（同源 stream）。
+                if (normalizedUpload.fileId && normalizedUpload.videoKey) {
+                    didAutoSwitchToCloudRef.current = true;
+                    setPreviewSource('cloud');
+                }
             } catch (e) {
                 console.error('Failed to parse cache', e);
             }
@@ -152,10 +311,24 @@ export function ProjectCreateFlow() {
 
     // Cache handling
     useEffect(() => {
-        if (formData.videoUpload.videoUrl) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-        }
-    }, [formData]);
+        if (!isUploadComplete) return;
+
+        // 只缓存稳定字段：不缓存任何 URL（包含 blob: 与 presigned）。
+        const stableCache: ProjectCreateFormData = {
+            ...formData,
+            videoUpload: {
+                videoKey: formData.videoUpload.videoKey,
+                videoSize: formData.videoUpload.videoSize,
+                videoDuration: formData.videoUpload.videoDuration,
+                fileName: formData.videoUpload.fileName,
+                fileType: formData.videoUpload.fileType,
+                r2Key: formData.videoUpload.r2Key,
+                r2Bucket: formData.videoUpload.r2Bucket,
+                fileId: formData.videoUpload.fileId,
+            },
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stableCache));
+    }, [formData, isUploadComplete]);
 
     const clearCache = () => {
         localStorage.removeItem(STORAGE_KEY);
@@ -164,7 +337,6 @@ export function ProjectCreateFlow() {
     const resetFormData = () => {
         setFormData({
             videoUpload: {
-                videoUrl: '',
                 videoKey: '',
                 videoSize: 0,
                 videoDuration: 0,
@@ -199,57 +371,90 @@ export function ProjectCreateFlow() {
             return;
         }
 
+        // 新文件开始前，确保中断上一轮上传并清理旧预览。
+        abortUploadAndInvalidateSession();
+        resetPreviewState();
+        clearCache();
+        const sessionId = uploadSessionIdRef.current;
+
         setUploading(true);
         setProgress(0);
 
         try {
-            // Get Duration
-            const localUrl = URL.createObjectURL(file);
-            const videoElement = document.createElement('video');
-            videoElement.preload = 'metadata';
-            videoElement.src = localUrl;
+            // 本地预览：优先用 blob URL 播放，不依赖云端预签名 URL。
+            const objectUrl = URL.createObjectURL(file);
+            setNewLocalPreviewUrl(objectUrl);
+            setPreviewSource('local');
+            didAutoSwitchToCloudRef.current = false;
 
-            await new Promise<void>((resolve, reject) => {
-                videoElement.onloadedmetadata = () => {
-                    try {
-                        const videoDuration = Math.round(videoElement.duration * 10) / 10;
-                        setFormData(prev => ({
-                            ...prev,
-                            videoUpload: {
-                                ...prev.videoUpload,
-                                videoDuration,
-                                videoSize: file.size,
-                                fileName: file.name,
-                            }
-                        }));
-                        resolve();
-                    } catch (e) {
-                        reject(e);
-                    } finally {
-                        URL.revokeObjectURL(localUrl);
-                    }
-                };
-                videoElement.onerror = () => {
-                    URL.revokeObjectURL(localUrl);
-                    reject(new Error('Failed to read video metadata'));
-                };
-            });
-
-            // Upload (multipart upload with parallel chunks)
-            const { MultipartUploader } = await import('@/shared/lib/multipart-upload');
-            const uploader = new MultipartUploader();
-            const result = await uploader.upload(file, {
-                onProgress: (p) => setProgress(p),
-                onStatus: (status) => console.log('[Multipart Upload]', status),
-            });
-
+            // 先写入稳定文件信息（用于右侧面板即时展示）。
             setFormData(prev => ({
                 ...prev,
                 videoUpload: {
                     ...prev.videoUpload,
-                    videoUrl: result.publicUrl,
-                    videoKey: result.key,
+                    videoSize: file.size,
+                    fileName: file.name,
                     fileType: file.type,
+                    // 新文件开始时清空上传产物字段。
+                    videoKey: '',
+                    r2Key: '',
+                    r2Bucket: '',
+                    fileId: '',
+                    thumbnailUrl: '',
+                    videoDuration: 0,
+                }
+            }));
+
+            // 获取视频时长（metadata 读取很快，不 revoke objectURL，交由页面生命周期统一释放）。
+            const videoElement = document.createElement('video');
+            videoElement.preload = 'metadata';
+            videoElement.src = objectUrl;
+            const videoDuration = await new Promise<number>((resolve, reject) => {
+                const timeoutId = window.setTimeout(() => {
+                    reject(new Error('timeout'));
+                }, 4000);
+
+                videoElement.onloadedmetadata = () => {
+                    window.clearTimeout(timeoutId);
+                    const d = Number.isFinite(videoElement.duration) ? videoElement.duration : 0;
+                    resolve(Math.round(d * 10) / 10);
+                };
+                videoElement.onerror = () => {
+                    window.clearTimeout(timeoutId);
+                    reject(new Error('Failed to read video metadata'));
+                };
+            }).catch(() => 0);
+
+            if (uploadSessionIdRef.current !== sessionId) return;
+            setFormData(prev => ({
+                ...prev,
+                videoUpload: {
+                    ...prev.videoUpload,
+                    videoDuration,
+                }
+            }));
+
+            // Upload (multipart upload with parallel chunks)
+            const { MultipartUploader } = await import('@/shared/lib/multipart-upload');
+            const uploader = new MultipartUploader();
+            uploaderRef.current = uploader;
+            const result = await uploader.upload(file, {
+                onProgress: (p) => {
+                    if (uploadSessionIdRef.current !== sessionId) return;
+                    setProgress(p);
+                },
+                onStatus: (status) => {
+                    if (uploadSessionIdRef.current !== sessionId) return;
+                    console.log('[Multipart Upload]', status);
+                },
+            });
+
+            if (uploadSessionIdRef.current !== sessionId) return;
+            setFormData(prev => ({
+                ...prev,
+                videoUpload: {
+                    ...prev.videoUpload,
+                    videoKey: result.key,
                     r2Key: result.keyV,
                     r2Bucket: result.bucket,
                     fileId: result.fileId,
@@ -257,13 +462,22 @@ export function ProjectCreateFlow() {
             }));
             toast.success(t('upload.uploadSuccess'));
         } catch (error: any) {
+            if (uploadSessionIdRef.current !== sessionId) return;
+            if (String(error?.message || '').toLowerCase().includes('aborted')) {
+                // 用户主动取消上传：不弹错误。
+                return;
+            }
             console.error('Upload error:', error);
             toast.error(error.message || t('upload.uploadFailed'));
             clearCache();
             resetFormData();
+            resetPreviewState();
         } finally {
-            setUploading(false);
-            if (videoInputRef.current) videoInputRef.current.value = '';
+            if (uploadSessionIdRef.current === sessionId) {
+                setUploading(false);
+                uploaderRef.current = null;
+                if (videoInputRef.current) videoInputRef.current.value = '';
+            }
         }
     };
 
@@ -284,14 +498,18 @@ export function ProjectCreateFlow() {
     };
 
     const handleRemoveVideo = () => {
+        abortUploadAndInvalidateSession();
         clearCache();
         resetFormData();
+        resetPreviewState();
+        setUploading(false);
+        setProgress(0);
         toast.info(t('upload.videoDeleted'));
     };
 
     // Submission
     const handleStartClick = () => {
-        if (!formData.videoUpload.videoUrl) {
+        if (!isUploadComplete) {
             toast.error(t('messages.uploadVideoRequired'));
             return;
         }
@@ -337,7 +555,7 @@ export function ProjectCreateFlow() {
             } else {
                 toast.error(data?.message || t('messages.submitFailed'));
             }
-        } catch (e) {
+        } catch {
             toast.error(t('messages.submitFailed'));
         } finally {
             setSubmitting(false);
@@ -364,7 +582,7 @@ export function ProjectCreateFlow() {
                     <Card
                         className={cn(
                             "shadow-none min-h-[500px] flex-1 min-h-0 flex flex-col overflow-hidden relative transition-colors p-0 gap-0",
-                            !formData.videoUpload.videoUrl
+                            !hasPreview
                                 ? "border-2 border-dashed border-muted-foreground/20 bg-muted/5"
                                 : "border border-border bg-card"
                         )}
@@ -378,7 +596,7 @@ export function ProjectCreateFlow() {
                                 className="hidden"
                             />
 
-                            {!formData.videoUpload.videoUrl ? (
+                            {!hasPreview ? (
                                 <button
                                     onClick={() => videoInputRef.current?.click()}
                                     disabled={uploading}
@@ -428,11 +646,75 @@ export function ProjectCreateFlow() {
                                     <div className="absolute inset-0 bg-grid-white/[0.02]" />
                                     <video
                                         ref={previewVideoRef}
-                                        src={formData.videoUpload.videoUrl}
+                                        src={activePreviewUrl}
                                         controls
                                         preload="auto"
                                         className="w-full h-full max-h-full object-contain relative z-10"
+                                        onLoadedMetadata={() => {
+                                            clearStallTimer();
+                                            if (previewSourceRef.current !== 'cloud') return;
+                                            const restore = pendingPlaybackRestoreRef.current;
+                                            if (!restore) return;
+                                            pendingPlaybackRestoreRef.current = null;
+
+                                            const v = previewVideoRef.current;
+                                            if (!v) return;
+                                            try {
+                                                v.playbackRate = restore.playbackRate;
+                                            } catch {
+                                                // ignore
+                                            }
+                                            try {
+                                                const duration = Number.isFinite(v.duration) ? v.duration : 0;
+                                                const maxSeek = duration > 0 ? Math.max(0, duration - 0.05) : restore.time;
+                                                v.currentTime = Math.max(0, Math.min(restore.time, maxSeek));
+                                            } catch {
+                                                // ignore
+                                            }
+                                            if (!restore.paused) {
+                                                v.play().catch(() => {
+                                                    // ignore
+                                                });
+                                            }
+                                        }}
+                                        onError={() => {
+                                            clearStallTimer();
+                                            // 强触发：本地预览异常时自动切换云端预览。
+                                            if (previewSourceRef.current === 'local') {
+                                                switchToCloudPreview('error');
+                                            }
+                                        }}
+                                        onWaiting={() => {
+                                            armStallSwitchIfNeeded();
+                                        }}
+                                        onStalled={() => {
+                                            armStallSwitchIfNeeded();
+                                        }}
+                                        onPlaying={() => {
+                                            clearStallTimer();
+                                        }}
+                                        onCanPlay={() => {
+                                            clearStallTimer();
+                                        }}
+                                        onTimeUpdate={() => {
+                                            clearStallTimer();
+                                        }}
+                                        onSeeking={() => {
+                                            clearStallTimer();
+                                        }}
+                                        onPause={() => {
+                                            clearStallTimer();
+                                        }}
                                     />
+
+                                    {uploading ? (
+                                        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/20">
+                                            <div className="flex flex-col items-center gap-2 rounded-md bg-black/60 px-4 py-3">
+                                                <Loader2 className="h-6 w-6 animate-spin text-white/80" />
+                                                <div className="text-xs font-mono text-white/80">{progress}%</div>
+                                            </div>
+                                        </div>
+                                    ) : null}
                                     <Button
                                         size="icon"
                                         variant="secondary"
@@ -446,7 +728,7 @@ export function ProjectCreateFlow() {
                         </CardContent>
 
                         {/* File Stats Footer */}
-                        {formData.videoUpload.videoUrl && (
+                        {hasSelectedFile && (
                             <div className="border-t bg-card p-4 grid grid-cols-2 divide-x">
                                 <div className="px-4 flex flex-col gap-1">
                                     <span className="text-xs uppercase text-muted-foreground font-semibold flex items-center gap-1">
@@ -562,7 +844,7 @@ export function ProjectCreateFlow() {
                                     className="w-full text-lg h-12"
                                     size="lg"
                                     onClick={handleStartClick}
-                                    disabled={submitting || uploading || !formData.videoUpload.videoUrl || !user?.id || !user?.credits}
+                                    disabled={submitting || uploading || !isUploadComplete || !user?.id || !user?.credits}
                                 >
                                     {submitting ? (
                                         <>

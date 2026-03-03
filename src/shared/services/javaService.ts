@@ -112,12 +112,21 @@ function parseExpiresAtMs(urls: any[], fallbackMinutes: number) {
  * @param itemArr
  * @returns
  */
-export async function getPreSignedUrl(itemArr: SignUrlItem[]) {
+export async function getPreSignedUrl(
+  itemArr: SignUrlItem[],
+  options?: { forceRefresh?: boolean }
+) {
   const cacheKey = getPresignedCacheKey(itemArr);
-  const cached = presignedUrlCache.get(cacheKey);
-  const now = Date.now();
-  if (cached && cached.expiresAtMs - PRESIGNED_CACHE_SAFETY_MS > now) {
-    return cached.urls;
+  const forceRefresh = Boolean(options?.forceRefresh);
+  if (!forceRefresh) {
+    const cached = presignedUrlCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && cached.expiresAtMs - PRESIGNED_CACHE_SAFETY_MS > now) {
+      return cached.urls;
+    }
+  } else {
+    // 主动刷新：丢弃缓存，避免拿到已过期/被撤销的签名 URL。
+    presignedUrlCache.delete(cacheKey);
   }
 
   const requestDataPre = {
