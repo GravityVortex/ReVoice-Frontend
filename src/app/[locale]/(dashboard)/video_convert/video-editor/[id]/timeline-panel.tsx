@@ -153,9 +153,9 @@ export function TimelinePanel({
     }, [maxTrackWidth, zoom]);
 
     const rulerHeight = 40;
-    const subtitleConvertedRowHeight = 64;
-    const subtitleOriginalRowHeight = subtitleTrackOriginal ? 64 : 0;
-    const bgmRowHeight = bgmWaveformUrl ? 64 : 0;
+    const subtitleConvertedRowHeight = 56; // h-14
+    const subtitleOriginalRowHeight = subtitleTrackOriginal ? 40 : 0; // h-10
+    const bgmRowHeight = bgmWaveformUrl ? 40 : 0; // h-10
     const playheadHeightPx =
         rulerHeight +
         subtitleConvertedRowHeight +
@@ -410,7 +410,7 @@ export function TimelinePanel({
 
     const handleOriginalSegmentClick = handleConvertedSegmentClick;
 
-            return (
+    return (
         <div className={cn("flex flex-col bg-background/60 border-t border-white/10 h-full", className)}>
             {/* 1. Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b border-white/10 bg-card/25 shrink-0">
@@ -523,43 +523,42 @@ export function TimelinePanel({
 
                     {/* Track Headers */}
                     <div className="flex-1 flex flex-col">
-                        <div className="h-16 border-b border-white/10 flex items-center justify-between gap-2 px-3">
+                        <div className="h-14 border-b border-white/10 flex items-center justify-between gap-2 px-3 bg-muted/5">
                             <div className="min-w-0">
-                                <div className="truncate text-xs font-medium text-muted-foreground">
+                                <div className="truncate text-[11px] font-medium text-muted-foreground/90">
                                     {t('tracks.subtitleTranslated')}
-                                </div>
-                                <div className="mt-0.5 text-[10px] text-muted-foreground/55">
-                                    {t('tracks.subtitle')}
                                 </div>
                             </div>
                             {isSubtitleMuted ? (
-                                <span className="text-[10px] font-medium text-destructive/80">
+                                <span className="text-[9px] font-medium text-destructive/80 shrink-0">
                                     {t('tooltips.mute')}
                                 </span>
                             ) : null}
                         </div>
                         {subtitleTrackOriginal ? (
-                            <div className="h-16 border-b border-white/10 flex items-center justify-between px-3">
-                                <span className="truncate text-xs font-medium text-muted-foreground">
+                            <div className="h-10 border-b border-white/10 flex items-center justify-between px-3">
+                                <span className="truncate text-[11px] font-medium text-muted-foreground/80">
                                     {t('tracks.subtitleOriginal')}
                                 </span>
-                                <span className="text-[11px] text-muted-foreground/70">
+                                <span className="text-[9px] text-muted-foreground/60 shrink-0">
                                     {t('tracks.reference')}
                                 </span>
                             </div>
                         ) : null}
                         {bgmWaveformUrl ? (
-                            <div className="h-16 border-b border-white/10 flex items-center justify-between gap-2 px-3">
-                                <span className="truncate text-xs font-medium text-muted-foreground">
+                            <div className="h-10 border-b border-white/10 flex items-center justify-between gap-2 px-3">
+                                <span className="truncate text-[11px] font-medium text-muted-foreground/80">
                                     {t('tracks.bgm')}
                                 </span>
                                 {isBgmMuted ? (
-                                    <span className="text-[10px] font-medium text-destructive/80">
+                                    <span className="text-[9px] font-medium text-destructive/80 shrink-0">
                                         {t('tooltips.mute')}
                                     </span>
                                 ) : null}
                             </div>
                         ) : null}
+                        {/* Empty Space Filler */}
+                        <div className="flex-1 w-full bg-background/20" />
                     </div>
                 </div>
 
@@ -591,22 +590,24 @@ export function TimelinePanel({
                         </div>
 
                         {/* Tracks */}
-	                        <SubtitleTrack
-	                            className="h-16 border-b border-white/10"
-	                            items={subtitleTrack}
-	                            totalDuration={maxTrackWidth}
-	                            playingIndex={playingSubtitleIndex}
-	                            zoom={zoom}
-	                            variant="converted"
-	                            onItemsChange={onSubtitleTrackChange}
-	                            onSegmentClick={handleConvertedSegmentClick}
-	                            waveform={vocalWaveform}
-	                            audioDurationMsById={enableAudioMeta ? audioDurationMsById : undefined}
-	                        />
+                        <div className={cn("transition-all duration-300", isSubtitleMuted && "opacity-50 grayscale")}>
+                            <SubtitleTrack
+                                className="h-14 border-b border-white/10 bg-muted/5"
+                                items={subtitleTrack}
+                                totalDuration={maxTrackWidth}
+                                playingIndex={playingSubtitleIndex}
+                                zoom={zoom}
+                                variant="converted"
+                                onItemsChange={onSubtitleTrackChange}
+                                onSegmentClick={handleConvertedSegmentClick}
+                                waveform={vocalWaveform}
+                                audioDurationMsById={enableAudioMeta ? audioDurationMsById : undefined}
+                            />
+                        </div>
 
                         {subtitleTrackOriginal ? (
                             <SubtitleTrack
-                                className="h-16 border-b border-white/10"
+                                className="h-10 border-b border-white/10"
                                 items={subtitleTrackOriginal}
                                 totalDuration={maxTrackWidth}
                                 playingIndex={playingSubtitleIndex}
@@ -616,19 +617,31 @@ export function TimelinePanel({
                             />
                         ) : null}
 
-	                        {bgmWaveformUrl ? (
-	                            <div className="relative h-16 border-b border-white/10 bg-muted/10">
-	                                {enableWaveform && bgmWaveformProxyUrl ? (
-	                                    <WaveformBackdrop
-	                                        url={bgmWaveformProxyUrl}
-	                                        minPxPerSec={minPxPerSec}
-	                                        tone="bgm"
-	                                        className="opacity-90"
-	                                    />
-	                                ) : null}
-                                <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06),transparent,rgba(255,255,255,0.05))] opacity-20" />
+                        {bgmWaveformUrl ? (
+                            <div className={cn("relative h-10 border-b border-white/10 bg-muted/10 overflow-hidden group/bgm transition-all duration-300", isBgmMuted && "opacity-50 grayscale")}>
+                                {/* Base Striped Block indicating track presence */}
+                                <div className="absolute inset-y-[6px] inset-x-0 rounded-sm bg-primary/20 border border-primary/30 overflow-hidden shadow-sm shadow-primary/10">
+                                    {/* Subtle repeating stripe to look like a solid track */}
+                                    <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.05)_4px,rgba(255,255,255,0.05)_8px)]" />
+                                </div>
+
+                                {enableWaveform && bgmWaveformProxyUrl ? (
+                                    <WaveformBackdrop
+                                        url={bgmWaveformProxyUrl}
+                                        minPxPerSec={minPxPerSec}
+                                        tone="bgm"
+                                        className="opacity-90 relative z-10"
+                                    />
+                                ) : null}
+                                <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06),transparent,rgba(255,255,255,0.05))] opacity-20 pointer-events-none z-20" />
                             </div>
                         ) : null}
+
+                        {/* Infinite Extension Workbench Pattern */}
+                        <div
+                            className="flex-1 w-full bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"
+                            aria-hidden
+                        />
                     </div>
                 </div>
             </div>

@@ -25,6 +25,17 @@
     "pendingChanges": "{count} pending",
     "originalSubtitle": "Original Subtitle",
     "convertedSubtitle": "Converted Subtitle",
+    "searchPlaceholder": "Search original / translated…",
+    "playMode": {
+      "label": "Preview mode",
+      "single": "Single",
+      "autoNext": "Auto-next",
+      "help": "Auto-play the next line on the same side (original/translated separately)"
+    },
+    "nowPlaying": {
+      "label": "Now playing",
+      "stop": "Stop"
+    },
     "totalItems": "Total {count} subtitles",
     "playing": "Playing: {type} item {index}",
     "playingSource": "Original subtitle",

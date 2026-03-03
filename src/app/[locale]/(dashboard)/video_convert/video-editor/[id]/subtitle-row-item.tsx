@@ -92,6 +92,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
         const t = useTranslations('video_convert.videoEditor.subtitleRow');
         const [localItem, setLocalItem] = useState(item);
         const isRowBusy = !!convertingType || isSaving;
+        const isAudioPlaying = isPlayingSource || isPlayingConvert;
 
         useEffect(() => {
             setLocalItem(item);
@@ -118,21 +119,29 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                     onPointerToPlaceClick?.();
                 }}
                 className={cn(
-                    "group relative rounded-xl border px-3 py-2.5 transition-colors",
+                    "group relative rounded-lg border px-3 py-1.5 transition-colors",
                     "bg-white/[0.02] border-white/10 hover:bg-white/[0.03]",
                     (isDoubleClick || isPlayingFromVideo)
                         ? "border-primary/45 bg-primary/5 shadow-[0_0_0_1px_rgba(167,139,250,0.18),0_18px_45px_rgba(0,0,0,0.35)]"
-                        : isSelected
-                            ? "border-primary/35 bg-primary/5"
-                            : null
+                        : isAudioPlaying
+                            ? "border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(167,139,250,0.14),0_14px_40px_rgba(0,0,0,0.32)]"
+                            : isSelected
+                                ? "border-primary/35 bg-primary/5"
+                                : null,
+                    isPlayingSource
+                        ? "before:content-[''] before:pointer-events-none before:absolute before:inset-y-2 before:left-1 before:w-1 before:rounded-full before:bg-gradient-to-b before:from-primary/80 before:via-primary/35 before:to-transparent before:animate-pulse"
+                        : null,
+                    isPlayingConvert
+                        ? "after:content-[''] after:pointer-events-none after:absolute after:inset-y-2 after:right-1 after:w-1 after:rounded-full after:bg-gradient-to-b after:from-primary/80 after:via-primary/35 after:to-transparent after:animate-pulse"
+                        : null
                 )}
             >
                 {/* A tiny index marker: helps orient in long lists, but stays subtle. */}
                 <div
                     aria-hidden
                     className={cn(
-                        'pointer-events-none absolute left-3 top-2.5 font-mono text-[10px] tabular-nums',
-                        isSelected || isPlayingFromVideo ? 'text-primary/70' : 'text-muted-foreground/50'
+                        'pointer-events-none absolute left-2 top-1.5 font-mono text-[10px] tabular-nums',
+                        isAudioPlaying || isSelected || isPlayingFromVideo ? 'text-primary/80' : 'text-muted-foreground/50'
                     )}
                 >
                     {(localItem.order + 1).toString().padStart(3, '0')}
@@ -160,7 +169,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                 {isPlayingSource ? <Pause className="size-4" /> : <Play className="size-4" />}
                             </button>
 
-                            <TimePill time={timeSource} tone={isPlayingFromVideo ? 'active' : 'muted'} />
+                            <TimePill time={timeSource} tone={isPlayingFromVideo || isPlayingSource ? 'active' : 'muted'} />
                         </div>
 
                         <div className="mt-1 min-w-0 text-[12px] leading-snug text-foreground/90">
@@ -169,7 +178,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                     value={localItem.text_source}
                                     placeholder={t('placeholder.original')}
                                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange('text_source', e.target.value)}
-                                    rows={4}
+                                    rows={2}
                                     className="resize-none bg-black/10 border-white/10 focus-visible:ring-primary/30"
                                     onClick={(e: React.MouseEvent<HTMLTextAreaElement>) => e.stopPropagation()}
                                 />
@@ -312,7 +321,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                     {/* Converted */}
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 justify-end">
-                            <TimePill time={timeConvert} tone={isPlayingFromVideo ? 'active' : 'muted'} />
+                            <TimePill time={timeConvert} tone={isPlayingFromVideo || isPlayingConvert ? 'active' : 'muted'} />
                             <button
                                 type="button"
                                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -338,7 +347,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                     value={localItem.text_convert}
                                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange('text_convert', e.target.value)}
                                     placeholder={t('placeholder.converted')}
-                                    rows={4}
+                                    rows={2}
                                     className="resize-none bg-black/10 border-white/10 focus-visible:ring-primary/30"
                                     onClick={(e: React.MouseEvent<HTMLTextAreaElement>) => e.stopPropagation()}
                                 />

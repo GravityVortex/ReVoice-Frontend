@@ -61,16 +61,22 @@ export default function VideoEditorPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(60);
   const [volume, setVolume] = useState(80);
-  const [zoom, setZoom] = useState(1);
+  // Zoom
+  const [zoom, setZoom] = useState(2);
   const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
-  const [pendingChangesCount, setPendingChangesCount] = useState(0);
+  // 服务端持久化：上次“重新合成视频”时刻（用于刷新后恢复 pending 状态）
+  const [serverLastMergedAtMs, setServerLastMergedAtMs] = useState(0);
+  // 服务端持久化：正在进行中的“重新合成”任务（用于刷新/关闭页面后恢复轮询状态）
+  const [serverActiveMergeJob, setServerActiveMergeJob] = useState<{ jobId: string; createdAtMs: number } | null>(null);
+  // 本地会话：已“应用配音”但未重新合成的字幕段 id（用于和服务端 pending 合并）
+  const [pendingVoiceIds, setPendingVoiceIds] = useState<string[]>([]);
   const [pendingTimingMap, setPendingTimingMap] = useState<Record<string, { startMs: number; endMs: number }>>({});
   const pendingTimingCount = useMemo(() => Object.keys(pendingTimingMap).length, [pendingTimingMap]);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
 
   // --- LAYOUT (keep it user-tunable; defaults should feel roomy) ---
   const LAYOUT_TIMELINE_H_KEY = 'revoice.video_editor.timeline_h_v1';
-  const [timelineHeightPx, setTimelineHeightPx] = useState(260);
+  const [timelineHeightPx, setTimelineHeightPx] = useState(160);
   const timelineHeightRef = useRef(timelineHeightPx);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const timelineDragRef = useRef<{
@@ -88,7 +94,7 @@ export default function VideoEditorPage() {
     try {
       const raw = window.localStorage.getItem(LAYOUT_TIMELINE_H_KEY);
       const n = raw ? Number.parseInt(raw, 10) : NaN;
-      if (Number.isFinite(n) && n >= 180 && n <= 520) setTimelineHeightPx(n);
+      if (Number.isFinite(n) && n >= 120 && n <= 520) setTimelineHeightPx(n);
     } catch {
       // ignore
     }
@@ -194,8 +200,8 @@ export default function VideoEditorPage() {
   const seekDragRafRef = useRef<number | null>(null);
   const seekDragLatestTimeRef = useRef(0);
   const seekDragLastMediaApplyMsRef = useRef(0);
-  const handlePendingChangesChange = useCallback((count: number) => {
-    setPendingChangesCount(count);
+  const handlePendingVoiceIdsChange = useCallback((ids: string[]) => {
+    setPendingVoiceIds(ids);
   }, []);
 
   const cancelUpdateLoop = useCallback(() => {
@@ -302,20 +308,26 @@ export default function VideoEditorPage() {
         // External merge still depends on legacy "id-encoded timings", so timing edits
         // may rename ids. Sync local state to keep subsequent edits stable.
         const idMap = (back?.data?.idMap ?? {}) as Record<string, string>;
-        if (idMap && Object.keys(idMap).length > 0) {
-          setConvertObj((prevObj) => {
-            if (!prevObj) return prevObj;
-            const arr = (prevObj.srt_convert_arr || []) as any[];
-            const nextArr = arr.map((row) => {
-              const id = row?.id;
-              if (typeof id !== 'string') return row;
-              const nextId = idMap[id];
-              if (typeof nextId !== 'string' || nextId.length === 0 || nextId === id) return row;
-              return { ...row, id: nextId };
-            });
-            return { ...prevObj, srt_convert_arr: nextArr };
+        const touchedIds = new Set(items.map((it) => it.id));
+        const savedAtMs = Date.now();
+        setConvertObj((prevObj) => {
+          if (!prevObj) return prevObj;
+          const arr = (prevObj.srt_convert_arr || []) as any[];
+          const nextArr = arr.map((row) => {
+            const id = row?.id;
+            if (typeof id !== 'string') return row;
+            const mapped = idMap?.[id];
+            const nextId = typeof mapped === 'string' && mapped.length > 0 ? mapped : id;
+            const shouldMark = touchedIds.has(id);
+            if (nextId === id && !shouldMark) return row;
+            const out = { ...row };
+            if (nextId !== id) out.id = nextId;
+            // 写入 timing_rev_ms：让刷新后也能识别“已保存但未重新合成”的时间轴改动
+            if (shouldMark) out.timing_rev_ms = savedAtMs;
+            return out;
           });
-        }
+          return { ...prevObj, srt_convert_arr: nextArr };
+        });
 
         // The timing edits are persisted at this point.
         setPendingTimingMap({});
@@ -366,6 +378,127 @@ export default function VideoEditorPage() {
     };
     if (convertId) fetchConvertDetail();
   }, [convertId]);
+
+  // 切换任务时重置本地“重新合成”相关状态（避免串任务）
+  useEffect(() => {
+    setServerLastMergedAtMs(0);
+    setServerActiveMergeJob(null);
+    setPendingVoiceIds([]);
+    setPendingTimingMap({});
+  }, [convertId]);
+
+  // 从 vt_task_main.metadata 恢复“上次重新合成基线时间”（刷新/关闭页面后仍可计算 pending）
+  useEffect(() => {
+    const metaRaw = (convertObj as any)?.metadata;
+    if (!metaRaw) return;
+
+    let meta: any = null;
+    try {
+      meta = typeof metaRaw === 'string' ? JSON.parse(metaRaw) : metaRaw;
+    } catch {
+      meta = null;
+    }
+    if (!meta || typeof meta !== 'object') return;
+
+    const lastMergedAtMsRaw =
+      meta?.videoMerge?.lastSuccess?.mergedAtMs ??
+      meta?.videoMerge?.lastSuccess?.merged_at_ms ??
+      meta?.videoMerge?.lastMergedAtMs ??
+      meta?.videoMerge?.last_merged_at_ms ??
+      meta?.video_merge?.lastMergedAtMs ??
+      meta?.video_merge?.last_merged_at_ms;
+
+    const lastMergedAtMs =
+      typeof lastMergedAtMsRaw === 'number'
+        ? lastMergedAtMsRaw
+        : Number.parseInt(String(lastMergedAtMsRaw || ''), 10);
+
+    if (Number.isFinite(lastMergedAtMs) && lastMergedAtMs > 0) {
+      // 单调递增：避免“后端尚未落库/元数据回写延迟”导致 UI 回退
+      setServerLastMergedAtMs((prev) => Math.max(prev, lastMergedAtMs));
+    }
+
+    // 恢复 active merge job（用于刷新后继续轮询状态）
+    const activeRaw =
+      meta?.videoMerge?.active ??
+      meta?.video_merge?.active ??
+      null;
+    const activeJobIdRaw = activeRaw?.jobId ?? activeRaw?.job_id;
+    const activeCreatedAtMsRaw = activeRaw?.createdAtMs ?? activeRaw?.created_at_ms;
+    const activeState = String(activeRaw?.state || '').toLowerCase();
+
+    const activeJobId = typeof activeJobIdRaw === 'string' ? activeJobIdRaw.trim() : '';
+    const activeCreatedAtMs =
+      typeof activeCreatedAtMsRaw === 'number'
+        ? activeCreatedAtMsRaw
+        : Number.parseInt(String(activeCreatedAtMsRaw || ''), 10);
+
+    if (activeJobId && (!activeState || activeState === 'pending')) {
+      setServerActiveMergeJob({
+        jobId: activeJobId,
+        createdAtMs: Number.isFinite(activeCreatedAtMs) && activeCreatedAtMs > 0 ? activeCreatedAtMs : 0,
+      });
+    } else {
+      setServerActiveMergeJob(null);
+    }
+  }, [convertObj]);
+
+  // 刷新/关页后恢复：如果存在 active merge job，则继续轮询直至成功/失败/超时
+  useEffect(() => {
+    if (!convertId) return;
+    const jobId = serverActiveMergeJob?.jobId || '';
+    if (!jobId) return;
+
+    let cancelled = false;
+    const startedAt = Date.now();
+    const timeoutMs = 60 * 60 * 1000;
+    const baselineMergedAtMs = serverActiveMergeJob?.createdAtMs || Date.now();
+
+    const tick = async () => {
+      try {
+        const resp = await fetch(
+          `/api/video-task/generate-video?taskId=${encodeURIComponent(convertId)}&jobId=${encodeURIComponent(jobId)}&mode=status`
+        );
+        const back = await resp.json().catch(() => null);
+        if (cancelled) return;
+        if (back?.code !== 0) return;
+
+        const st = back?.data?.status;
+        if (st === 'success') {
+          toast.success(t('audioList.toast.videoSaveCompleted'));
+          setServerLastMergedAtMs((prev) => Math.max(prev, baselineMergedAtMs));
+          setServerActiveMergeJob(null);
+          return;
+        }
+        if (st === 'failed') {
+          const msg = back?.data?.errorMessage || back?.data?.message || '';
+          toast.error(msg || t('audioList.toast.videoSaveFailed'));
+          setServerActiveMergeJob(null);
+          return;
+        }
+      } catch {
+        // keep polling (best-effort)
+      }
+    };
+
+    void tick();
+    const timer = setInterval(() => {
+      if (Date.now() - startedAt > timeoutMs) {
+        clearInterval(timer);
+        if (!cancelled) {
+          toast.error(t('audioList.toast.videoSaveFailed'));
+          setServerActiveMergeJob(null);
+        }
+        return;
+      }
+      void tick();
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [convertId, serverActiveMergeJob?.createdAtMs, serverActiveMergeJob?.jobId, t]);
 
   // Lightweight polling for status changes (queued/processing/completed/failed).
   useEffect(() => {
@@ -446,6 +579,74 @@ export default function VideoEditorPage() {
   }, [taskStatus]);
 
   const headerProgressVisual = isTaskRunning ? Math.max(3, progressPercent) : progressPercent;
+
+  const handleVideoMergeCompleted = useCallback((args: { mergedAtMs: number }) => {
+    const mergedAtMs = args?.mergedAtMs;
+    if (!Number.isFinite(mergedAtMs) || mergedAtMs <= 0) return;
+    // 单调递增：避免后端元数据回写延迟导致 UI 回退
+    setServerLastMergedAtMs((prev) => Math.max(prev, Math.round(mergedAtMs)));
+  }, []);
+
+  const serverMergePending = useMemo(() => {
+    const audio = new Set<string>();
+    const timing = new Set<string>();
+    const any = new Set<string>();
+    const arr = (convertObj?.srt_convert_arr ?? []) as any;
+    const list: any[] = Array.isArray(arr) ? arr : [];
+    const baseline = serverLastMergedAtMs;
+
+    const parseMs = (v: any) => {
+      if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v) : 0;
+      const n = Number.parseInt(String(v || ''), 10);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    for (const row of list) {
+      const id = row?.id;
+      if (typeof id !== 'string' || id.length === 0) continue;
+      const audioRev = parseMs(row?.audio_rev_ms);
+      const timingRev = parseMs(row?.timing_rev_ms);
+      if (audioRev > baseline) audio.add(id);
+      if (timingRev > baseline) timing.add(id);
+      if (Math.max(audioRev, timingRev) > baseline) any.add(id);
+    }
+
+    return { audio, timing, any };
+  }, [convertObj?.srt_convert_arr, serverLastMergedAtMs]);
+
+  const localPendingVoiceIdSet = useMemo(() => {
+    const out = new Set<string>();
+    for (const id of pendingVoiceIds) {
+      if (typeof id === 'string' && id.length > 0) out.add(id);
+    }
+    return out;
+  }, [pendingVoiceIds]);
+
+  // 右上角按钮“待重新合成”的计算：本地 pending + 服务端 pending（刷新后仍可恢复）
+  const pendingVoiceIdSet = useMemo(() => {
+    const out = new Set<string>();
+    for (const id of serverMergePending.audio) out.add(id);
+    for (const id of localPendingVoiceIdSet) out.add(id);
+    return out;
+  }, [localPendingVoiceIdSet, serverMergePending.audio]);
+
+  const pendingTimingIdSet = useMemo(() => {
+    const out = new Set<string>();
+    for (const id of serverMergePending.timing) out.add(id);
+    for (const id of Object.keys(pendingTimingMap)) out.add(id);
+    return out;
+  }, [pendingTimingMap, serverMergePending.timing]);
+
+  const pendingMergeIdSet = useMemo(() => {
+    const out = new Set<string>();
+    for (const id of pendingVoiceIdSet) out.add(id);
+    for (const id of pendingTimingIdSet) out.add(id);
+    return out;
+  }, [pendingTimingIdSet, pendingVoiceIdSet]);
+
+  const pendingMergeCount = pendingMergeIdSet.size;
+  const pendingMergeVoiceCount = pendingVoiceIdSet.size;
+  const pendingMergeTimingCount = pendingTimingIdSet.size;
 
   // --- 2. TRACK INITIALIZATION ---
   useEffect(() => {
@@ -2017,54 +2218,54 @@ export default function VideoEditorPage() {
     }
   }, [audioRefArr, currentTime, getAdaptivePrefetchCount, getPrefetchSubtitleUrls, isPlaying, isSubtitleBuffering, prefetchVoiceAroundTime, subtitleTrack]);
 
-    useEffect(() => {
-      if (!isPlaying) return;
-      startUpdateLoop();
-    }, [isPlaying, startUpdateLoop]);
+  useEffect(() => {
+    if (!isPlaying) return;
+    startUpdateLoop();
+  }, [isPlaying, startUpdateLoop]);
 
-    // Keep BGM aligned with the video transport. Throttle to avoid hammering `play()`.
-    useEffect(() => {
-      const bgm = bgmAudioRef.current;
-      if (!bgm) return;
-      const videoEl = videoPreviewRef.current?.videoElement;
-      if (
-        !isPlaying ||
-        !videoEl ||
-        videoEl.paused ||
-        isBgmMuted ||
-        isSubtitleBuffering ||
-        isVideoBuffering ||
-        transportIsStalledRef.current
-      ) {
-        try {
-          bgm.pause();
-        } catch {
-          // ignore
-        }
-        return;
-      }
-      if (bgmTrack.length <= 0) return;
-
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      if (now - bgmKickMsRef.current < 220) return;
-      bgmKickMsRef.current = now;
-
-      const transportTime = Number.isFinite(videoEl.currentTime) ? (videoEl.currentTime || 0) : currentTime;
+  // Keep BGM aligned with the video transport. Throttle to avoid hammering `play()`.
+  useEffect(() => {
+    const bgm = bgmAudioRef.current;
+    if (!bgm) return;
+    const videoEl = videoPreviewRef.current?.videoElement;
+    if (
+      !isPlaying ||
+      !videoEl ||
+      videoEl.paused ||
+      isBgmMuted ||
+      isSubtitleBuffering ||
+      isVideoBuffering ||
+      transportIsStalledRef.current
+    ) {
       try {
-        if (Math.abs(bgm.currentTime - transportTime) > 0.45) {
-          bgm.currentTime = transportTime;
-        }
+        bgm.pause();
       } catch {
         // ignore
       }
-      bgm.volume = volume / 100;
-      if (bgm.paused) {
-        bgm.play().catch((e) => {
-          if (isAbortError(e)) return;
-          console.error('BGM play failed', e);
-        });
+      return;
+    }
+    if (bgmTrack.length <= 0) return;
+
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - bgmKickMsRef.current < 220) return;
+    bgmKickMsRef.current = now;
+
+    const transportTime = Number.isFinite(videoEl.currentTime) ? (videoEl.currentTime || 0) : currentTime;
+    try {
+      if (Math.abs(bgm.currentTime - transportTime) > 0.45) {
+        bgm.currentTime = transportTime;
       }
-    }, [bgmTrack, currentTime, isBgmMuted, isPlaying, isSubtitleBuffering, isVideoBuffering, volume]);
+    } catch {
+      // ignore
+    }
+    bgm.volume = volume / 100;
+    if (bgm.paused) {
+      bgm.play().catch((e) => {
+        if (isAbortError(e)) return;
+        console.error('BGM play failed', e);
+      });
+    }
+  }, [bgmTrack, currentTime, isBgmMuted, isPlaying, isSubtitleBuffering, isVideoBuffering, volume]);
 
   // If user mutes subtitle audio, stop any currently-playing subtitle segments immediately.
   useEffect(() => {
@@ -2469,13 +2670,13 @@ export default function VideoEditorPage() {
                   ? '积分不足会提示'
                   : 'We’ll prompt you if credits are insufficient'}
               </span>
-              {pendingChangesCount + pendingTimingCount > 0 ? (
+              {pendingMergeCount > 0 ? (
                 <>
                   <span className="text-muted-foreground/50">·</span>
                   <span className="text-primary/90">
                     {locale === 'zh'
-                      ? `待应用：${pendingChangesCount} 段配音 · ${pendingTimingCount} 段时间，点击「${t('audioList.saveTooltip')}」`
-                      : `Pending: ${pendingChangesCount} voice · ${pendingTimingCount} timing. Click “${t('audioList.saveTooltip')}”.`}
+                      ? `待应用：${pendingMergeVoiceCount} 段配音 · ${pendingMergeTimingCount} 段时间，点击「${t('audioList.saveTooltip')}」`
+                      : `Pending: ${pendingMergeVoiceCount} voice · ${pendingMergeTimingCount} timing. Click “${t('audioList.saveTooltip')}”.`}
                   </span>
                 </>
               ) : null}
@@ -2553,26 +2754,29 @@ export default function VideoEditorPage() {
           <span
             className="inline-flex"
             title={
-              pendingChangesCount + pendingTimingCount === 0
+              pendingMergeCount === 0
                 ? (locale === 'zh' ? '没有待应用的改动' : 'No pending changes to apply')
                 : t('audioList.saveTooltip')
             }
           >
             <Button
               size="sm"
-              className="gap-2"
+              className={cn("gap-2 transition-all", isTaskRunning && "bg-primary/20 text-primary-foreground pointer-events-none")}
               onClick={handleGenerateVideo}
-              disabled={isGeneratingVideo || pendingChangesCount + pendingTimingCount === 0}
+              disabled={isGeneratingVideo || isTaskRunning || pendingMergeCount === 0}
             >
-              {isGeneratingVideo ? (
+              {isGeneratingVideo || isTaskRunning ? (
                 <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
               ) : null}
-              {t('audioList.saveTooltip')}
-              {pendingChangesCount + pendingTimingCount > 0 ? (
-                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[11px] tabular-nums">
-                  {pendingChangesCount + pendingTimingCount}
+              {isTaskRunning ? (
+                <span>
+                  {taskStatus === 'pending'
+                    ? (locale === 'zh' ? '排队中...' : 'Queued...')
+                    : (locale === 'zh' ? `生成中 ${taskProgress ?? 0}%` : `Generating ${taskProgress ?? 0}%`)}
                 </span>
-              ) : null}
+              ) : (
+                t('audioList.saveTooltip')
+              )}
             </Button>
           </span>
         </div>
@@ -2616,7 +2820,8 @@ export default function VideoEditorPage() {
                   playingSubtitleIndex={playingSubtitleIndex}
                   onSeekToSubtitle={handleSeekToSubtitle}
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
-                  onPendingChangesChange={handlePendingChangesChange}
+                  onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
+                  onVideoMergeCompleted={handleVideoMergeCompleted}
                 />
               </div>
             }
@@ -2653,7 +2858,7 @@ export default function VideoEditorPage() {
 
             const rect = body.getBoundingClientRect();
             // Keep workspace usable: reserve at least 240px.
-            const maxHeight = Math.max(180, Math.min(520, Math.floor(rect.height - 240)));
+            const maxHeight = Math.max(120, Math.min(520, Math.floor(rect.height - 240)));
 
             timelineDragRef.current = {
               pointerId: e.pointerId,
@@ -2669,7 +2874,7 @@ export default function VideoEditorPage() {
             const st = timelineDragRef.current;
             if (!st || e.pointerId !== st.pointerId) return;
             const dy = st.startY - e.clientY; // drag up => bigger timeline
-            const next = Math.max(180, Math.min(st.maxHeight, Math.round(st.startHeight + dy)));
+            const next = Math.max(120, Math.min(st.maxHeight, Math.round(st.startHeight + dy)));
             setTimelineHeightPx(next);
           }}
           onPointerUp={(e) => {
@@ -2715,16 +2920,16 @@ export default function VideoEditorPage() {
 
         {/* Timeline */}
         <div
-          className="min-h-[180px] overflow-hidden rounded-xl border border-white/10 bg-background/25 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
+          className="min-h-[120px] overflow-hidden rounded-xl border border-white/10 bg-background/25 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
           style={{ height: `${timelineHeightPx}px` }}
         >
-	          <TimelinePanel
-	            totalDuration={totalDuration}
-	            currentTime={currentTime}
-	            isPlaying={isPlaying}
-	            isBuffering={isSubtitleBuffering || isVideoBuffering}
-	            playingSubtitleIndex={playingSubtitleIndex}
-	            subtitleTrack={subtitleTrack}
+          <TimelinePanel
+            totalDuration={totalDuration}
+            currentTime={currentTime}
+            isPlaying={isPlaying}
+            isBuffering={isSubtitleBuffering || isVideoBuffering}
+            playingSubtitleIndex={playingSubtitleIndex}
+            subtitleTrack={subtitleTrack}
             subtitleTrackOriginal={subtitleTrackOriginal.length ? subtitleTrackOriginal : undefined}
             onSubtitleTrackChange={handleSubtitleTrackChange}
             vocalWaveformUrl={convertObj?.vocalAudioUrl}

@@ -4,7 +4,7 @@ import React, { memo, useMemo, useState, useRef, useEffect, forwardRef, useImper
 import { SubtitleRowItem, SubtitleRowData } from './subtitle-row-item';
 import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { Loader2, RefreshCw, Headphones, HeadphoneOff, Search } from 'lucide-react';
+import { Loader2, RefreshCw, Headphones, HeadphoneOff, Search, Square, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConvertObj } from '@/shared/components/video-editor';
 import { useAppContext } from '@/shared/contexts/app';
@@ -15,6 +15,10 @@ import { cn } from '@/shared/lib/utils';
 interface SubtitleWorkstationProps {
     onPlayingIndexChange?: (index: number) => void;
     onPendingChangesChange?: (pendingCount: number) => void;
+    // 提供给父组件：本地“已应用但未重新合成”的字幕段 id 列表（用于合并服务端 pending 计算）
+    onPendingVoiceIdsChange?: (ids: string[]) => void;
+    // 重新合成完成（成功）回调：用于父组件更新 lastMergedAtMs，让右上角按钮自动变灰
+    onVideoMergeCompleted?: (args: { mergedAtMs: number }) => void;
     convertObj: ConvertObj | null;
     playingSubtitleIndex?: number;
     onSeekToSubtitle?: (time: number) => void;
@@ -23,7 +27,7 @@ interface SubtitleWorkstationProps {
 }
 
 export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Promise<boolean> }, SubtitleWorkstationProps>(
-    ({ onPlayingIndexChange, onPendingChangesChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
+    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
         const t = useTranslations('video_convert.videoEditor.audioList');
         const { user, fetchUserCredits } = useAppContext();
 
@@ -46,6 +50,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
         const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
         const resumedJobsRef = useRef<Set<string>>(new Set());
         const ttsWarmupStartedRef = useRef(false);
+        const rootRef = useRef<HTMLDivElement>(null);
         // const scrollAreaRef = useRef<HTMLDivElement>(null);
 
         type PendingJob = {
@@ -245,9 +250,17 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             ttsWarmupStartedRef.current = true;
 
             let stopped = false;
-            const lastActiveRef = { value: Date.now() };
+            // 仅当用户在字幕工作台内发生过交互后才开始 keepalive：
+            // - 避免“用户只打开页面但什么都没做”时也持续打 /health 造成 GPU 预热成本
+            // - 仍保留 prewarm（进入页面时尝试触发一次冷启动/快照 restore）
+            const hasEverInteractedRef = { value: false };
+            const lastActiveRef = { value: 0 };
             const lastKeepaliveAtRef = { value: 0 };
+            // 保证 keepalive 串行：上一次请求未返回时，不再发起新的请求，避免触发模型无意义扩容。
+            const keepaliveInflightRef = { value: false };
             const minKeepaliveIntervalMs = 15 * 1000;
+            const keepaliveIntervalMs = 60 * 1000;
+            let interval: number | null = null;
 
             const triggerPrewarm = async () => {
                 try {
@@ -264,35 +277,59 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             const tickKeepalive = async () => {
                 if (stopped) return;
                 if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+                if (!hasEverInteractedRef.value) return;
+                // 等待上一次 keepalive 明确返回后再进行下一次调用
+                if (keepaliveInflightRef.value) return;
                 const idleMs = Date.now() - lastActiveRef.value;
                 // 超过 2 分钟不操作就不 keepalive（避免用户挂着页面吃 GPU 成本）
-                if (idleMs > 2 * 60 * 1000) return;
+                if (idleMs > 2 * 60 * 1000) {
+                    if (interval != null) {
+                        window.clearInterval(interval);
+                        interval = null;
+                    }
+                    return;
+                }
                 const now = Date.now();
                 if (now - lastKeepaliveAtRef.value < minKeepaliveIntervalMs) return;
-                lastKeepaliveAtRef.value = now;
+                keepaliveInflightRef.value = true;
                 try {
                     await fetch('/api/tts/keepalive', { method: 'POST' });
                 } catch {
                     // best-effort
+                } finally {
+                    lastKeepaliveAtRef.value = Date.now();
+                    keepaliveInflightRef.value = false;
                 }
             };
 
             const markActive = () => {
+                hasEverInteractedRef.value = true;
                 lastActiveRef.value = Date.now();
+                // 首次交互后才启动定时 keepalive，避免“纯停留”造成周期性请求。
+                if (interval == null) {
+                    interval = window.setInterval(() => {
+                        void tickKeepalive();
+                    }, keepaliveIntervalMs);
+                }
                 // 用户从“空闲/后台”回到页面时，尽快打一发 keepalive，
                 // 避免等到下一次 60s interval 才恢复 runtime，影响“准实时”体验。
                 void tickKeepalive();
             };
 
-            const events: Array<keyof WindowEventMap> = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'focus'];
-            for (const evt of events) {
-                window.addEventListener(evt, markActive, { passive: true });
+            const events = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const;
+            const root = rootRef.current;
+            if (root) {
+                for (const evt of events) {
+                    root.addEventListener(evt, markActive, { passive: true });
+                }
             }
 
             const onVisibilityChange = () => {
                 if (typeof document === 'undefined') return;
                 if (document.visibilityState === 'visible') {
-                    markActive();
+                    // 不把“切回前台”直接当作用户编辑行为；
+                    // 仅在用户曾经交互过时，尝试补打一发 keepalive。
+                    void tickKeepalive();
                 }
             };
             if (typeof document !== 'undefined') {
@@ -300,18 +337,15 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             }
 
             void triggerPrewarm();
-            // 立刻打一发 keepalive，减少“刚进页面就点生成”时的冷启动概率
-            void tickKeepalive();
-
-            const interval = window.setInterval(() => {
-                void tickKeepalive();
-            }, 60 * 1000);
+            // 注意：不在 mount 时立刻 keepalive，避免“只打开不操作”也产生周期请求。
 
             return () => {
                 stopped = true;
-                window.clearInterval(interval);
-                for (const evt of events) {
-                    window.removeEventListener(evt, markActive);
+                if (interval != null) window.clearInterval(interval);
+                if (root) {
+                    for (const evt of events) {
+                        root.removeEventListener(evt, markActive);
+                    }
                 }
                 if (typeof document !== 'undefined') {
                     document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -340,7 +374,12 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
 
         useEffect(() => {
             onPendingChangesChange?.(updateItemList.length);
-        }, [updateItemList.length, onPendingChangesChange]);
+            onPendingVoiceIdsChange?.(
+                updateItemList
+                    .map((it) => it?.id)
+                    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+            );
+        }, [updateItemList, onPendingChangesChange, onPendingVoiceIdsChange]);
 
         // --- Audio Playback ---
         const playAudioAtIndex = (index: number, type: 'source' | 'convert') => {
@@ -358,6 +397,9 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
 
             const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folderName}`;
             const el = audioRef.current;
+            setIsAudioPlayEnded(false);
+            setPlayingIndex(index);
+            setPlayingType(type);
             // Hard-stop any previously playing clip immediately to avoid overlap when users click quickly.
             try {
                 el.pause();
@@ -383,22 +425,77 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                 setIsAudioPlayEnded(true);
                 toast.error(t('toast.playFailed'));
             });
-
-            setPlayingIndex(index);
-            setPlayingType(type);
         };
 
         const handleAudioEnded = () => {
             setIsAudioPlayEnded(true);
-            if (isAutoPlayNext) {
+            if (isAutoPlayNext && playingType) {
                 const nextIndex = playingIndex + 1;
                 if (nextIndex < subtitleItems.length) {
-                    playAudioAtIndex(nextIndex, playingType!);
+                    playAudioAtIndex(nextIndex, playingType);
                 } else {
                     setPlayingIndex(-1);
                     setPlayingType(null);
                 }
             }
+        };
+
+        const stopPlayback = () => {
+            const el = audioRef.current;
+            if (el) {
+                try {
+                    el.pause();
+                } catch {
+                    // ignore
+                }
+                try {
+                    if (el.readyState >= 1) el.currentTime = 0;
+                } catch {
+                    // ignore
+                }
+            }
+            setPlayingIndex(-1);
+            setPlayingType(null);
+            setIsAudioPlayEnded(false);
+        };
+
+        const togglePlayback = (index: number, type: 'source' | 'convert') => {
+            const el = audioRef.current;
+            if (!el) return;
+
+            const isSameClip = playingIndex === index && playingType === type;
+            const isActivelyPlaying = isSameClip && !isAudioPlayEnded;
+
+            if (isActivelyPlaying) {
+                // Pause, but keep current clip context so users can resume.
+                try {
+                    el.pause();
+                } catch {
+                    // ignore
+                }
+                setIsAudioPlayEnded(true);
+                return;
+            }
+
+            if (isSameClip && isAudioPlayEnded) {
+                setIsAudioPlayEnded(false);
+                try {
+                    if (el.ended || (Number.isFinite(el.duration) && el.duration > 0 && el.currentTime >= el.duration)) {
+                        el.currentTime = 0;
+                    }
+                } catch {
+                    // ignore
+                }
+                el.play().catch((err) => {
+                    if (err && typeof err === 'object' && (err as any).name === 'AbortError') return;
+                    console.error('Audio play failed:', err);
+                    setIsAudioPlayEnded(true);
+                    toast.error(t('toast.playFailed'));
+                });
+                return;
+            }
+
+            playAudioAtIndex(index, type);
         };
 
         // --- Actions ---
@@ -559,6 +656,9 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
 
         const onVideoSaveClick = async () => {
             if (!convertObj) return false;
+            // 用“触发合成的时间”作为 lastMergedAtMs 的保守值：
+            // - 合成完成后更新为该时间，可确保“合成过程中新增的修改”不会被误判为已合成。
+            const mergeTriggeredAtMs = Date.now();
             try {
                 const resp = await fetch('/api/video-task/generate-video', {
                     method: 'POST',
@@ -568,7 +668,6 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                 const { code, message, data } = await resp.json();
                 if (code === 0) {
                     toast.success(t('toast.videoSaveSuccess'));
-                    setUpdateItemList([]);
 
                     // Async job: poll completion in background so the user doesn't need to guess.
                     if (data?.status === 'pending') {
@@ -588,6 +687,9 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                 const pollBack = await pollResp.json().catch(() => null);
                                 if (pollBack?.code === 0 && pollBack?.data?.video_new_preview) {
                                     toast.success(t('toast.videoSaveCompleted'));
+                                    // ✅ 仅在“合成成功”后清空本地 pending 列表
+                                    setUpdateItemList([]);
+                                    onVideoMergeCompleted?.({ mergedAtMs: mergeTriggeredAtMs });
                                     return;
                                 }
                                 if (pollBack?.code !== 0) {
@@ -645,43 +747,112 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             );
         }, [searchText, subtitleItems]);
 
+        const isActivelyPlaying = playingIndex >= 0 && playingType != null && !isAudioPlayEnded;
+
         return (
-            <div className="flex flex-col h-full bg-background/40 backdrop-blur-sm">
+            <div ref={rootRef} className="flex flex-col h-full bg-background/40 backdrop-blur-sm">
                 <audio ref={audioRef} onEnded={handleAudioEnded} className="hidden" />
 
                 {/* Toolbar */}
-                <div className="flex items-center justify-between px-4 py-3 border-b bg-card/60 backdrop-blur-md">
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.04] bg-card/40 backdrop-blur-xl">
+                    <div className="flex items-center gap-3">
                         {updateItemList.length > 0 && (
-                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-xs text-muted-foreground">
+                            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-muted-foreground font-medium shadow-sm">
                                 {t('pendingChanges', { count: updateItemList.length })}
                             </span>
                         )}
+                        {isActivelyPlaying && (
+                            <div className="hidden sm:flex items-center gap-3 rounded-full border border-primary/20 bg-primary/10 pl-3 pr-1 h-9 shadow-[0_0_15px_rgba(var(--primary),0.1)] animate-in fade-in zoom-in-95 duration-200">
+                                {/* Animated Equalizer (Pure CSS built-in) */}
+                                <div className="flex items-end justify-between h-3.5 w-[14px]">
+                                    <div className="w-[3px] rounded-full bg-primary animate-pulse" style={{ height: '70%', animationDuration: '0.6s' }} />
+                                    <div className="w-[3px] rounded-full bg-primary animate-pulse" style={{ height: '100%', animationDuration: '0.9s' }} />
+                                    <div className="w-[3px] rounded-full bg-primary animate-pulse" style={{ height: '50%', animationDuration: '0.7s' }} />
+                                </div>
+
+                                <div className="flex items-center gap-1.5 text-xs">
+                                    <span className="font-semibold text-primary">
+                                        {playingType === 'source' ? t('playingSource') : t('playingConvert')}
+                                    </span>
+                                    <span className="text-primary/40 font-mono">/</span>
+                                    <span className="font-mono tabular-nums text-primary/80">
+                                        {(playingIndex + 1).toString().padStart(2, '0')}<span className="text-primary/40 text-[10px] mx-[1px]">/</span>{subtitleItems.length}
+                                    </span>
+                                </div>
+
+                                {isAutoPlayNext && (
+                                    <div className="flex items-center justify-center rounded-full bg-primary/20 p-1 shrink-0" title={t('playMode.autoNext')}>
+                                        <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+                                    </div>
+                                )}
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full text-primary/70 hover:text-primary hover:bg-primary/25 transition-colors ml-0.5 shrink-0"
+                                    onClick={stopPlayback}
+                                    aria-label={t('nowPlaying.stop')}
+                                    title={t('nowPlaying.stop')}
+                                >
+                                    <Square className="w-3 h-3 fill-current" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="flex items-center gap-3">
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                             <Input
-                                className="h-8 w-48 pl-8 bg-muted/50 border-none"
-                                placeholder="Search..."
+                                className="h-9 w-32 md:w-36 lg:w-48 pl-9 bg-background/50 border-white/5 focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/50 transition-all rounded-full shadow-inner"
+                                placeholder={t('searchPlaceholder')}
                                 value={searchText}
                                 onChange={e => setSearchText(e.target.value)}
                             />
                         </div>
 
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsAutoPlayNext(!isAutoPlayNext)}>
-                            {isAutoPlayNext ? <Headphones className="w-4 h-4 text-primary" /> : <HeadphoneOff className="w-4 h-4" />}
-                        </Button>
+                        <div
+                            className="flex items-center rounded-full border border-white/5 bg-background/50 p-1 h-9 shadow-inner shrink-0 box-border"
+                            title={t('playMode.help')}
+                        >
+                            <button
+                                className={cn(
+                                    "relative flex items-center justify-center h-7 px-3 text-xs font-medium rounded-full transition-all duration-300",
+                                    !isAutoPlayNext ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                )}
+                                onClick={() => setIsAutoPlayNext(false)}
+                                aria-label={t('playMode.single')}
+                                title={t('playMode.single')}
+                            >
+                                <div className="flex items-center gap-1.5 relative z-10">
+                                    <HeadphoneOff className="w-3.5 h-3.5" />
+                                    <span className="hidden xl:inline">{t('playMode.single')}</span>
+                                </div>
+                            </button>
+                            <button
+                                className={cn(
+                                    "relative flex items-center justify-center h-7 px-3 text-xs font-medium rounded-full transition-all duration-300",
+                                    isAutoPlayNext ? "bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                )}
+                                onClick={() => setIsAutoPlayNext(true)}
+                                aria-label={t('playMode.autoNext')}
+                                title={t('playMode.autoNext')}
+                            >
+                                <div className="flex items-center gap-1.5 relative z-10">
+                                    <Sparkles className={cn("w-3.5 h-3.5", isAutoPlayNext && "animate-pulse")} />
+                                    <span className="hidden xl:inline">{t('playMode.autoNext')}</span>
+                                </div>
+                            </button>
+                        </div>
 
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={loadSrtFiles} disabled={isLoading}>
-                            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-white/5 bg-background/50 hover:bg-white/10 hover:border-white/10 transition-all shadow-sm shrink-0" onClick={loadSrtFiles} disabled={isLoading}>
+                            <RefreshCw className={cn("w-4 h-4 text-muted-foreground", isLoading && "animate-spin text-primary")} />
                         </Button>
                     </div>
                 </div>
 
                 {/* Header Row */}
-                <div className="flex px-4 py-2 border-b bg-muted/10 text-xs font-semibold text-muted-foreground uppercase opacity-70">
+                <div className="flex px-3 py-1.5 border-b bg-muted/10 text-[11px] font-semibold text-muted-foreground uppercase opacity-70">
                     <div className="flex-1">{t('originalSubtitle')}</div>
                     <div className="w-8"></div>
                     <div className="flex-1">{t('convertedSubtitle')}</div>
@@ -689,7 +860,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
 
                 {/* Content */}
                 <ScrollArea className="flex-1">
-                    <div className="p-4 space-y-2">
+                    <div className="p-3 space-y-1.5">
                         {isLoading && (
                             <div className="flex flex-col items-center justify-center py-10 gap-2 opacity-50">
                                 <Loader2 className="w-8 h-8 animate-spin" />
@@ -716,8 +887,8 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                 isSaving={savingIds.has(item.id)}
                                 onSelect={() => setSelectedId(item.id)}
                                 onUpdate={(itm: SubtitleRowData) => setSubtitleItems((prev) => prev.map((current) => current.order === itm.order ? itm : current))}
-                                onPlayPauseSource={() => playingIndex === item.order && playingType === 'source' && !isAudioPlayEnded ? (audioRef.current?.pause(), setPlayingIndex(-1)) : (setIsAudioPlayEnded(false), playAudioAtIndex(item.order, 'source'))}
-                                onPlayPauseConvert={() => playingIndex === item.order && playingType === 'convert' && !isAudioPlayEnded ? (audioRef.current?.pause(), setPlayingIndex(-1)) : (setIsAudioPlayEnded(false), playAudioAtIndex(item.order, 'convert'))}
+                                onPlayPauseSource={() => togglePlayback(item.order, 'source')}
+                                onPlayPauseConvert={() => togglePlayback(item.order, 'convert')}
                                 onPointerToPlaceClick={() => handleSeek(item.startTime_convert)}
                                 onConvert={(itm: SubtitleRowData, type: string) => handleConvert(itm, type, itm.order)}
                                 onSave={(type: string) => handleSave(item, type)}

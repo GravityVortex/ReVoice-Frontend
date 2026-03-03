@@ -25,6 +25,17 @@
     "pendingChanges": "{count} 段待应用",
     "originalSubtitle": "原字幕",
     "convertedSubtitle": "转换后字幕",
+    "searchPlaceholder": "搜索原文/译文…",
+    "playMode": {
+      "label": "试听模式",
+      "single": "单条",
+      "autoNext": "连播",
+      "help": "当前侧音频播完后自动播放下一条（原字幕/译文各自独立）"
+    },
+    "nowPlaying": {
+      "label": "正在试听",
+      "stop": "停止"
+    },
     "totalItems": "共 {count} 条字幕",
     "playing": "正在播放: {type}第 {index} 项",
     "playingSource": "原字幕",

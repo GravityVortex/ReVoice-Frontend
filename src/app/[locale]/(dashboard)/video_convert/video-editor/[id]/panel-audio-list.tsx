@@ -242,15 +242,16 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
     console.log('audioUrl--->', audioUrl)
 
     audioRef.current.src = audioUrl;
+    // 统一在这里重置结束态：包括“连播自动下一条”的场景
+    setIsAudioPlayEnded(false);
+    setPlayingIndex(index);
+    setPlayingType(type);
     audioRef.current.play().catch((error) => {
       console.error('播放音频失败:', error);
       // 重置播放按钮状态
       setIsAudioPlayEnded(true);
       toast.error(t('toast.playFailed'));
     });
-
-    setPlayingIndex(index);
-    setPlayingType(type);
   };
 
   // 播放下一个音频（同一类型）
