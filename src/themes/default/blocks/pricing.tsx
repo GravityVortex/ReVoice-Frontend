@@ -498,9 +498,20 @@ export function Pricing({
             {pricing.title}
           </span>
         </h2>
-        <p className="mx-auto mb-4 max-w-xl text-white/70 lg:max-w-none lg:text-lg">
-          {pricing.description}
-        </p>
+        <div className="mx-auto mb-8 max-w-2xl flex flex-col items-center gap-4">
+          {pricing.description.split('\n').map((line, i) => (
+            <p
+              key={i}
+              className={
+                i === 0
+                  ? "text-xl md:text-2xl text-white/90 font-medium leading-snug"
+                  : "text-sm md:text-base text-white/50 max-w-xl leading-relaxed"
+              }
+            >
+              {line}
+            </p>
+          ))}
+        </div>
       </div>
 
       <div className="container">
