@@ -19,13 +19,17 @@ interface SubtitleWorkstationProps {
     onPendingVoiceIdsChange?: (ids: string[]) => void;
     // 重新合成完成（成功）回调：用于父组件更新 lastMergedAtMs，让右上角按钮自动变灰
     onVideoMergeCompleted?: (args: { mergedAtMs: number }) => void;
-    // 字幕工作台试听：通知父组件加载状态，挂起视频
-    onAuditionLoad?: (index: number, mode: 'source' | 'convert') => void;
-    // 字幕工作台试听：通知父组件驱动视频画面（真正开始播放时）
-    onAuditionPlay?: (index: number, mode: 'source' | 'convert') => void;
-    onAuditionPause?: () => void;
-    onAuditionResume?: () => void;
-    onAuditionStop?: () => void;
+
+    // Audition Playback API
+    onRequestAuditionPlay?: (index: number, mode: 'source' | 'convert') => void;
+    onRequestAuditionToggle?: () => void;
+    onRequestAuditionStop?: () => void;
+    auditionPlayingIndex?: number;
+    auditionActiveType?: 'source' | 'convert' | null;
+    isMediaPlaying?: boolean;
+    isAutoPlayNext?: boolean;
+    onToggleAutoPlayNext?: (val: boolean) => void;
+
     convertObj: ConvertObj | null;
     playingSubtitleIndex?: number;
     onSeekToSubtitle?: (time: number) => void;
@@ -34,7 +38,7 @@ interface SubtitleWorkstationProps {
 }
 
 export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Promise<boolean> }, SubtitleWorkstationProps>(
-    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, onAuditionLoad, onAuditionPlay, onAuditionPause, onAuditionResume, onAuditionStop, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
+    ({ onPlayingIndexChange, onPendingChangesChange, onPendingVoiceIdsChange, onVideoMergeCompleted, onRequestAuditionPlay, onRequestAuditionToggle, onRequestAuditionStop, auditionPlayingIndex, auditionActiveType, isMediaPlaying, isAutoPlayNext = false, onToggleAutoPlayNext, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
         const t = useTranslations('video_convert.videoEditor.audioList');
         const { user, fetchUserCredits } = useAppContext();
 
@@ -42,25 +46,17 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
         const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
         const [updateItemList, setUpdateItemList] = useState<SubtitleRowData[]>([]); // Track modified items
         const [selectedId, setSelectedId] = useState<string | null>(null);
-        const [playingIndex, setPlayingIndex] = useState<number>(-1);
-        const [playingType, setPlayingType] = useState<'source' | 'convert' | null>(null);
         const [isLoading, setIsLoading] = useState(false);
         const [error, setError] = useState<string | null>(null);
-        const [isAutoPlayNext, setIsAutoPlayNext] = useState(false);
-        const [isAudioPaused, setIsAudioPaused] = useState(false);
         const [convertingMap, setConvertingMap] = useState<Record<string, string>>({});
         const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
         const [searchText, setSearchText] = useState('');
 
         // Refs
-        const audioRef = useRef<HTMLAudioElement>(null);
         const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
         const resumedJobsRef = useRef<Set<string>>(new Set());
         const ttsWarmupStartedRef = useRef(false);
         const rootRef = useRef<HTMLDivElement>(null);
-        // Refs for audition sync: avoid stale closures in <audio onPlay>
-        const playingIndexRef = useRef(-1);
-        const playingTypeRef = useRef<'source' | 'convert' | null>(null);
 
         type PendingJob = {
             subtitleId: string;
@@ -373,13 +369,12 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
         }, [playingSubtitleIndex]);
 
         useEffect(() => {
-            onPlayingIndexChange?.(playingIndex);
-            if (playingIndex >= 0 && subtitleItems[playingIndex]) {
-                setSelectedId(subtitleItems[playingIndex].id);
-                const el = itemRefs.current[playingIndex];
+            onPlayingIndexChange?.(playingSubtitleIndex);
+            if (playingSubtitleIndex >= 0 && subtitleItems[playingSubtitleIndex]) {
+                const el = itemRefs.current[playingSubtitleIndex];
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
             }
-        }, [playingIndex, subtitleItems]);
+        }, [playingSubtitleIndex, subtitleItems]);
 
         useEffect(() => {
             onPendingChangesChange?.(updateItemList.length);
@@ -391,124 +386,17 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
         }, [updateItemList, onPendingChangesChange, onPendingVoiceIdsChange]);
 
         // --- Audio Playback ---
-        const playAudioAtIndex = (index: number, type: 'source' | 'convert') => {
-            if (index < 0 || index >= subtitleItems.length || !audioRef.current || !convertObj) return;
-            const item = subtitleItems[index];
-            const userId = user?.id || '';
-            let folderName = '';
-
-            if (type === 'source') {
-                folderName = `split_audio/audio/${item.sourceId}.wav`;
-            } else {
-                const base = item.audioUrl_convert_custom ? item.audioUrl_convert_custom : `adj_audio_time/${item.id}.wav`;
-                folderName = item.newTime ? `${base}${base.includes('?') ? '&' : '?'}t=${item.newTime}` : base;
-            }
-
-            const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folderName}`;
-            const el = audioRef.current;
-            setIsAudioPaused(false);
-            setPlayingIndex(index);
-            setPlayingType(type);
-            // Sync refs immediately so the <audio onPlay> handler always reads fresh values
-            playingIndexRef.current = index;
-            playingTypeRef.current = type;
-            // 通知父组件：音频开始加载，暂停视频并Seek
-            onAuditionLoad?.(index, type);
-            // Hard-stop any previously playing clip immediately to avoid overlap when users click quickly.
-            try {
-                el.pause();
-            } catch {
-                // ignore
-            }
-            try {
-                if (el.readyState >= 1) el.currentTime = 0;
-            } catch {
-                // ignore
-            }
-            el.preload = 'auto';
-            el.src = audioUrl;
-            try {
-                el.load();
-            } catch {
-                // ignore
-            }
-            el.play().catch((err) => {
-                // AbortError is expected when the user pauses/changes clips quickly.
-                if (err && typeof err === 'object' && (err as any).name === 'AbortError') return;
-                console.error('Audio play failed:', err);
-                stopPlayback();
-                toast.error(t('toast.playFailed'));
-            });
-        };
-
-        const handleAudioEnded = () => {
-            if (isAutoPlayNext && playingType) {
-                const nextIndex = playingIndex + 1;
-                if (nextIndex < subtitleItems.length) {
-                    playAudioAtIndex(nextIndex, playingType);
-                } else {
-                    stopPlayback();
-                }
-            } else {
-                // 单条模式：播放完即停止并取消高亮
-                stopPlayback();
-            }
-        };
-
         const stopPlayback = () => {
-            const el = audioRef.current;
-            if (el) {
-                try {
-                    el.pause();
-                } catch {
-                    // ignore
-                }
-                try {
-                    if (el.readyState >= 1) el.currentTime = 0;
-                } catch {
-                    // ignore
-                }
-            }
-            setPlayingIndex(-1);
-            setPlayingType(null);
-            playingIndexRef.current = -1;
-            playingTypeRef.current = null;
-            setIsAudioPaused(false);
-            onAuditionStop?.();
+            onRequestAuditionStop?.();
         };
 
         const togglePlayback = (index: number, type: 'source' | 'convert') => {
-            const el = audioRef.current;
-            if (!el) return;
-
-            const isSameClip = playingIndex === index && playingType === type;
-            const isActivelyPlaying = isSameClip && !isAudioPaused;
-
-            if (isActivelyPlaying) {
-                // Pause, but keep current clip context so users can resume.
-                try {
-                    el.pause();
-                } catch {
-                    // ignore
-                }
-                setIsAudioPaused(true);
-                onAuditionPause?.();
-                return;
+            const isSameClip = auditionPlayingIndex === index && auditionActiveType === type;
+            if (isSameClip) {
+                onRequestAuditionToggle?.();
+            } else {
+                onRequestAuditionPlay?.(index, type);
             }
-
-            if (isSameClip && isAudioPaused) {
-                setIsAudioPaused(false);
-                onAuditionResume?.();
-                el.play().catch((err) => {
-                    if (err && typeof err === 'object' && (err as any).name === 'AbortError') return;
-                    console.error('Audio resume failed:', err);
-                    stopPlayback();
-                    toast.error(t('toast.playFailed'));
-                });
-                return;
-            }
-
-            playAudioAtIndex(index, type);
         };
 
         // --- Actions ---
@@ -760,25 +648,8 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
             );
         }, [searchText, subtitleItems]);
 
-        const isActivelyPlaying = playingIndex >= 0 && playingType != null && !isAudioPaused;
-
         return (
             <div ref={rootRef} className="flex flex-col h-full bg-background/40 backdrop-blur-sm">
-                <audio
-                    ref={audioRef}
-                    onPlay={() => {
-                        // Use refs (not state) to avoid stale closure: state may not
-                        // have committed by the time the browser fires onPlay.
-                        const idx = playingIndexRef.current;
-                        const tp = playingTypeRef.current;
-                        if (idx >= 0 && tp) {
-                            onAuditionPlay?.(idx, tp);
-                        }
-                    }}
-                    onEnded={handleAudioEnded}
-                    className="hidden"
-                />
-
                 {/* Toolbar */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.04] bg-card/40 backdrop-blur-xl">
                     <div className="flex items-center gap-3">
@@ -787,28 +658,17 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                 {t('pendingChanges', { count: updateItemList.length })}
                             </span>
                         )}
-                        {isActivelyPlaying && (
-                            <div className="hidden sm:flex items-center gap-3 rounded-full border border-primary/20 bg-primary/10 pl-3 pr-1 h-9 shadow-[0_0_15px_rgba(var(--primary),0.1)] animate-in fade-in zoom-in-95 duration-200">
-                                {/* Animated Equalizer (Pure CSS built-in) */}
-                                <div className="flex items-end justify-between h-3.5 w-[14px]">
-                                    <div className="w-[3px] rounded-full bg-primary animate-pulse" style={{ height: '70%', animationDuration: '0.6s' }} />
-                                    <div className="w-[3px] rounded-full bg-primary animate-pulse" style={{ height: '100%', animationDuration: '0.9s' }} />
-                                    <div className="w-[3px] rounded-full bg-primary animate-pulse" style={{ height: '50%', animationDuration: '0.7s' }} />
+                        {isMediaPlaying && auditionPlayingIndex !== undefined && auditionActiveType !== undefined && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-1">
+                                    <div className="w-1 h-3 bg-primary/80 rounded-full animate-[bounce_1s_infinite] [animation-delay:-0.3s]"></div>
+                                    <div className="w-1 h-4 bg-primary rounded-full animate-[bounce_1s_infinite] [animation-delay:-0.15s]"></div>
+                                    <div className="w-1 h-2 bg-primary/60 rounded-full animate-[bounce_1s_infinite]"></div>
                                 </div>
 
-                                <div className="flex items-center gap-1.5 text-xs">
-                                    <span className="font-semibold text-primary">
-                                        {playingType === 'source' ? t('playingSource') : t('playingConvert')}
-                                    </span>
-                                    <span className="text-primary/40 font-mono">/</span>
-                                    <span className="font-mono tabular-nums text-primary/80">
-                                        {(playingIndex + 1).toString().padStart(2, '0')}<span className="text-primary/40 text-[10px] mx-[1px]">/</span>{subtitleItems.length}
-                                    </span>
-                                </div>
-
-                                {isAutoPlayNext && (
-                                    <div className="flex items-center justify-center rounded-full bg-primary/20 p-1 shrink-0" title={t('playMode.autoNext')}>
-                                        <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+                                {auditionPlayingIndex >= 0 && (
+                                    <div className="text-xs font-medium text-primary">
+                                        {t('nowPlaying.row', { num: auditionPlayingIndex + 1 })}
                                     </div>
                                 )}
 
@@ -846,7 +706,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                     "relative flex items-center justify-center h-7 px-3 text-xs font-medium rounded-full transition-all duration-300",
                                     !isAutoPlayNext ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                                 )}
-                                onClick={() => setIsAutoPlayNext(false)}
+                                onClick={() => onToggleAutoPlayNext?.(false)}
                                 aria-label={t('playMode.single')}
                                 title={t('playMode.single')}
                             >
@@ -860,7 +720,7 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                     "relative flex items-center justify-center h-7 px-3 text-xs font-medium rounded-full transition-all duration-300",
                                     isAutoPlayNext ? "bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                                 )}
-                                onClick={() => setIsAutoPlayNext(true)}
+                                onClick={() => onToggleAutoPlayNext?.(true)}
                                 aria-label={t('playMode.autoNext')}
                                 title={t('playMode.autoNext')}
                             >
@@ -906,8 +766,8 @@ export const SubtitleWorkstation = memo(forwardRef<{ onVideoSaveClick: () => Pro
                                 ref={(el: HTMLDivElement | null) => { itemRefs.current[item.order] = el; }}
                                 item={item}
                                 isSelected={selectedId === item.id}
-                                isPlayingSource={playingIndex === item.order && playingType === 'source' && !isAudioPaused}
-                                isPlayingConvert={playingIndex === item.order && playingType === 'convert' && !isAudioPaused}
+                                isPlayingSource={auditionPlayingIndex === item.order && auditionActiveType === 'source' && !!isMediaPlaying}
+                                isPlayingConvert={auditionPlayingIndex === item.order && auditionActiveType === 'convert' && !!isMediaPlaying}
                                 isPlayingFromVideo={playingSubtitleIndex === item.order}
                                 convertingType={convertingMap[item.id] || null}
                                 isSaving={savingIds.has(item.id)}

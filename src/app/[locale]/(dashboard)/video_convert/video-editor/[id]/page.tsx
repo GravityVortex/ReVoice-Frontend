@@ -64,6 +64,8 @@ export default function VideoEditorPage() {
   // Zoom
   const [zoom, setZoom] = useState(2);
   const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
+  const [auditionActiveType, setAuditionActiveType] = useState<'source' | 'convert' | null>(null);
+  const [isAutoPlayNext, setIsAutoPlayNext] = useState(false);
   // 服务端持久化：上次“重新合成视频”时刻（用于刷新后恢复 pending 状态）
   const [serverLastMergedAtMs, setServerLastMergedAtMs] = useState(0);
   // 服务端持久化：正在进行中的“重新合成”任务（用于刷新/关闭页面后恢复轮询状态）
@@ -188,8 +190,14 @@ export default function VideoEditorPage() {
   // Ignore stale video `play()` promise resolutions/rejections when users toggle quickly.
   const videoPlayTokenRef = useRef(0);
 
-  // 字幕工作台试听：到达该时间点（ms）自动停止视频画面（audio 由工作台自身播放）
   const auditionStopAtMsRef = useRef<number | null>(null);
+  const auditionActiveTypeRef = useRef<'source' | 'convert' | null>(null);
+  const isAutoPlayNextRef = useRef(false);
+  const playingSubtitleIndexRef = useRef<number>(-1);
+
+  useEffect(() => {
+    isAutoPlayNextRef.current = isAutoPlayNext;
+  }, [isAutoPlayNext]);
   // 试听期间临时覆盖静音状态，结束时恢复
   const auditionRestoreRef = useRef<{
     subtitleMuted: boolean;
@@ -1991,11 +1999,11 @@ export default function VideoEditorPage() {
     if (videoEl.paused) return;
 
     const time = videoEl.currentTime;
-    // 字幕工作台试听：到点自动停住视频画面（audio 由工作台自身播放）
+    // 字幕工作台试听：到点自动停住视频画面
     const auditionStopAtMs = auditionStopAtMsRef.current;
     if (auditionStopAtMs != null) {
       const timeMs = time * 1000;
-      if (Number.isFinite(timeMs) && timeMs >= auditionStopAtMs) {
+      if (Number.isFinite(timeMs) && timeMs >= auditionStopAtMs + 50) {
         // Cancel any in-flight warmup/play so it can't flip state later.
         videoStartGateTokenRef.current += 1;
         videoPlayTokenRef.current += 1;
@@ -2007,6 +2015,11 @@ export default function VideoEditorPage() {
           // ignore
         }
         setIsPlaying(false);
+
+        // Dispatch synthetic event to handleAuditionStop cleanly without async deps cycles
+        window.setTimeout(() => {
+          document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+        }, 10);
         return;
       }
     }
@@ -2410,7 +2423,7 @@ export default function VideoEditorPage() {
     t,
   ]);
 
-  const handleSeek = useCallback((time: number, isDragging: boolean = false) => {
+  const handleSeek = useCallback((time: number, isDragging: boolean = false, isAuditionSeek: boolean = false) => {
     const clampedTime = Math.max(0, Math.min(time, totalDuration));
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const videoEl = videoPreviewRef.current?.videoElement;
@@ -2525,35 +2538,56 @@ export default function VideoEditorPage() {
     }
 
     // Click-to-seek: reset subtitle-audio state.
-    subtitleGraceUntilMsRef.current = now + 900;
-    subtitleKickRef.current = null;
-    subtitleRetryRef.current = null;
-    subtitleWatchdogMsRef.current = now;
-    subtitlePlayTokenRef.current += 1;
-    lastPlayedSubtitleIndexRef.current = -1;
-    setPlayingSubtitleIndex(-1);
-    lastVoiceSubtitleIndexRef.current = -1;
-    bufferingAbortRef.current?.abort();
-    bufferingAbortRef.current = null;
-    setIsSubtitleBuffering(false);
-    stopWebAudioVoice();
-    abortAllVoiceInflight();
+    if (!isAuditionSeek) {
+      if (auditionRestoreRef.current) {
+        const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
+        setIsSubtitleMuted(subtitleMuted);
+        isSubtitleMutedRef.current = subtitleMuted;
+        setIsBgmMuted(bgmMuted);
+        isBgmMutedRef.current = bgmMuted;
+        if (videoPreviewRef.current?.videoElement) {
+          videoPreviewRef.current.videoElement.muted = videoMuted;
+        }
+        auditionRestoreRef.current = null;
+      }
+      setAuditionActiveType(null);
+      auditionActiveTypeRef.current = null;
+      auditionStopAtMsRef.current = null;
+    }
 
-    isAudioRefArrPause.current = false;
-    // Seeking is a user intent to reposition; pause playback to avoid "silent play" confusion.
-    if (isPlaying || (videoEl && !videoEl.paused)) {
-      try {
-        videoEl?.pause();
-      } catch {
-        // ignore
+    // During audition seek, the caller (handleAuditionRequestPlay) manages
+    // playingSubtitleIndex and playback — don't clobber its state.
+    if (!isAuditionSeek) {
+      subtitleGraceUntilMsRef.current = now + 900;
+      subtitleKickRef.current = null;
+      subtitleRetryRef.current = null;
+      subtitleWatchdogMsRef.current = now;
+      subtitlePlayTokenRef.current += 1;
+      lastPlayedSubtitleIndexRef.current = -1;
+      setPlayingSubtitleIndex(-1);
+      lastVoiceSubtitleIndexRef.current = -1;
+      bufferingAbortRef.current?.abort();
+      bufferingAbortRef.current = null;
+      setIsSubtitleBuffering(false);
+      stopWebAudioVoice();
+      abortAllVoiceInflight();
+
+      isAudioRefArrPause.current = false;
+      // Seeking is a user intent to reposition; pause playback to avoid "silent play" confusion.
+      if (isPlaying || (videoEl && !videoEl.paused)) {
+        try {
+          videoEl?.pause();
+        } catch {
+          // ignore
+        }
+        try {
+          bgmAudioRef.current?.pause();
+        } catch {
+          // ignore
+        }
+        stopAllSubtitleAudio();
+        setIsPlaying(false);
       }
-      try {
-        bgmAudioRef.current?.pause();
-      } catch {
-        // ignore
-      }
-      stopAllSubtitleAudio();
-      setIsPlaying(false);
     }
 
     try {
@@ -2595,89 +2629,16 @@ export default function VideoEditorPage() {
     setIsSubtitleMuted((v) => !v);
   }, []);
 
-  const handleAuditionLoad = useCallback((index: number, mode: 'source' | 'convert') => {
-    if (index < 0 || index >= subtitleTrackRef.current.length) return;
-    const item = subtitleTrackRef.current[index];
-
-    if (!auditionRestoreRef.current) {
-      auditionRestoreRef.current = {
-        subtitleMuted: isSubtitleMutedRef.current,
-        bgmMuted: isBgmMutedRef.current,
-        videoMuted: videoPreviewRef.current?.videoElement?.muted ?? false,
-      };
-    }
-
-    // Always mute page's generated voice track, let workstation provide the audio
-    setIsSubtitleMuted(true);
-    isSubtitleMutedRef.current = true; // IMMEDIATELY sync ref to avoid WebAudio double-play race condition
-
-    // Mute video to prevent echo with workstation's split_audio
-    const videoEl = videoPreviewRef.current?.videoElement;
-    if (videoEl) videoEl.muted = true;
-
-    const shouldMuteBgm = mode === 'source';
-    setIsBgmMuted(shouldMuteBgm);
-    isBgmMutedRef.current = shouldMuteBgm; // Sync ref immediately
-    handleSeek(item.startTime, false);
-
-    auditionStopAtMsRef.current = item.startTime * 1000 + item.duration * 1000;
-    setPlayingSubtitleIndex(index);
-
-    // Freeze video playback while audio is buffering
-    transportIsStalledRef.current = true;
-    setIsVideoBuffering(true);
-  }, [handleSeek]);
-
-  const handleAuditionPlay = useCallback((_index: number, _mode: 'source' | 'convert') => {
-    // Audio is actually playing now — unfreeze master transport and start
-    // video IMMEDIATELY (no warmup gate). The gate waits for buffered data
-    // at the seeked position which can take seconds; during audition the
-    // user expects instant visual sync with the audio, so we skip it.
-    const videoEl = videoPreviewRef.current?.videoElement;
-    if (!videoEl || !(videoEl.currentSrc || videoEl.src)) return;
-    transportIsStalledRef.current = false;
-    setIsVideoBuffering(false);
-    videoEl.play().then(() => {
-      setIsPlaying(true);
-    }).catch((e) => {
-      if (isAbortError(e)) return;
-      console.warn('[Audition] video.play() failed, non-critical:', e);
-    });
-  }, []);
-
-  const handleAuditionPause = useCallback(() => {
+  const handleAuditionStop = useCallback((naturalEnd = false) => {
     // Cancel any in-flight warmup/play so it can't flip state later.
     videoStartGateTokenRef.current += 1;
     videoPlayTokenRef.current += 1;
     transportIsStalledRef.current = false;
     setIsVideoBuffering(false);
-    try {
-      videoPreviewRef.current?.videoElement?.pause();
-    } catch {
-      // ignore
-    }
-    setIsPlaying(false);
-  }, []);
 
-  const handleAuditionResume = useCallback(() => {
-    // Same as auditionPlay: skip the heavy gate for instant resume.
-    const videoEl = videoPreviewRef.current?.videoElement;
-    if (!videoEl || !(videoEl.currentSrc || videoEl.src)) return;
-    transportIsStalledRef.current = false;
-    videoEl.play().then(() => {
-      setIsPlaying(true);
-    }).catch((e) => {
-      if (isAbortError(e)) return;
-      console.warn('[Audition] resume video.play() failed:', e);
-    });
-  }, []);
+    const endedIndex = playingSubtitleIndexRef.current ?? -1;
+    const endedType = auditionActiveTypeRef.current;
 
-  const handleAuditionStop = useCallback(() => {
-    // Cancel any in-flight warmup/play so it can't flip state later.
-    videoStartGateTokenRef.current += 1;
-    videoPlayTokenRef.current += 1;
-    transportIsStalledRef.current = false;
-    setIsVideoBuffering(false);
     try {
       videoPreviewRef.current?.videoElement?.pause();
     } catch {
@@ -2686,6 +2647,8 @@ export default function VideoEditorPage() {
     setIsPlaying(false);
     auditionStopAtMsRef.current = null;
     setPlayingSubtitleIndex(-1);
+    setAuditionActiveType(null);
+    auditionActiveTypeRef.current = null;
 
     if (auditionRestoreRef.current) {
       const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
@@ -2698,7 +2661,74 @@ export default function VideoEditorPage() {
       }
       auditionRestoreRef.current = null;
     }
+
+    if (naturalEnd && isAutoPlayNextRef.current && endedIndex >= 0) {
+      const nextIdx = endedIndex + 1;
+      if (nextIdx < subtitleTrackRef.current.length) {
+        setTimeout(() => {
+          // Re-trigger via document event to avoid hook cycles
+          document.dispatchEvent(new CustomEvent('revoice-audition-request-play', { detail: { index: nextIdx, mode: endedType } }));
+        }, 50);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    const handleNaturalStop = () => handleAuditionStop(true);
+    document.addEventListener('revoice-audition-natural-stop', handleNaturalStop);
+    return () => document.removeEventListener('revoice-audition-natural-stop', handleNaturalStop);
+  }, [handleAuditionStop]);
+
+  const handleAuditionRequestPlay = useCallback((index: number, mode: 'source' | 'convert') => {
+    if (index < 0 || index >= subtitleTrackRef.current.length) return;
+    const item = subtitleTrackRef.current[index];
+
+    if (!auditionRestoreRef.current) {
+      auditionRestoreRef.current = {
+        subtitleMuted: isSubtitleMutedRef.current,
+        bgmMuted: isBgmMutedRef.current,
+        videoMuted: videoPreviewRef.current?.videoElement?.muted ?? false,
+      };
+    }
+
+    setPlayingSubtitleIndex(index);
+    playingSubtitleIndexRef.current = index;
+    setAuditionActiveType(mode);
+    auditionActiveTypeRef.current = mode;
+    auditionStopAtMsRef.current = item.startTime * 1000 + item.duration * 1000;
+
+    const videoEl = videoPreviewRef.current?.videoElement;
+    if (mode === 'convert') {
+      setIsSubtitleMuted(false);
+      isSubtitleMutedRef.current = false;
+      if (videoEl) videoEl.muted = true;
+    } else {
+      setIsSubtitleMuted(true);
+      isSubtitleMutedRef.current = true;
+      if (videoEl) videoEl.muted = false;
+    }
+
+    setIsBgmMuted(true);
+    isBgmMutedRef.current = true;
+
+    // Seek to the starting time. Pass true for isAuditionSeek to bypass cleanup.
+    handleSeek(item.startTime, false, true);
+
+    // Call the master gate immediately so the buffering protects the audio.
+    setTimeout(() => {
+      if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
+    }, 0);
+  }, [handleSeek, playVideoWithGate]);
+
+  useEffect(() => {
+    const handleEventRequestPlay = (e: any) => handleAuditionRequestPlay(e.detail.index, e.detail.mode);
+    document.addEventListener('revoice-audition-request-play', handleEventRequestPlay);
+    return () => document.removeEventListener('revoice-audition-request-play', handleEventRequestPlay);
+  }, [handleAuditionRequestPlay]);
+
+  const handleAuditionToggle = useCallback(() => {
+    handlePlayPause();
+  }, [handlePlayPause]);
 
   // --- RENDER ---
   if (isLoading) return <LoadingSkeleton />;
@@ -2957,11 +2987,14 @@ export default function VideoEditorPage() {
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
                   onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
                   onVideoMergeCompleted={handleVideoMergeCompleted}
-                  onAuditionLoad={handleAuditionLoad}
-                  onAuditionPlay={handleAuditionPlay}
-                  onAuditionPause={handleAuditionPause}
-                  onAuditionResume={handleAuditionResume}
-                  onAuditionStop={handleAuditionStop}
+                  onRequestAuditionPlay={handleAuditionRequestPlay}
+                  onRequestAuditionToggle={handleAuditionToggle}
+                  onRequestAuditionStop={() => handleAuditionStop(false)}
+                  auditionPlayingIndex={playingSubtitleIndex}
+                  auditionActiveType={auditionActiveType}
+                  isMediaPlaying={isPlaying}
+                  isAutoPlayNext={isAutoPlayNext}
+                  onToggleAutoPlayNext={setIsAutoPlayNext}
                 />
               </div>
             }

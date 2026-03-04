@@ -13,59 +13,75 @@
 1. sitemap 失效且仍为占位域名  
    - 文件：`public/sitemap.xml`
    - 问题：仍是 `your-domain.com`，且未覆盖 `/{locale}/...` 真实路由
-   - 建议：改为 `src/app/sitemap.ts` 动态生成，覆盖 en/zh + blog + docs + lastmod
+   - 建议：改为 `src/app/sitemap.ts` 动态生成，至少覆盖 en/zh + 首页 + pricing + showcases + docs + lastmod
 
 2. robots 与多语言路由不匹配  
    - 文件：`public/robots.txt`
-   - 问题：仅屏蔽 `/settings/*` 等无 locale 前缀路径，实际路由为 `/{locale}/...`
-   - 建议：改为 `src/app/robots.ts`，按 locale 屏蔽私有路由并补 `Sitemap:`
+   - 问题：仅屏蔽 `/settings/*` 等无 locale 前缀路径，实际路由为 `/{locale}/...`；引入了对已重定向路径（如 `/privacy-policy`）的冗余 Disallow。
+   - 建议：改为 `src/app/robots.ts`，按 locale 屏蔽私有路由，清理过时的 Disallow 规则，并补充 `Sitemap:` 指向。
 
 3. canonical/hreflang 存在全站级误配风险  
    - 文件：`src/app/layout.tsx`、`src/app/[locale]/layout.tsx`、`src/shared/lib/seo.ts`
    - 问题：
      - `src/app/layout.tsx` 的 alternate 固定指向语言首页（不含当前路径）
      - `src/app/[locale]/layout.tsx` 通过 `generateMetadata = getMetadata()` 让大量页面继承默认 canonical
-     - 部分页面 canonical 拼接仍按“默认语言不带前缀”的旧逻辑，和 `localePrefix='always'` 冲突
+     - `getCanonicalUrl()` 中的 trailing slash 逻辑硬编码了 `'en'` 并且会导致非统一的斜杠处理。
+     - 多个页面的 canonical 拼接仍按旧逻辑：`const canonicalUrl = locale !== envConfigs.locale ? ${envConfigs.app_url}/${locale}/... : ${envConfigs.app_url}/...;`，和 `localePrefix='always'` 冲突
    - 建议：
-     - 移除全局固定 alternate 注入，改为 Metadata `alternates.languages`（按页面路径生成，含 `x-default`）
+     - 移除全局固定 alternate 注入，在 `getMetadata()` 补充 `alternates.languages`（按页面传入的 `canonicalUrl` 生成，含 `x-default`）。
      - 禁止在 layout 层默认输出 canonical=`/`，只在页面显式传入 canonical 时输出
-     - canonical 统一输出 `https://<domain>/{locale}/...`
+     - canonical 统一输出 `https://<domain>/{locale}/...` 并且全局统一去除所有的 trailing slash，配合 `vercel.json` 中的 `trailingSlash: false`。
 
-4. 私有页可能被索引  
+4. 首页（Landing Page）缺少 `generateMetadata`
+   - 文件：`src/app/[locale]/(landing)/page.tsx`
+   - 问题：该页面没有导出 `generateMetadata`，完全依赖 `[locale]/layout.tsx` 的默认 metadata。作为流量最大的页面，缺乏独立控制。
+   - 建议：补充 `generateMetadata`，显式设置首页的 title/description/canonical/OG。
+
+5. `twitter.site` 配置错误
+   - 文件：`src/shared/lib/seo.ts`
+   - 问题：`twitter.site` 被设为 `envConfigs.app_url`（如 URL）。Twitter `site` 字段应为 Twitter 账号（如 `@SoulDub`）。
+   - 建议：新增环境变量 `NEXT_PUBLIC_TWITTER_HANDLE`，或硬编码正确的 Twitter handle。
+
+6. 私有页可能被索引  
    - 文件：`src/app/[locale]/(auth)/...`、`(admin)`、`(dashboard)`、`(chat)`、`settings`、`video_convert`
    - 问题：未统一 `noindex`
    - 建议：对应 layout 增加 `robots: { index: false, follow: false }`
 
-5. 软 404  
-   - 文件：`src/app/[locale]/(landing)/blog/[slug]/page.tsx`、`src/app/[locale]/(landing)/blog/category/[slug]/page.tsx`
-   - 问题：缺失内容返回空态组件而非真实 404
-   - 建议：不存在内容统一 `notFound()`
+7. 软 404与错误处理
+   - 问题：尽管 `docs/[[...slug]]/page.tsx` 正确使用了 `notFound()`，但需要确认全站不存在内容的处理标准。
+   - 建议：确保所有动态详情页在无内容时均调用 `notFound()`，而不是返回空态组件。
 
-6. 线上域名未配置会导致 canonical/OG 全部指向 localhost  
+8. 线上域名未配置会导致 canonical/OG 全局异常  
    - 文件：`src/config/index.ts`
-   - 问题：`NEXT_PUBLIC_APP_URL` 默认回退为 `http://localhost:3000`，一旦线上环境未正确配置，会直接污染 canonical、OG url、Twitter site 等
-   - 建议：上线前强制校验环境变量（构建时 fail-fast 或健康检查），并确保 `NEXT_PUBLIC_APP_URL` 为正式域名
+   - 问题：`NEXT_PUBLIC_APP_URL` 默认回退为 `http://localhost:3000`；同时需要保证 `NEXT_PUBLIC_DEFAULT_LOCALE` 与 locales 配置中的 `defaultLocale='en'` 完全一致。一旦环境变量错配，会直接污染所有生成的 URL 和 SEO 标签。
+   - 建议：上线前强制校验环境变量（构建时 fail-fast）。
 
 ### P1（本周完成）
 
-1. 公开页 metadata 覆盖不完整  
-   - 文件：`src/app/[locale]/(landing)/(ai)/ai-chatbot/page.tsx`、`ai-video-generator/page.tsx`、`ai-audio-generator/page.tsx`
-   - 建议：补全 `generateMetadata`（title/description/canonical/alternates）
+1. Privacy / Terms 重定向链风险
+   - 文件：`next.config.mjs`
+   - 问题：将 `/:locale(en|zh)/privacy` 永久重定向到无前缀的 `/privacy`。若线上启用了“强制 locale 前缀”的 middleware（例如 next-intl middleware），可能出现重定向链/循环（需线上验证）。
+   - 建议：确保 legal 页面（`/privacy`、`/terms` 等）在 middleware 中被跳过；并用 `curl -I -L` 验证最终落地 URL 一步到位。
 
-2. 结构化数据缺失（JSON-LD）  
-   - 文件：`src/app/layout.tsx`、`src/app/[locale]/(landing)/blog/[slug]/page.tsx`、`src/app/[locale]/(docs)/docs/[[...slug]]/page.tsx`
-   - 建议：首页加 `Organization/WebSite`，博客加 `BlogPosting`，文档加 `TechArticle/BreadcrumbList`
+2. `vercel.json` 与 Canonical 协调
+   - 文件：`vercel.json`
+   - 问题：存在 `cleanUrls: true` 和 `trailingSlash: false`。
+   - 建议：确保生成的 metadata 里的 canonical URL、hreflang 以及 OpenGraph URL 也符合这些去除后缀和斜杠的标准，保持全网 URL 的一致性规范。
 
 3. 缓存策略过重  
    - 文件：`next.config.mjs`
    - 问题：`/:path*` 全站 `no-store`
    - 建议：仅对敏感动态内容 no-store，公开内容启用合理缓存
 
-4. 可索引内容仍有模板占位文案  
-   - 文件：`content/posts/*.mdx`、`content/docs/*.mdx`、`content/pages/*.mdx`
-   - 建议：替换 `YourAppName/your-domain` 为真实品牌与真实场景内容
+4. 结构化数据缺失（JSON-LD）  
+   - 文件：`src/app/layout.tsx`、`src/app/[locale]/(docs)/docs/[[...slug]]/page.tsx`
+   - 建议：首页加 `Organization/WebSite`，文档加 `TechArticle/BreadcrumbList`
 
-5. 根路径跳转建议使用永久重定向（308）  
+5. 可索引内容仍有模板占位文案  
+   - 文件：`content/docs/*.mdx`、`content/pages/*.mdx` 等
+   - 建议：替换 `YourAppName` 和 `your-domain.com` 为真实品牌与真实场景内容。特别注意 **隐私政策和服务条款 (Privacy/Terms) 等法律文本** 的占位替换非常关键，建议专业人员过审。
+
+6. 根路径跳转建议使用永久重定向（308）  
    - 文件：`src/app/page.tsx`
    - 问题：当前使用 `redirect()`，对 SEO 更推荐 308（永久）以稳定规范 URL
    - 建议：改用 `permanentRedirect()` 或在 `next.config.mjs` 使用永久 redirects
@@ -73,12 +89,13 @@
 ### P2（体验与 CTR 优化）
 
 1. 关键区块图片仍大量使用 `<img>`  
-   - 文件：`src/themes/default/blocks/hero.tsx`、`showcases.tsx`、`blog.tsx`、`testimonials.tsx`
+   - 文件：`src/themes/default/blocks/hero.tsx`、`showcases.tsx`、`testimonials.tsx`
    - 建议：关键图替换为 `next/image`，补 `sizes` 与明确尺寸
 
-2. 图片 alt 偏泛化  
+2. 图片 alt 偏泛化（已确认）
    - 文件：`src/config/locale/messages/en/showcases.json`、`src/config/locale/messages/zh/showcases.json`
-   - 建议：改为可检索语义（场景+任务+结果），避免重复“showcases/案例展示”
+   - 现状：已确认 alt 为泛化文本（例如 `showcases` / `案例展示`），可检索性弱且重复度高。
+   - 建议：改为“产品名 + 场景 + 能力/结果”的可检索语义，避免全站重复。
 
 3. manifest 品牌占位  
    - 文件：`public/favicons/manifest.json`
@@ -86,9 +103,9 @@
 
 ### 建议执行顺序（7 天）
 
-1. D1-D2：sitemap + robots + canonical/hreflang + noindex + 软404  
-2. D3-D4：补全公开页 metadata + JSON-LD  
-3. D5-D7：内容替换（去模板占位）+ 图片与 alt 优化
+1. D1-D2：sitemap + robots + canonical/hreflang + noindex + 修复 trailing slash / twitter.site  
+2. D3-D4：首页增加 metadata + JSON-LD  
+3. D5-D7：内容替换（尤其是法律页面占位）+ 图片（WebP/next/image）优化
 
 ---
 
@@ -99,6 +116,7 @@
 
 - Next.js App Router（`src/app`）
 - 多语言：next-intl，路由在 `src/app/[locale]/...`
+- 边缘配置影响：`vercel.json` 启用了 `cleanUrls: true` 和 `trailingSlash: false`
 - 语言配置：
   - `locales = ['en','zh']`
   - `defaultLocale = 'en'`
@@ -112,21 +130,20 @@
 - locale layout（默认 metadata 注入）：`src/app/[locale]/layout.tsx`
 - metadata helper：`src/shared/lib/seo.ts`
 - robots/sitemap（当前是 public 静态文件）：`public/robots.txt`、`public/sitemap.xml`
-- 缓存策略：`next.config.mjs`
+- 缓存策略与重定向：`next.config.mjs` 和 `vercel.json`
 - 典型页面 metadata：
-  - 列表页：`src/app/[locale]/(landing)/pricing/page.tsx`、`src/app/[locale]/(landing)/blog/page.tsx`
-  - 详情页：`src/app/[locale]/(landing)/blog/[slug]/page.tsx`、`src/app/[locale]/(landing)/[slug]/page.tsx`
+  - Landing：`src/app/[locale]/(landing)/page.tsx`
+  - 列表页：`src/app/[locale]/(landing)/pricing/page.tsx`
   - Docs：`src/app/[locale]/(docs)/docs/[[...slug]]/page.tsx`
 
 
 ## 2. 结论概览（强影响点）
 
-- canonical 当前存在“全站被规范化到首页”的高风险：大量页面会输出 canonical=`/{locale}/`（本质等价于首页）。
-- hreflang（alternate 语言链接）当前按语言“首页”输出，不包含当前路径，属于明显误配。
-- `public/sitemap.xml` 为占位模板（`your-domain.com`），且未覆盖 `/{locale}/...` 真实路径。
-- `public/robots.txt` 的 Disallow 规则未适配 `/{locale}` 前缀；同时缺少 Sitemap 声明。
-- 缓存策略过度激进：`next.config.mjs` 给 `/:path*` 下发 `no-store`，会拖累抓取效率与性能（含图片等静态资源）。
-- 首屏关键图片体积偏大（多张 1MB~2MB 级 PNG），会显著影响 LCP 与排名。
+- canonical 当前存在“全站被规范化到首页”的高风险：大量页面会输出 canonical=`/{locale}/`（本质等价于首页），且 trailing slash 和 locale 的旧逻辑相互冲突。
+- hreflang（alternate 语言链接）当前按语言“首页”输出，且 `getMetadata()` 中没有补齐 `alternates.languages`，属于明显误配。
+- 首页缺少独立的 `generateMetadata` 控制，作为流量大头不利于传播曝光。
+- `public/sitemap.xml` 为占位模板（`your-domain.com`），`public/robots.txt` 未适配多语言，并且两者不支持自动化同步。
+- 缓存策略过度激进全站 `no-store`；关键图片过大影响 Core Web Vitals (LCP)；基础文档包含大量的默认名称和地址占位。
 
 
 ## 3. P0（必须优先修复）
@@ -138,170 +155,114 @@
 - `src/shared/lib/seo.ts` 的 `getCanonicalUrl()` 在未传入 `canonicalUrl` 时会默认使用 `'/'`
 - 结果：很多没有单独实现 `generateMetadata` 的页面，会继承 layout 的 canonical，最终 canonical 指向 `/{locale}/`（首页）
 
-风险：
-- 重复内容被合并、子页面权重被转移到首页
-- 收录数量下降、长尾页面几乎不可能进入索引
-
 建议：
 1) 不要在 `[locale]/layout.tsx` 层对所有页面“默认输出 canonical=/”
 2) `getMetadata()` 仅在调用方显式传入 `canonicalUrl` 时才返回 `alternates.canonical`（以及 OG url）
-3) 对重要页面（docs/blog/detail）自行输出正确 canonical
+3) 首页的 `src/app/[locale]/(landing)/page.tsx` 单独导出 `generateMetadata`。
+4) 各具体页面自行输出正确规范化的 canonical。
 
 
 ### 3.2 hreflang 输出错误：未随页面路径变化
 
 现象：
-- `src/app/layout.tsx` 中注入：
-  - `<link rel="alternate" hrefLang={loc} href={`${appUrlBase}/${loc}`} />`
-- 这会导致你在 `/en/pricing`、`/zh/blog/xxx` 等页面，也输出指向语言首页的 alternate。
+- `src/app/layout.tsx` 中全局遍历 `locales` 并写死了 href：`${appUrlBase}/${loc}`
+- `src/shared/lib/seo.ts` 生成的元数据中，仅提供了 `canonical` 却没提供 `languages`
 
 风险：
-- hreflang 误配会造成错误的语言/地区聚合，严重时影响收录与排序稳定性。
+- 用户访问 `/en/pricing` 时会指明它的另一个语言版本是 `/zh/` 首页，严重影响多语言站点的排名。
 
 建议：
 - 移除 `src/app/layout.tsx` 里“全局固定的 alternate 注入”
-- 使用 Next.js metadata 的 `alternates.languages`，按“当前路径”生成多语言对应 URL
-  - 注意：`generateMetadata()` 默认拿不到 request pathname，最佳实践是“每个页面/路由组显式传入 canonicalUrl（相对路径）并生成 languages”
-  - 若强行从请求头/URL 推断路径，会让 metadata 变得更动态，可能影响静态化与缓存（需结合产品实际取舍）
+- 不要在 helper 里“猜当前 pathname”；改为由每个可索引页面显式传入 `canonicalUrl`（相对路径），由 `getMetadata()` 基于该值同时生成 `alternates.canonical` 与 `alternates.languages`（`en`/`zh`/`x-default`），并统一去除尾部 `/` 以匹配 `trailingSlash: false`。
 
 
 ### 3.3 sitemap.xml 为模板占位，且不匹配 `localePrefix=always`
 
-现象：
-- `public/sitemap.xml` 包含 `https://your-domain.com/...`
-- 同时未覆盖 `/{locale}` 的真实路径结构
+建议：
+- 使用 App Router metadata route 生成 sitemap：新增 `src/app/sitemap.ts` 动态输出真实域名与路由（至少覆盖 en/zh 的首页、pricing、showcases、docs，并补 lastmod）；并删除废弃的 `public/sitemap.xml`。
 
-风险：
-- 搜索引擎将忽略/误解 sitemap，导致抓取入口缺失
+
+### 3.4 robots.txt 失配与重定向链风险
+
+问题：
+- `public/robots.txt` 中的 Disallow 规则没有涵盖 `/[locale]/...`：例如屏蔽 `/settings/*` 但现在的实际访问路径会带有地域。
+- `robots.txt` 里面存在 `Disallow: /privacy-policy`，但 `next.config.mjs` 中已将该路径永久重定向（308）到 `/privacy`；若线上启用了“强制 locale 前缀”的 middleware，需要确认不会形成重定向链/循环。
 
 建议：
-- 使用 App Router metadata route 生成 sitemap：
-  - 新增 `src/app/sitemap.ts` 动态输出真实域名与全量路由（至少覆盖 landing/blog/showcases/pricing/docs）
-- 并避免与 `public/sitemap.xml` 同名冲突（建议删除或改名旧文件；如需保留，请确认部署后只保留一个入口）
+- 使用 `src/app/robots.ts` 动态生成。
+- 明确 `Sitemap: https://<domain>/sitemap.xml`
+- 梳理重定向链，清理旧名字的 Disallow 以及确保 `/[locale]/` 的前缀覆盖，例如 `Disallow: /*/settings/`。
 
 
-### 3.4 robots.txt 不匹配多语言前缀，且缺少 Sitemap 声明
+### 3.5 基础 SEO 配置（Twitter / trailingSlash 错误）
 
-现象：
-- `public/robots.txt` 中如 `Disallow: /settings/*`，但实际页面是 `/en/settings/...`、`/zh/settings/...`
-
-风险：
-- 需要屏蔽的私有页可能被收录
-- 需要开放的页面可能被误抓取浪费预算（crawl budget）
+问题：
+- `seo.ts` 中 `twitter.site` 等于 `envConfigs.app_url` (http 链接)。
+- trailing slash 中仅对 `locale !== 'en'` 以及基于 URL 结束是否含有 `/` 判断切分代码（硬编码了 `'en'`）。
 
 建议：
-- 使用 `src/app/robots.ts` 动态生成：
-  - 明确 `Sitemap: https://<domain>/sitemap.xml`
-  - Disallow 规则适配 `/{locale}`（例如 `Disallow: /*/settings/` 或分别列出 `/en/settings/`、`/zh/settings/`）
+- 将 `twitter.site` 设置成 Twitter 用户名（如果暂时没有，可以留空或者从环境变量中读取句柄）。
+- 基于 `defaultLocale` 来判断 locale 情况，且统一使用剥离结尾斜杠的 URL 字符串匹配 Vercel 的规则。
 
 
 ## 4. P1（建议尽快做：提升索引质量与稳定性）
 
 ### 4.1 私有/低价值页面统一 noindex
 
-现状：
-- `src/shared/lib/seo.ts` 支持 `noIndex`，但项目中基本未使用
+建议对以下布局增加 `metadata.robots = { index:false, follow:false }`：
+- `src/app/[locale]/(auth)/layout.tsx`
+- `src/app/[locale]/(admin)/layout.tsx`
+- `src/app/[locale]/(dashboard)/layout.tsx`
+- `src/app/[locale]/(chat)/layout.tsx`
+- `src/app/[locale]/(landing)/settings/layout.tsx`
+- `src/app/[locale]/(landing)/video_convert/layout.tsx`
+
+
+### 4.2 canonical 生成策略不统一（旧的生成遗留代码）
+
+现状代码：
+```typescript
+const canonicalUrl = locale !== envConfigs.locale
+? `${envConfigs.app_url}/${locale}/...`
+: `${envConfigs.app_url}/...`;
+```
 
 建议：
-- 对以下布局或路由群增加 `metadata.robots = { index:false, follow:false }`（或调用 `getMetadata({ noIndex:true })`）：
-  - `src/app/[locale]/(auth)/layout.tsx`
-  - `src/app/[locale]/(admin)/layout.tsx`
-  - `src/app/[locale]/(dashboard)/layout.tsx`
-  - `src/app/[locale]/(chat)/layout.tsx`
-  - `src/app/[locale]/(landing)/settings/layout.tsx`
-  - `src/app/[locale]/(landing)/video_convert/layout.tsx`
+- 在 `[slug]/page.tsx` 等存在自定义 metadata 页面中统一改为带 `/{locale}/` 的拼接格式。
 
 
-### 4.2 canonical 生成策略不统一（与 `localePrefix=always` 冲突）
-
-现状：
-- 多个页面仍在按“默认语言不带前缀”的逻辑拼 canonical（`locale !== envConfigs.locale ? /{locale}/... : /...`）
-  - 典型：`src/app/[locale]/(landing)/blog/[slug]/page.tsx`
-  - 典型：`src/app/[locale]/(landing)/[slug]/page.tsx`
-- 但当前路由策略是 `localePrefix='always'`，即 `/blog/...` 这种路径理论上不应作为规范 URL
+### 4.3 基础文本内容的合规性审查
 
 建议：
-- canonical 统一输出为：`https://<domain>/{locale}/...`（包含默认语言）
-- 同步修正 `alternates.languages` 的对应关系
-
-
-### 4.3 Docs/Blog 详情页补齐 OG/Twitter 与 canonical（避免继承错误）
-
-现状：
-- docs：`src/app/[locale]/(docs)/docs/[[...slug]]/page.tsx` 的 `generateMetadata` 只返回 title/description
-- blog detail：部分页面仅返回 canonical/title/description，缺少 og/twitter 图片与站点信息
-
-建议：
-- docs、blog detail 的 `generateMetadata` 补齐：
-  - `alternates.canonical`
-  - `openGraph`、`twitter`
-  - 若有封面图：`openGraph.images`
+- `content/pages/privacy-policy.mdx` 以及 `terms-of-service.mdx`（包含对应的中英双语文件）当中多处使用了 `YourAppName` 及 `your-domain.com` 占位和邮箱地址。对于直接对外的合规文本具有法务风险，需全部核对为自己真实的品牌主体和邮箱及平台域名。
 
 
 ## 5. P1（性能与抓取效率：间接影响排名）
 
 ### 5.1 缓存头过度激进（no-store）
 
-现状：
-- `next.config.mjs` 对 `/:path*` 下发：
-  - `Cache-Control: no-store, must-revalidate`
-- 这会影响图片（含 `/_next/image`）、public 静态资源缓存，导致重复下载、抓取变慢。
+建议：
+- 去除 `next.config.mjs` 中全局 `/:path*` 的 `Cache-Control: no-store`。为动态内容设计合理的路由重算或基于路由局部进行缓存禁止。至少需留存静态图片与文档等正常缓存。
+
+
+### 5.2 首屏关键图片压缩
 
 建议：
-- 移除全站 `/:path*` 的 no-store；或改为仅对真正的动态私有接口下发 no-store
-- 至少为这些路径单独配置合理缓存：
-  - `/_next/static/*`（已有 immutable）
-  - `/_next/image`、`/favicons/*`、`/imgs/*`、`/*.png` 等
-
-
-### 5.2 首屏图片体积过大，影响 LCP
-
-现状（示例）：
-- `public/big.png` 约 2.2MB
-- `public/logo.png` 约 1.5MB
-- `public/imgs` 目录总体积约 29MB（大量 1MB~2MB PNG）
-
-建议：
-- 将首屏关键图片转为 WebP/AVIF 并压缩（目标：几十 KB 级）
-- `src/themes/default/blocks/hero.tsx` 中首屏图片建议改用 `next/image`：
-  - `priority`
-  - 合理 `sizes`
-  - 避免 layout shift
+- 将 `public/imgs/` 几十 MB 的高分 PNG 压缩为 WebP/AVIF。
+- 关键 Hero 区域弃用普通的 `<img>` 元素，换上 `next/image` 并带有 `priority`。
 
 
 ## 6. P2（可选：提升 CTR/富结果）
 
-当前未发现 JSON-LD/结构化数据注入（代码搜索无 `application/ld+json`）。
+结构化数据 JSON-LD：建议至少覆盖 WebSite 机构信息至全站、面包屑以及文章详情元结构信息，提升搜索引擎结果中的卡片样式。
 
-建议按页面类型增加：
-- Organization / WebSite（全站）
-- SoftwareApplication / Product（产品页）
-- FAQPage（落地页 FAQ）
-- BlogPosting（博客详情）
-- BreadcrumbList（docs/blog 列表与详情）
+## 7. 验收清单（上线前自检）
 
-
-## 7. 推荐落地顺序（最小改动换最大收益）
-
-1) 统一 URL 策略：既然 `localePrefix='always'`，则 canonical/hreflang 全量带 `/{locale}`
-2) 修 metadata：
-   - 移除 `[locale]/layout.tsx` 默认 canonical=`/`
-   - 修复 `src/app/layout.tsx` 的 hreflang 注入方式（按路径而不是按语言首页）
-3) 上 `robots.ts` + `sitemap.ts`，替换占位的 `public/robots.txt` / `public/sitemap.xml`
-4) 调整缓存策略（去掉全站 no-store），并压缩首屏图片（提升 CWV）
-5) 结构化数据与 OG/Twitter 完善
-
-
-## 8. 验收清单（上线前自检）
-
-- 随机抽查 10 个页面（landing/blog/detail/docs/settings 等），确认：
-  - 每页 canonical 指向自身而非首页
-  - hreflang 指向“同路径不同语言”的页面
-- `GET /sitemap.xml` 返回真实域名、真实路由（含 `/en`、`/zh`）
-- `GET /robots.txt` 含 `Sitemap:` 且 Disallow 命中真实多语言路径
-- `NEXT_PUBLIC_APP_URL` 在生产环境为正式域名（禁止回退到 localhost）
-- `/` 跳转到 `/{defaultLocale}` 使用永久重定向（308）
-- Lighthouse / Web Vitals：
-  - LCP 显著改善（首屏图片体积、缓存命中）
-- Search Console：
-  - Coverage 报错减少（重复、规范化、软 404）
+- 抽拉检查首页以及详情页
+  - 确认每页 canonical 指向自身而非根路径
+  - hreflang 输出不同语言同页面的映射
+  - 检查不存在 URL 后缀 `/`，符合 Vercel 配置
+- 使用 Twitter Card Validator 验证 Twitter 信息无误
+- 验证环境变量 `NEXT_PUBLIC_APP_URL` 及其对应的环境生效
+- Lighthouse (Web Vitals) 显示 LCP 符合预期（小于 2.5s）
+- 法律文档不存在 `your-domain.com` 关键字

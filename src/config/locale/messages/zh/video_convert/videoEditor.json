@@ -34,6 +34,7 @@
     },
     "nowPlaying": {
       "label": "正在试听",
+      "row": "第 {num} 条",
       "stop": "停止"
     },
     "totalItems": "共 {count} 条字幕",

@@ -401,6 +401,23 @@ export function TimelinePanel({
         };
     }, [enableAudioMeta, playingSubtitleIndex, queueDurationLoad]);
 
+    // Auto-scroll timeline to playhead on large time jumps (seek / audition).
+    const lastAutoScrollTimeRef = useRef<number>(-1);
+    useEffect(() => {
+        const prev = lastAutoScrollTimeRef.current;
+        lastAutoScrollTimeRef.current = currentTime;
+        // Only auto-scroll on large jumps (> 2s), not on every playback tick.
+        if (prev >= 0 && Math.abs(currentTime - prev) <= 2) return;
+        const scroller = document.getElementById('unified-scroll-container');
+        if (!scroller) return;
+        const pxPerSec = Math.max(1, Math.round(PX_PER_SECOND * zoom));
+        const playheadPx = currentTime * pxPerSec;
+        const viewportW = scroller.clientWidth;
+        // Center the playhead in the viewport.
+        const targetScroll = Math.max(0, playheadPx - viewportW / 3);
+        scroller.scrollTo({ left: targetScroll, behavior: 'smooth' });
+    }, [currentTime, zoom]);
+
     const handleConvertedSegmentClick = useCallback(
         (time: number) => {
             onSeek(time, false);
