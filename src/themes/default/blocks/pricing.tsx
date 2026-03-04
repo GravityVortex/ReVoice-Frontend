@@ -499,7 +499,7 @@ export function Pricing({
           </span>
         </h2>
         <div className="mx-auto mb-8 max-w-2xl flex flex-col items-center gap-4">
-          {pricing.description.split('\n').map((line, i) => (
+          {(pricing.description || '').split('\n').filter(Boolean).map((line, i) => (
             <p
               key={i}
               className={
