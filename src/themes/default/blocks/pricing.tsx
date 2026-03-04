@@ -101,132 +101,9 @@ const PAYMENT_PROVIDER_OPTIONS: PaymentProviderOption[] = [
   { name: 'creem', title: 'Creem', iconUrl: '/imgs/icons/creem.png' },
 ];
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import { ChevronDown } from 'lucide-react';
+// Dropdown imports removed
 
-function PaymentButton({
-  options,
-  defaultProvider,
-  onCheckout,
-  onProviderChange,
-  disabled,
-  isLoading,
-  isFeatured,
-  buttonTitle,
-}: {
-  options: PaymentProviderOption[];
-  defaultProvider: PaymentProviderName;
-  onCheckout: (provider: PaymentProviderName) => void;
-  onProviderChange?: (provider: PaymentProviderName) => void;
-  disabled: boolean;
-  isLoading: boolean;
-  isFeatured: boolean;
-  buttonTitle: string;
-}) {
-  const [selectedProvider, setSelectedProvider] = useState<PaymentProviderName>(defaultProvider);
-  const selectedMeta = options.find((p) => p.name === selectedProvider);
-  const hasMultipleOptions = options.length > 1;
 
-  // Update selected provider when default changes (e.g., from cookie)
-  useEffect(() => {
-    setSelectedProvider(defaultProvider);
-  }, [defaultProvider]);
-
-  const handleSelectProvider = (provider: PaymentProviderName) => {
-    setSelectedProvider(provider);
-    onProviderChange?.(provider);
-  };
-
-  return (
-    <div className="mt-6 flex w-full items-stretch gap-0">
-      {/* Main payment button */}
-      <Button
-        onClick={() => onCheckout(selectedProvider)}
-        disabled={disabled}
-        className={cn(
-          'flex-1 h-12 transition-all duration-300',
-          hasMultipleOptions ? 'rounded-l-full rounded-r-none' : 'rounded-full',
-          isFeatured
-            ? 'bg-white text-black hover:bg-white/90 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] border-none'
-            : 'bg-white/5 text-white hover:bg-white/10 border border-white/10 hover:border-white/20',
-          hasMultipleOptions && isFeatured && 'border-r border-black/10',
-          hasMultipleOptions && !isFeatured && 'border-r-0'
-        )}
-      >
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-            <Loader2 className="size-4 animate-spin" />
-            <span>Processing...</span>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center gap-2">
-            {selectedMeta && (
-              <Image
-                src={selectedMeta.iconUrl}
-                alt=""
-                width={16}
-                height={16}
-                className="rounded-sm"
-              />
-            )}
-            <span>{buttonTitle}</span>
-          </div>
-        )}
-      </Button>
-
-      {/* Dropdown for switching payment method */}
-      {hasMultipleOptions && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              disabled={disabled}
-              className={cn(
-                'h-12 w-12 rounded-r-full rounded-l-none px-3',
-                isFeatured
-                  ? 'bg-white text-black hover:bg-white/90 border-none'
-                  : 'bg-white/5 text-white hover:bg-white/10 border border-white/10 border-l-0 hover:border-white/20'
-              )}
-            >
-              <ChevronDown className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="min-w-[160px] border-white/10 bg-black/90 backdrop-blur-xl"
-          >
-            {options.map((provider) => (
-              <DropdownMenuItem
-                key={provider.name}
-                onClick={() => handleSelectProvider(provider.name)}
-                className={cn(
-                  'flex items-center gap-2 cursor-pointer text-white/80 hover:text-white focus:text-white focus:bg-white/10',
-                  provider.name === selectedProvider && 'bg-white/10 text-white'
-                )}
-              >
-                <Image
-                  src={provider.iconUrl}
-                  alt=""
-                  width={16}
-                  height={16}
-                  className="rounded-sm"
-                />
-                <span>{provider.title}</span>
-                {provider.name === selectedProvider && (
-                  <Check className="ml-auto size-4 text-primary" />
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  );
-}
 
 function CurrencySwitch({
   productId,
@@ -330,6 +207,7 @@ export function Pricing({
   const [productId, setProductId] = useState<string | null>(null);
   const [preferredPaymentProvider, setPreferredPaymentProvider] =
     useState<PaymentProviderName | null>(null);
+  const [globalProvider, setGlobalProvider] = useState<PaymentProviderName | null>(null);
 
   // Currency state management for each item
   // Store selected currency and displayed item for each product_id
@@ -461,20 +339,19 @@ export function Pricing({
     return affiliateMetadata;
   };
 
-  const getAvailablePaymentProviders = (item: PricingItem) => {
-    const allowed = item.payment_providers;
-    const isAllowed = (provider: PaymentProviderName) =>
-      !allowed || allowed.length === 0 || allowed.includes(provider);
+  const getAvailablePaymentProviders = (items: PricingItem[]) => {
+    const isAllowedByAll = (provider: PaymentProviderName) =>
+      items.every((item) => !item.payment_providers || item.payment_providers.length === 0 || item.payment_providers.includes(provider));
 
     const result: PaymentProviderOption[] = [];
 
-    if (configs.stripe_enabled === 'true' && isAllowed('stripe')) {
+    if (configs.stripe_enabled === 'true' && isAllowedByAll('stripe')) {
       result.push(PAYMENT_PROVIDER_OPTIONS.find((p) => p.name === 'stripe')!);
     }
-    if (configs.paypal_enabled === 'true' && isAllowed('paypal')) {
+    if (configs.paypal_enabled === 'true' && isAllowedByAll('paypal')) {
       result.push(PAYMENT_PROVIDER_OPTIONS.find((p) => p.name === 'paypal')!);
     }
-    if (configs.creem_enabled === 'true' && isAllowed('creem')) {
+    if (configs.creem_enabled === 'true' && isAllowedByAll('creem')) {
       result.push(PAYMENT_PROVIDER_OPTIONS.find((p) => p.name === 'creem')!);
     }
 
@@ -483,6 +360,7 @@ export function Pricing({
 
   const rememberPreferredProvider = (provider: PaymentProviderName) => {
     setPreferredPaymentProvider(provider);
+    setGlobalProvider(provider);
     try {
       window.localStorage.setItem('preferred_payment_provider', provider);
     } catch {
@@ -490,26 +368,31 @@ export function Pricing({
     }
   };
 
-  const getPrimaryProviderForItem = (
-    options: PaymentProviderOption[]
-  ): PaymentProviderName | null => {
-    if (options.length === 0) return null;
+  const visibleItems =
+    pricing.items?.filter((item) => !item.group || item.group === group) ?? [];
 
-    const normalizedDefault = (configs.default_payment_provider || '').toLowerCase();
+  const availableGlobalProviders = getAvailablePaymentProviders(visibleItems);
 
-    const candidates = [
-      configs.select_payment_enabled === 'true' ? preferredPaymentProvider : null,
-      normalizedDefault as PaymentProviderName,
-    ].filter(Boolean) as PaymentProviderName[];
+  useEffect(() => {
+    if (availableGlobalProviders.length > 0) {
+      const normalizedDefault = (configs.default_payment_provider || '').toLowerCase();
+      let initial: PaymentProviderName | null = null;
 
-    for (const candidate of candidates) {
-      if (options.some((p) => p.name === candidate)) {
-        return candidate;
+      const candidates = [
+        configs.select_payment_enabled === 'true' ? preferredPaymentProvider : null,
+        normalizedDefault as PaymentProviderName,
+      ].filter(Boolean) as PaymentProviderName[];
+
+      for (const candidate of candidates) {
+        if (availableGlobalProviders.some((p) => p.name === candidate)) {
+          initial = candidate;
+          break;
+        }
       }
-    }
 
-    return options[0].name;
-  };
+      setGlobalProvider(initial || availableGlobalProviders[0].name);
+    }
+  }, [availableGlobalProviders.length, preferredPaymentProvider, configs.default_payment_provider, configs.select_payment_enabled]);
 
   const handleCheckout = async (
     item: PricingItem,
@@ -583,9 +466,6 @@ export function Pricing({
     }
   }, [pricing.items]);
 
-  const visibleItems =
-    pricing.items?.filter((item) => !item.group || item.group === group) ?? [];
-
   const mdGridColsClass =
     visibleItems.length <= 1
       ? 'md:grid-cols-1'
@@ -625,7 +505,7 @@ export function Pricing({
 
       <div className="container">
         {pricing.groups && pricing.groups.length > 0 && (
-          <div className="mx-auto mt-8 mb-8 flex w-full justify-center">
+          <div className="mx-auto mt-8 mb-4 flex w-full justify-center">
             <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md">
               {pricing.groups.map((item, i) => {
                 const isActive = group === (item.name || '');
@@ -662,6 +542,45 @@ export function Pricing({
           </div>
         )}
 
+        {/* Global Payment Provider Selector */}
+        {availableGlobalProviders.length > 1 && (
+          <div className="mx-auto mb-8 flex w-full justify-center">
+            <div className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+              {availableGlobalProviders.map((provider) => {
+                const isActive = provider.name === globalProvider;
+                return (
+                  <button
+                    key={provider.name}
+                    onClick={() => rememberPreferredProvider(provider.name)}
+                    className={cn(
+                      "relative flex h-10 w-32 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all duration-300",
+                      isActive
+                        ? "bg-primary/20 text-white shadow-[0_0_15px_-3px_rgba(var(--primary-rgb),0.3)]"
+                        : "text-white/50 hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    <Image
+                      src={provider.iconUrl}
+                      alt={provider.title}
+                      width={16}
+                      height={16}
+                      className={cn("rounded-sm transition-all duration-300", !isActive && "opacity-50 grayscale", isActive && "opacity-100 grayscale-0")}
+                    />
+                    <span>{provider.title}</span>
+                    {isActive && (
+                      <motion.div
+                        layoutId="global-provider-indicator"
+                        className="absolute inset-0 z-auto rounded-xl border border-primary pointer-events-none"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className={cn('mt-0 grid w-full gap-6', mdGridColsClass)}>
           {visibleItems.map((item: PricingItem, idx) => {
 
@@ -679,12 +598,6 @@ export function Pricing({
             const selectedCurrency =
               currencyState?.selectedCurrency || item.currency;
             const currencies = getCurrenciesFromItem(item);
-            const availableProviders =
-              getAvailablePaymentProviders(displayedItem);
-            const primaryProvider = getPrimaryProviderForItem(availableProviders);
-            const primaryProviderMeta = primaryProvider
-              ? availableProviders.find((p) => p.name === primaryProvider) || null
-              : null;
 
             const isFeatured = Boolean(item.is_featured);
             return (
@@ -763,19 +676,26 @@ export function Pricing({
                           {t('current_plan')}
                         </span>
                       </Button>
-                    ) : primaryProvider ? (
-                      <PaymentButton
-                        options={availableProviders}
-                        defaultProvider={primaryProvider}
-                        onCheckout={(provider) => {
-                          handleCheckout(displayedItem, provider);
-                        }}
-                        onProviderChange={rememberPreferredProvider}
+                    ) : globalProvider ? (
+                      <Button
+                        onClick={() => handleCheckout(displayedItem, globalProvider)}
                         disabled={isLoading}
-                        isLoading={isLoading && item.product_id === productId}
-                        isFeatured={isFeatured}
-                        buttonTitle={item.button?.title || 'Buy Now'}
-                      />
+                        className={cn(
+                          'mt-6 w-full h-12 transition-all duration-300 rounded-full font-bold',
+                          isFeatured
+                            ? 'bg-white text-black hover:bg-white/90 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] border-none'
+                            : 'bg-white/5 text-white hover:bg-white/10 border border-white/10 hover:border-white/20'
+                        )}
+                      >
+                        {isLoading && item.product_id === productId ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="size-4 animate-spin" />
+                            <span>Processing...</span>
+                          </div>
+                        ) : (
+                          <span>{item.button?.title || 'Buy Now'}</span>
+                        )}
+                      </Button>
                     ) : null}
                   </CardHeader>
 
@@ -801,8 +721,8 @@ export function Pricing({
             );
           })}
         </div>
-      </div >
+      </div>
 
-    </section >
+    </section>
   );
 }
