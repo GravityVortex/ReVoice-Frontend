@@ -545,7 +545,7 @@ export function Pricing({
         {/* Global Payment Provider Selector */}
         {availableGlobalProviders.length > 1 && (
           <div className="mx-auto mb-8 flex w-full justify-center">
-            <div className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+            <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md">
               {availableGlobalProviders.map((provider) => {
                 const isActive = provider.name === globalProvider;
                 return (
@@ -553,7 +553,7 @@ export function Pricing({
                     key={provider.name}
                     onClick={() => rememberPreferredProvider(provider.name)}
                     className={cn(
-                      "relative flex h-10 w-32 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all duration-300",
+                      "relative flex h-10 w-32 items-center justify-center gap-2 rounded-full text-sm font-medium transition-all duration-300",
                       isActive
                         ? "bg-primary/20 text-white shadow-[0_0_15px_-3px_rgba(var(--primary-rgb),0.3)]"
                         : "text-white/50 hover:bg-white/5 hover:text-white"
@@ -570,7 +570,7 @@ export function Pricing({
                     {isActive && (
                       <motion.div
                         layoutId="global-provider-indicator"
-                        className="absolute inset-0 z-auto rounded-xl border border-primary pointer-events-none"
+                        className="absolute inset-0 z-auto rounded-full border border-primary pointer-events-none"
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                       />
                     )}
