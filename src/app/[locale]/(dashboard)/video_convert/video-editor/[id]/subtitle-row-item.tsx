@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, forwardRef } from 'react';
-import { Loader2, Pause, Play, RedoDot, RefreshCw, Save, Sparkles, Activity } from 'lucide-react';
+import { Loader2, Pause, Play, RedoDot, RefreshCw, Save, Sparkles, Activity, Languages, AudioLines } from 'lucide-react';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -200,7 +200,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                 ? "border-white/10 bg-black/40 shadow-xl opacity-100"
                                 : "border-transparent bg-transparent opacity-40 group-hover:opacity-100 group-hover:border-white/5 group-hover:bg-black/20"
                         )}>
-                            {/* Retranslate */}
+                            {/* Retranslate — Languages icon with purple tint */}
                             <button
                                 type="button"
                                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -213,7 +213,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                     "relative flex size-7 items-center justify-center rounded-full transition-all duration-300",
                                     convertingType === 'gen_srt'
                                         ? "bg-primary/20 text-primary shadow-[0_0_10px_rgba(167,139,250,0.3)] cursor-wait"
-                                        : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                                        : "text-violet-400/70 hover:bg-violet-500/15 hover:text-violet-300",
                                     isRowBusy && convertingType !== 'gen_srt' ? "opacity-30 cursor-not-allowed" : ""
                                 )}
                                 title={t('tooltips.retranslateWithCost', { credits: 1 })}
@@ -222,14 +222,14 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                 {convertingType === 'gen_srt' ? (
                                     <Sparkles className="size-3.5 animate-pulse" />
                                 ) : (
-                                    <RedoDot className="size-3.5" />
+                                    <Languages className="size-4" />
                                 )}
                             </button>
 
                             {/* Divider line */}
                             <div className="w-4 h-px bg-white/10 rounded-full" />
 
-                            {/* Regen Voice */}
+                            {/* Regen Voice — AudioLines icon with teal tint */}
                             <button
                                 type="button"
                                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -242,7 +242,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                     "relative flex size-7 items-center justify-center rounded-full transition-all duration-300",
                                     convertingType === 'translate_srt'
                                         ? "bg-sky-500/20 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.3)] cursor-wait"
-                                        : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                                        : "text-teal-400/70 hover:bg-teal-500/15 hover:text-teal-300",
                                     isRowBusy && convertingType !== 'translate_srt' ? "opacity-30 cursor-not-allowed" : ""
                                 )}
                                 title={t('tooltips.updateVoiceWithCost', { credits: 2 })}
@@ -251,7 +251,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                                 {convertingType === 'translate_srt' ? (
                                     <Activity className="size-3.5 animate-pulse" />
                                 ) : (
-                                    <RefreshCw className="size-3.5" />
+                                    <AudioLines className="size-4" />
                                 )}
                             </button>
 
