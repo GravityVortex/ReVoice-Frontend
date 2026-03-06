@@ -8,7 +8,7 @@ import { getMetadata } from '@/shared/lib/seo';
 import { checkSoulDubAccess } from '@/shared/lib/souldub';
 import { Button } from '@/shared/components/ui/button';
 import { getAllConfigs } from '@/shared/models/config';
-import { getCurrentSubscription } from '@/shared/models/subscription';
+import { getActiveSubscriptions } from '@/shared/models/subscription';
 import { getUserInfo } from '@/shared/models/user';
 import { hasPermission } from '@/shared/services/rbac';
 import {
@@ -100,21 +100,21 @@ export default async function PricingPage({
 
   const pricingTranslationsPromise = getTranslations('pricing');
   const pagePromise = getThemePage('pricing');
-  const currentSubscriptionPromise = (async () => {
+  const activeSubscriptionsPromise = (async () => {
     try {
       const user = await userPromise;
-      if (!user) return undefined;
-      return await getCurrentSubscription(user.id);
+      if (!user) return [];
+      return await getActiveSubscriptions(user.id);
     } catch (error) {
-      console.log('getting current subscription failed:', error);
-      return undefined;
+      console.log('getting active subscriptions failed:', error);
+      return [];
     }
   })();
 
-  const [t, Page, currentSubscription] = await Promise.all([
+  const [t, Page, activeSubscriptions] = await Promise.all([
     pricingTranslationsPromise,
     pagePromise,
-    currentSubscriptionPromise,
+    activeSubscriptionsPromise,
   ]);
 
   // build sections
@@ -126,7 +126,7 @@ export default async function PricingPage({
     <Page
       locale={locale}
       pricing={pricing}
-      currentSubscription={currentSubscription}
+      activeSubscriptions={activeSubscriptions}
       faq={faq}
       testimonials={testimonials}
     />

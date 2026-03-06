@@ -1,8 +1,31 @@
 import type { Metadata } from 'next';
 
+import { envConfigs } from '@/config';
+
+const appUrl = (envConfigs.app_url || '').replace(/\/+$/, '');
+
+const title = 'Privacy Policy | SoulDub.ai';
+const description = 'Learn how SoulDub.ai collects, uses, and protects your personal information.';
+
 export const metadata: Metadata = {
-  title: 'Privacy Policy | SoulDub.ai',
-  description: 'Privacy policy for SoulDub.ai.',
+  title,
+  description,
+  alternates: {
+    canonical: `${appUrl}/privacy`,
+  },
+  openGraph: {
+    type: 'website',
+    title,
+    description,
+    url: `${appUrl}/privacy`,
+    siteName: 'SoulDub',
+  },
+  twitter: {
+    card: 'summary',
+    title,
+    description,
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function PrivacyPage() {

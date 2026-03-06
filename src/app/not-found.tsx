@@ -1,13 +1,28 @@
+import Image from 'next/image';
 import Link from 'next/link';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { SmartIcon } from '@/shared/blocks/common/smart-icon';
 import { Button } from '@/shared/components/ui/button';
 import { AnimatedGridPattern } from '@/shared/components/ui/animated-grid-pattern';
 
-export default function NotFoundPage() {
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const t = await getTranslations({ locale, namespace: 'common.not_found' });
+
+  return {
+    title: t('title'),
+    description: t('description'),
+    robots: { index: false, follow: false },
+  };
+}
+
+export default async function NotFoundPage() {
+  const locale = await getLocale();
+  const t = await getTranslations({ locale, namespace: 'common.not_found' });
+
   return (
     <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-black text-white selection:bg-white/20">
-      {/* Background Gradients */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute top-[-20%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-[120px]" />
         <div className="absolute bottom-[-20%] right-[-10%] h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[120px]" />
@@ -22,12 +37,17 @@ export default function NotFoundPage() {
       />
 
       <div className="z-10 flex flex-col items-center gap-8 px-4 text-center">
-        {/* Brand Logo - Enhanced */}
         <div className="mb-8 hover:scale-105 transition-transform duration-500">
-          <img src="/logo.png" alt="SoulDub" className="h-24 w-auto sm:h-32 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
+          <Image
+            src="/logo.png"
+            alt="SoulDub"
+            width={128}
+            height={128}
+            className="h-24 w-auto sm:h-32 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+            priority
+          />
         </div>
 
-        {/* 404 Glitch Effect or Large Text */}
         <div className="relative">
           <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-xl" />
           <h1 className="relative bg-gradient-to-b from-white to-white/60 bg-clip-text text-9xl font-extrabold tracking-tighter text-transparent sm:text-[12rem]">
@@ -37,10 +57,10 @@ export default function NotFoundPage() {
 
         <div className="space-y-4 max-w-lg mx-auto">
           <h2 className="text-2xl font-semibold text-white/90 sm:text-3xl">
-            Page Not Found
+            {t('heading')}
           </h2>
           <p className="text-lg text-white/60 leading-relaxed">
-            The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
+            {t('description')}
           </p>
         </div>
 
@@ -52,7 +72,7 @@ export default function NotFoundPage() {
           >
             <Link href="/" className="flex items-center gap-2">
               <SmartIcon name="ArrowLeft" className="h-4 w-4" />
-              <span>Return Home</span>
+              <span>{t('back_home')}</span>
             </Link>
           </Button>
         </div>

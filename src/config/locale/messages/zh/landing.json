@@ -492,16 +492,6 @@
               "title": "文档",
               "url": "/docs",
               "target": "_self"
-            },
-            {
-              "title": "博客",
-              "url": "/blog",
-              "target": "_self"
-            },
-            {
-              "title": "对话",
-              "url": "/chat",
-              "target": "_blank"
             }
           ]
         },

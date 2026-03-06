@@ -8,6 +8,8 @@ import {
   DocsTitle,
 } from 'fumadocs-ui/page';
 
+import { envConfigs } from '@/config';
+import { locales, defaultLocale } from '@/config/locale';
 import { source } from '@/core/docs/source';
 
 export default async function DocsContentPage(props: {
@@ -66,8 +68,46 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug, params.locale);
   if (!page) notFound();
 
+  const locale = params.locale || defaultLocale;
+  const appUrl = (envConfigs.app_url || '').replace(/\/+$/, '');
+  const appName = envConfigs.app_name || 'SoulDub';
+  const slugPath = params.slug?.join('/') || '';
+  const docsPath = slugPath ? `/docs/${slugPath}` : '/docs';
+  const canonicalUrl = `${appUrl}/${locale}${docsPath}`;
+
+  const languages: Record<string, string> = {};
+  for (const loc of locales) {
+    languages[loc] = `${appUrl}/${loc}${docsPath}`;
+  }
+  languages['x-default'] = `${appUrl}/${defaultLocale}${docsPath}`;
+
+  const title = page.data.title;
+  const description = page.data.description || '';
+
   return {
-    title: page.data.title,
-    description: page.data.description,
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+      languages,
+    },
+    openGraph: {
+      type: 'article' as const,
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: appName,
+      images: [`${appUrl}/og-image.png`],
+    },
+    twitter: {
+      card: 'summary' as const,
+      title,
+      description,
+      images: [`${appUrl}/og-image.png`],
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }

@@ -12,15 +12,15 @@ export default function Loading() {
         </div>
 
         <div className="container">
-          <div className="mx-auto mt-8 mb-8 flex w-full justify-center">
-            <Skeleton className="h-12 w-[340px] max-w-full rounded-xl" />
+          <div className="mx-auto mb-10 flex w-full justify-center">
+            <Skeleton className="h-11 w-[320px] max-w-full rounded-full" />
           </div>
 
           <div className="mt-0 grid w-full gap-6 md:grid-cols-3">
             {Array.from({ length: 3 }).map((_, idx) => (
               <div
                 key={idx}
-                className="flex h-full flex-col rounded-xl border border-white/10 bg-black/20 p-6 backdrop-blur-md"
+                className="flex h-full flex-col rounded-3xl border border-white/10 bg-black/20 p-6 backdrop-blur-md"
               >
                 <Skeleton className="h-4 w-24" />
 
@@ -34,7 +34,7 @@ export default function Loading() {
                   <Skeleton className="h-4 w-5/6" />
                 </div>
 
-                <Skeleton className="mt-6 h-9 w-full" />
+                <Skeleton className="mt-6 h-12 w-full rounded-full" />
 
                 <div className="mt-6 border-t border-dashed border-white/10" />
 

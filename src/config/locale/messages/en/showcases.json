@@ -1,13 +1,13 @@
 {
   "metadata": {
-    "title": "Showcases",
-    "description": "Awesome projects built with ShipAny"
+    "title": "Showcases - SoulDub AI Video Translation",
+    "description": "See how creators use SoulDub to translate videos while preserving their original voice and emotion."
   },
   "showcases": {
     "id": "showcase",
     "sr_only_title": "Showcases",
-    "title": "AI SaaS Startups built with ShipAny",
-    "description": "Easy to use and fast to ship.",
+    "title": "See What Creators Build with SoulDub",
+    "description": "AI-powered video translation in action.",
     "items": [
       {
         "title": "ThinkAny",
@@ -16,7 +16,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/7.png",
-          "alt": "showcases"
+          "alt": "ThinkAny - AI Search Engine"
         }
       },
       {
@@ -26,7 +26,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/5.png",
-          "alt": "showcases"
+          "alt": "HeyBeauty - AI Virtual Try On"
         }
       },
       {
@@ -36,7 +36,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/1.png",
-          "alt": "showcases"
+          "alt": "AI Wallpaper - AI Wallpaper Generator"
         }
       },
       {
@@ -46,7 +46,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/2.png",
-          "alt": "showcases"
+          "alt": "AI Cover - AI Cover Generator"
         }
       },
       {
@@ -56,7 +56,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/3.png",
-          "alt": "showcases"
+          "alt": "GPTs Works - GPTs Directory"
         }
       },
       {
@@ -66,7 +66,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/4.png",
-          "alt": "showcases"
+          "alt": "Melodisco - AI Music Player"
         }
       },
       {
@@ -76,7 +76,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/6.png",
-          "alt": "showcases"
+          "alt": "Pagen - AI Landing Page Generator"
         }
       },
       {
@@ -86,7 +86,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/8.png",
-          "alt": "showcases"
+          "alt": "SoraFM - AI Video Generator"
         }
       },
       {
@@ -96,7 +96,7 @@
         "target": "_blank",
         "image": {
           "src": "/imgs/cases/9.png",
-          "alt": "showcases"
+          "alt": "PodLM - AI Podcast Generator"
         }
       }
     ]

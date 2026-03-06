@@ -146,7 +146,7 @@ export async function getSubscriptions({
 }
 
 /**
- * get current subscription
+ * get current subscription (latest active one)
  */
 export async function getCurrentSubscription(userId: string) {
   const now = new Date();
@@ -161,7 +161,6 @@ export async function getCurrentSubscription(userId: string) {
           SubscriptionStatus.PENDING_CANCEL,
           SubscriptionStatus.TRIALING,
         ]),
-        // Only return currently valid subscriptions.
         gt(subscription.currentPeriodEnd, now)
       )
     )
@@ -169,6 +168,28 @@ export async function getCurrentSubscription(userId: string) {
     .limit(1);
 
   return result;
+}
+
+/**
+ * get all active subscriptions for a user
+ */
+export async function getActiveSubscriptions(userId: string) {
+  const now = new Date();
+  return db()
+    .select()
+    .from(subscription)
+    .where(
+      and(
+        eq(subscription.userId, userId),
+        inArray(subscription.status, [
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.PENDING_CANCEL,
+          SubscriptionStatus.TRIALING,
+        ]),
+        gt(subscription.currentPeriodEnd, now)
+      )
+    )
+    .orderBy(desc(subscription.createdAt));
 }
 
 /**

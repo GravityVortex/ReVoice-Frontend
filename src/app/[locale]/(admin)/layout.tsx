@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
@@ -5,9 +6,9 @@ import { requireAdminAccess } from '@/core/rbac/permission';
 import { DashboardLayout } from '@/shared/blocks/dashboard/layout';
 import { Sidebar as SidebarType } from '@/shared/types/blocks/dashboard';
 
-/**
- * Admin layout to manage datas
- */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 export default async function AdminLayout({
   children,
   params,

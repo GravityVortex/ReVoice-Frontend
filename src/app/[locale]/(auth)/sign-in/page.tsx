@@ -1,9 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import NextLink from 'next/link';
 
-import { envConfigs } from '@/config';
-import { defaultLocale } from '@/config/locale';
 import { SignInForm } from '@/shared/blocks/sign/sign-in-form';
+import { buildFullUrl } from '@/shared/lib/seo';
 import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 
 export async function generateMetadata({
@@ -12,17 +11,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-
   const t = await getTranslations('common');
 
   return {
     title: `${t('sign.sign_in_title')} - ${t('metadata.title')}`,
     alternates: {
-      canonical:
-        locale !== defaultLocale
-          ? `${envConfigs.app_url}/${locale}/sign-in`
-          : `${envConfigs.app_url}/sign-in`,
+      canonical: buildFullUrl('/sign-in', locale),
     },
+    robots: { index: false, follow: false },
   };
 }
 

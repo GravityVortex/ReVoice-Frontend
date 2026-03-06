@@ -9,19 +9,19 @@ import { FAQ, Pricing, Testimonials } from '@/themes/default/blocks';
 export default async function PricingPage({
   locale,
   pricing,
-  currentSubscription,
+  activeSubscriptions,
   faq,
   testimonials,
 }: {
   locale?: string;
   pricing: PricingType;
-  currentSubscription?: Subscription;
+  activeSubscriptions?: Subscription[];
   faq?: FAQType;
   testimonials?: TestimonialsType;
 }) {
   return (
     <>
-      <Pricing pricing={pricing} currentSubscription={currentSubscription} />
+      <Pricing pricing={pricing} activeSubscriptions={activeSubscriptions} />
       {faq && <FAQ faq={faq} />}
       {testimonials && <Testimonials testimonials={testimonials} />}
     </>

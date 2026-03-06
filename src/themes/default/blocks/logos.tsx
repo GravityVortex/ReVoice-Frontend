@@ -33,7 +33,7 @@ export function Logos({
                   <img
                     className="h-full w-full object-contain invert"
                     src={item.image?.src ?? ''}
-                    alt={item.image?.alt ?? ''}
+                    alt={item.image?.alt || item.title || 'Partner logo'}
                   />
                 </div>
               ))}

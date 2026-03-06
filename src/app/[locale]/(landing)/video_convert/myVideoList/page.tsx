@@ -238,31 +238,23 @@ export default function VideoConvertPage() {
         <Button className="mask-add text-white" onClick={goAddClick}>{t('buttons.upload')}</Button>
       </div>
 
-      {/* 加载状态龙骨状态 */}
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[...Array(6)].map((_, index) => (
-            <div key={index} className="border-2 rounded-lg overflow-hidden bg-card">
-              {/* 视频封面骨架 */}
-              <Skeleton className="aspect-video w-full rounded-none border-b-2" />
-
-              {/* 内容区域骨架 */}
-              <div className="px-4 py-4 pt-2 space-y-3 mt-2">
-                {/* 标题 */}
-                <Skeleton className="h-5 w-3/4" />
-
-                {/* 状态和时长 */}
-                <div className="flex justify-between gap-2">
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-5 w-full" />
+            <div key={index} className="flex flex-col gap-3 rounded-2xl bg-card p-3 border border-border/50 shadow-sm">
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl">
+                <Skeleton className="absolute inset-0 rounded-xl" />
+                <Skeleton className="absolute top-2 right-2 h-6 w-16 rounded-full" />
+                <Skeleton className="absolute bottom-2 right-2 h-4 w-10 rounded" />
+              </div>
+              <div className="flex flex-col gap-1 px-1">
+                <div className="flex items-start justify-between gap-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-6 w-6 rounded-full" />
                 </div>
-
-                {/* 转换时间 */}
-                {/* <div className="h-4 w-32 bg-muted rounded border"></div> */}
-
-                {/* 按钮组 */}
-                <div className="">
-                  <Skeleton className="h-5 w-full flex-1" />
+                <div className="flex items-center gap-4 mt-1">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-12" />
                 </div>
               </div>
             </div>

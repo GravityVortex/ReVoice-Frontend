@@ -1,7 +1,12 @@
+import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 
 import { ConsoleLayout } from '@/shared/blocks/console/layout';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function VideoConvertLayout({
   children,

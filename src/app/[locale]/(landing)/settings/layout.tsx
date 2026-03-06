@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 
@@ -5,6 +6,10 @@ import { PERMISSIONS } from '@/core/rbac';
 import { ConsoleLayout } from '@/shared/blocks/console/layout';
 import { getSignUser } from '@/shared/models/user';
 import { hasPermission } from '@/shared/services/rbac';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function SettingsLayout({
   children,

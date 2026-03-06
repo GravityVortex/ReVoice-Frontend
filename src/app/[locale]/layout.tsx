@@ -15,7 +15,9 @@ import { getSignUser } from '@/shared/models/user';
 import type { User } from '@/shared/models/user';
 import { hasPermission } from '@/shared/services/rbac';
 
-export const generateMetadata = getMetadata();
+export const generateMetadata = getMetadata({
+  noIndex: true,
+});
 
 const SOFT_SSR_TIMEOUT_MS = 1500;
 

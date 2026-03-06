@@ -1,18 +1,7 @@
 {
   "title": "使用记录",
   "nav": {
-    "items": [
-      {
-        "title": "AI 任务",
-        "url": "/activity/ai-tasks",
-        "icon": "RiTaskLine"
-      },
-      {
-        "title": "AI 对话",
-        "url": "/activity/chats",
-        "icon": "RiChat2Line"
-      }
-    ]
+    "items": []
   },
   "top_nav": {
     "items": [

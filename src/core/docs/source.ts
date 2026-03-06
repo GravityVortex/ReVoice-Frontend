@@ -1,6 +1,6 @@
 // .source folder will be generated when you run `next dev`
 import { createElement } from 'react';
-import { docs, pages, posts } from '@/.source';
+import { docs, pages } from '@/.source';
 import type { I18nConfig } from 'fumadocs-core/i18n';
 import { loader } from 'fumadocs-core/source';
 import { icons } from 'lucide-react';
@@ -46,14 +46,6 @@ export const docsSource = loader({
 export const pagesSource = loader({
   baseUrl: '/',
   source: ensureSource(pages),
-  i18n,
-  icon: iconHelper,
-});
-
-// Posts source
-export const postsSource = loader({
-  baseUrl: '/blog',
-  source: ensureSource(posts),
   i18n,
   icon: iconHelper,
 });

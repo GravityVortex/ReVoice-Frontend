@@ -1,9 +1,15 @@
+import type { Metadata } from 'next';
+
 import { envConfigs } from '@/config';
 import {
   BrandLogo,
   LocaleSelector,
   ThemeToggler,
 } from '@/shared/blocks/common';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function AuthLayout({
   children,

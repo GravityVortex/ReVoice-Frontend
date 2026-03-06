@@ -1,29 +1,23 @@
 import { getTranslations } from 'next-intl/server';
 
-import { envConfigs } from '@/config';
-import { defaultLocale } from '@/config/locale';
 import { redirect } from '@/core/i18n/navigation';
+import { buildFullUrl } from '@/shared/lib/seo';
 import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
 
 export async function generateMetadata({
     params,
-    searchParams,
 }: {
     params: Promise<{ locale: string }>;
-    searchParams: Promise<{ callbackUrl?: string }>;
 }) {
     const { locale } = await params;
-    const { callbackUrl } = await searchParams;
     const t = await getTranslations('common.sign');
 
     return {
         title: `${t('sign_in_title')} - ${t('sign_in_description')}`,
         alternates: {
-            canonical:
-                locale !== defaultLocale
-                    ? `${envConfigs.app_url}/${locale}/sign-in`
-                    : `${envConfigs.app_url}/sign-in`,
+            canonical: buildFullUrl('/login', locale),
         },
+        robots: { index: false, follow: false },
     };
 }
 

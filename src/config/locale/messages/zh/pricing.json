@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "SoulDub AI 视频翻译 原声翻译 | 价格",
-    "description": "选择方案，立即开始"
+    "description": "查看 SoulDub AI 视频翻译与声音克隆方案，支持包月、包年订阅或按需充值，最低 $5.99 起。"
   },
   "pricing": {
     "id": "pricing",
@@ -179,12 +179,7 @@
         "title": "60积分",
         "description": "应急补量，不绑定订阅",
         "features_title": "包含",
-        "features": [
-          "约 20 分钟视频翻译",
-          "充值积分可累计（不按月清零）",
-          "按批次 12 个月有效",
-          "可与订阅积分叠加使用"
-        ],
+        "features": ["约 20 分钟视频翻译", "充值积分可累计（不按月清零）", "按批次 12 个月有效", "可与订阅积分叠加使用"],
         "interval": "one-time",
         "amount": 1200,
         "currency": "USD",
@@ -209,12 +204,7 @@
         "description": "更高性价比，一次更省",
         "label": "热门",
         "features_title": "包含",
-        "features": [
-          "约 65 分钟视频翻译",
-          "省 $2（比单买更划算）",
-          "充值积分可累计，按批次 12 个月有效",
-          "可与订阅积分叠加使用"
-        ],
+        "features": ["约 65 分钟视频翻译", "省 $2（比单买更划算）", "充值积分可累计，按批次 12 个月有效", "可与订阅积分叠加使用"],
         "interval": "one-time",
         "amount": 3800,
         "currency": "USD",
@@ -238,12 +228,7 @@
         "title": "500积分",
         "description": "适合批量处理一系列视频",
         "features_title": "包含",
-        "features": [
-          "约 165 分钟视频翻译",
-          "省 $10（最大折扣）",
-          "充值积分可累计，按批次 12 个月有效",
-          "可与订阅积分叠加使用"
-        ],
+        "features": ["约 165 分钟视频翻译", "省 $10（最大折扣）", "充值积分可累计，按批次 12 个月有效", "可与订阅积分叠加使用"],
         "interval": "one-time",
         "amount": 9000,
         "currency": "USD",
@@ -269,6 +254,37 @@
     "current_plan": "当前方案",
     "processing": "处理中",
     "payment_methods": "支付方式",
-    "pay_with_paypal": "使用 PayPal 支付"
+    "select_payment_provider": "请选择您的支付方式",
+    "pay_with_paypal": "使用 PayPal 支付",
+    "status_bar_single": "当前方案：{plan} · 每月 {credits} 积分",
+    "status_bar_multiple": "当前已有 {count} 个方案 · 每月共 {credits} 积分",
+    "manage_subscriptions": "管理订阅",
+    "confirm_title": "温馨提示",
+    "confirm_current": "当前方案",
+    "confirm_adding": "即将新增",
+    "confirm_total_credits": "新增后每月共获得 {credits} 积分",
+    "confirm_note": "各方案独立计费，各自发放积分。如需替换而非叠加，请先取消现有方案。",
+    "confirm_manage": "查看现有订阅",
+    "confirm_continue": "我知道了，继续",
+    "credits_unit": "积分",
+    "credits_no_subscription": "无需订阅，随时充值，积分可与订阅方案叠加使用。",
+    "buy_now": "立即购买",
+    "payment_open_dialog": "选择支付方式并付款",
+    "pay_with_provider": "使用 {provider} 支付",
+    "payment_panel_hint_single": "将通过 {provider} 完成支付",
+    "payment_panel_hint_multi": "选择一种方式后即可支付",
+    "payment_panel_hint_auto": "支持 {count} 种方式，默认使用 {provider}",
+    "payment_badge_last_used": "上次使用",
+    "payment_badge_recommended": "推荐",
+    "payment_dialog_description": "你已选择 {plan} · {price}。请选择一个安全支付渠道，系统会带你前往官方收银台完成付款。",
+    "payment_dialog_selected_plan": "已选套餐",
+    "payment_dialog_methods": "可用支付方式",
+    "payment_dialog_security": "支付过程会安全跳转至官方收银台，站内不会存储你的银行卡信息。",
+    "payment_dialog_action": "前往 {provider} 付款",
+    "payment_dialog_action_signin": "登录后前往 {provider}",
+    "payment_unavailable": "当前套餐暂未配置可用支付方式",
+    "payment_provider_stripe_desc": "银行卡、Apple Pay、Google Pay 等",
+    "payment_provider_paypal_desc": "PayPal 余额或已绑定银行卡",
+    "payment_provider_creem_desc": "极速国际收银台，适合跨境支付"
   }
 }

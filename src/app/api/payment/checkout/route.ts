@@ -15,7 +15,6 @@ import {
   OrderStatus,
   updateOrderByOrderNo,
 } from '@/shared/models/order';
-import { getCurrentSubscription } from '@/shared/models/subscription';
 import { getUserInfo } from '@/shared/models/user';
 import { getPaymentService } from '@/shared/services/payment';
 import { PricingCurrency } from '@/shared/types/blocks/pricing';
@@ -142,20 +141,6 @@ export async function POST(req: Request) {
       paymentInterval === PaymentInterval.ONE_TIME
         ? PaymentType.ONE_TIME
         : PaymentType.SUBSCRIPTION;
-
-    // V1 policy (KISS): only allow one active subscription per user.
-    // Upgrades/downgrades/renewals should be done via the provider billing portal.
-    if (paymentType === PaymentType.SUBSCRIPTION) {
-      const existingSub = await getCurrentSubscription(user.id).catch(() => undefined);
-      if (existingSub) {
-        const isZh = (locale || '').toLowerCase().startsWith('zh');
-        return respErr(
-          isZh
-            ? '已有生效订阅，请前往「设置-订阅」管理套餐'
-            : 'You already have an active subscription. Please manage it in Settings → Billing.'
-        );
-      }
-    }
 
     const orderNo = getSnowId();
 

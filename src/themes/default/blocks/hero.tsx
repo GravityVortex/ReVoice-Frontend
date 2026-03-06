@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
@@ -63,6 +64,8 @@ export function Hero({
     });
   };
 
+  const [heroSrc, setHeroSrc] = useState('/big.png');
+
   return (
     <section
       id={hero.id}
@@ -96,11 +99,14 @@ export function Hero({
           className="mb-12 relative z-20"
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary/20 blur-[80px] rounded-full pointer-events-none" />
-          <img
-            src="/big.png"
-            alt="SoulDub"
+          <Image
+            src={heroSrc}
+            alt="SoulDub AI voice dubbing platform"
+            width={480}
+            height={192}
+            priority
             className="relative w-auto h-32 md:h-40 lg:h-48 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
-            onError={(e) => { e.currentTarget.src = "/logo.png" }}
+            onError={() => setHeroSrc('/logo.png')}
           />
         </motion.div>
 

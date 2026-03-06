@@ -8,10 +8,6 @@ export const pages = defineDocs({
   dir: 'content/pages',
 });
 
-export const posts = defineDocs({
-  dir: 'content/posts',
-});
-
 export default defineConfig({
   mdxOptions: {
     rehypeCodeOptions: {

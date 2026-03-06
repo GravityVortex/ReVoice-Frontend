@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, ArrowRight } from 'lucide-react';
 
@@ -29,7 +30,7 @@ export function Showcases({
       <div className="container relative z-10 mx-auto px-4 md:px-6">
         <div className="mx-auto mb-16 text-center max-w-3xl">
           {showcases.sr_only_title && (
-            <h1 className="sr-only">{showcases.sr_only_title}</h1>
+            <h2 className="sr-only">{showcases.sr_only_title}</h2>
           )}
           <h2 className="mb-6 text-3xl font-bold tracking-tight lg:text-5xl text-white">
             {showcases.title}
@@ -72,10 +73,13 @@ export function Showcases({
                 {/* Aspect Ratio Container for Video/Image */}
                 <div className="aspect-video w-full bg-[rgba(0,0,0,0.5)] relative">
                   {items[activeTab]?.image?.src ? (
-                    <img
-                      src={items[activeTab].image?.src}
-                      alt={items[activeTab].image?.alt}
+                    <Image
+                      src={items[activeTab].image!.src}
+                      alt={items[activeTab].image?.alt || items[activeTab].title || 'Showcase preview'}
                       className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity duration-500"
+                      width={960}
+                      height={540}
+                      priority
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[rgba(255,255,255,0.2)] bg-neutral-900">No Preview</div>

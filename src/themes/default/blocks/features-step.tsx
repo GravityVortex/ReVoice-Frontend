@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -130,10 +131,12 @@ export function FeaturesStep({
                           >
                             <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/20">
                               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/8 via-transparent to-transparent" />
-                              <img
+                              <Image
                                 src={item.image!.src}
-                                alt={item.image!.alt || item.title}
+                                alt={item.image!.alt || item.title || 'Step preview'}
                                 loading="lazy"
+                                width={800}
+                                height={500}
                                 className="aspect-[16/10] w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]"
                               />
                               <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
@@ -168,9 +171,11 @@ export function FeaturesStep({
               </DialogHeader>
               <div className="px-6 pb-6">
                 <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                  <img
+                  <Image
                     src={previewImage.src}
-                    alt={previewImage.alt}
+                    alt={previewImage.alt || previewImage.title || 'Preview'}
+                    width={1100}
+                    height={688}
                     className="h-auto w-full object-contain"
                   />
                 </div>

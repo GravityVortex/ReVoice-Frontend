@@ -1,9 +1,32 @@
 import type { Metadata } from 'next';
 import NextLink from 'next/link';
 
+import { envConfigs } from '@/config';
+
+const appUrl = (envConfigs.app_url || '').replace(/\/+$/, '');
+
+const title = 'Terms of Service | SoulDub.ai';
+const description = 'Read the terms and conditions that govern your use of SoulDub.ai services.';
+
 export const metadata: Metadata = {
-  title: 'Terms of Service | SoulDub.ai',
-  description: 'Terms of service for SoulDub.ai.',
+  title,
+  description,
+  alternates: {
+    canonical: `${appUrl}/terms`,
+  },
+  openGraph: {
+    type: 'website',
+    title,
+    description,
+    url: `${appUrl}/terms`,
+    siteName: 'SoulDub',
+  },
+  twitter: {
+    card: 'summary',
+    title,
+    description,
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsPage() {

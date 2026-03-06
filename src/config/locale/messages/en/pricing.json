@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "SoulDub AI Video Translator - Native Voice Translation | Pricing",
-    "description": "Pick a plan and start creating"
+    "description": "Compare SoulDub plans for AI video translation with voice cloning. Subscribe monthly or yearly, or buy credits as you go — starting from $5.99."
   },
   "pricing": {
     "id": "pricing",
@@ -268,7 +268,38 @@
   "page": {
     "current_plan": "Current plan",
     "processing": "Processing",
-    "payment_methods": "Payment methods",
-    "pay_with_paypal": "Pay with PayPal"
+    "payment_methods": "Payment method",
+    "select_payment_provider": "How would you like to pay?",
+    "pay_with_paypal": "Pay with PayPal",
+    "status_bar_single": "Current plan: {plan} · {credits} credits/mo",
+    "status_bar_multiple": "{count} active plans · {credits} credits/mo total",
+    "manage_subscriptions": "Manage Subscriptions",
+    "confirm_title": "Heads Up",
+    "confirm_current": "Current",
+    "confirm_adding": "Adding",
+    "confirm_total_credits": "Total after: {credits} credits/mo",
+    "confirm_note": "Each plan bills independently and grants its own credits. To switch instead of stacking, cancel existing plans first.",
+    "confirm_manage": "View Existing Plans",
+    "confirm_continue": "Got it, continue",
+    "credits_unit": "credits",
+    "credits_no_subscription": "No subscription required. Top up anytime, credits stack with your plan.",
+    "buy_now": "Buy Now",
+    "payment_open_dialog": "Choose payment method",
+    "pay_with_provider": "Continue with {provider}",
+    "payment_panel_hint_single": "Checkout runs through {provider}",
+    "payment_panel_hint_multi": "Pick one method, then pay",
+    "payment_panel_hint_auto": "{count} methods are available. Checkout defaults to {provider}",
+    "payment_badge_last_used": "Last used",
+    "payment_badge_recommended": "Recommended",
+    "payment_dialog_description": "You've selected {plan} · {price}. Choose a secure checkout method and we will send you to the official payment page.",
+    "payment_dialog_selected_plan": "Selected plan",
+    "payment_dialog_methods": "Available payment methods",
+    "payment_dialog_security": "Checkout happens on the provider's official payment page. We never store your card details in-app.",
+    "payment_dialog_action": "Continue to {provider}",
+    "payment_dialog_action_signin": "Sign in, then continue to {provider}",
+    "payment_unavailable": "No payment method is configured for this plan yet",
+    "payment_provider_stripe_desc": "Cards, Apple Pay, Google Pay, and more",
+    "payment_provider_paypal_desc": "PayPal balance or linked cards",
+    "payment_provider_creem_desc": "Fast global checkout, handy for cross-border payments"
   }
 }

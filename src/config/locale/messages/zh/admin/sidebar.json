@@ -44,11 +44,6 @@
               "title": "分类",
               "icon": "Folder",
               "url": "/admin/categories"
-            },
-            {
-              "title": "文章",
-              "icon": "FileText",
-              "url": "/admin/posts"
             }
           ]
         },
@@ -77,18 +72,7 @@
     },
     {
       "title": "业务",
-      "items": [
-        {
-          "title": "AI任务",
-          "url": "/admin/ai-tasks",
-          "icon": "Brain"
-        },
-        {
-          "title": "AI 对话",
-          "url": "/admin/chats",
-          "icon": "MessageCircle"
-        }
-      ]
+      "items": []
     }
   ],
   "bottom_nav": {
@@ -130,26 +114,8 @@
           "target": "_blank"
         },
         {
-          "title": "GitHub",
-          "url": "https://github.com/your-app-name",
-          "icon": "Github",
-          "target": "_blank"
-        },
-        {
-          "title": "推特",
-          "url": "https://twitter.com/your-app-name",
-          "icon": "RiTwitterXFill",
-          "target": "_blank"
-        },
-        {
-          "title": "Discord",
-          "url": "https://discord.gg/your-app-name",
-          "icon": "RiDiscordFill",
-          "target": "_blank"
-        },
-        {
           "title": "邮箱",
-          "url": "mailto:support@your-domain.com",
+          "url": "mailto:support@souldub.ai",
           "icon": "Mail",
           "target": "_blank"
         }

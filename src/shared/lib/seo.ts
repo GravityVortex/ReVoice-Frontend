@@ -1,15 +1,15 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { envConfigs } from '@/config';
+import { locales, defaultLocale } from '@/config/locale';
 
-// get metadata for page component
 export function getMetadata(
   options: {
     title?: string;
     description?: string;
     keywords?: string;
     metadataKey?: string;
-    canonicalUrl?: string; // relative path or full url
+    canonicalUrl?: string; // relative path (e.g. '/pricing') or full url
     imageUrl?: string;
     appName?: string;
     noIndex?: boolean;
@@ -23,20 +23,17 @@ export function getMetadata(
     const { locale } = await params;
     setRequestLocale(locale);
 
-    // passed metadata
     const passedMetadata = {
       title: options.title,
       description: options.description,
       keywords: options.keywords,
     };
 
-    // default metadata
-    const defaultMetadata = await getTranslatedMetadata(
+    const defaultMeta = await getTranslatedMetadata(
       defaultMetadataKey,
       locale
     );
 
-    // translated metadata
     let translatedMetadata: any = {};
     if (options.metadataKey) {
       translatedMetadata = await getTranslatedMetadata(
@@ -45,69 +42,65 @@ export function getMetadata(
       );
     }
 
-    // canonical url
-    const canonicalUrl = await getCanonicalUrl(
-      options.canonicalUrl || '',
-      locale || ''
-    );
-
     const title =
-      passedMetadata.title || translatedMetadata.title || defaultMetadata.title;
+      passedMetadata.title || translatedMetadata.title || defaultMeta.title;
     const description =
       passedMetadata.description ||
       translatedMetadata.description ||
-      defaultMetadata.description;
+      defaultMeta.description;
+    const keywords =
+      passedMetadata.keywords ||
+      translatedMetadata.keywords ||
+      defaultMeta.keywords;
 
-    // image url
-    let imageUrl = options.imageUrl || '/logo.png';
+    const canonicalUrl = options.canonicalUrl
+      ? buildFullUrl(options.canonicalUrl, locale)
+      : undefined;
+
+    const alternateLanguages = options.canonicalUrl
+      ? buildAlternateLanguages(options.canonicalUrl)
+      : undefined;
+
+    let imageUrl = options.imageUrl || '/og-image.png';
     if (!imageUrl.startsWith('http')) {
-      imageUrl = `${envConfigs.app_url}${imageUrl}`;
+      imageUrl = `${getAppUrlBase()}${imageUrl}`;
     }
 
-    // app name
-    let appName = options.appName;
-    if (!appName) {
-      appName = envConfigs.app_name || '';
-    }
+    const appName = options.appName || envConfigs.app_name || '';
+
+    const twitterHandle = process.env.NEXT_PUBLIC_TWITTER_HANDLE || undefined;
 
     return {
-      title:
-        passedMetadata.title ||
-        translatedMetadata.title ||
-        defaultMetadata.title,
-      description:
-        passedMetadata.description ||
-        translatedMetadata.description ||
-        defaultMetadata.description,
-      keywords:
-        passedMetadata.keywords ||
-        translatedMetadata.keywords ||
-        defaultMetadata.keywords,
+      title,
+      description,
+      keywords,
+
       alternates: {
-        canonical: canonicalUrl,
+        ...(canonicalUrl ? { canonical: canonicalUrl } : {}),
+        ...(alternateLanguages ? { languages: alternateLanguages } : {}),
       },
 
       openGraph: {
         type: 'website',
-        locale: locale,
+        locale,
         url: canonicalUrl,
         title,
         description,
         siteName: appName,
-        images: [imageUrl.toString()],
+        images: [imageUrl],
       },
 
       twitter: {
-        card: 'summary_large_image',
+        card: 'summary_large_image' as const,
         title,
         description,
-        images: [imageUrl.toString()],
-        site: envConfigs.app_url,
+        images: [imageUrl],
+        ...(twitterHandle ? { site: twitterHandle } : {}),
       },
 
       robots: {
-        index: options.noIndex ? false : true,
-        follow: options.noIndex ? false : true,
+        index: !options.noIndex,
+        follow: !options.noIndex,
       },
     };
   };
@@ -126,24 +119,53 @@ async function getTranslatedMetadata(metadataKey: string, locale: string) {
   };
 }
 
-async function getCanonicalUrl(canonicalUrl: string, locale: string) {
-  if (!canonicalUrl) {
-    canonicalUrl = '/';
+function getAppUrlBase(): string {
+  return (envConfigs.app_url || '').replace(/\/+$/, '');
+}
+
+/**
+ * Build a full canonical URL from a relative path and locale.
+ * Always includes /{locale} prefix (localePrefix = 'always').
+ * Always strips trailing slash (trailingSlash = false).
+ */
+export function buildFullUrl(relativePath: string, locale: string): string {
+  if (relativePath.startsWith('http')) {
+    return relativePath.replace(/\/+$/, '');
   }
 
-  if (!canonicalUrl.startsWith('http')) {
-    // relative path
-    if (!canonicalUrl.startsWith('/')) {
-      canonicalUrl = `/${canonicalUrl}`;
-    }
-
-    const appUrlBase = (envConfigs.app_url || '').replace(/\/$/, '');
-    canonicalUrl = `${appUrlBase}${locale ? `/${locale}` : ''}${canonicalUrl}`;
-
-    if (locale !== 'en' && canonicalUrl.endsWith('/')) {
-      canonicalUrl = canonicalUrl.slice(0, -1);
-    }
+  if (!relativePath.startsWith('/')) {
+    relativePath = `/${relativePath}`;
   }
 
-  return canonicalUrl;
+  const base = getAppUrlBase();
+  let url = `${base}/${locale}${relativePath}`;
+
+  // Strip trailing slash (but keep root as /{locale})
+  if (url.endsWith('/') && !url.endsWith(`/${locale}/`)) {
+    url = url.replace(/\/+$/, '');
+  }
+  // For root path like /en/, keep it as /en
+  if (url.endsWith(`/${locale}/`)) {
+    url = url.slice(0, -1);
+  }
+
+  return url;
+}
+
+/**
+ * Build alternates.languages object for hreflang tags.
+ * Generates entries for all locales + x-default (points to defaultLocale).
+ */
+function buildAlternateLanguages(
+  relativePath: string
+): Record<string, string> {
+  const languages: Record<string, string> = {};
+
+  for (const loc of locales) {
+    languages[loc] = buildFullUrl(relativePath, loc);
+  }
+
+  languages['x-default'] = buildFullUrl(relativePath, defaultLocale);
+
+  return languages;
 }
