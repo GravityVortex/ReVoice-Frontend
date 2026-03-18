@@ -227,7 +227,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
         return 1;
       case 'audio_ready':
         return 2;
-      case 'synced':
+      case 'ready':
         return 3;
       default:
         return -1;
