@@ -1717,7 +1717,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
                           <div className="text-destructive text-[11px] font-medium tracking-[0.18em] uppercase">
                             {t('ui.workbench.recovery.errorLabel')}
                           </div>
-                          <div className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-5 break-all">
+                          <div className="text-muted-foreground mt-1 max-h-24 overflow-y-auto text-xs leading-5 break-all">
                             {selectedTask.errorMessage || t('ui.workbench.summary.errorFallback')}
                           </div>
                         </div>

@@ -20,7 +20,8 @@ export type VideoConversionStatus =
   | "completed"
   | "processing"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "partial";
 
 export interface VideoListItem {
   id: string;
@@ -74,6 +75,11 @@ const statusConfig: Record<
       "bg-zinc-500/10 text-zinc-600 border-zinc-200 dark:text-zinc-300 dark:border-zinc-500/20",
     icon: <XCircle className="h-3 w-3" />,
   },
+  partial: {
+    badgeClassName:
+      "bg-amber-500/10 text-amber-600 border-amber-200 dark:text-amber-300 dark:border-amber-500/20",
+    icon: <AlertCircle className="h-3 w-3" />,
+  },
 };
 
 const STEP_NAME_KEYS: Record<string, string> = {
@@ -111,16 +117,19 @@ function getAggregateStatus(tasks: Record<string, any>[] | null): {
   processingTask: Record<string, any> | null;
   taskCount: number;
   processingCount: number;
+  completedCount: number;
 } {
   if (!tasks || tasks.length === 0) {
-    return { status: "pending", processingTask: null, taskCount: 0, processingCount: 0 };
+    return { status: "pending", processingTask: null, taskCount: 0, processingCount: 0, completedCount: 0 };
   }
 
   let processingTask: Record<string, any> | null = null;
   let hasProcessing = false;
   let hasFailed = false;
+  let hasCompleted = false;
   let allCompleted = true;
   let processingCount = 0;
+  let completedCount = 0;
 
   for (const task of tasks) {
     const s = task.status;
@@ -135,16 +144,21 @@ function getAggregateStatus(tasks: Record<string, any>[] | null): {
       if (!processingTask) processingTask = task;
     }
     if (s === "failed") hasFailed = true;
+    if (s === "completed") {
+      hasCompleted = true;
+      completedCount++;
+    }
     if (s !== "completed") allCompleted = false;
   }
 
   if (hasProcessing) {
     const bestTask = tasks.find((t) => t.status === "processing") || processingTask;
-    return { status: "processing", processingTask: bestTask, taskCount: tasks.length, processingCount };
+    return { status: "processing", processingTask: bestTask, taskCount: tasks.length, processingCount, completedCount };
   }
-  if (allCompleted) return { status: "completed", processingTask: null, taskCount: tasks.length, processingCount: 0 };
-  if (hasFailed) return { status: "failed", processingTask: null, taskCount: tasks.length, processingCount: 0 };
-  return { status: tasks[0].status || "pending", processingTask: null, taskCount: tasks.length, processingCount: 0 };
+  if (allCompleted) return { status: "completed", processingTask: null, taskCount: tasks.length, processingCount: 0, completedCount };
+  if (hasCompleted && hasFailed) return { status: "partial", processingTask: null, taskCount: tasks.length, processingCount: 0, completedCount };
+  if (hasFailed) return { status: "failed", processingTask: null, taskCount: tasks.length, processingCount: 0, completedCount };
+  return { status: tasks[0].status || "pending", processingTask: null, taskCount: tasks.length, processingCount: 0, completedCount };
 }
 
 export function VideoList({
@@ -289,7 +303,7 @@ function GridVideoCard({
   const { fileName, cover, duration, createdAt } = item;
   const imgSrc = useResolvedCover(cover);
 
-  const { status, processingTask, taskCount, processingCount } = useMemo(
+  const { status, processingTask, taskCount, processingCount, completedCount } = useMemo(
     () => getAggregateStatus(item.tasks),
     [item.tasks]
   );
@@ -297,6 +311,7 @@ function GridVideoCard({
   const config = statusConfig[status] || statusConfig.pending;
   const isRunning = status === "processing" || status === "pending";
   const isCompleted = status === "completed";
+  const isPartial = status === "partial";
   const isFailed = status === "failed" || status === "cancelled";
 
   const percent = useMemo(() => {
@@ -361,7 +376,9 @@ function GridVideoCard({
               )}
             >
               {config.icon}
-              {t(`statusShort.${status}`)}
+              {status === "partial"
+                ? t("statusShort.partial", { done: completedCount, total: taskCount })
+                : t(`statusShort.${status}`)}
             </button>
           </div>
         )}
@@ -425,6 +442,8 @@ function GridVideoCard({
             </span>
           ) : isFailed ? (
             <span className="text-red-400">{t("statusShort.failed")}</span>
+          ) : isPartial ? (
+            <span className="text-amber-500">{t("statusShort.partial", { done: completedCount, total: taskCount })}</span>
           ) : taskCount === 0 ? (
             <span className="text-muted-foreground/60">{t("card.noTranslations")}</span>
           ) : (

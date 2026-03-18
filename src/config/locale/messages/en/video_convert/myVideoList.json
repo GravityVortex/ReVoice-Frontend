@@ -25,7 +25,8 @@
     "completed": "Done",
     "processing": "Translating...",
     "failed": "Issue found",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "partial": "Partial ({done}/{total})"
   },
   "fields": {
     "duration": "Duration",

@@ -76,6 +76,15 @@ export default function DashboardProjectsPage() {
   };
 
   const onStatusClick = (item: VideoListItem) => {
+    const hasRunning = item.tasks?.some(
+      (task: any) => task.status === 'processing' || task.status === 'pending'
+    );
+
+    if (!hasRunning) {
+      router.push(`/dashboard/projects/${item.id}`);
+      return;
+    }
+
     setActiveTabIdx('1');
     let tempId;
     if (item.tasks && item.tasks.length > 0) {

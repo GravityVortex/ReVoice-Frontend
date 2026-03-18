@@ -25,7 +25,8 @@
     "completed": "已完成",
     "processing": "翻译中...",
     "failed": "遇到问题",
-    "cancelled": "已取消"
+    "cancelled": "已取消",
+    "partial": "部分完成 ({done}/{total})"
   },
   "fields": {
     "duration": "视频时长",
