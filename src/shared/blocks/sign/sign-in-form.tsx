@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
-import { Link, useRouter } from '@/core/i18n/navigation';
+import { Link } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -24,7 +24,6 @@ export function SignInForm({
   className?: string;
 }) {
   const t = useTranslations('common.sign');
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signInState, setSignInState] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -61,23 +60,22 @@ export function SignInForm({
 
     try {
       setSignInState('loading');
-      const { error } = await signIn.email(
-        { email, password },
+      await signIn.email(
         {
+          email,
+          password,
+          callbackURL: localizedCallbackUrl,
+        },
+        {
+          onSuccess: () => {
+            setSignInState('success');
+          },
           onError: (e: any) => {
             toast.error(e?.error?.message || t('login_failed'));
+            setSignInState('idle');
           },
         }
       );
-
-      if (error) {
-        setSignInState('idle');
-        return;
-      }
-
-      setSignInState('success');
-      router.refresh();
-      router.push(localizedCallbackUrl);
     } catch (e: any) {
       toast.error(e.message || t('login_failed'));
       setSignInState('idle');
