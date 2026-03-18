@@ -2814,11 +2814,8 @@ export default function VideoEditorPage() {
         return;
       }
 
-      // 提取分割产生的两个子段 id（新数组中从原 clip 位置开始的两条）
       const newTranslate: any[] = back.data?.translate ?? [];
-      const splitChildIdx = newTranslate.findIndex((entry: any) => entry?.vap_split_operation_id);
-      const firstSplitChildId: string | null =
-        splitChildIdx >= 0 ? (newTranslate[splitChildIdx]?.id ?? null) : null;
+      const firstSplitChildId: string | null = back.data?.newIds?.leftTranslateId ?? null;
 
       setConvertObj((prevObj) => {
         if (!prevObj) return prevObj;
