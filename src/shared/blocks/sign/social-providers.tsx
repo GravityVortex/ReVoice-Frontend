@@ -55,7 +55,21 @@ export function SocialProviders({
         setLoading(false);
         toast.error(error || t('login_failed'));
       },
-      onClose: () => {
+      onClose: async () => {
+        // All communication channels failed — check if OAuth actually succeeded
+        // by verifying the session directly with the server.
+        try {
+          const resp = await fetch('/api/auth/get-session');
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data?.session?.userId) {
+              setLoading(false);
+              router.refresh();
+              router.push(localizedCallbackUrl);
+              return;
+            }
+          }
+        } catch {}
         setLoading(false);
       },
     });

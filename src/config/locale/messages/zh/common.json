@@ -57,9 +57,9 @@
     "login_failed": "登录失败",
     "email_password_required": "请输入邮箱和密码",
     "popup_blocked": "弹窗被阻止，请允许弹窗或重试。",
-    "login_success_no_opener": "登录成功！请点击下方继续。",
+    "login_success_no_opener": "登录成功！请返回原始标签页。",
     "goto_target_page": "前往目标页面",
-    "click_to_close": "点击关闭"
+    "click_to_close": "关闭此窗口"
   },
   "plans": {
     "standard": "标准版",

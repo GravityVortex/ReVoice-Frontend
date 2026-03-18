@@ -6,17 +6,17 @@ import { useTranslations } from 'next-intl';
 
 import {
   sendPopupMessage,
+  broadcastPopupResult,
   type AuthMessage,
 } from '@/shared/hooks/use-popup-sign-in';
 import { Button } from '@/shared/components/ui/button';
 
 export default function PopupCallbackPage() {
   const t = useTranslations('common.sign');
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'no-opener'>(
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     'loading',
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [callbackUrl, setCallbackUrl] = useState('/');
   const [showManualClose, setShowManualClose] = useState(false);
 
   useEffect(() => {
@@ -26,42 +26,32 @@ export default function PopupCallbackPage() {
     const cbUrl = params.get('callbackUrl') || '/';
     const error = params.get('error');
 
-    setCallbackUrl(cbUrl);
-
-    // opener 缺失：以新标签页打开而非弹窗，显示降级 UI
-    if (!window.opener) {
-      if (error) {
-        setStatus('error');
-        setErrorMessage(error);
-      } else {
-        setStatus('no-opener');
-      }
-      return;
-    }
-
     if (error) {
       setStatus('error');
       setErrorMessage(error);
       const message: AuthMessage = { type: 'oauth-error', error };
       sendPopupMessage(message);
+      broadcastPopupResult(message);
       setTimeout(() => window.close(), 1500);
       return;
     }
 
+    // Dual-channel notify: postMessage (primary) + BroadcastChannel (fallback)
     setStatus('success');
     const message: AuthMessage = { type: 'oauth-success', callbackUrl: cbUrl };
     sendPopupMessage(message);
-
-    // 超时 3 秒后显示手动关闭按钮，兜底父窗口未收到消息的情况
-    const safetyTimer = setTimeout(() => setShowManualClose(true), 3000);
+    broadcastPopupResult(message);
 
     const closeTimer = setTimeout(() => {
       window.close();
     }, 500);
 
+    // If window.close() didn't work (e.g. browser restrictions), show manual close UI
+    const safetyTimer = setTimeout(() => setShowManualClose(true), 2000);
+
     return () => {
-      clearTimeout(safetyTimer);
       clearTimeout(closeTimer);
+      clearTimeout(safetyTimer);
     };
   }, []);
 
@@ -78,7 +68,11 @@ export default function PopupCallbackPage() {
         {status === 'success' && (
           <>
             <CheckCircle2 className="h-8 w-8 text-green-500" />
-            <p className="text-sm text-muted-foreground">{t('login_success')}</p>
+            <p className="text-sm text-muted-foreground">
+              {showManualClose
+                ? t('login_success_no_opener')
+                : t('login_success')}
+            </p>
             {showManualClose && (
               <Button
                 variant="outline"
@@ -88,24 +82,6 @@ export default function PopupCallbackPage() {
                 {t('click_to_close')}
               </Button>
             )}
-          </>
-        )}
-
-        {status === 'no-opener' && (
-          <>
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
-            <p className="text-sm text-muted-foreground">
-              {t('login_success_no_opener')}
-            </p>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                window.location.href = callbackUrl;
-              }}
-            >
-              {t('goto_target_page')}
-            </Button>
           </>
         )}
 

@@ -57,9 +57,9 @@
     "login_failed": "Login failed",
     "email_password_required": "Email and password are required",
     "popup_blocked": "Popup was blocked. Please allow popups or try again.",
-    "login_success_no_opener": "Login successful! Click below to continue.",
+    "login_success_no_opener": "Login successful! Please return to the original tab.",
     "goto_target_page": "Go to target page",
-    "click_to_close": "Click to close"
+    "click_to_close": "Close this window"
   },
   "plans": {
     "standard": "Standard",

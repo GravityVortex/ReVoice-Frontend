@@ -15,11 +15,13 @@ export interface PopupSignInOptions {
 }
 
 const POPUP_MESSAGE_TYPE = 'oauth-popup-message';
+const BROADCAST_CHANNEL_NAME = 'oauth-popup-channel';
 
 export function usePopupSignIn() {
   const popupRef = useRef<Window | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const messageHandlerRef = useRef<((event: MessageEvent) => void) | null>(null);
+  const channelRef = useRef<BroadcastChannel | null>(null);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -29,6 +31,10 @@ export function usePopupSignIn() {
     if (messageHandlerRef.current) {
       window.removeEventListener('message', messageHandlerRef.current);
       messageHandlerRef.current = null;
+    }
+    if (channelRef.current) {
+      try { channelRef.current.close(); } catch {}
+      channelRef.current = null;
     }
     popupRef.current = null;
   }, []);
@@ -43,10 +49,8 @@ export function usePopupSignIn() {
         onClose,
       } = options;
 
-      // 清理之前的 popup 和监听器
       cleanup();
 
-      // 计算居中位置
       const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
       const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
 
@@ -70,7 +74,6 @@ export function usePopupSignIn() {
         return null;
       }
 
-      // about:blank 时写入深色背景 loading，避免白屏闪烁
       if (url === 'about:blank') {
         try {
           popup.document.write(
@@ -84,37 +87,57 @@ export function usePopupSignIn() {
 
       popupRef.current = popup;
 
-      // 监听来自 popup 的消息
-      const handleMessage = (event: MessageEvent) => {
-        // 验证来源
-        if (event.origin !== window.location.origin) {
-          return;
-        }
+      // Prevent double-firing when both postMessage and BroadcastChannel deliver
+      let resolved = false;
 
-        const data = event.data as AuthMessage & { _type?: string };
-
-        // 验证消息类型
-        if (data?._type !== POPUP_MESSAGE_TYPE) {
-          return;
-        }
-
+      const handleAuthResult = (data: AuthMessage) => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
         if (data.type === 'oauth-success') {
-          cleanup();
           onSuccess?.(data.callbackUrl);
         } else if (data.type === 'oauth-error') {
-          cleanup();
           onError?.(data.error);
         }
+      };
+
+      // Channel 1: postMessage (primary — works when window.opener is available)
+      const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data = event.data as AuthMessage & { _type?: string };
+        if (data?._type !== POPUP_MESSAGE_TYPE) return;
+        handleAuthResult(data);
       };
 
       messageHandlerRef.current = handleMessage;
       window.addEventListener('message', handleMessage);
 
-      // 检测 popup 是否被关闭
+      // Channel 2: BroadcastChannel (fallback — works when COOP nulls window.opener)
+      try {
+        const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        channel.onmessage = (event) => {
+          const data = event.data as AuthMessage & { _type?: string };
+          if (data?._type !== POPUP_MESSAGE_TYPE) return;
+          handleAuthResult(data);
+        };
+        channelRef.current = channel;
+      } catch {
+        // BroadcastChannel not supported — postMessage is the only channel
+      }
+
+      // Detect popup closure; grace period allows in-flight messages to arrive
       timerRef.current = setInterval(() => {
         if (popup.closed) {
-          cleanup();
-          onClose?.();
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          setTimeout(() => {
+            if (!resolved) {
+              cleanup();
+              onClose?.();
+            }
+          }, 300);
         }
       }, 500);
 
@@ -123,7 +146,6 @@ export function usePopupSignIn() {
     [cleanup]
   );
 
-  // 组件卸载时清理
   useEffect(() => {
     return () => {
       cleanup();
@@ -133,7 +155,7 @@ export function usePopupSignIn() {
   return { openPopup, cleanup };
 }
 
-// 用于 popup 回调页面发送消息
+// Used by popup-callback page: send via postMessage (primary channel)
 export function sendPopupMessage(message: AuthMessage, targetOrigin?: string) {
   if (typeof window === 'undefined') return;
 
@@ -146,4 +168,19 @@ export function sendPopupMessage(message: AuthMessage, targetOrigin?: string) {
     },
     origin
   );
+}
+
+// Used by popup-callback page: send via BroadcastChannel (fallback channel)
+export function broadcastPopupResult(message: AuthMessage) {
+  if (typeof window === 'undefined') return;
+  try {
+    const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+    channel.postMessage({
+      ...message,
+      _type: POPUP_MESSAGE_TYPE,
+    });
+    setTimeout(() => channel.close(), 500);
+  } catch {
+    // BroadcastChannel not supported
+  }
 }
