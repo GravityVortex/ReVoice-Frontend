@@ -22,9 +22,9 @@ export default function DashboardPage() {
             descriptionKey: 'cards.translation.description',
             icon: Languages,
             href: "/dashboard/create",
-            color: "text-blue-500",
-            bgColor: "bg-blue-500/10",
-            gradient: "from-blue-500/20 to-purple-500/20",
+            color: "text-primary",
+            bgColor: "bg-white/[0.05]",
+            gradient: "from-white/[0.04] to-white/[0.02]",
             active: true
         },
         {
@@ -32,9 +32,9 @@ export default function DashboardPage() {
             descriptionKey: 'cards.lipsync.description',
             icon: Video,
             href: "#",
-            color: "text-purple-500",
-            bgColor: "bg-purple-500/10",
-            gradient: "from-purple-500/20 to-pink-500/20",
+            color: "text-primary",
+            bgColor: "bg-white/[0.05]",
+            gradient: "from-white/[0.04] to-white/[0.02]",
             active: false,
             tagKey: 'buttons.comingSoon'
         },
@@ -43,9 +43,9 @@ export default function DashboardPage() {
             descriptionKey: 'cards.voice.description',
             icon: Mic2,
             href: "#",
-            color: "text-orange-500",
-            bgColor: "bg-orange-500/10",
-            gradient: "from-orange-500/20 to-red-500/20",
+            color: "text-primary",
+            bgColor: "bg-white/[0.05]",
+            gradient: "from-white/[0.04] to-white/[0.02]",
             active: false,
             tagKey: 'buttons.comingSoon'
         }

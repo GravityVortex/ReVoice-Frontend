@@ -33,7 +33,7 @@ export function SidebarHeader({ header }: { header: SidebarHeaderType }) {
                       className={
                         open
                           ? "flex h-full w-full items-center justify-center"
-                          : "flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-white/[0.06] to-transparent ring-1 ring-primary/25 shadow-[0_10px_28px_rgba(0,0,0,0.35)]"
+                          : "flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent ring-1 ring-white/10 shadow-[0_10px_28px_rgba(0,0,0,0.35)]"
                       }
                     >
                       <Image

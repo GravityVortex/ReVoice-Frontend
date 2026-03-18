@@ -1,14 +1,41 @@
 "use client";
 
+import { useEffect } from "react";
 import { DashboardSidebar } from "@/shared/blocks/dashboard/sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/shared/components/ui/sidebar";
 import { useAppContext } from "@/shared/contexts/app";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Button } from "@/shared/components/ui/button";
 import { useSignInRedirect } from "@/shared/hooks/use-sign-in-redirect";
-import { useTranslations } from "next-intl";
 
 import { DashboardHeader } from "@/shared/blocks/dashboard/header";
+
+function AuthRedirectScreen() {
+    const redirectToSignIn = useSignInRedirect();
+
+    useEffect(() => {
+        redirectToSignIn();
+    }, []);
+
+    return (
+        <div className="relative flex min-h-screen w-full items-center justify-center bg-background overflow-hidden">
+            {/* Ambient gradients — same as authenticated dashboard */}
+            <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+                <div className="absolute -top-56 left-1/2 h-[520px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-white/4 via-white/1 to-transparent blur-[80px] opacity-60" />
+                <div className="absolute -top-32 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white/2 via-transparent to-transparent blur-[60px] opacity-40" />
+            </div>
+
+            <div className="relative flex flex-col items-center gap-6">
+                <img
+                    src="/logo.png"
+                    alt="Logo"
+                    className="h-14 w-auto object-contain opacity-90 drop-shadow-[0_0_24px_rgba(167,139,250,0.25)]"
+                />
+                {/* Minimal spinner */}
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/70" />
+            </div>
+        </div>
+    );
+}
 
 export default function DashboardLayout({
     children,
@@ -16,8 +43,6 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const { user, isCheckSign, isAuthLoading } = useAppContext();
-    const t = useTranslations("common.sign");
-    const redirectToSignIn = useSignInRedirect();
 
     if ((isCheckSign || isAuthLoading) && !user) {
         return (
@@ -44,25 +69,12 @@ export default function DashboardLayout({
     }
 
     if (!user) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-background p-6">
-                <div className="w-full max-w-md rounded-xl border bg-card p-8 text-center shadow-sm">
-                    <h1 className="text-xl font-semibold text-foreground">
-                        {t("sign_in_description")}
-                    </h1>
-                    <div className="mt-6 flex justify-center">
-                        <Button onClick={() => redirectToSignIn()}>
-                            {t("sign_in_title")}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
+        return <AuthRedirectScreen />;
     }
 
     return (
         <SidebarProvider
-            className="relative"
+            className="relative h-svh"
             style={
                 {
                     // Match the console/sidebar proportions across the app.
@@ -75,8 +87,8 @@ export default function DashboardLayout({
                 aria-hidden
                 className="pointer-events-none absolute inset-0 overflow-hidden"
             >
-                <div className="absolute -top-56 left-1/2 h-[520px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[80px] opacity-60" />
-                <div className="absolute -top-32 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-400/10 via-purple-400/0 to-transparent blur-[60px] opacity-60" />
+                <div className="absolute -top-56 left-1/2 h-[520px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-white/3 via-white/1 to-transparent blur-[80px] opacity-50" />
+                <div className="absolute -top-32 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white/2 via-transparent to-transparent blur-[60px] opacity-40" />
             </div>
 
             <DashboardSidebar />

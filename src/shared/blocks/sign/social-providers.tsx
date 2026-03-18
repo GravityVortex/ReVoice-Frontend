@@ -5,12 +5,11 @@ import { RiGithubFill, RiGoogleFill } from 'react-icons/ri';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
-import { stripLocalePrefix } from '@/core/i18n/href';
 import { useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
+import { usePopupSignIn } from '@/shared/hooks/use-popup-sign-in';
 import { sanitizeCallbackUrl } from '@/shared/lib/safe-redirect';
-import { cn } from '@/shared/lib/utils';
 import { Button as ButtonType } from '@/shared/types/blocks/common';
 
 export function SocialProviders({
@@ -26,6 +25,7 @@ export function SocialProviders({
 }) {
   const t = useTranslations('common.sign');
   const router = useRouter();
+  const { openPopup } = usePopupSignIn();
 
   const locale = useLocale();
   const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/');
@@ -38,30 +38,60 @@ export function SocialProviders({
     localizedCallbackUrl = `/${locale}${safeCallbackUrl}`;
   }
 
-  const callbackHref = stripLocalePrefix(localizedCallbackUrl);
+  const handlePopupSignIn = async (provider: string) => {
+    if (loading) return;
+    setLoading(true);
 
-  const handleSignIn = async ({ provider }: { provider: string }) => {
-    await signIn.social(
-      {
-        provider: provider,
-        callbackURL: localizedCallbackUrl,
+    // 1) 同步打开弹窗（保留用户手势上下文，避免浏览器拦截）
+    const popup = openPopup('about:blank', {
+      width: 500,
+      height: 600,
+      onSuccess: (cbUrl) => {
+        setLoading(false);
+        router.refresh();
+        router.push(cbUrl);
       },
-      {
-        onRequest: (ctx) => {
-          setLoading(true);
-        },
-        onResponse: (ctx) => {
-          setLoading(false);
-        },
-        onSuccess: async (ctx) => {
-          router.push(callbackHref);
-        },
-        onError: (e: any) => {
-          toast.error(e?.error?.message || 'sign in failed');
-          setLoading(false);
-        },
+      onError: (error) => {
+        setLoading(false);
+        toast.error(error || t('login_failed'));
+      },
+      onClose: () => {
+        setLoading(false);
+      },
+    });
+
+    if (!popup) {
+      setLoading(false);
+      toast.error(t('popup_blocked'));
+      return;
+    }
+
+    try {
+      // 2) 用 better-auth SDK 获取 OAuth URL（disableRedirect 阻止父窗口自动跳转）
+      const popupCallbackUrl = `/${locale}/auth/popup-callback?callbackUrl=${encodeURIComponent(localizedCallbackUrl)}`;
+      const { data, error } = await signIn.social({
+        provider: provider as 'google' | 'github',
+        callbackURL: popupCallbackUrl,
+        disableRedirect: true,
+      });
+
+      if (error || !data?.url) {
+        throw new Error((error as any)?.message || 'Failed to get OAuth URL');
       }
-    );
+
+      // 3) 竞态防御：弹窗可能在请求期间被用户关闭
+      if (popup.closed) {
+        setLoading(false);
+        return;
+      }
+
+      // 4) 将弹窗导航到 OAuth URL
+      popup.location.href = data.url;
+    } catch (e: any) {
+      popup.close();
+      setLoading(false);
+      toast.error(e?.message || t('login_failed'));
+    }
   };
 
   const providers: ButtonType[] = [];
@@ -72,8 +102,8 @@ export function SocialProviders({
     providers.push({
       name: 'google',
       title: t('google_sign_in_title'),
-      icon: <RiGoogleFill />,
-      onClick: () => handleSignIn({ provider: 'google' }),
+      icon: <RiGoogleFill className="w-5 h-5" />,
+      onClick: () => handlePopupSignIn('google'),
     });
   }
 
@@ -81,8 +111,8 @@ export function SocialProviders({
     providers.push({
       name: 'github',
       title: t('github_sign_in_title'),
-      icon: <RiGithubFill />,
-      onClick: () => handleSignIn({ provider: 'github' }),
+      icon: <RiGithubFill className="w-5 h-5" />,
+      onClick: () => handlePopupSignIn('github'),
     });
   }
 
@@ -92,24 +122,37 @@ export function SocialProviders({
   }
 
   return (
-    <div
-      className={cn(
-        'flex w-full items-center gap-2',
-        'flex-col justify-between'
+    <div className="flex w-full flex-col gap-3">
+      {isEmailAuthEnabled(configs) && (
+        <div className="relative my-2">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-white/8" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 text-muted-foreground/60">
+              {t('or_continue_with')}
+            </span>
+          </div>
+        </div>
       )}
-    >
       {providers.map((provider) => (
         <Button
           key={provider.name}
           variant="outline"
-          className={cn('w-full gap-2')}
+          className="w-full h-11 gap-2 font-medium bg-white/2 hover:bg-white/5 border-white/10 hover:border-white/15 transition-all"
           disabled={loading}
           onClick={provider.onClick}
         >
           {provider.icon}
-          <h3>{provider.title}</h3>
+          <span>{provider.title}</span>
         </Button>
       ))}
     </div>
   );
+}
+
+function isEmailAuthEnabled(configs: Record<string, string>) {
+  const hasGoogleProvider = Boolean(configs.google_client_id);
+  const hasGithubProvider = Boolean(configs.github_client_id);
+  return configs.email_auth_enabled !== 'false' || (!hasGoogleProvider && !hasGithubProvider);
 }

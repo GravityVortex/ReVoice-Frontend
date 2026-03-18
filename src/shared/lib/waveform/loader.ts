@@ -1,7 +1,10 @@
 export type LimitedTask<T> = (signal: AbortSignal) => Promise<T>;
 
 function abortError() {
-  return new DOMException('Aborted', 'AbortError');
+  if (typeof DOMException !== 'undefined') return new DOMException('Aborted', 'AbortError');
+  const e = new Error('Aborted');
+  e.name = 'AbortError';
+  return e;
 }
 
 type Entry<T> = {

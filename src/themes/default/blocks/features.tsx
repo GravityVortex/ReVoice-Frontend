@@ -20,7 +20,7 @@ export function Features({
       <div className={`container space-y-8 md:space-y-16`}>
         <ScrollAnimation>
           <div className="mx-auto max-w-4xl text-center text-balance">
-            <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
+            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-sm font-medium text-white/70 mb-4">
               Features
             </div>
             <h2 className="text-white mb-4 text-3xl font-bold tracking-tight md:text-5xl">
@@ -39,10 +39,10 @@ export function Features({
                 className="group relative overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] p-8 transition-all hover:bg-[rgba(255,255,255,0.1)] hover:shadow-2xl hover:shadow-primary/5"
                 key={idx}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
                 <div className="relative z-10">
-                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/20 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.08] text-white/70 group-hover:bg-primary group-hover:text-white transition-colors">
                     <SmartIcon name={item.icon as string} size={24} />
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-white">{item.title}</h3>

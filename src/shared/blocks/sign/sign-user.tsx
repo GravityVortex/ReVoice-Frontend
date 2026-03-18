@@ -26,6 +26,7 @@ import { cn } from '@/shared/lib/utils';
 import { NavItem, UserNav } from '@/shared/types/blocks/common';
 import { checkSoulDubAccess } from '@/shared/lib/souldub';
 
+import { CreditsBadge } from '../common/credits-badge';
 import { SmartIcon } from '../common/smart-icon';
 
 export function SignUser({
@@ -67,19 +68,21 @@ export function SignUser({
     <>
       {user ? (
         <div className="flex items-center gap-4">
-          {hasAccess && showStartCreate && (
+          {showStartCreate && (
             <Link href="/dashboard/create" className="hidden lg:flex">
               <Button
                 size="sm"
-                className="relative group h-9 gap-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 border-0 shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_25px_rgba(59,130,246,0.7)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] overflow-hidden"
+                className="relative group h-9 gap-2 text-xs font-bold text-white bg-primary hover:bg-primary/90 border-0 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(0,0,0,0.4)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] overflow-hidden"
               >
                 <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.3)_50%,transparent_75%)] bg-[length:250%_250%,100%_100%] bg-[position:-100%_0] group-hover:bg-[position:200%_0] transition-[background-position] duration-[1500ms]" />
                 <LayoutDashboard className="w-3.5 h-3.5 fill-white/90 animate-pulse" />
                 <span className="relative">{t('start_creating')}</span>
-                <Sparkles className="w-3 h-3 text-cyan-100" />
+                <Sparkles className="w-3 h-3 text-white/80" />
               </Button>
             </Link>
           )}
+
+          <CreditsBadge />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -88,7 +91,6 @@ export function SignUser({
                   variant="ghost"
                   className="relative h-10 w-10 rounded-full p-0"
                 >
-                  {/* 登录后的头像 */}
                   <Avatar>
                     <AvatarImage src={user.image || ''} alt={user.name || ''} />
                     <AvatarFallback>{user.name?.charAt(0) || 'U'}</AvatarFallback>
@@ -113,7 +115,7 @@ export function SignUser({
 
               <DropdownMenuSeparator />
 
-              {hasAccess && userNav?.show_credits && (
+              {userNav?.show_credits && (
                 <DropdownMenuItem asChild className="py-2 px-3 rounded-lg focus:bg-muted">
                   <Link
                     className="w-full cursor-pointer flex items-center gap-3"

@@ -61,7 +61,7 @@ export const VideoPreviewPanel = memo(forwardRef<VideoPreviewRef, VideoPreviewPa
     });
 
     useImperativeHandle(ref, () => ({
-        videoElement: videoRef.current
+        get videoElement() { return videoRef.current; }
     }));
 
     useEffect(() => {

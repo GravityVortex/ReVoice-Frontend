@@ -100,6 +100,24 @@ export async function updateSubtitleDataByTaskId(taskId: string, stepName: strin
  * @param updatedItem 更新的字幕项
  * @returns
  */
+
+
+export async function replaceSubtitleDataPairByTaskIdTx(taskId: string, next: { translate: any[]; source: any[] }) {
+  return await db().transaction(async (tx) => {
+    const updatedAt = new Date();
+    const translate = await tx
+      .update(vtTaskSubtitle)
+      .set({ subtitleData: JSON.stringify(next.translate), updatedAt })
+      .where(and(eq(vtTaskSubtitle.taskId, taskId), eq(vtTaskSubtitle.stepName, 'translate_srt')))
+      .returning();
+    const source = await tx
+      .update(vtTaskSubtitle)
+      .set({ subtitleData: JSON.stringify(next.source), updatedAt })
+      .where(and(eq(vtTaskSubtitle.taskId, taskId), eq(vtTaskSubtitle.stepName, 'gen_srt')))
+      .returning();
+    return { translate, source };
+  });
+}
 export async function updateSingleSubtitleItem(taskId: string, stepName: string, seq: string, updatedItem: any) {
   const result = await db().execute(
     sql`UPDATE vt_task_subtitle
@@ -110,7 +128,12 @@ export async function updateSingleSubtitleItem(taskId: string, stepName: string,
               ELSE elem
             END
           )
-          FROM jsonb_array_elements(subtitle_data) elem
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(subtitle_data::jsonb) = 'string'
+              THEN (subtitle_data #>> '{}')::jsonb
+              ELSE subtitle_data::jsonb
+            END
+          ) elem
         ),
         updated_at = NOW()
         WHERE task_id = ${taskId} AND step_name = ${stepName}
@@ -126,6 +149,32 @@ export async function updateSingleSubtitleItem(taskId: string, stepName: string,
  * @param id 字幕id（例如 0001_00-00-00-000_00-00-04-000）
  * @param patch 需要merge进该item的字段（jsonb "||" 语义：patch覆盖同名key）
  */
+
+
+export async function updateSingleSubtitleItemById(taskId: string, stepName: string, id: string, updatedItem: any) {
+  const result = await db().execute(
+    sql`UPDATE vt_task_subtitle
+        SET subtitle_data = (
+          SELECT jsonb_agg(
+            CASE
+              WHEN elem->>'id' = ${id} THEN ${JSON.stringify(updatedItem)}::jsonb
+              ELSE elem
+            END
+            ORDER BY ord
+          )
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(subtitle_data::jsonb) = 'string'
+              THEN (subtitle_data #>> '{}')::jsonb
+              ELSE subtitle_data::jsonb
+            END
+          ) WITH ORDINALITY AS t(elem, ord)
+        ),
+        updated_at = NOW()
+        WHERE task_id = ${taskId} AND step_name = ${stepName}
+        RETURNING *`
+  );
+  return result;
+}
 export async function patchSubtitleItemById(
   taskId: string,
   stepName: string,
@@ -170,7 +219,12 @@ export async function patchSubtitleItemById(
             END
             ORDER BY ord
           )
-          FROM jsonb_array_elements(subtitle_data) WITH ORDINALITY AS t(elem, ord)
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(subtitle_data::jsonb) = 'string'
+              THEN (subtitle_data #>> '{}')::jsonb
+              ELSE subtitle_data::jsonb
+            END
+          ) WITH ORDINALITY AS t(elem, ord)
         ),
         updated_at = NOW()
         WHERE task_id = ${taskId} AND step_name = ${stepName}

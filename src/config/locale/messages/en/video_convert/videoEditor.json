@@ -18,6 +18,12 @@
     "missingData": "Missing conversion object data"
   },
   "playingAudio": "Playing audio list item {index}",
+  "header": {
+    "backToProject": "Go back",
+    "mergingVideo": "Updating video, please wait",
+    "noChanges": "Edit subtitles or voice first, then click here to update",
+    "regenerateTooltip": "Update video with your changes"
+  },
   "audioList": {
     "title": "Subtitle Audio Comparison",
     "save": "Save",
@@ -26,16 +32,25 @@
     "originalSubtitle": "Original Subtitle",
     "convertedSubtitle": "Converted Subtitle",
     "searchPlaceholder": "Search original / translated…",
+    "splitPendingFilter": "Click to filter pending split segments",
     "playMode": {
       "label": "Preview mode",
       "single": "Single",
+      "singleHelp": "Stop after each line, good for reviewing one by one",
       "autoNext": "Auto-next",
+      "autoNextHelp": "Auto-play the next line, great for listening through",
       "help": "Auto-play the next line on the same side (original/translated separately)"
     },
     "nowPlaying": {
       "label": "Now playing",
       "row": "Row {num}",
       "stop": "Stop"
+    },
+    "tooltips": {
+      "refresh": "Refresh subtitles"
+    },
+    "hints": {
+      "doubleClick": "Double-click row to jump"
     },
     "totalItems": "Total {count} subtitles",
     "playing": "Playing: {type} item {index}",
@@ -46,9 +61,12 @@
     "toast": {
       "playFailed": "Failed to play audio, please try again!",
       "generateSuccess": "Voice generated successfully, click to preview!",
+      "translationReadyForVoice": "Translation updated. Next step: generate voice",
+      "voiceReadyToPreview": "New voice is ready. Preview it before applying",
       "generateFailed": "Failed to generate voice",
-      "videoSaveSuccess": "The video synthesis task has been generated, please be patient as it may take some time",
-      "videoSaveCompleted": "Video synthesis completed!",
+      "generateTimeout": "Request timed out, please try again",
+      "videoSaveSuccess": "Submitted — takes about 1–2 min, closing the page won't affect progress",
+      "videoSaveCompleted": "Video is ready — check your video list for the latest version",
       "videoSaveFailed": "Video synthesis failed",
       "itemNotFound": "Subtitle item not found",
       "saveSuccess": "Saved successfully!",
@@ -64,10 +82,20 @@
       "playFailed": "Play failed: {error}",
       "unknownError": "Unknown error",
       "pointerFollow": "Playback pointer visible follow",
-      "exportPending": "Under development, stay tuned!"
+      "exportPending": "Under development, stay tuned!",
+      "audioLoadFailed": "Audio load failed, please try again",
+      "splitNoClip": "No subtitle clip at the playhead",
+      "splitTooClose": "Split point is too close to the clip boundary",
+      "splitFailed": "Failed to split subtitle, please try again",
+      "splitNeedVoice": "Split complete. Edit each text and regenerate voice separately",
+      "splitMissingVoice": "Some split subtitles still need voice regeneration before merge",
+      "splitCompleteWithAudio": "Subtitle and audio split complete",
+      "splitUndoHint": "Press Ctrl+Z to undo",
+      "undo": "Undo"
     },
     "hints": {
-      "timeline": "Drag the red playhead · Scroll to zoom · Shift + scroll to pan"
+      "timeline": "Drag playhead to seek · +/- to zoom",
+      "spacePlayPause": "Space to play/pause"
     },
     "tracks": {
       "mainVideo": "Main Video",
@@ -80,16 +108,25 @@
     },
     "tooltips": {
       "dragSubtitle": "Drag to adjust subtitle position",
-      "zoomOut": "Zoom out timeline",
-      "zoomIn": "Zoom in timeline",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
       "addSubtitle": "Add subtitle",
       "pointerVisible": "Playback pointer visible",
       "export": "Export project",
       "mute": "Mute",
       "unmute": "Unmute",
+      "muteSubtitle": "Mute translated subtitle track",
+      "unmuteSubtitle": "Restore translated subtitle audio",
+      "muteBgm": "Mute background music",
+      "unmuteBgm": "Restore background music",
       "addBgm": "Add background music",
       "addVideo": "Add video",
-      "regenerateVideo": "Regenerate video"
+      "regenerateVideo": "Regenerate video",
+      "play": "Play (Space)",
+      "pause": "Pause (Space)",
+      "splitSubtitle": "Split subtitle at playhead",
+      "splitSubtitleWithUndo": "Split subtitle at playhead · Undoable",
+      "undoSplit": "Undo last split operation"
     },
     "waveform": {
       "loading": "Waveform loading",
@@ -102,22 +139,62 @@
   },
   "subtitleRow": {
     "actions": {
-      "retranslate": "Retranslate",
-      "regenVoice": "Regenerate voice",
-      "applyVoice": "Apply voice"
+      "retranslate": "AI Retranslate",
+      "retranslateSplit": "AI Translate",
+      "regenVoice": "Generate Voice",
+      "applyVoice": "Apply Voice",
+      "manualEdit": "Edit Translation",
+      "manualEditSplit": "Edit",
+      "continueEditing": "Keep Editing"
+    },
+    "meta": {
+      "credit": "{credits, plural, one {# credit} other {# credits}}",
+      "free": "Free"
+    },
+    "status": {
+      "stale": "Voice needs refresh",
+      "splitStale": "Needs translation",
+      "textReady": "Voice not generated yet",
+      "splitTextReady": "Needs voice",
+      "audioReady": "Preview ready to apply",
+      "splitAudioReady": "Ready",
+      "processing": "Processing"
+    },
+    "labels": {
+      "nextStep": "Next step"
+    },
+    "workflow": {
+      "step1": "Edit",
+      "step2": "Voice",
+      "step3": "Apply"
+    },
+    "hints": {
+      "stale": "This segment was split, so the original translated voice no longer matches. You can retranslate with AI, or edit the translation and generate voice afterward.",
+      "textReady": "The translation has changed. Generate voice before previewing.",
+      "audioReady": "A new voice preview is ready. Listen first, then apply it when it feels right.",
+      "processing": "This row is being processed. The next action will appear here automatically."
+    },
+    "processing": {
+      "retranslating": "AI retranslation in progress…",
+      "generatingVoice": "Generating voice…",
+      "applyingVoice": "Applying voice…"
     },
     "placeholder": {
       "original": "Original subtitle content",
       "converted": "Converted subtitle content"
     },
     "tooltips": {
-      "playOriginal": "Play original audio",
-      "playConverted": "Play translated audio",
+      "playOriginal": "Preview original",
+      "playConverted": "Preview translated voice",
+      "playConvertedBlocked": "Refresh the translated voice before previewing",
       "retranslate": "Retranslate subtitle",
-      "retranslateWithCost": "Retranslate subtitle ({credits} credits)",
-      "saveVoice": "Save subtitle voice",
+      "retranslateWithCost": "Use AI to retranslate this line ({credits} credit)",
+      "manualEdit": "Edit this translated line manually",
+      "saveVoice": "Save changes",
+      "applyVoice": "Apply this new voice",
+      "continueEditing": "Keep editing this translated line",
       "updateVoice": "Update subtitle voice",
-      "updateVoiceWithCost": "Regenerate voice ({credits} credits)"
+      "updateVoiceWithCost": "Generate a preview voice for this text ({credits} credits)"
     }
   },
   "dialog": {
@@ -138,6 +215,22 @@
       "pay": "Pay",
       "insufficientCreditsError": "Insufficient credits, please recharge."
     }
+  },
+  "rollback": {
+    "cancel": "Cancel",
+    "success": "Split undone",
+    "failed": "Undo failed",
+    "nothingToUndo": "Nothing to undo",
+    "operationHistory": "Operation History",
+    "noHistory": "No operations yet",
+    "alreadyRolledBack": "Already undone",
+    "splitOperation": "Split subtitle #{index}"
+  },
+  "unsavedDialog": {
+    "title": "Leave editor?",
+    "description": "You have unsaved changes that may be lost if you leave.",
+    "stay": "Keep editing",
+    "leave": "Discard & leave"
   },
   "videoDetail": "Video Detail"
 }

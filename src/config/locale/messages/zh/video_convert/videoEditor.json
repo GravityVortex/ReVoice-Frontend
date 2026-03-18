@@ -18,6 +18,12 @@
     "missingData": "缺少转换对象数据"
   },
   "playingAudio": "正在播放音频列表第 {index} 项",
+  "header": {
+    "backToProject": "返回上一页",
+    "mergingVideo": "正在更新视频，请稍等",
+    "noChanges": "修改左侧字幕或配音后，点这里更新视频",
+    "regenerateTooltip": "把你的修改更新到视频中"
+  },
   "audioList": {
     "title": "字幕音频对照表",
     "save": "保存",
@@ -26,16 +32,25 @@
     "originalSubtitle": "原字幕",
     "convertedSubtitle": "转换后字幕",
     "searchPlaceholder": "搜索原文/译文…",
+    "splitPendingFilter": "点击筛选待处理的分割段",
     "playMode": {
       "label": "试听模式",
       "single": "单条",
+      "singleHelp": "播完一条就停，适合逐句检查",
       "autoNext": "连播",
+      "autoNextHelp": "播完自动跳到下一条，方便通篇听",
       "help": "当前侧音频播完后自动播放下一条（原字幕/译文各自独立）"
     },
     "nowPlaying": {
       "label": "正在试听",
       "row": "第 {num} 条",
       "stop": "停止"
+    },
+    "tooltips": {
+      "refresh": "刷新字幕列表"
+    },
+    "hints": {
+      "doubleClick": "双击行可跳转定位"
     },
     "totalItems": "共 {count} 条字幕",
     "playing": "正在播放: {type}第 {index} 项",
@@ -46,9 +61,12 @@
     "toast": {
       "playFailed": "播放音频失败，请重试！",
       "generateSuccess": "生成语音成功，可以点击试听！",
+      "translationReadyForVoice": "译文已更新，下一步生成译音",
+      "voiceReadyToPreview": "新译音已生成，可先试听再保存",
       "generateFailed": "生成语音失败",
-      "videoSaveSuccess": "视频合成任务已生成，较耗时请耐心等候。",
-      "videoSaveCompleted": "视频合成完成！",
+      "generateTimeout": "请求超时，请重试",
+      "videoSaveSuccess": "已提交，预计 1~2 分钟合成完成，关闭页面不影响进度",
+      "videoSaveCompleted": "视频合成完成，可在视频列表查看最新版本",
       "videoSaveFailed": "合成视频失败",
       "itemNotFound": "未找到要更新的字幕项",
       "saveSuccess": "保存成功！",
@@ -64,10 +82,20 @@
       "playFailed": "播放失败: {error}",
       "unknownError": "未知错误",
       "pointerFollow": "播放指针可见跟随",
-      "exportPending": "开发中，敬请期待！"
+      "exportPending": "开发中，敬请期待！",
+      "audioLoadFailed": "音频加载失败，请重试",
+      "splitNoClip": "播放头位置没有可分割的字幕",
+      "splitTooClose": "切割点太靠近边界，无法分割",
+      "splitFailed": "字幕分割失败，请重试",
+      "splitNeedVoice": "分割完成，请分别调整文本并重新配音",
+      "splitMissingVoice": "存在未重新配音的字幕片段，请先完成配音",
+      "splitCompleteWithAudio": "字幕和音频已切割完成",
+      "splitUndoHint": "按 Ctrl+Z 可撤销",
+      "undo": "撤销"
     },
     "hints": {
-      "timeline": "拖动红线定位 · 滚轮缩放 · Shift + 滚轮横向滚动"
+      "timeline": "拖动红线定位 · +/- 缩放时间轴",
+      "spacePlayPause": "空格键 播放/暂停"
     },
     "tracks": {
       "mainVideo": "主视频",
@@ -87,9 +115,18 @@
       "export": "导出项目",
       "mute": "静音",
       "unmute": "取消静音",
+      "muteSubtitle": "静音翻译字幕音轨",
+      "unmuteSubtitle": "恢复翻译字幕音轨播放",
+      "muteBgm": "静音背景音乐",
+      "unmuteBgm": "恢复背景音乐播放",
       "addBgm": "添加背景音乐",
       "addVideo": "添加视频",
-      "regenerateVideo": "重新合成视频"
+      "regenerateVideo": "重新合成视频",
+      "play": "播放 (空格)",
+      "pause": "暂停 (空格)",
+      "splitSubtitle": "在播放头位置分割字幕",
+      "splitSubtitleWithUndo": "在播放头位置分割字幕 · 可撤销",
+      "undoSplit": "撤销最近一次切割操作"
     },
     "waveform": {
       "loading": "波形加载中",
@@ -102,22 +139,62 @@
   },
   "subtitleRow": {
     "actions": {
-      "retranslate": "重翻译",
-      "regenVoice": "更新配音",
-      "applyVoice": "应用配音"
+      "retranslate": "AI 重翻译",
+      "retranslateSplit": "AI 翻译此段",
+      "regenVoice": "生成译音",
+      "applyVoice": "保存应用",
+      "manualEdit": "手动修改译文",
+      "manualEditSplit": "编辑译文",
+      "continueEditing": "继续编辑"
+    },
+    "meta": {
+      "credit": "{credits} 积分",
+      "free": "免费"
+    },
+    "status": {
+      "stale": "译音待更新",
+      "splitStale": "需翻译",
+      "textReady": "待生成译音",
+      "splitTextReady": "需配音",
+      "audioReady": "可试听（待应用）",
+      "splitAudioReady": "就绪",
+      "processing": "处理中"
+    },
+    "labels": {
+      "nextStep": "下一步"
+    },
+    "workflow": {
+      "step1": "编辑",
+      "step2": "配音",
+      "step3": "应用"
+    },
+    "hints": {
+      "stale": "该段切割后，原译音已不再对应。你可以 AI 重翻译，或手动修改译文后生成译音。",
+      "textReady": "当前译文已更新，需先生成译音后再试听。",
+      "audioReady": "新译音已生成，可先试听，确认后保存应用。",
+      "processing": "当前操作进行中，完成后这里会自动切换到下一步。"
+    },
+    "processing": {
+      "retranslating": "正在 AI 重翻译…",
+      "generatingVoice": "正在生成译音…",
+      "applyingVoice": "正在保存应用…"
     },
     "placeholder": {
       "original": "原字幕内容",
       "converted": "转换后字幕内容"
     },
     "tooltips": {
-      "playOriginal": "播放原字幕音频",
-      "playConverted": "播放翻译字幕音频",
+      "playOriginal": "试听原声",
+      "playConverted": "试听翻译后的语音",
+      "playConvertedBlocked": "当前需要先更新译音后才能试听",
       "retranslate": "重新翻译字幕",
-      "retranslateWithCost": "重新翻译字幕（{credits} 积分）",
-      "saveVoice": "保存字幕语音",
+      "retranslateWithCost": "用 AI 重新翻译这句（{credits} 积分）",
+      "manualEdit": "手动修改当前译文",
+      "saveVoice": "保存这句的修改",
+      "applyVoice": "保存这句的新译音",
+      "continueEditing": "继续编辑这句译文",
       "updateVoice": "更新字幕语音",
-      "updateVoiceWithCost": "更新字幕语音（{credits} 积分）"
+      "updateVoiceWithCost": "为当前译文生成试听译音（{credits} 积分）"
     }
   },
   "dialog": {
@@ -138,6 +215,22 @@
       "pay": "支付",
       "insufficientCreditsError": "积分不足，请充值积分。"
     }
+  },
+  "rollback": {
+    "cancel": "取消",
+    "success": "已撤销切割",
+    "failed": "撤销失败",
+    "nothingToUndo": "没有可撤销的操作",
+    "operationHistory": "操作历史",
+    "noHistory": "暂无操作记录",
+    "alreadyRolledBack": "已撤销",
+    "splitOperation": "切割字幕 #{index}"
+  },
+  "unsavedDialog": {
+    "title": "离开编辑页面？",
+    "description": "你有未保存的更改，离开后部分修改可能丢失。",
+    "stay": "继续编辑",
+    "leave": "放弃并离开"
   },
   "videoDetail": "视频详情"
 }

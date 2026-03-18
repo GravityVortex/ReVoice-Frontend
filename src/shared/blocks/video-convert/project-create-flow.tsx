@@ -7,14 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Label } from "@/shared/components/ui/label";
 import { Button } from "@/shared/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/shared/components/ui/select";
 import { useAppContext } from "@/shared/contexts/app";
-import { UploadCloud, Clock, Settings2, Zap, Loader2, X, ArrowRight, Languages, Users } from 'lucide-react';
+import { UploadCloud, Clock, Settings2, Zap, Loader2, X, ArrowRight, ArrowLeftRight, Users, CreditCard, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from '@/core/i18n/navigation';
 import { CostEstimateModal } from './cost-estimate-modal';
 import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
+import { SUPPORTED_LANGUAGES, type LangCode, isValidLangCode, getDefaultTargetLang } from '@/shared/lib/languages';
+import { LangBadge } from '@/shared/components/ui/lang-badge';
 
-type Lang = 'zh' | 'en';
 type PreviewSource = 'local' | 'cloud';
 
 // 弱触发：播放中卡顿超过阈值（ms）自动切云端
@@ -46,22 +54,18 @@ interface VideoUploadData {
 
 interface ProjectCreateFormData {
     videoUpload: VideoUploadData;
-    sourceLanguage: Lang;
-    targetLanguage: Lang;
+    sourceLanguage: LangCode;
+    targetLanguage: LangCode;
     peoples: string;
 }
 
 const STORAGE_KEY = 'project_add_convert_form_cache';
 
-function getOppositeLanguage(lang: Lang): Lang {
-    return lang === 'zh' ? 'en' : 'zh';
-}
-
 export function ProjectCreateFlow() {
     const t = useTranslations('video_convert.projectAddConvertModal');
     const router = useRouter();
     const [submitting, setSubmitting] = useState(false);
-    const { user } = useAppContext();
+    const { user, fetchUserCredits } = useAppContext();
     const videoInputRef = useRef<HTMLInputElement>(null);
     const previewVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -102,8 +106,8 @@ export function ProjectCreateFlow() {
             r2Bucket: '',
             fileId: '',
         },
-        sourceLanguage: 'zh',
-        targetLanguage: 'en',
+        sourceLanguage: 'en',
+        targetLanguage: 'zh',
         peoples: '1',
     });
 
@@ -280,15 +284,18 @@ export function ProjectCreateFlow() {
                     r2Bucket: String(rawUpload.r2Bucket || ''),
                     fileId: String(rawUpload.fileId || ''),
                 };
-                const sourceLanguage: Lang =
-                    parsed?.sourceLanguage === 'en' || parsed?.sourceLanguage === 'zh'
-                        ? parsed.sourceLanguage
-                        : 'zh';
+                const rawSrc = String(parsed?.sourceLanguage || '');
+                const rawTgt = String(parsed?.targetLanguage || '');
+                const sourceLanguage: LangCode = isValidLangCode(rawSrc) ? rawSrc : 'en';
+                const targetLanguage: LangCode =
+                    isValidLangCode(rawTgt) && rawTgt !== sourceLanguage
+                        ? rawTgt
+                        : getDefaultTargetLang(sourceLanguage);
                 setFormData({
                     ...parsed,
                     videoUpload: normalizedUpload,
                     sourceLanguage,
-                    targetLanguage: getOppositeLanguage(sourceLanguage),
+                    targetLanguage,
                 });
 
                 // 刷新后本地文件不可恢复：若已完成上传，默认展示云端预览（同源 stream）。
@@ -308,6 +315,16 @@ export function ProjectCreateFlow() {
     const hasSelectedFile = Boolean(formData.videoUpload.fileName);
     const isInsufficientCredits = credits > 0 && currentBalance < credits;
     const maxSizeLabel = `${(config.maxFileSizeBytes / 1024 / 1024).toFixed(0)}MB`;
+    const balanceAfter = Math.max(0, currentBalance - credits);
+    const shortBy = Math.max(0, credits - currentBalance);
+
+    useEffect(() => {
+        const onVisible = () => {
+            if (!document.hidden) fetchUserCredits();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [fetchUserCredits]);
 
     // Cache handling
     useEffect(() => {
@@ -347,8 +364,8 @@ export function ProjectCreateFlow() {
                 r2Bucket: '',
                 fileId: '',
             },
-            sourceLanguage: 'zh',
-            targetLanguage: 'en',
+            sourceLanguage: 'en',
+            targetLanguage: 'zh',
             peoples: '1',
         });
     };
@@ -426,6 +443,16 @@ export function ProjectCreateFlow() {
             }).catch(() => 0);
 
             if (uploadSessionIdRef.current !== sessionId) return;
+
+            const MAX_VIDEO_DURATION_SECONDS = 3600;
+            if (videoDuration > MAX_VIDEO_DURATION_SECONDS) {
+                toast.error(t('upload.durationExceeded'));
+                abortUploadAndInvalidateSession();
+                resetPreviewState();
+                setUploading(false);
+                return;
+            }
+
             setFormData(prev => ({
                 ...prev,
                 videoUpload: {
@@ -553,7 +580,14 @@ export function ProjectCreateFlow() {
                 toast.success(t('messages.taskCreated'));
                 router.replace(`/dashboard/projects/${encodeURIComponent(fileId)}`);
             } else {
-                toast.error(data?.message || t('messages.submitFailed'));
+                const msg = data?.message || t('messages.submitFailed');
+                const isCreditsError = msg.includes('积分不足') || msg.toLowerCase().includes('insufficient credit');
+                if (isCreditsError) {
+                    fetchUserCredits();
+                    toast.error(msg, { action: { label: t('confirm.buyCredits'), onClick: () => window.open('/pricing', '_blank') } });
+                } else {
+                    toast.error(msg);
+                }
             }
         } catch {
             toast.error(t('messages.submitFailed'));
@@ -636,7 +670,7 @@ export function ProjectCreateFlow() {
                                                 <p className="text-sm text-muted-foreground">{t('upload.onlyMp4')}</p>
                                             </div>
                                             <div className="mt-4 px-3 py-1 bg-muted rounded-full text-xs font-medium text-muted-foreground">
-                                                {t('upload.maxSize')}: {maxSizeLabel}
+                                                {t('upload.maxSize')}: {maxSizeLabel} · {t('upload.maxDuration')}: 1h
                                             </div>
                                         </div>
                                     )}
@@ -761,34 +795,74 @@ export function ProjectCreateFlow() {
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-3">
-                                    <Label className="text-sm font-medium">{t('config.sourceLanguage')}</Label>
-                                    <RadioGroup
-                                        value={formData.sourceLanguage}
-                                        onValueChange={(v) => {
-                                            const sourceLanguage = (v === 'en' || v === 'zh' ? v : 'zh') as Lang;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                sourceLanguage,
-                                                targetLanguage: getOppositeLanguage(sourceLanguage),
-                                            }));
-                                        }}
-                                        className="grid grid-cols-2 gap-4"
-                                    >
-                                        {(['zh', 'en'] as const).map((lang) => (
-                                            <div key={lang}>
-                                                <RadioGroupItem value={lang} id={`lang-${lang}`} className="peer sr-only" />
-                                                <Label
-                                                    htmlFor={`lang-${lang}`}
-                                                    className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
-                                                >
-                                                    <Languages className="mb-1 h-5 w-5 text-muted-foreground peer-data-[state=checked]:text-primary" />
-                                                    <span className="font-semibold">
-                                                        {t(`languages.${lang}`)} → {t(`languages.${getOppositeLanguage(lang)}`)}
-                                                    </span>
-                                                </Label>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 space-y-1.5">
+                                            <span className="text-muted-foreground text-xs font-medium">{t('config.sourceLanguage')}</span>
+                                            <Select
+                                                value={formData.sourceLanguage}
+                                                onValueChange={(v) => {
+                                                    if (!isValidLangCode(v)) return;
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        sourceLanguage: v,
+                                                        targetLanguage: prev.targetLanguage === v ? getDefaultTargetLang(v) : prev.targetLanguage,
+                                                    }));
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 w-full text-base">
+                                                    <SelectValue placeholder={t('config.selectLanguage')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {SUPPORTED_LANGUAGES.map((lang) => (
+                                                        <SelectItem key={lang.code} value={lang.code} className="py-2.5 text-base">
+                                                            <LangBadge code={lang.code} size="sm" className="mr-2" />
+                                                            <span className="font-medium">{t(`languages.${lang.code}`)}</span>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            className="mt-5 h-10 w-10 shrink-0 rounded-full"
+                                            title={t('config.swap')}
+                                            onClick={() => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    sourceLanguage: prev.targetLanguage,
+                                                    targetLanguage: prev.sourceLanguage,
+                                                }));
+                                            }}
+                                        >
+                                            <ArrowLeftRight className="h-5 w-5" />
+                                        </Button>
+
+                                        <div className="flex-1 space-y-1.5">
+                                            <span className="text-muted-foreground text-xs font-medium">{t('config.targetLanguage')}</span>
+                                            <Select
+                                                value={formData.targetLanguage}
+                                                onValueChange={(v) => {
+                                                    if (!isValidLangCode(v)) return;
+                                                    setFormData(prev => ({ ...prev, targetLanguage: v }));
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 w-full text-base">
+                                                    <SelectValue placeholder={t('config.selectLanguage')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {SUPPORTED_LANGUAGES.filter((l) => l.code !== formData.sourceLanguage).map((lang) => (
+                                                        <SelectItem key={lang.code} value={lang.code} className="py-2.5 text-base">
+                                                            <LangBadge code={lang.code} size="sm" className="mr-2" />
+                                                            <span className="font-medium">{t(`languages.${lang.code}`)}</span>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <details
@@ -824,7 +898,12 @@ export function ProjectCreateFlow() {
                         </Card>
 
                         {/* Cost & Action */}
-                        <Card className="shrink-0 bg-primary/5 border-primary/20">
+                        <Card className={cn(
+                            "shrink-0 transition-colors",
+                            isInsufficientCredits
+                                ? "bg-destructive/5 border-destructive/30"
+                                : "bg-primary/5 border-primary/20"
+                        )}>
                             <CardContent className="p-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-1">
@@ -837,14 +916,40 @@ export function ProjectCreateFlow() {
                                             {t('confirm.creditsPerMinute', { points: config.pointsPerMinute })}
                                         </p>
                                     </div>
-                                    <Zap className={cn("h-8 w-8", isInsufficientCredits ? "text-red-500/40" : "text-primary/20")} />
+                                    <Zap className={cn("h-8 w-8", isInsufficientCredits ? "text-destructive/40" : "text-primary/20")} />
                                 </div>
+
+                                <div className="text-sm text-muted-foreground">
+                                    {t('confirm.currentBalance')}: <span className={cn("font-semibold", isInsufficientCredits ? "text-destructive" : "text-foreground")}>{currentBalance}</span>
+                                    {!isInsufficientCredits && credits > 0 && (
+                                        <span className="ml-1">· {t('confirm.balanceAfter', { balance: balanceAfter })}</span>
+                                    )}
+                                </div>
+
+                                {isInsufficientCredits && (
+                                    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 space-y-2">
+                                        <p className="text-sm font-medium text-destructive flex items-center gap-1.5">
+                                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                                            {t('confirm.shortBy', { amount: shortBy })}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{t('confirm.buyCreditsHint')}</p>
+                                        <Button
+                                            variant="default"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => window.open('/pricing', '_blank')}
+                                        >
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            {t('confirm.buyCredits')}
+                                        </Button>
+                                    </div>
+                                )}
 
                                 <Button
                                     className="w-full text-lg h-12"
                                     size="lg"
                                     onClick={handleStartClick}
-                                    disabled={submitting || uploading || !isUploadComplete || !user?.id || !user?.credits}
+                                    disabled={submitting || uploading || !isUploadComplete || !user?.id || !user?.credits || isInsufficientCredits}
                                 >
                                     {submitting ? (
                                         <>

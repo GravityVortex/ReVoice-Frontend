@@ -87,20 +87,20 @@ export function ResizableSplitPanel({
       <div
         onMouseDown={handleMouseDown}
         className={cn(
-          "group relative w-2 cursor-col-resize transition-colors flex-shrink-0",
-          "bg-transparent hover:bg-white/[0.03]",
-          isDragging && "bg-white/[0.05]"
+          "group relative w-3 cursor-col-resize transition-colors flex-shrink-0",
+          "bg-transparent hover:bg-white/5",
+          isDragging && "bg-white/[0.06]"
         )}
       >
-        <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/10" />
+        <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/10 group-hover:bg-white/15 transition-colors" />
         <div className="w-full h-full flex items-center justify-center">
           <div
             aria-hidden
             className={cn(
-              "h-10 w-1 rounded-full",
-              "bg-white/[0.06] ring-1 ring-white/10",
-              "group-hover:bg-primary/15 group-hover:ring-primary/25",
-              isDragging && "bg-primary/20 ring-primary/30"
+              "h-12 w-1.5 rounded-full transition-all duration-200",
+              "bg-white/10 ring-1 ring-white/15",
+              "group-hover:bg-primary/25 group-hover:ring-primary/30 group-hover:h-16",
+              isDragging && "bg-primary/30 ring-primary/40 h-16"
             )}
           />
         </div>

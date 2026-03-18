@@ -46,6 +46,10 @@ export async function POST(req: Request) {
       return respErr('invalid videoDurationSeconds');
     }
 
+    if (videoDurationSeconds > 3600) {
+      return respErr('视频时长不能超过 1 小时');
+    }
+
     // Don't trust client-provided credits; derive from duration + server config.
     const pointsPerMinuteRaw = (await getSystemConfigByKey('credit.points_per_minute')) || '3';
     const pointsPerMinute = Number.parseInt(pointsPerMinuteRaw, 10);

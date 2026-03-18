@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { createHash } from 'crypto';
 
+import { checkReferenceAudioExists } from '@/shared/lib/reference-audio-exists';
+import { repairReferenceAudio } from '@/shared/lib/reference-audio-repair';
+import { resolveTranslatedTtsReference } from '@/shared/lib/subtitle-reference-audio';
 import { respData, respErr } from '@/shared/lib/resp';
 import { consumeCredits, findCreditByTransactionNo, refundCredits } from '@/shared/models/credit';
 import { getUserInfo } from '@/shared/models/user';
@@ -31,6 +34,17 @@ function pickStoredRequestKey(subtitleData: any, subtitleName: string, type: str
         ? (item as any)?.vap_tts_request_key
         : '';
   return typeof key === 'string' ? key : '';
+}
+
+function normalizeSubtitleArray(raw: unknown): any[] {
+  if (Array.isArray(raw)) return raw as any[];
+  if (typeof raw !== 'string') return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -124,9 +138,11 @@ export async function POST(request: NextRequest) {
       }
 
       // 保持刷新恢复能力：写入草稿文本，并清理旧 job 标记，避免前端误轮询。
+      // 同时清除旧的 vap_draft_audio_path，因为新翻译后旧配音已与文本不匹配。
       try {
         await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, {
           vap_draft_txt: translated,
+          vap_draft_audio_path: null,
           vap_tr_job_id: null,
           vap_tr_request_key: null,
           vap_tr_updated_at_ms: Date.now(),
@@ -141,14 +157,125 @@ export async function POST(request: NextRequest) {
 
     // 1.2、翻译后的字幕文字转语音tts
     if (type === 'translate_srt') {
+      const translateRows = normalizeSubtitleArray((taskSubtitle as any)?.subtitleData);
+      const sourceSubtitle = await findVtTaskSubtitleByTaskIdAndStepName(taskId, 'gen_srt');
+      const sourceRows = normalizeSubtitleArray((sourceSubtitle as any)?.subtitleData);
+      const referenceSubtitle = resolveTranslatedTtsReference({
+        subtitleName,
+        translateRows,
+        sourceRows,
+      });
+
+      if (referenceSubtitle.status !== 'resolved') {
+        console.error('[generate-subtitle-voice] reference subtitle unresolved', {
+          taskId,
+          subtitleName,
+          reason: referenceSubtitle.reason,
+          diagnostics: referenceSubtitle.diagnostics,
+        });
+        if (consumedCreditId) {
+          await refundCredits({ creditId: consumedCreditId }).catch(() => {});
+        }
+        return respErr(`切割参考音频定位失败：${referenceSubtitle.reason}`);
+      }
+
+      const referenceSubtitleName = referenceSubtitle.referenceSubtitleName;
+      if (referenceSubtitle.diagnostics.lineageMismatch) {
+        console.warn('[generate-subtitle-voice] reference subtitle lineage mismatch', {
+          taskId,
+          subtitleName,
+          translateParentId: referenceSubtitle.diagnostics.translateParentId,
+          sourceParentId: referenceSubtitle.diagnostics.sourceParentId,
+        });
+      }
+      console.info('[generate-subtitle-voice] reference subtitle resolved', {
+        taskId,
+        subtitleName,
+        referenceSubtitleName,
+        strategy: referenceSubtitle.strategy,
+        needsBackfill: referenceSubtitle.needsBackfill,
+        diagnostics: referenceSubtitle.diagnostics,
+      });
+
+      if (referenceSubtitle.needsBackfill && referenceSubtitle.patch) {
+        try {
+          await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, referenceSubtitle.patch);
+        } catch (e) {
+          console.warn('[generate-subtitle-voice] persist tts reference backfill failed:', e);
+        }
+      }
+
+      if (referenceSubtitleName && referenceSubtitleName !== subtitleName) {
+        const taskOwnerId = typeof (taskSubtitle as any)?.userId === 'string' ? (taskSubtitle as any).userId.trim() : '';
+        if (!taskOwnerId) {
+          if (consumedCreditId) {
+            await refundCredits({ creditId: consumedCreditId }).catch(() => {});
+          }
+          return respErr('参考音频不存在：missing_task_owner');
+        }
+        const existence = await checkReferenceAudioExists({
+          taskId,
+          userId: taskOwnerId,
+          referenceSubtitleName,
+        });
+        if (!existence.exists) {
+          console.warn('[generate-subtitle-voice] reference audio missing, attempting repair', {
+            taskId,
+            subtitleName,
+            referenceSubtitleName,
+            ...existence,
+          });
+          const repair = await repairReferenceAudio({
+            taskId,
+            userId: taskOwnerId,
+            referenceSubtitleName,
+          });
+          if (repair.status !== 'repaired' && repair.status !== 'already_exists') {
+            const failedRepair = repair as Extract<typeof repair, { bucket?: string; copyResult?: unknown }>;
+            console.error('[generate-subtitle-voice] reference audio repair failed', {
+              taskId,
+              subtitleName,
+              referenceSubtitleName,
+              repairStatus: repair.status,
+              target: repair.target,
+              source: repair.source,
+              bucket: failedRepair.bucket,
+              copyResult: failedRepair.copyResult,
+            });
+            if (consumedCreditId) {
+              await refundCredits({ creditId: consumedCreditId }).catch(() => {});
+            }
+            return respErr(`参考音频不存在：${repair.target.path}`);
+          }
+          console.info('[generate-subtitle-voice] reference audio repaired', {
+            taskId,
+            subtitleName,
+            referenceSubtitleName,
+            repairStatus: repair.status,
+            target: repair.target,
+            source: repair.source,
+          });
+        }
+      }
+
       // A 路线（同步版，无 jobId）：直接调用 TTS 同步接口拿到 path_name/duration。
       let back: any;
       try {
-        back = await pyConvertTxtGenerateVoice(taskId, text, subtitleName);
+        back = await pyConvertTxtGenerateVoice(
+          taskId,
+          text,
+          subtitleName,
+          referenceSubtitleName ? { referenceSubtitleName } : undefined
+        );
       } catch {
         // Retry once; Modal cold starts can drop the first request.
         try {
-          back = await pyConvertTxtGenerateVoice(taskId, text, subtitleName);
+          back = await pyConvertTxtGenerateVoice(
+            taskId,
+            text,
+            subtitleName,
+            referenceSubtitleName ? { referenceSubtitleName } : undefined
+          );
         } catch (e2) {
           console.error('[generate-subtitle-voice] tts sync failed:', e2);
           if (consumedCreditId) {
@@ -166,11 +293,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Persist draft result for seamless refresh/resume (without vt_task_main).
+      // Also save vap_draft_txt so the text stays consistent with the audio
+      // even if the client-side auto-save hasn't flushed yet.
       const nowMs = Date.now();
       try {
         await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, {
           vap_draft_audio_path: back?.data?.path_name ?? null,
           vap_draft_duration: back?.data?.duration ?? null,
+          vap_draft_txt: text,
           vap_tts_job_id: null,
           vap_tts_request_key: requestKey,
           vap_tts_updated_at_ms: nowMs,
@@ -184,7 +314,11 @@ export async function POST(request: NextRequest) {
     return respErr('unsupported type');
   } catch (error) {
     console.error('生成语音失败:', error);
-    return respErr('生成语音失败');
+    if (consumedCreditId) {
+      await refundCredits({ creditId: consumedCreditId }).catch(() => {});
+    }
+    const isTimeout = error instanceof DOMException && error.name === 'TimeoutError';
+    return respErr(isTimeout ? '请求超时，请重试' : '生成语音失败');
   }
 }
 
@@ -234,6 +368,7 @@ export async function GET(request: NextRequest) {
         if (type === 'gen_srt') {
           await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, {
             vap_draft_txt: back?.data?.text_translated ?? null,
+            vap_draft_audio_path: null,
             vap_tr_job_id: null,
             vap_tr_request_key: null,
             vap_tr_updated_at_ms: nowMs,

@@ -25,7 +25,7 @@ export function Showcases({
       className={cn('py-24 relative overflow-hidden bg-black', showcases.className, className)}
     >
       {/* Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[500px] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[500px] bg-white/[0.03] blur-[120px] rounded-full pointer-events-none" />
 
       <div className="container relative z-10 mx-auto px-4 md:px-6">
         <div className="mx-auto mb-16 text-center max-w-3xl">

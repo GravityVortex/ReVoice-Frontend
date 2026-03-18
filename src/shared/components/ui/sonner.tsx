@@ -31,10 +31,7 @@ const Toaster = ({ toastOptions, icons, style, ...props }: ToasterProps) => {
     ...toastOptions,
     classNames: {
       toast: cn(
-        "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3 font-sans text-foreground shadow-lg backdrop-blur-[var(--glass-blur)]",
-        "before:pointer-events-none before:absolute before:inset-0 before:opacity-90",
-        "before:bg-[radial-gradient(80%_55%_at_20%_0%,oklch(0.65_0.22_280_/_0.22),transparent_60%),radial-gradient(70%_60%_at_85%_10%,oklch(0.60_0.20_290_/_0.14),transparent_55%)]",
-        "after:absolute after:left-0 after:top-0 after:h-full after:w-1 after:bg-[var(--toast-accent)] after:opacity-80 after:shadow-[0_0_18px_var(--toast-accent)]",
+        "toast-glass group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl p-3 font-sans text-foreground backdrop-blur-[var(--glass-blur)]",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--toast-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         toastOptions?.classNames?.toast
       ),

@@ -731,3 +731,53 @@ export const vtFileTask = pgTable(
     index('idx_vt_file_task_step_name').on(table.taskId, table.stepName),
   ]
 );
+
+// 编辑操作日志表
+export const vtEditOperation = pgTable(
+  'vt_edit_operation',
+  {
+    /** 操作记录唯一ID */
+    id: varchar('id', { length: 64 }).primaryKey(),
+    /** 所属任务ID */
+    taskId: varchar('task_id', { length: 64 })
+      .notNull()
+      .references(() => vtTaskMain.id, { onDelete: 'cascade' }),
+    /** 操作人用户ID */
+    userId: varchar('user_id', { length: 50 }).notNull(),
+    /** 操作类型，如 split（切割） */
+    operationType: varchar('operation_type', { length: 30 }).notNull(),
+    /** 业务操作ID，同一次切割的所有记录共享此ID */
+    operationId: varchar('operation_id', { length: 64 }).notNull(),
+    /** 操作前翻译字幕数组快照，用于回滚恢复 */
+    snapshotTranslate: json('snapshot_translate').notNull(),
+    /** 操作前原字幕数组快照，用于回滚恢复 */
+    snapshotSource: json('snapshot_source').notNull(),
+    /** 操作详情，如切割点、文本、音频切割结果等 */
+    operationDetail: json('operation_detail').notNull(),
+    /** 操作前音频 R2 路径快照（含父段ID、r2Key、备份key），用于音频回滚 */
+    audioSnapshot: json('audio_snapshot'),
+    /** 操作结果详情，如新生成的子段ID、待配音ID列表等 */
+    resultDetail: json('result_detail'),
+    /** 回滚状态：0=未回滚，1=已回滚，2=回滚失败(部分恢复) */
+    rollbackStatus: integer('rollback_status').notNull().default(0),
+    /** 回滚完成时间 */
+    rolledBackAt: timestamp('rolled_back_at'),
+    /** 执行回滚的用户ID */
+    rolledBackBy: varchar('rolled_back_by', { length: 64 }),
+    /** 创建人 */
+    createdBy: varchar('created_by', { length: 64 }).notNull(),
+    /** 创建时间 */
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    /** 最后更新人 */
+    updatedBy: varchar('updated_by', { length: 64 }),
+    /** 最后更新时间 */
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    /** 删除状态：0=正常，1=已删除 */
+    delStatus: integer('del_status').notNull().default(0),
+  },
+  (table) => [
+    index('idx_vt_edit_operation_task_id').on(table.taskId),
+    index('idx_vt_edit_operation_operation_id').on(table.operationId),
+    index('idx_vt_edit_operation_type').on(table.taskId, table.operationType),
+  ]
+);

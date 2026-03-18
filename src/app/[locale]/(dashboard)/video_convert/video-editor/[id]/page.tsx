@@ -3,36 +3,72 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, CheckCircle2, Info, Loader2, Sparkles, XCircle, Zap } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Info, Loader2, Sparkles, XCircle } from 'lucide-react';
 
-import { Link } from '@/core/i18n/navigation';
+import { useRouter } from '@/core/i18n/navigation';
+import { useUnsavedChangesGuard } from '@/shared/hooks/use-unsaved-changes-guard';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/shared/components/ui/dialog';
 import { ConvertObj, TrackItem, SubtitleTrackItem } from '@/shared/components/video-editor/types';
 import { cn, getLanguageConvertStr } from '@/shared/lib/utils';
 import { estimateTaskPercent } from '@/shared/lib/task-progress';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { ErrorState, ErrorBlock } from '@/shared/blocks/common/error-state';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { useAppContext } from '@/shared/contexts/app';
 import { RetroGrid } from '@/shared/components/magicui/retro-grid';
 import { toast } from 'sonner';
 import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
 import { createLimitedTaskQueue } from '@/shared/lib/waveform/loader';
 import { getBufferedAheadSeconds } from '@/shared/lib/media-buffer';
+import { collectMissingVoiceIds, resolveSourcePlaybackMode, resolveSplitTranslatedAudioPath } from '@/shared/lib/timeline/split';
 
 // New Components
-import { SubtitleWorkstation } from './subtitle-workstation';
+import { SubtitleWorkstation, type SubtitleWorkstationHandle } from './subtitle-workstation';
 import { VideoPreviewPanel, VideoPreviewRef } from './video-preview-panel';
 import { TimelinePanel } from './timeline-panel';
 
 function isAbortError(err: unknown) {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    // DOMException.name is "AbortError"
-    // Some browsers expose a numeric code (20) for abort.
-    (((err as any).name === 'AbortError') || (err as any).code === 20)
-  );
+  if (typeof err !== 'object' || err === null) return false;
+  const e = err as any;
+  if (e.name === 'AbortError' || e.code === 20) return true;
+  if (typeof e.message === 'string' && /abort/i.test(e.message)) return true;
+  return false;
+}
+
+const ABORT_REASON = typeof DOMException !== 'undefined'
+  ? new DOMException('Aborted', 'AbortError')
+  : Object.assign(new Error('Aborted'), { name: 'AbortError' });
+
+function waitForAudioReady(
+  audioEl: HTMLAudioElement,
+  opts?: { timeoutMs?: number }
+): Promise<boolean> {
+  const timeout = opts?.timeoutMs ?? 4000;
+  // For preview playback we do not need full-file buffering (`canplaythrough`).
+  // Reaching HAVE_CURRENT_DATA / `canplay` is enough to start quickly.
+  if (audioEl.readyState >= 2) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      audioEl.removeEventListener('loadeddata', onReady);
+      audioEl.removeEventListener('canplay', onReady);
+      audioEl.removeEventListener('error', onError);
+      clearTimeout(timer);
+    };
+    const onReady = () => { cleanup(); resolve(true); };
+    const onError = () => { cleanup(); resolve(false); };
+    audioEl.addEventListener('loadeddata', onReady, { once: true });
+    audioEl.addEventListener('canplay', onReady, { once: true });
+    audioEl.addEventListener('error', onError, { once: true });
+    const timer = setTimeout(() => { cleanup(); resolve(false); }, timeout);
+  });
 }
 
 export default function VideoEditorPage() {
@@ -42,8 +78,6 @@ export default function VideoEditorPage() {
   const t = useTranslations('video_convert.videoEditor');
   const tDetail = useTranslations('video_convert.projectDetail');
   const { user } = useAppContext();
-  const remainingCredits = user?.credits?.remainingCredits ?? 0;
-
   // --- CORE STATE ---
   const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,10 +109,20 @@ export default function VideoEditorPage() {
   const [pendingTimingMap, setPendingTimingMap] = useState<Record<string, { startMs: number; endMs: number }>>({});
   const pendingTimingCount = useMemo(() => Object.keys(pendingTimingMap).length, [pendingTimingMap]);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [workstationDirty, setWorkstationDirty] = useState(false);
+  const [isSplittingSubtitle, setIsSplittingSubtitle] = useState(false);
+  const [isRollingBack, setIsRollingBack] = useState(false);
+  const latestOperationIdRef = useRef<string | null>(null);
+  const [hasUndoableOps, setHasUndoableOps] = useState(false);
+  const [undoCountdown, setUndoCountdown] = useState(0);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const undoLatestOpRef = useRef<any>(null);
+  const undoFetchPromiseRef = useRef<Promise<any> | null>(null);
 
   // --- LAYOUT (keep it user-tunable; defaults should feel roomy) ---
   const LAYOUT_TIMELINE_H_KEY = 'revoice.video_editor.timeline_h_v1';
-  const [timelineHeightPx, setTimelineHeightPx] = useState(160);
+  const [timelineHeightPx, setTimelineHeightPx] = useState(175);
   const timelineHeightRef = useRef(timelineHeightPx);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const timelineDragRef = useRef<{
@@ -100,6 +144,24 @@ export default function VideoEditorPage() {
     } catch {
       // ignore
     }
+  }, []);
+
+  useEffect(() => {
+    if (!convertId) return;
+    fetch(`/api/video-task/operation-history?taskId=${convertId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const has = d?.data?.some((op: any) => op.rollbackStatus === 0);
+        setHasUndoableOps(Boolean(has));
+      })
+      .catch(() => {});
+  }, [convertId]);
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
+    };
   }, []);
 
   // Tracks
@@ -186,14 +248,16 @@ export default function VideoEditorPage() {
   // Track when we last attempted to start a segment (for per-segment grace).
   const subtitleKickRef = useRef<{ index: number; atMs: number } | null>(null);
   const isAudioRefArrPause = useRef(false); // Flag for drag operations
-  const workstationRef = useRef<{ onVideoSaveClick: () => Promise<boolean> }>(null);
+  const workstationRef = useRef<SubtitleWorkstationHandle>(null);
   // Ignore stale video `play()` promise resolutions/rejections when users toggle quickly.
   const videoPlayTokenRef = useRef(0);
 
   const auditionStopAtMsRef = useRef<number | null>(null);
   const auditionActiveTypeRef = useRef<'source' | 'convert' | null>(null);
+  const auditionTokenRef = useRef(0);
   const isAutoPlayNextRef = useRef(false);
   const playingSubtitleIndexRef = useRef<number>(-1);
+  const sourceAuditionAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     isAutoPlayNextRef.current = isAutoPlayNext;
@@ -221,6 +285,53 @@ export default function VideoEditorPage() {
   const handlePendingVoiceIdsChange = useCallback((ids: string[]) => {
     setPendingVoiceIds(ids);
   }, []);
+
+  // Auto-save timing edits to server (debounced 3s) so they survive page leave.
+  const autoSaveTimingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (Object.keys(pendingTimingMap).length === 0) return;
+    if (autoSaveTimingRef.current) clearTimeout(autoSaveTimingRef.current);
+    autoSaveTimingRef.current = setTimeout(async () => {
+      autoSaveTimingRef.current = null;
+      const items = Object.entries(pendingTimingMap).map(([id, v]) => ({
+        id, startMs: v.startMs, endMs: v.endMs,
+      }));
+      try {
+        const resp = await fetch('/api/video-task/update-subtitle-timings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: convertId, stepName: 'translate_srt', items }),
+        });
+        const back = await resp.json().catch(() => null);
+        if (resp.ok && back?.code === 0) {
+          const idMap = (back?.data?.idMap ?? {}) as Record<string, string>;
+          const touchedIds = new Set(items.map((it) => it.id));
+          const savedAtMs = Date.now();
+          setConvertObj((prevObj) => {
+            if (!prevObj) return prevObj;
+            const arr = (prevObj.srt_convert_arr || []) as any[];
+            const nextArr = arr.map((row) => {
+              const id = row?.id;
+              if (typeof id !== 'string') return row;
+              const mapped = idMap?.[id];
+              const nextId = typeof mapped === 'string' && mapped.length > 0 ? mapped : id;
+              const shouldMark = touchedIds.has(id);
+              if (nextId === id && !shouldMark) return row;
+              const out = { ...row };
+              if (nextId !== id) out.id = nextId;
+              if (shouldMark) out.timing_rev_ms = savedAtMs;
+              return out;
+            });
+            return { ...prevObj, srt_convert_arr: nextArr };
+          });
+          setPendingTimingMap({});
+        }
+      } catch { /* best-effort */ }
+    }, 3000);
+    return () => {
+      if (autoSaveTimingRef.current) clearTimeout(autoSaveTimingRef.current);
+    };
+  }, [pendingTimingMap, convertId]);
 
   const cancelUpdateLoop = useCallback(() => {
     const videoEl = videoPreviewRef.current?.videoElement as any;
@@ -300,71 +411,6 @@ export default function VideoEditorPage() {
       return nextTrack;
     });
   }, [formatSecondsToSrtTime]);
-
-  const handleGenerateVideo = useCallback(async () => {
-    if (isGeneratingVideo) return;
-    setIsGeneratingVideo(true);
-    try {
-      // Persist timing edits in one request before triggering merge.
-      if (pendingTimingCount > 0) {
-        const items = Object.entries(pendingTimingMap).map(([id, v]) => ({
-          id,
-          startMs: v.startMs,
-          endMs: v.endMs,
-        }));
-        const resp = await fetch('/api/video-task/update-subtitle-timings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ taskId: convertId, stepName: 'translate_srt', items }),
-        });
-        const back = await resp.json().catch(() => null);
-        if (!resp.ok || back?.code !== 0) {
-          toast.error(back?.message || back?.msg || (locale === 'zh' ? '保存时间轴失败' : 'Failed to save timeline'));
-          return;
-        }
-
-        // External merge still depends on legacy "id-encoded timings", so timing edits
-        // may rename ids. Sync local state to keep subsequent edits stable.
-        const idMap = (back?.data?.idMap ?? {}) as Record<string, string>;
-        const touchedIds = new Set(items.map((it) => it.id));
-        const savedAtMs = Date.now();
-        setConvertObj((prevObj) => {
-          if (!prevObj) return prevObj;
-          const arr = (prevObj.srt_convert_arr || []) as any[];
-          const nextArr = arr.map((row) => {
-            const id = row?.id;
-            if (typeof id !== 'string') return row;
-            const mapped = idMap?.[id];
-            const nextId = typeof mapped === 'string' && mapped.length > 0 ? mapped : id;
-            const shouldMark = touchedIds.has(id);
-            if (nextId === id && !shouldMark) return row;
-            const out = { ...row };
-            if (nextId !== id) out.id = nextId;
-            // 写入 timing_rev_ms：让刷新后也能识别“已保存但未重新合成”的时间轴改动
-            if (shouldMark) out.timing_rev_ms = savedAtMs;
-            return out;
-          });
-          return { ...prevObj, srt_convert_arr: nextArr };
-        });
-
-        // The timing edits are persisted at this point.
-        setPendingTimingMap({});
-      }
-
-      const ok = await workstationRef.current?.onVideoSaveClick();
-      if (ok) {
-        setTaskErrorMessage('');
-        // Optimistic: give immediate feedback that work has started.
-        setTaskStatus('pending');
-        setTaskProgress(0);
-      }
-    } catch (e) {
-      console.error('handleGenerateVideo failed:', e);
-      toast.error(locale === 'zh' ? '操作失败，请重试' : 'Request failed. Please try again.');
-    } finally {
-      setIsGeneratingVideo(false);
-    }
-  }, [convertId, isGeneratingVideo, locale, pendingTimingCount, pendingTimingMap]);
 
   // --- 1. DATA FETCHING ---
   useEffect(() => {
@@ -483,7 +529,7 @@ export default function VideoEditorPage() {
 
         const st = back?.data?.status;
         if (st === 'success') {
-          toast.success(t('audioList.toast.videoSaveCompleted'));
+          toast.success(t('audioList.toast.videoSaveCompleted'), { duration: 5000 });
           setServerLastMergedAtMs((prev) => Math.max(prev, baselineMergedAtMs));
           setServerActiveMergeJob(null);
           return;
@@ -553,7 +599,7 @@ export default function VideoEditorPage() {
     const map: Record<string, { label: string; cls: string; icon: 'dot' | 'spin' | 'check' | 'x' }> = {
       pending: {
         label: tDetail('status.pending'),
-        cls: 'text-cyan-600 border-cyan-600/20 bg-cyan-500/5',
+        cls: 'text-amber-500 border-amber-500/20 bg-amber-500/5',
         icon: 'dot',
       },
       processing: {
@@ -601,9 +647,18 @@ export default function VideoEditorPage() {
   const handleVideoMergeCompleted = useCallback((args: { mergedAtMs: number }) => {
     const mergedAtMs = args?.mergedAtMs;
     if (!Number.isFinite(mergedAtMs) || mergedAtMs <= 0) return;
-    // 单调递增：避免后端元数据回写延迟导致 UI 回退
     setServerLastMergedAtMs((prev) => Math.max(prev, Math.round(mergedAtMs)));
   }, []);
+
+  const handleVideoMergeStarted = useCallback((args: { jobId: string; createdAtMs: number }) => {
+    setServerActiveMergeJob(args);
+  }, []);
+
+  const handleVideoMergeFailed = useCallback(() => {
+    setServerActiveMergeJob(null);
+  }, []);
+
+  const isMergeJobActive = serverActiveMergeJob !== null;
 
   const serverMergePending = useMemo(() => {
     const audio = new Set<string>();
@@ -632,6 +687,10 @@ export default function VideoEditorPage() {
     return { audio, timing, any };
   }, [convertObj?.srt_convert_arr, serverLastMergedAtMs]);
 
+  const explicitMissingVoiceIdSet = useMemo(() => {
+    return new Set(collectMissingVoiceIds((convertObj?.srt_convert_arr || []) as any[]));
+  }, [convertObj?.srt_convert_arr]);
+
   const localPendingVoiceIdSet = useMemo(() => {
     const out = new Set<string>();
     for (const id of pendingVoiceIds) {
@@ -640,13 +699,14 @@ export default function VideoEditorPage() {
     return out;
   }, [pendingVoiceIds]);
 
-  // 右上角按钮“待重新合成”的计算：本地 pending + 服务端 pending（刷新后仍可恢复）
+  // 右上角按钮“待重新合成”的计算：本地 pending + 服务端 pending（刷新后仍可恢复）+ 显式缺音频
   const pendingVoiceIdSet = useMemo(() => {
     const out = new Set<string>();
     for (const id of serverMergePending.audio) out.add(id);
     for (const id of localPendingVoiceIdSet) out.add(id);
+    for (const id of explicitMissingVoiceIdSet) out.add(id);
     return out;
-  }, [localPendingVoiceIdSet, serverMergePending.audio]);
+  }, [explicitMissingVoiceIdSet, localPendingVoiceIdSet, serverMergePending.audio]);
 
   const pendingTimingIdSet = useMemo(() => {
     const out = new Set<string>();
@@ -665,6 +725,20 @@ export default function VideoEditorPage() {
   const pendingMergeCount = pendingMergeIdSet.size;
   const pendingMergeVoiceCount = pendingVoiceIdSet.size;
   const pendingMergeTimingCount = pendingTimingIdSet.size;
+
+  const hasUnsavedChanges = workstationDirty || pendingMergeCount > 0 || pendingTimingCount > 0;
+  const router = useRouter();
+  const { showLeaveDialog, confirmLeave, cancelLeave } = useUnsavedChangesGuard(hasUnsavedChanges);
+
+  const backUrl = convertObj?.originalFileId
+    ? `/dashboard/projects/${convertObj.originalFileId}`
+    : '/dashboard/projects';
+
+  const handleBackClick = useCallback(() => {
+    // When hasUnsavedChanges is true, router.push triggers the
+    // monkey-patched pushState which shows the leave dialog automatically.
+    router.push(backUrl);
+  }, [backUrl, router]);
 
   // --- 2. TRACK INITIALIZATION ---
   useEffect(() => {
@@ -710,7 +784,7 @@ export default function VideoEditorPage() {
               ? String((entry as any).vap_draft_audio_path || '').trim()
               : '';
           const draftPath = draftPathRaw ? draftPathRaw.split('?')[0] : '';
-          const pathName = draftPath || `adj_audio_time/${entry.id}.wav`;
+          const pathName = resolveSplitTranslatedAudioPath({ ...entry, vap_draft_audio_path: draftPath });
 
           const updatedAtMsRaw = (entry as any)?.vap_tts_updated_at_ms;
           const updatedAtMs =
@@ -720,17 +794,25 @@ export default function VideoEditorPage() {
           const cacheBuster =
             Number.isFinite(updatedAtMs) && updatedAtMs > 0 ? String(updatedAtMs) : '';
 
-          const base =
-            /^https?:\/\//i.test(pathName)
+          const base = pathName
+            ? (/^https?:\/\//i.test(pathName)
               ? pathName
-              : `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${pathName}`;
-          const audioUrl = cacheBuster
-            ? `${base}${base.includes('?') ? '&' : '?'}t=${encodeURIComponent(cacheBuster)}`
-            : base;
+              : `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${pathName}`)
+            : '';
+          const audioUrl = !base
+            ? ''
+            : (cacheBuster
+              ? `${base}${base.includes('?') ? '&' : '?'}t=${encodeURIComponent(cacheBuster)}`
+              : base);
+          const draftTxt = typeof (entry as any)?.vap_draft_txt === 'string' ? String((entry as any).vap_draft_txt || '') : '';
+          const splitOperationId = typeof (entry as any)?.vap_split_operation_id === 'string' && (entry as any).vap_split_operation_id
+            ? String((entry as any).vap_split_operation_id)
+            : undefined;
           return {
             id: entry.id, type: 'video', name: `Sub ${index + 1}`,
-            startTime: start, duration: Math.max(0, end - start), text: entry.txt,
-            fontSize: 16, color: '#ffffff', audioUrl
+            startTime: start, duration: Math.max(0, end - start), text: draftTxt || entry.txt,
+            fontSize: 16, color: '#ffffff', audioUrl,
+            splitOperationId,
           };
         });
         setSubtitleTrack(items);
@@ -774,6 +856,7 @@ export default function VideoEditorPage() {
       cancelUpdateLoop();
       bgmAudioRef.current?.pause();
       audioRefArr.forEach(ref => ref.current?.pause());
+      try { sourceAuditionAudioRef.current?.pause(); } catch { /* ignore */ }
     };
   }, [audioRefArr, cancelUpdateLoop]);
 
@@ -920,18 +1003,15 @@ export default function VideoEditorPage() {
   }, []);
 
   const abortAllVoiceInflight = useCallback(() => {
-    bufferingAbortRef.current?.abort();
+    try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
     bufferingAbortRef.current = null;
-    pausePrefetchAbortRef.current?.abort();
+    try { pausePrefetchAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
     pausePrefetchAbortRef.current = null;
-    for (const v of voiceInflightRef.current.values()) {
-      try {
-        v.controller.abort();
-      } catch {
-        // ignore
-      }
-    }
+    const entries = Array.from(voiceInflightRef.current.values());
     voiceInflightRef.current.clear();
+    for (const v of entries) {
+      try { v.controller.abort(ABORT_REASON); } catch { /* ignore */ }
+    }
   }, []);
 
   useEffect(() => {
@@ -1073,9 +1153,13 @@ export default function VideoEditorPage() {
   }, []);
 
   const fetchAudioArrayBuffer = useCallback(async (raw: string, signal: AbortSignal) => {
+    const abortErr = () => { const e = new Error('Aborted'); e.name = 'AbortError'; return e; };
     const direct = async (url: string) => {
-      if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      const resp = await fetch(url, { signal });
+      if (signal.aborted) throw abortErr();
+      const resp = await fetch(url, { signal }).catch((e: unknown) => {
+        if (signal.aborted) throw abortErr();
+        throw e;
+      });
       if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
       return await resp.arrayBuffer();
     };
@@ -1083,8 +1167,7 @@ export default function VideoEditorPage() {
     try {
       return await direct(raw);
     } catch (e) {
-      if (signal.aborted) throw e;
-      // If direct fetch is blocked by CORS (TypeError), retry via same-origin proxy when allowed.
+      if (signal.aborted) throw abortErr();
       const proxy = toWebAudioFetchUrl(raw);
       if (proxy && proxy !== raw) return await direct(proxy);
       throw e;
@@ -1094,7 +1177,7 @@ export default function VideoEditorPage() {
   const decodeVoiceBuffer = useCallback(async (url: string, signal: AbortSignal) => {
     const ctx = getOrCreateVoiceAudioCtx();
     const ab = await fetchAudioArrayBuffer(url, signal);
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (signal.aborted) { const e = new Error('Aborted'); e.name = 'AbortError'; throw e; }
 
     // Some browsers detach the buffer; pass a copy.
     const input = ab.slice(0);
@@ -1122,18 +1205,26 @@ export default function VideoEditorPage() {
     if (inflight) return await inflight.promise;
 
     const controller = new AbortController();
-    const onAbort = () => controller.abort();
-    signal.addEventListener('abort', onAbort, { once: true });
+    const onAbort = () => {
+      try { controller.abort(ABORT_REASON); } catch { /* ignore */ }
+    };
+    if (signal.aborted) {
+      try { controller.abort(ABORT_REASON); } catch { /* ignore */ }
+    } else {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
 
     const promise = voiceDecodeQueue
       .enqueue((queueSignal) => decodeVoiceBuffer(key, queueSignal), controller.signal)
       .then((buf) => {
+        if (signal.aborted) return undefined as unknown as AudioBuffer;
         cacheSetVoice(key, buf);
         return buf;
       })
+      .catch(() => undefined as unknown as AudioBuffer)
       .finally(() => {
         voiceInflightRef.current.delete(key);
-        signal.removeEventListener('abort', onAbort);
+        try { signal.removeEventListener('abort', onAbort); } catch { /* ignore */ }
       });
 
     voiceInflightRef.current.set(key, { controller, promise });
@@ -1244,7 +1335,7 @@ export default function VideoEditorPage() {
       const ctrl = new AbortController();
       let offAbort: (() => void) | null = null;
       if (parentSignal) {
-        const onAbort = () => ctrl.abort();
+        const onAbort = () => { try { ctrl.abort(ABORT_REASON); } catch { /* ignore */ } };
         parentSignal.addEventListener('abort', onAbort, { once: true });
         offAbort = () => parentSignal.removeEventListener('abort', onAbort);
       }
@@ -1368,7 +1459,7 @@ export default function VideoEditorPage() {
   const beginSubtitleBuffering = useCallback(async (_reasonIndex: number, url: string) => {
     if (isSubtitleBuffering) return;
     setIsSubtitleBuffering(true);
-    bufferingAbortRef.current?.abort();
+    try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
     const controller = new AbortController();
     bufferingAbortRef.current = controller;
     // Invalidate any pending video `play()` to avoid stale resolution flipping `isPlaying`.
@@ -2003,7 +2094,11 @@ export default function VideoEditorPage() {
     const auditionStopAtMs = auditionStopAtMsRef.current;
     if (auditionStopAtMs != null) {
       const timeMs = time * 1000;
-      if (Number.isFinite(timeMs) && timeMs >= auditionStopAtMs + 50) {
+      const isSourceMode = auditionActiveTypeRef.current === 'source';
+      const srcAudio = sourceAuditionAudioRef.current;
+      const sourceStillPlaying = isSourceMode && srcAudio && !srcAudio.paused && !srcAudio.ended;
+      const graceExceeded = timeMs >= auditionStopAtMs + 3000;
+      if (Number.isFinite(timeMs) && timeMs >= auditionStopAtMs + 50 && (!sourceStillPlaying || graceExceeded)) {
         // Cancel any in-flight warmup/play so it can't flip state later.
         videoStartGateTokenRef.current += 1;
         videoPlayTokenRef.current += 1;
@@ -2014,6 +2109,15 @@ export default function VideoEditorPage() {
         } catch {
           // ignore
         }
+        // Also stop source audition audio immediately.
+        try {
+          if (sourceAuditionAudioRef.current) {
+            sourceAuditionAudioRef.current.onended = null;
+            sourceAuditionAudioRef.current.onerror = null;
+            sourceAuditionAudioRef.current.ontimeupdate = null;
+            sourceAuditionAudioRef.current.pause();
+          }
+        } catch { /* ignore */ }
         setIsPlaying(false);
 
         // Dispatch synthetic event to handleAuditionStop cleanly without async deps cycles
@@ -2208,7 +2312,7 @@ export default function VideoEditorPage() {
 
   useEffect(() => {
     if (isPlaying || isSubtitleBuffering || seekDragActiveRef.current) {
-      pausePrefetchAbortRef.current?.abort();
+      try { pausePrefetchAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
       pausePrefetchAbortRef.current = null;
       return;
     }
@@ -2219,21 +2323,20 @@ export default function VideoEditorPage() {
     const anchor = Number.isFinite(videoEl.currentTime) ? (videoEl.currentTime || 0) : currentTime;
     if (subtitleBackendRef.current === 'webaudio') {
       const ctrl = new AbortController();
-      pausePrefetchAbortRef.current?.abort();
+      try { pausePrefetchAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
       pausePrefetchAbortRef.current = ctrl;
 
-      // Keep a small forward runway warm while paused so resume does not rebuffer voices.
       prefetchVoiceAroundTime(anchor, { count: getAdaptivePrefetchCount('pause'), signal: ctrl.signal });
 
       return () => {
-        ctrl.abort();
+        try { ctrl.abort(ABORT_REASON); } catch { /* ignore */ }
         if (pausePrefetchAbortRef.current === ctrl) {
           pausePrefetchAbortRef.current = null;
         }
       };
     }
 
-    pausePrefetchAbortRef.current?.abort();
+    try { pausePrefetchAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
     pausePrefetchAbortRef.current = null;
     if (subtitleBackendRef.current !== 'media') return;
 
@@ -2329,9 +2432,10 @@ export default function VideoEditorPage() {
   // --- ACTIONS ---
 
   const handlePlayPause = useCallback(() => {
+    auditionTokenRef.current += 1;
     const videoEl = videoPreviewRef.current?.videoElement;
     if (isSubtitleBuffering) {
-      bufferingAbortRef.current?.abort();
+      try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
       bufferingAbortRef.current = null;
       setIsSubtitleBuffering(false);
       // Cancel any in-flight play() promise handling.
@@ -2352,6 +2456,31 @@ export default function VideoEditorPage() {
         videoEl?.pause();
       } catch {
         // ignore
+      }
+      // If in audition, do a full audition cleanup so the next play starts fresh.
+      if (auditionActiveTypeRef.current) {
+        try {
+          if (sourceAuditionAudioRef.current) {
+            sourceAuditionAudioRef.current.onended = null;
+            sourceAuditionAudioRef.current.onerror = null;
+            sourceAuditionAudioRef.current.ontimeupdate = null;
+            sourceAuditionAudioRef.current.pause();
+          }
+        } catch { /* ignore */ }
+        auditionStopAtMsRef.current = null;
+        setPlayingSubtitleIndex(-1);
+        playingSubtitleIndexRef.current = -1;
+        setAuditionActiveType(null);
+        auditionActiveTypeRef.current = null;
+        if (auditionRestoreRef.current) {
+          const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
+          setIsSubtitleMuted(subtitleMuted);
+          isSubtitleMutedRef.current = subtitleMuted;
+          setIsBgmMuted(bgmMuted);
+          isBgmMutedRef.current = bgmMuted;
+          if (videoEl) videoEl.muted = videoMuted;
+          auditionRestoreRef.current = null;
+        }
       }
       // Cancel any in-flight play() promise handling.
       videoPlayTokenRef.current += 1;
@@ -2423,6 +2552,307 @@ export default function VideoEditorPage() {
     t,
   ]);
 
+  useEffect(() => {
+    const suppressAbort = (e: PromiseRejectionEvent) => {
+      if (isAbortError(e.reason)) e.preventDefault();
+    };
+    const suppressAbortSync = (e: ErrorEvent) => {
+      if (isAbortError(e.error)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('unhandledrejection', suppressAbort);
+    window.addEventListener('error', suppressAbortSync, true);
+    return () => {
+      window.removeEventListener('unhandledrejection', suppressAbort);
+      window.removeEventListener('error', suppressAbortSync, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handlePlayPause();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePlayPause]);
+
+  const persistPendingTimingsIfNeeded = useCallback(async () => {
+    if (pendingTimingCount === 0) return true;
+
+    const items = Object.entries(pendingTimingMap).map(([id, v]) => ({
+      id,
+      startMs: v.startMs,
+      endMs: v.endMs,
+    }));
+    const resp = await fetch('/api/video-task/update-subtitle-timings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: convertId, stepName: 'translate_srt', items }),
+    });
+    const back = await resp.json().catch(() => null);
+    if (!resp.ok || back?.code !== 0) {
+      toast.error(back?.message || back?.msg || (locale === 'zh' ? '保存时间轴失败' : 'Failed to save timeline'));
+      return false;
+    }
+
+    const idMap = (back?.data?.idMap ?? {}) as Record<string, string>;
+    const touchedIds = new Set(items.map((it) => it.id));
+    const savedAtMs = Date.now();
+    setConvertObj((prevObj) => {
+      if (!prevObj) return prevObj;
+      const arr = (prevObj.srt_convert_arr || []) as any[];
+      const nextArr = arr.map((row) => {
+        const id = row?.id;
+        if (typeof id !== 'string') return row;
+        const mapped = idMap?.[id];
+        const nextId = typeof mapped === 'string' && mapped.length > 0 ? mapped : id;
+        const shouldMark = touchedIds.has(id);
+        if (nextId === id && !shouldMark) return row;
+        const out = { ...row };
+        if (nextId !== id) out.id = nextId;
+        if (shouldMark) out.timing_rev_ms = savedAtMs;
+        return out;
+      });
+      return { ...prevObj, srt_convert_arr: nextArr };
+    });
+    setPendingTimingMap({});
+    return true;
+  }, [convertId, locale, pendingTimingCount, pendingTimingMap]);
+
+  const handleGenerateVideo = useCallback(async () => {
+    if (isGeneratingVideo) return;
+    if (explicitMissingVoiceIdSet.size > 0) {
+      toast.error(t('videoEditor.toast.splitMissingVoice'));
+      return;
+    }
+    setIsGeneratingVideo(true);
+    try {
+      const okTiming = await persistPendingTimingsIfNeeded();
+      if (!okTiming) return;
+
+      const ok = await workstationRef.current?.onVideoSaveClick();
+      if (ok) {
+        setTaskErrorMessage('');
+        setTaskStatus('pending');
+        setTaskProgress(0);
+      }
+    } catch (e) {
+      console.error('handleGenerateVideo failed:', e);
+      toast.error(locale === 'zh' ? '操作失败，请重试' : 'Request failed. Please try again.');
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  }, [explicitMissingVoiceIdSet.size, isGeneratingVideo, locale, persistPendingTimingsIfNeeded, t]);
+
+  const executeUndoNow = useCallback(async () => {
+    if (undoIntervalRef.current) {
+      clearInterval(undoIntervalRef.current);
+      undoIntervalRef.current = null;
+    }
+
+    let op = undoLatestOpRef.current;
+
+    // Atomically transition countdown → loading in one React render batch
+    setIsRollingBack(true);
+    setUndoCountdown(0);
+
+    if (!op && undoFetchPromiseRef.current) {
+      op = await undoFetchPromiseRef.current;
+    }
+
+    if (!op) {
+      toast.error(t('rollback.failed'));
+      setIsRollingBack(false);
+      return;
+    }
+
+    try {
+      const resp = await fetch('/api/video-task/rollback-operation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: convertId,
+          operationId: op.operationId,
+        }),
+      });
+      const back = await resp.json().catch(() => null);
+      if (!resp.ok || back?.code !== 0) {
+        toast.error(back?.message || t('rollback.failed'));
+        return;
+      }
+
+      setConvertObj((prevObj) => {
+        if (!prevObj) return prevObj;
+        return {
+          ...prevObj,
+          srt_convert_arr: back.data?.translate ?? prevObj.srt_convert_arr,
+          srt_source_arr: back.data?.source ?? prevObj.srt_source_arr,
+        };
+      });
+
+      toast.success(t('rollback.success'));
+      latestOperationIdRef.current = null;
+      try {
+        const histResp = await fetch(`/api/video-task/operation-history?taskId=${convertId}`);
+        const histData = await histResp.json();
+        const stillHas = histData?.data?.some((op: any) => op.rollbackStatus === 0);
+        setHasUndoableOps(Boolean(stillHas));
+      } catch {
+        setHasUndoableOps(false);
+      }
+    } catch {
+      toast.error(t('rollback.failed'));
+    } finally {
+      setIsRollingBack(false);
+      undoLatestOpRef.current = null;
+      undoFetchPromiseRef.current = null;
+    }
+  }, [convertId, t]);
+
+  const handleUndoCancel = useCallback(() => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    if (undoIntervalRef.current) {
+      clearInterval(undoIntervalRef.current);
+      undoIntervalRef.current = null;
+    }
+    setUndoCountdown(0);
+    undoLatestOpRef.current = null;
+    undoFetchPromiseRef.current = null;
+  }, []);
+
+  const handleRollbackLatest = useCallback(() => {
+    if (isRollingBack || undoCountdown > 0) return;
+
+    undoLatestOpRef.current = null;
+    setUndoCountdown(3);
+
+    undoIntervalRef.current = setInterval(() => {
+      setUndoCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(undoIntervalRef.current!);
+          undoIntervalRef.current = null;
+          return 1;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    undoFetchPromiseRef.current = fetch(
+      `/api/video-task/operation-history?taskId=${convertId}`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        const latest = data?.data?.find((op: any) => op.rollbackStatus === 0);
+        if (!latest) {
+          handleUndoCancel();
+          toast.info(t('rollback.nothingToUndo'));
+          return null;
+        }
+        undoLatestOpRef.current = latest;
+        return latest;
+      })
+      .catch(() => {
+        handleUndoCancel();
+        toast.error(t('rollback.failed'));
+        return null;
+      });
+
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      executeUndoNow();
+    }, 3000);
+  }, [convertId, isRollingBack, undoCountdown, t, handleUndoCancel, executeUndoNow]);
+
+  const handleSubtitleSplit = useCallback(async () => {
+    if (!convertObj || isSplittingSubtitle) return;
+
+    const splitAtMs = Math.round(currentTime * 1000);
+    const clip = subtitleTrack.find((item) => splitAtMs >= Math.round(item.startTime * 1000) && splitAtMs < Math.round((item.startTime + item.duration) * 1000));
+    if (!clip) {
+      toast.error(t('videoEditor.toast.splitNoClip'));
+      return;
+    }
+
+    const clipStartMs = Math.round(clip.startTime * 1000);
+    const clipEndMs = Math.round((clip.startTime + clip.duration) * 1000);
+    if (splitAtMs - clipStartMs < 200 || clipEndMs - splitAtMs < 200) {
+      toast.error(t('videoEditor.toast.splitTooClose'));
+      return;
+    }
+
+    setIsSplittingSubtitle(true);
+    try {
+      const okTiming = await persistPendingTimingsIfNeeded();
+      if (!okTiming) return;
+
+      if (isPlaying) handlePlayPause();
+
+      const effectiveConvertText = typeof clip.text === 'string' ? clip.text : '';
+      const resp = await fetch('/api/video-task/split-subtitle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: convertId,
+          clipId: clip.id,
+          splitAtMs,
+          effectiveConvertText,
+        }),
+      });
+      const back = await resp.json().catch(() => null);
+      if (!resp.ok || back?.code !== 0) {
+        toast.error(back?.message || t('videoEditor.toast.splitFailed'));
+        return;
+      }
+
+      // 提取分割产生的两个子段 id（新数组中从原 clip 位置开始的两条）
+      const newTranslate: any[] = back.data?.translate ?? [];
+      const splitChildIdx = newTranslate.findIndex((entry: any) => entry?.vap_split_operation_id);
+      const firstSplitChildId: string | null =
+        splitChildIdx >= 0 ? (newTranslate[splitChildIdx]?.id ?? null) : null;
+
+      setConvertObj((prevObj) => {
+        if (!prevObj) return prevObj;
+        return {
+          ...prevObj,
+          srt_convert_arr: newTranslate.length > 0 ? newTranslate : prevObj.srt_convert_arr,
+          srt_source_arr: back.data?.source ?? prevObj.srt_source_arr,
+        };
+      });
+      setPlayingSubtitleIndex(-1);
+
+      // 自动定位到第一个 split 子段
+      if (firstSplitChildId) {
+        setTimeout(() => {
+          workstationRef.current?.scrollToItem(firstSplitChildId);
+        }, 100);
+      }
+
+      const splitOpId = back.data?.splitOperationId;
+      if (splitOpId) {
+        latestOperationIdRef.current = splitOpId;
+        setHasUndoableOps(true);
+      }
+
+      toast.success(t('videoEditor.toast.splitNeedVoice'));
+    } catch (e) {
+      console.error('handleSubtitleSplit failed:', e);
+      toast.error(t('videoEditor.toast.splitFailed'));
+    } finally {
+      setIsSplittingSubtitle(false);
+    }
+  }, [convertId, convertObj, currentTime, handlePlayPause, isPlaying, isSplittingSubtitle, persistPendingTimingsIfNeeded, subtitleTrack, t]);
+
+
   const handleSeek = useCallback((time: number, isDragging: boolean = false, isAuditionSeek: boolean = false) => {
     const clampedTime = Math.max(0, Math.min(time, totalDuration));
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -2449,7 +2879,7 @@ export default function VideoEditorPage() {
         lastPlayedSubtitleIndexRef.current = -1;
         setPlayingSubtitleIndex(-1);
         lastVoiceSubtitleIndexRef.current = -1;
-        bufferingAbortRef.current?.abort();
+        try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
         bufferingAbortRef.current = null;
         setIsSubtitleBuffering(false);
         stopWebAudioVoice();
@@ -2534,11 +2964,14 @@ export default function VideoEditorPage() {
       } catch {
         // ignore
       }
+      const dragEndIdx = findSubtitleIndexAtTime(subtitleTrackRef.current, clampedTime);
+      setPlayingSubtitleIndex(dragEndIdx);
       return;
     }
 
     // Click-to-seek: reset subtitle-audio state.
     if (!isAuditionSeek) {
+      auditionTokenRef.current += 1;
       if (auditionRestoreRef.current) {
         const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
         setIsSubtitleMuted(subtitleMuted);
@@ -2553,6 +2986,15 @@ export default function VideoEditorPage() {
       setAuditionActiveType(null);
       auditionActiveTypeRef.current = null;
       auditionStopAtMsRef.current = null;
+      // Stop source audition audio when user seeks away from audition.
+      try {
+        if (sourceAuditionAudioRef.current) {
+          sourceAuditionAudioRef.current.onended = null;
+          sourceAuditionAudioRef.current.onerror = null;
+          sourceAuditionAudioRef.current.ontimeupdate = null;
+          sourceAuditionAudioRef.current.pause();
+        }
+      } catch { /* ignore */ }
     }
 
     // During audition seek, the caller (handleAuditionRequestPlay) manages
@@ -2564,9 +3006,8 @@ export default function VideoEditorPage() {
       subtitleWatchdogMsRef.current = now;
       subtitlePlayTokenRef.current += 1;
       lastPlayedSubtitleIndexRef.current = -1;
-      setPlayingSubtitleIndex(-1);
       lastVoiceSubtitleIndexRef.current = -1;
-      bufferingAbortRef.current?.abort();
+      try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
       bufferingAbortRef.current = null;
       setIsSubtitleBuffering(false);
       stopWebAudioVoice();
@@ -2602,8 +3043,12 @@ export default function VideoEditorPage() {
     }
 
     stopAllSubtitleAudio();
-    // Seeking should not auto-play voice; the playback loop will resync when the user hits Play.
-  }, [abortAllVoiceInflight, cancelUpdateLoop, isPlaying, stopAllSubtitleAudio, stopWebAudioVoice, totalDuration]);
+
+    if (!isAuditionSeek) {
+      const seekedIdx = findSubtitleIndexAtTime(subtitleTrackRef.current, clampedTime);
+      setPlayingSubtitleIndex(seekedIdx);
+    }
+  }, [abortAllVoiceInflight, cancelUpdateLoop, findSubtitleIndexAtTime, isPlaying, stopAllSubtitleAudio, stopWebAudioVoice, totalDuration]);
 
   const handleSeekToSubtitle = useCallback((time: number) => {
     handleSeek(time, false);
@@ -2615,10 +3060,15 @@ export default function VideoEditorPage() {
     if (videoPreviewRef.current?.videoElement) videoPreviewRef.current.videoElement.volume = output;
     if (bgmAudioRef.current) bgmAudioRef.current.volume = output;
     audioRefArr.forEach(r => { if (r.current) r.current.volume = output; });
+    if (sourceAuditionAudioRef.current) sourceAuditionAudioRef.current.volume = output;
   }, []);
 
   const handleUpdateSubtitleAudio = useCallback((id: string, url: string) => {
     setSubtitleTrack(prev => prev.map(item => item.id === id ? { ...item, audioUrl: url } : item));
+  }, []);
+
+  const handleSubtitleTextChange = useCallback((id: string, text: string) => {
+    setSubtitleTrack(prev => prev.map(item => item.id === id ? { ...item, text } : item));
   }, []);
 
   const handleToggleBgmMute = useCallback(() => {
@@ -2644,6 +3094,16 @@ export default function VideoEditorPage() {
     } catch {
       // ignore
     }
+    // Stop source audition audio if playing.
+    try {
+      if (sourceAuditionAudioRef.current) {
+        sourceAuditionAudioRef.current.onended = null;
+        sourceAuditionAudioRef.current.onerror = null;
+        sourceAuditionAudioRef.current.ontimeupdate = null;
+        sourceAuditionAudioRef.current.pause();
+      }
+    } catch { /* ignore */ }
+
     setIsPlaying(false);
     auditionStopAtMsRef.current = null;
     setPlayingSubtitleIndex(-1);
@@ -2679,9 +3139,13 @@ export default function VideoEditorPage() {
     return () => document.removeEventListener('revoice-audition-natural-stop', handleNaturalStop);
   }, [handleAuditionStop]);
 
-  const handleAuditionRequestPlay = useCallback((index: number, mode: 'source' | 'convert') => {
+  const handleAuditionRequestPlay = useCallback(async (index: number, mode: 'source' | 'convert') => {
     if (index < 0 || index >= subtitleTrackRef.current.length) return;
     const item = subtitleTrackRef.current[index];
+    const token = ++auditionTokenRef.current;
+
+    // Stop any previous source audition audio.
+    try { sourceAuditionAudioRef.current?.pause(); } catch { /* ignore */ }
 
     if (!auditionRestoreRef.current) {
       auditionRestoreRef.current = {
@@ -2705,20 +3169,126 @@ export default function VideoEditorPage() {
     } else {
       setIsSubtitleMuted(true);
       isSubtitleMutedRef.current = true;
-      if (videoEl) videoEl.muted = false;
+      if (videoEl) videoEl.muted = true;
     }
 
     setIsBgmMuted(true);
     isBgmMutedRef.current = true;
 
-    // Seek to the starting time. Pass true for isAuditionSeek to bypass cleanup.
     handleSeek(item.startTime, false, true);
 
-    // Call the master gate immediately so the buffering protects the audio.
-    setTimeout(() => {
+    if (mode === 'source' && convertObj) {
+      // --- Source audition: split rows should go straight to vocal fallback instead of waiting for a missing segment file. ---
+      const sourceEntry = convertObj.srt_source_arr?.[index];
+      const sourceId = sourceEntry?.id || String(index + 1);
+      const userId = user?.id || '';
+      const sourceAudioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/split_audio/audio/${sourceId}.wav`;
+      const sourceMode = resolveSourcePlaybackMode(sourceEntry);
+      console.log('[SourceAudition] url:', sourceAudioUrl, 'sourceId:', sourceId, 'userId:', userId, 'mode:', sourceMode);
+
+      if (!sourceAuditionAudioRef.current) {
+        sourceAuditionAudioRef.current = new Audio();
+      }
+      const audioEl = sourceAuditionAudioRef.current;
+      audioEl.volume = volumeRef.current / 100;
+      audioEl.ontimeupdate = null;
+      audioEl.onerror = null;
+      audioEl.onended = null;
+
+      const parseSrtTime = (s: string) => {
+        const [hms, ms] = s.split(',');
+        const [h, m, sec] = hms.split(':').map(Number);
+        return h * 3600 + m * 60 + sec + (Number(ms) || 0) / 1000;
+      };
+
+      const applyVocalFallback = async () => {
+        if (!convertObj.vocalAudioUrl || !sourceEntry?.start) return { ready: false, gesturePlayPromise: null as Promise<void> | null };
+        audioEl.preload = 'auto';
+        audioEl.src = convertObj.vocalAudioUrl;
+        const startSec = parseSrtTime(sourceEntry.start);
+        const endSec = sourceEntry.end ? parseSrtTime(sourceEntry.end) : startSec + 10;
+        audioEl.currentTime = startSec;
+        audioEl.ontimeupdate = () => {
+          if (audioEl.currentTime >= endSec) {
+            audioEl.ontimeupdate = null;
+            audioEl.onended = null;
+            audioEl.pause();
+            document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+          }
+        };
+        audioEl.load();
+        const gesturePlayPromise = audioEl.play().catch(() => { /* expected pause below */ });
+        audioEl.pause();
+        const ready = await waitForAudioReady(audioEl, { timeoutMs: 2500 });
+        return { ready, gesturePlayPromise };
+      };
+
+      let audioOk = false;
+      let gesturePlayPromise: Promise<void> | null = null;
+
+      if (sourceMode === 'fallback_vocal') {
+        const fallback = await applyVocalFallback();
+        audioOk = fallback.ready;
+        gesturePlayPromise = fallback.gesturePlayPromise;
+        if (token !== auditionTokenRef.current) return;
+      } else {
+        audioEl.src = sourceAudioUrl;
+        audioEl.currentTime = 0;
+        audioEl.load();
+
+        gesturePlayPromise = audioEl.play().catch(() => { /* expected pause below */ });
+        audioEl.pause();
+
+        audioOk = await waitForAudioReady(audioEl, { timeoutMs: 4000 });
+        if (token !== auditionTokenRef.current) return;
+
+        if (!audioOk) {
+          console.warn('[SourceAudition] segment load failed, falling back to vocalAudioUrl');
+          const fallback = await applyVocalFallback();
+          audioOk = fallback.ready;
+          if (!gesturePlayPromise) gesturePlayPromise = fallback.gesturePlayPromise;
+          if (token !== auditionTokenRef.current) return;
+        }
+      }
+
+      // Wait for the initial gesture play promise to settle before proceeding.
+      if (gesturePlayPromise) await gesturePlayPromise;
+
+      if (!audioOk) {
+        console.error('[SourceAudition] all audio sources failed');
+        toast.error(t('videoEditor.toast.audioLoadFailed') || 'Audio load failed');
+        return;
+      }
+
+      if (token !== auditionTokenRef.current) return;
+
+      // Both audio and video start together
+      audioEl.onended = () => {
+        document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+      };
+      audioEl.play().catch((err) => {
+        console.error('[SourceAudition] play failed:', err);
+      });
       if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
-    }, 0);
-  }, [handleSeek, playVideoWithGate]);
+
+    } else if (mode === 'convert') {
+      // --- Convert audition: ensure voice buffer decoded before starting video ---
+      const seg = subtitleTrackRef.current[index];
+      const voiceUrl = (seg?.audioUrl || '').trim();
+
+      if (voiceUrl && !cacheGetVoice(voiceUrl)) {
+        try {
+          const ctrl = new AbortController();
+          await ensureVoiceBuffer(voiceUrl, ctrl.signal);
+        } catch {
+          // Decode failed; syncVoicePlaybackWebAudio will handle fallback at runtime.
+        }
+        if (token !== auditionTokenRef.current) return;
+      }
+
+      if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
+    }
+  }, [cacheGetVoice, convertObj, ensureVoiceBuffer, handleSeek, playVideoWithGate, t, user?.id]);
 
   useEffect(() => {
     const handleEventRequestPlay = (e: any) => handleAuditionRequestPlay(e.detail.index, e.detail.mode);
@@ -2730,46 +3300,74 @@ export default function VideoEditorPage() {
     handlePlayPause();
   }, [handlePlayPause]);
 
+  useEffect(() => {
+    const handleEditorKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      if ((e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && !e.shiftKey) {
+        e.preventDefault();
+        handleRollbackLatest();
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handlePlayPause();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleEditorKeyDown);
+    return () => window.removeEventListener('keydown', handleEditorKeyDown);
+  }, [handlePlayPause, handleRollbackLatest]);
+
   // --- RENDER ---
   if (isLoading) return <LoadingSkeleton />;
-  if (error) return <ErrorDisplay error={error} />;
+  if (error) return (
+    <ErrorState
+      title={t('error.loadFailed')}
+      detail={error}
+      action={
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          {locale === 'zh' ? '重试' : 'Retry'}
+        </Button>
+      }
+    />
+  );
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-background/40 shadow-xl backdrop-blur-xl m-1 sm:m-3">
       {/* Ambient backdrop: subtle motion + depth (keeps the editor feeling "alive" without being noisy). */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-48 left-1/2 h-[420px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[90px] opacity-70" />
-        <div className="absolute -bottom-56 right-[-18%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-sky-400/10 via-sky-400/0 to-transparent blur-[80px] opacity-60" />
+        <div className="absolute -top-48 left-1/2 h-[420px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/[0.03] via-white/[0.01] to-transparent blur-[90px] opacity-50" />
+        <div className="absolute -bottom-56 right-[-18%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent blur-[80px] opacity-40" />
         <RetroGrid
           className="opacity-25 mix-blend-screen motion-reduce:opacity-0"
           angle={72}
           cellSize={78}
           opacity={0.22}
-          lightLineColor="rgba(167, 139, 250, 0.20)"
-          darkLineColor="rgba(167, 139, 250, 0.20)"
+          lightLineColor="rgba(255, 255, 255, 0.04)"
+          darkLineColor="rgba(255, 255, 255, 0.04)"
         />
       </div>
 
       {/* Header */}
       <div className="relative flex items-start justify-between gap-4 border-b border-white/10 bg-card/40 px-4 py-2.5 backdrop-blur-xl">
         <div className="flex min-w-0 items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mt-0.5 rounded-full"
-            asChild
-          >
-            <Link
-              href={
-                convertObj?.originalFileId
-                  ? `/dashboard/projects/${convertObj.originalFileId}`
-                  : '/dashboard/projects'
-              }
-              aria-label={locale === 'zh' ? '返回项目' : 'Back to project'}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mt-0.5 rounded-full"
+                onClick={handleBackClick}
+                aria-label={t('header.backToProject')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t('header.backToProject')}</TooltipContent>
+          </Tooltip>
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -2817,58 +3415,21 @@ export default function VideoEditorPage() {
               </Badge>
             </div>
 
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>
+            {pendingMergeCount > 0 ? (
+              <div className="mt-1 text-xs text-primary/90">
                 {locale === 'zh'
-                  ? '重翻译 1/段 · 更新配音 2/段'
-                  : 'Retranslate 1/seg · Voice 2/seg'}
-              </span>
-              <span className="text-muted-foreground/50">·</span>
-              <span>
-                {locale === 'zh'
-                  ? '双击字幕行可定位到对应时间'
-                  : 'Double-click a subtitle row to jump to time'}
-              </span>
-              <span className="text-muted-foreground/50">·</span>
-              <span>
-                {locale === 'zh'
-                  ? '积分不足会提示'
-                  : 'We’ll prompt you if credits are insufficient'}
-              </span>
-              {pendingMergeCount > 0 ? (
-                <>
-                  <span className="text-muted-foreground/50">·</span>
-                  <span className="text-primary/90">
-                    {locale === 'zh'
-                      ? `待应用：${pendingMergeVoiceCount} 段配音 · ${pendingMergeTimingCount} 段时间，点击「${t('audioList.saveTooltip')}」`
-                      : `Pending: ${pendingMergeVoiceCount} voice · ${pendingMergeTimingCount} timing. Click “${t('audioList.saveTooltip')}”.`}
-                  </span>
-                </>
-              ) : null}
-            </div>
+                  ? `待应用：${pendingMergeVoiceCount} 段配音 · ${pendingMergeTimingCount} 段时间`
+                  : `Pending: ${pendingMergeVoiceCount} voice · ${pendingMergeTimingCount} timing`}
+              </div>
+            ) : null}
 
             {taskStatus === 'failed' && taskErrorMessage ? (
-              <div className="mt-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                {taskErrorMessage}
-              </div>
+              <ErrorBlock message={taskErrorMessage} className="mt-2" />
             ) : null}
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Badge
-            variant="outline"
-            className="gap-1 border-white/10 bg-white/[0.03] text-muted-foreground"
-            title={
-              locale === 'zh'
-                ? '当前剩余积分'
-                : 'Remaining credits'
-            }
-          >
-            <Zap className="h-3 w-3 text-primary" />
-            {remainingCredits}
-          </Badge>
-
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -2883,13 +3444,8 @@ export default function VideoEditorPage() {
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80">
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">
-                    {locale === 'zh' ? '积分消耗说明' : 'Credit usage'}
-                  </div>
-                  <div className="text-xs text-muted-foreground tabular-nums">
-                    {locale === 'zh' ? '剩余' : 'Remaining'}: {remainingCredits}
-                  </div>
+                <div className="text-sm font-semibold">
+                  {locale === 'zh' ? '积分消耗说明' : 'Credit usage'}
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -2912,42 +3468,67 @@ export default function VideoEditorPage() {
                     ? '小提示：我们会在积分不足时提醒你；生成失败会自动退回积分。'
                     : 'Tip: We’ll prompt you when credits are insufficient. Credits are refunded automatically if generation fails.'}
                 </div>
+
+                <div className="border-t border-white/10 pt-3">
+                  <div className="text-xs font-medium text-muted-foreground/90 mb-2">
+                    {locale === 'zh' ? '快捷操作' : 'Quick tips'}
+                  </div>
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <kbd className="shrink-0 rounded border border-white/15 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium">Space</kbd>
+                      <span>{locale === 'zh' ? '播放 / 暂停' : 'Play / Pause'}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <kbd className="shrink-0 rounded border border-white/15 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium">⌘Z</kbd>
+                      <span>{locale === 'zh' ? '撤销操作' : 'Undo'}</span>
+                    </li>
+                    <li>{locale === 'zh' ? '双击字幕行可定位到对应时间' : 'Double-click a subtitle row to seek'}</li>
+                  </ul>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
 
-          <span
-            className="inline-flex"
-            title={
-              pendingMergeCount === 0
-                ? (locale === 'zh' ? '没有待应用的改动' : 'No pending changes to apply')
-                : t('audioList.saveTooltip')
-            }
-          >
-            <Button
-              size="sm"
-              className={cn("gap-2 transition-all", isTaskRunning && "bg-primary/20 text-primary-foreground pointer-events-none")}
-              onClick={handleGenerateVideo}
-              disabled={isGeneratingVideo || isTaskRunning || pendingMergeCount === 0}
-            >
-              {isGeneratingVideo || isTaskRunning ? (
-                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-              ) : null}
-              {isTaskRunning ? (
-                <span>
-                  {taskStatus === 'pending'
-                    ? (locale === 'zh' ? '排队中...' : 'Queued...')
-                    : (locale === 'zh' ? `生成中 ${taskProgress ?? 0}%` : `Generating ${taskProgress ?? 0}%`)}
-                </span>
-              ) : (
-                t('audioList.saveTooltip')
-              )}
-            </Button>
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  size="sm"
+                  className={cn("gap-2 transition-all", (isTaskRunning || isMergeJobActive) && "bg-primary/20 text-primary-foreground pointer-events-none")}
+                  onClick={handleGenerateVideo}
+                  disabled={isGeneratingVideo || isTaskRunning || isMergeJobActive || pendingMergeCount === 0}
+                >
+                  {isGeneratingVideo || isTaskRunning || isMergeJobActive ? (
+                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                  ) : null}
+                  {isMergeJobActive ? (
+                    <span>
+                      {locale === 'zh' ? '视频合成中...' : 'Merging video...'}
+                    </span>
+                  ) : isTaskRunning ? (
+                    <span>
+                      {taskStatus === 'pending'
+                        ? (locale === 'zh' ? '排队中...' : 'Queued...')
+                        : (locale === 'zh' ? `生成中 ${taskProgress ?? 0}%` : `Generating ${taskProgress ?? 0}%`)}
+                    </span>
+                  ) : (
+                    t('audioList.saveTooltip')
+                  )}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {isMergeJobActive
+                ? t('header.mergingVideo')
+                : pendingMergeCount === 0
+                  ? t('header.noChanges')
+                  : t('header.regenerateTooltip')}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {convertObj ? (
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-white/[0.04]">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-white/5">
             <div className="h-full" style={{ width: `${headerProgressVisual}%` }}>
               <div className={cn('relative h-full w-full', headerProgressFillCls)}>
                 {isTaskRunning ? (
@@ -2973,10 +3554,10 @@ export default function VideoEditorPage() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10 bg-background/25 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
           <ResizableSplitPanel
             className="h-full w-full"
-            defaultLeftWidthPercent={62}
-            minLeftWidthPercent={34}
-            minRightWidthPercent={22}
-            minRightWidthPx={360}
+            defaultLeftWidthPercent={58}
+            minLeftWidthPercent={40}
+            minRightWidthPercent={20}
+            minRightWidthPx={320}
             leftPanel={
               <div className="h-full bg-background/20">
                 <SubtitleWorkstation
@@ -2985,8 +3566,11 @@ export default function VideoEditorPage() {
                   playingSubtitleIndex={playingSubtitleIndex}
                   onSeekToSubtitle={handleSeekToSubtitle}
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
+                  onSubtitleTextChange={handleSubtitleTextChange}
                   onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
                   onVideoMergeCompleted={handleVideoMergeCompleted}
+                  onVideoMergeStarted={handleVideoMergeStarted}
+                  onVideoMergeFailed={handleVideoMergeFailed}
                   onRequestAuditionPlay={handleAuditionRequestPlay}
                   onRequestAuditionToggle={handleAuditionToggle}
                   onRequestAuditionStop={() => handleAuditionStop(false)}
@@ -2995,6 +3579,7 @@ export default function VideoEditorPage() {
                   isMediaPlaying={isPlaying}
                   isAutoPlayNext={isAutoPlayNext}
                   onToggleAutoPlayNext={setIsAutoPlayNext}
+                  onDirtyStateChange={setWorkstationDirty}
                 />
               </div>
             }
@@ -3020,8 +3605,8 @@ export default function VideoEditorPage() {
           aria-orientation="horizontal"
           aria-label={locale === 'zh' ? '调整时间线高度' : 'Resize timeline height'}
           className={cn(
-            'group relative h-3 shrink-0 cursor-row-resize select-none',
-            'rounded-md bg-white/[0.02] hover:bg-white/[0.03]'
+            'group relative h-4 shrink-0 cursor-row-resize select-none',
+            'rounded-md bg-white/[0.03] hover:bg-white/5 transition-colors'
           )}
           onPointerDown={(e) => {
             if (e.button !== 0) return;
@@ -3081,19 +3666,19 @@ export default function VideoEditorPage() {
             document.body.style.userSelect = '';
           }}
         >
-          <div aria-hidden className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-white/10" />
+          <div aria-hidden className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-white/10 group-hover:bg-white/15 transition-colors" />
           <div
             aria-hidden
             className={cn(
-              'absolute left-1/2 top-1/2 h-1 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full',
-              'bg-white/10 group-hover:bg-primary/35'
+              'absolute left-1/2 top-1/2 h-1.5 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-200',
+              'bg-white/15 group-hover:bg-primary/40 group-hover:w-16'
             )}
           />
         </div>
 
         {/* Timeline */}
         <div
-          className="min-h-[120px] overflow-hidden rounded-xl border border-white/10 bg-background/25 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
+          className="min-h-[120px] overflow-auto rounded-xl border border-white/10 bg-background/25 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
           style={{ height: `${timelineHeightPx}px` }}
         >
           <TimelinePanel
@@ -3117,9 +3702,35 @@ export default function VideoEditorPage() {
             onVolumeChange={handleGlobalVolume}
             onToggleBgmMute={handleToggleBgmMute}
             onToggleSubtitleMute={handleToggleSubtitleMute}
+            onSplitAtCurrentTime={handleSubtitleSplit}
+            splitDisabled={(!convertObj || isGeneratingVideo || isSplittingSubtitle || !subtitleTrack.some((item) => { const ms = Math.round(currentTime * 1000); const startMs = Math.round(item.startTime * 1000); const endMs = Math.round((item.startTime + item.duration) * 1000); return ms >= startMs && ms < endMs && ms - startMs >= 200 && endMs - ms >= 200; }))}
+            splitLoading={isSplittingSubtitle}
+            onUndo={hasUndoableOps ? handleRollbackLatest : undefined}
+            undoLoading={isRollingBack}
+            undoCountdown={undoCountdown}
+            onUndoCancel={handleUndoCancel}
           />
         </div>
       </div>
+
+      {/* Unsaved changes confirmation dialog */}
+      <Dialog open={showLeaveDialog} onOpenChange={(open) => { if (!open) cancelLeave(); }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('unsavedDialog.title')}</DialogTitle>
+            <DialogDescription>{t('unsavedDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelLeave}>
+              {t('unsavedDialog.stay')}
+            </Button>
+            <Button variant="destructive" onClick={confirmLeave}>
+              {t('unsavedDialog.leave')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -3136,13 +3747,3 @@ function LoadingSkeleton() {
   </div>;
 }
 
-function ErrorDisplay({ error }: { error: string }) {
-  return (
-    <div className="h-screen flex items-center justify-center text-destructive">
-      <div className="p-6 border border-destructive/20 bg-destructive/5 rounded-xl">
-        <h3 className="font-bold text-lg mb-2">Error Loading Editor</h3>
-        <p>{error}</p>
-      </div>
-    </div>
-  );
-}

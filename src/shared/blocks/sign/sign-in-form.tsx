@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { signIn } from '@/core/auth/client';
-import { Link } from '@/core/i18n/navigation';
+import { Link, useRouter } from '@/core/i18n/navigation';
 import { defaultLocale } from '@/config/locale';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -24,9 +24,13 @@ export function SignInForm({
   className?: string;
 }) {
   const t = useTranslations('common.sign');
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [signInState, setSignInState] = useState<'idle' | 'loading' | 'success'>('idle');
+
+  const loading = signInState !== 'idle';
+  const setLoading = (v: boolean) => setSignInState(v ? 'loading' : 'idle');
 
   const { configs } = useAppContext();
 
@@ -48,52 +52,46 @@ export function SignInForm({
   }
 
   const handleSignIn = async () => {
-    if (loading) {
-      return;
-    }
+    if (signInState !== 'idle') return;
 
     if (!email || !password) {
-      toast.error('email and password are required');
+      toast.error(t('email_password_required'));
       return;
     }
 
     try {
-      setLoading(true);
-      await signIn.email(
+      setSignInState('loading');
+      const { error } = await signIn.email(
+        { email, password },
         {
-          email,
-          password,
-          callbackURL: localizedCallbackUrl,
-        },
-        {
-          onRequest: (ctx) => {
-            setLoading(true);
-          },
-          onResponse: (ctx) => {
-            setLoading(false);
-          },
-          onSuccess: (ctx) => { },
           onError: (e: any) => {
-            toast.error(e?.error?.message || 'sign in failed');
-            setLoading(false);
+            toast.error(e?.error?.message || t('login_failed'));
           },
         }
       );
+
+      if (error) {
+        setSignInState('idle');
+        return;
+      }
+
+      setSignInState('success');
+      router.refresh();
+      router.push(localizedCallbackUrl);
     } catch (e: any) {
-      toast.error(e.message || 'sign in failed');
-    } finally {
-      setLoading(false);
+      toast.error(e.message || t('login_failed'));
+      setSignInState('idle');
     }
   };
 
   return (
-    <div className={`w-full md:max-w-md ${className}`}>
-      <div className="grid gap-4">
+    <div className={`w-full ${className}`}>
+      <div className="grid gap-5">
         {isEmailAuthEnabled && (
           <>
-            {/* 油箱输入框 */}
+            {/* Email input */}
             <div className="grid gap-2">
-              <Label htmlFor="email">{t('email_title')}</Label>
+              <Label htmlFor="email" className="text-sm font-medium">{t('email_title')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -103,17 +101,12 @@ export function SignInForm({
                   setEmail(e.target.value);
                 }}
                 value={email}
+                className="h-11"
               />
             </div>
 
             <div className="grid gap-2">
-              {/* <div className="flex items-center">
-              <Label htmlFor="password">{t("password_title")}</Label>
-              <Link href="#" className="ml-auto inline-block text-sm underline">
-                Forgot your password?
-              </Link>
-            </div> */}
-              {/* 密码输入框 */}
+              {/* Password input */}
               <Input
                 id="password"
                 type="password"
@@ -122,29 +115,25 @@ export function SignInForm({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
 
-            {/* <div className="flex items-center gap-2">
-            <Checkbox
-              id="remember"
-              onClick={() => {
-                setRememberMe(!rememberMe);
-              }}
-            />
-            <Label htmlFor="remember">{t("remember_me_title")}</Label>
-          </div> */}
-
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-11 font-medium shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow"
               disabled={loading}
               onClick={handleSignIn}
             >
-              {loading ? (
+              {signInState === 'success' ? (
+                <span className="flex items-center gap-2 animate-in fade-in duration-300">
+                  <Check size={16} />
+                  {t('login_success')}
+                </span>
+              ) : signInState === 'loading' ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
-                <p> {t('sign_in_title')} </p>
+                t('sign_in_title')
               )}
             </Button>
           </>
@@ -158,13 +147,11 @@ export function SignInForm({
         />
       </div>
       {isEmailAuthEnabled && (
-        <div className="flex w-full justify-center border-t py-4">
-          <p className="text-center text-xs text-neutral-500">
-            {t('no_account')}
-            <Link href="/sign-up" className="underline">
-              <span className="cursor-pointer text-[rgba(255,255,255,0.7)]">
-                {t('sign_up_title')}
-              </span>
+        <div className="flex w-full justify-center pt-5 mt-2 border-t border-white/6">
+          <p className="text-center text-sm text-muted-foreground">
+            {t('no_account')}{' '}
+            <Link href="/sign-up" className="font-medium text-primary hover:text-primary/80 transition-colors">
+              {t('sign_up_title')}
             </Link>
           </p>
         </div>

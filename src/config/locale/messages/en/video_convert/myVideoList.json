@@ -1,8 +1,12 @@
 {
   "title": "My Video Conversions",
   "buttons": {
-    "upload": "Upload"
+    "upload": "Translate a video",
+    "editInfo": "Edit Info",
+    "videoEdit": "Video Edit",
+    "openTask": "Open Task"
   },
+  "videoEditDisabledTip": "Video editing is available after conversion is completed",
   "loading": "Loading...",
   "error": "Failed to fetch video list",
   "empty": "No videos",
@@ -17,15 +21,46 @@
   },
   "statusShort": {
     "all": "All",
-    "pending": "Pending",
-    "completed": "Success",
-    "processing": "Processing",
-    "failed": "Failed",
+    "pending": "Getting ready",
+    "completed": "Done",
+    "processing": "Translating...",
+    "failed": "Issue found",
     "cancelled": "Cancelled"
   },
   "fields": {
     "duration": "Duration",
     "size": "Size",
     "uploadTime": "Upload Time"
+  },
+  "cardSummary": {
+    "pending": "The task is created and waiting to enter the processing flow.",
+    "processing": "A task is still running in the background. Open it to continue tracking progress.",
+    "completed": "The latest task is complete. Open it to review the final result and deliverables.",
+    "failed": "The latest task failed. Open it to review the cause and continue handling it.",
+    "cancelled": "The latest task was cancelled. Open it to arrange the next step."
+  },
+  "card": {
+    "noTranslations": "No translations yet",
+    "translations": "translations",
+    "inProgress": "in progress"
+  },
+  "stepName": {
+    "uploadComplete": "Preparing...",
+    "splitting": "Analyzing video...",
+    "genSrt": "Recognizing subtitles...",
+    "translateSrt": "Translating subtitles...",
+    "tts": "Generating voice...",
+    "adjustAudio": "Adjusting audio...",
+    "merging": "Merging audio...",
+    "mergeVideo": "Finalizing video..."
+  },
+  "emptyState": {
+    "title": "Translate your first video",
+    "subtitle": "AI-powered video translation in minutes",
+    "cta": "Get started"
+  },
+  "pageSummary": {
+    "videos": "videos",
+    "translating": "translating"
   }
 }

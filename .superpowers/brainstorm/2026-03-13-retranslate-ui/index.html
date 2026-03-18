@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReVoice - 需要重翻译交互方案</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: rgba(17, 24, 39, 0.88);
+      --panel-2: rgba(30, 41, 59, 0.78);
+      --line: rgba(255, 255, 255, 0.08);
+      --text: #eef2ff;
+      --muted: rgba(226, 232, 240, 0.72);
+      --danger: #fb7185;
+      --danger-soft: rgba(251, 113, 133, 0.14);
+      --warn: #f59e0b;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.14);
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(251, 113, 133, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(245, 158, 11, 0.1), transparent 22%),
+        linear-gradient(180deg, #0f172a 0%, #0a0f17 100%);
+    }
+
+    .shell {
+      width: min(1380px, calc(100vw - 32px));
+      margin: 32px auto 48px;
+    }
+
+    .hero {
+      padding: 18px 22px 22px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.6));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(251, 113, 133, 0.2);
+      background: rgba(251, 113, 133, 0.08);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fecdd3;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 860px;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.72));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 760px;
+    }
+
+    .card-head {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+    }
+
+    .option-no {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .card h2 {
+      margin: 12px 0 6px;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .card p.desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .body {
+      padding: 18px;
+    }
+
+    .mock {
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: linear-gradient(180deg, rgba(2, 6, 23, 0.6), rgba(2, 6, 23, 0.34));
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .row {
+      position: relative;
+      margin-top: 10px;
+      padding: 16px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    .row.needs {
+      border-color: rgba(251, 113, 133, 0.26);
+      background:
+        linear-gradient(180deg, rgba(251, 113, 133, 0.08), rgba(251, 113, 133, 0.03)),
+        rgba(15, 23, 42, 0.92);
+      box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.08);
+    }
+
+    .row-ok {
+      border-color: rgba(34, 197, 94, 0.18);
+      background:
+        linear-gradient(180deg, rgba(34, 197, 94, 0.05), rgba(34, 197, 94, 0.02)),
+        rgba(15, 23, 42, 0.88);
+    }
+
+    .row-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .id {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: ui-monospace, "SFMono-Regular", monospace;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-danger {
+      color: #ffe4e6;
+      background: var(--danger-soft);
+      border: 1px solid rgba(251, 113, 133, 0.3);
+    }
+
+    .badge-ok {
+      color: #dcfce7;
+      background: var(--accent-soft);
+      border: 1px solid rgba(34, 197, 94, 0.28);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 42px 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .cell {
+      min-height: 88px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .cell h4 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.54);
+    }
+
+    .cell p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .dock {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .icon.danger {
+      color: #ffe4e6;
+      border-color: rgba(251, 113, 133, 0.26);
+      background: rgba(251, 113, 133, 0.12);
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(251, 113, 133, 0.22), rgba(251, 113, 133, 0.14));
+      border: 1px solid rgba(251, 113, 133, 0.34);
+      color: #fff1f2;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .inline-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(251, 113, 133, 0.32);
+      background: rgba(251, 113, 133, 0.08);
+      color: #ffe4e6;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .toast {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(245, 158, 11, 0.32);
+      background: rgba(245, 158, 11, 0.1);
+      color: #fde68a;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .footer {
+      padding: 16px 18px 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .fit {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.6;
+    }
+
+    .fit strong { color: #fff; }
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .label.best {
+      background: rgba(34, 197, 94, 0.14);
+      color: #bbf7d0;
+      border: 1px solid rgba(34, 197, 94, 0.28);
+    }
+
+    .label.alt {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fde68a;
+      border: 1px solid rgba(245, 158, 11, 0.24);
+    }
+
+    @media (max-width: 1180px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="kicker">ReVoice · Split Subtitle Recovery</div>
+      <h1>切割后无译音时，主流更像是“状态前置 + 就地重生成”</h1>
+      <p class="subtitle">
+        这 3 个方案都围绕同一个目标：不要让用户先点到“没法播放”的按钮才猜到问题。
+        主流产品更接近先告诉用户“这段需要重翻译”，再在最近的位置给出立即处理入口。
+      </p>
+      <div class="meta">
+        <div class="chip">当前问题：切割后的翻译音频段不可试听</div>
+        <div class="chip">目标感知：自然意识到“需要重翻译”</div>
+        <div class="chip">设计范围：右侧字幕工作台的行项交互</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head">
+          <div class="option-no">A</div>
+          <h2>行级状态常驻 + 播放位弱拦截</h2>
+          <p class="desc">先看见状态，再点击时补一句短解释，并把主动作放在同一行。</p>
+        </div>
+        <div class="body">
+          <div class="mock">
+            <div class="toolbar">
+              <span>Subtitle Audio Comparison</span>
+              <span>Soft Intercept</span>
+            </div>
+
+            <div class="row row-ok">
+              <div class="row-top">
+                <div class="id">#023 · 00:01:12,200 → 00:01:14,900</div>
+                <span class="badge badge-ok">可试听</span>
+              </div>
+              <div class="content">
+                <div class="cell">
+                  <h4>原字幕</h4>
+                  <p>Make the camera slower when the narrator pauses.</p>
+                </div>
+                <div class="dock">
+                  <div class="icon">▶</div>
+                  <div class="icon">🌐</div>
+                  <div class="icon">♪</div>
+                </div>
+                <div class="cell">
+                  <h4>翻译字幕</h4>
+                  <p>旁白停顿的时候，让镜头速度慢一点。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="row needs">
+              <div class="row-top">
+                <div class="id">#024 · 00:01:14,900 → 00:01:16,300</div>
+                <span class="badge badge-danger">需要重翻译</span>
+              </div>
+              <div class="content">
+                <div class="cell">
+                  <h4>原字幕</h4>
+                  <p>Then cut right here, and keep the emphasis.</p>
+                </div>
+                <div class="dock">
+                  <div class="icon danger">!</div>
+                  <div class="icon">🌐</div>
+                  <div class="icon">♪</div>
+                </div>
+                <div class="cell">
+                  <h4>翻译字幕</h4>
+                  <p>然后在这里切开，并保留语气重点。</p>
+                  <div class="inline-note">
+                    点击试听位时，不进入假播放，而是提示：
+                    “该段切割后暂无可试听译音，请先重翻译”
+                  </div>
+                  <div class="cta">立即重翻译</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="label best">推荐</span>
+          <div class="fit">
+            <strong>最像主流方案。</strong> 用户不用先踩空；状态、原因、动作都在行内闭环。
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <div class="option-no">B</div>
+          <h2>点击后展开问题卡片</h2>
+          <p class="desc">默认只显示轻量状态，点播放或选中行后，展开一张解释卡片。</p>
+        </div>
+        <div class="body">
+          <div class="mock">
+            <div class="toolbar">
+              <span>Subtitle Audio Comparison</span>
+              <span>Expandable Card</span>
+            </div>
+
+            <div class="row needs">
+              <div class="row-top">
+                <div class="id">#024 · 00:01:14,900 → 00:01:16,300</div>
+                <span class="badge badge-danger">需要重翻译</span>
+              </div>
+              <div class="content">
+                <div class="cell">
+                  <h4>原字幕</h4>
+                  <p>Then cut right here, and keep the emphasis.</p>
+                </div>
+                <div class="dock">
+                  <div class="icon danger">▶</div>
+                  <div class="icon">🌐</div>
+                  <div class="icon">♪</div>
+                </div>
+                <div class="cell">
+                  <h4>翻译字幕</h4>
+                  <p>然后在这里切开，并保留语气重点。</p>
+                </div>
+              </div>
+              <div class="toast">
+                这段是切割后的新片段，旧译音已不再对应。建议先重新翻译，再试听新生成的译音。
+                <div class="cta" style="margin-top: 10px;">重翻译并生成译音</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="label alt">解释更完整</span>
+          <div class="fit">
+            对新用户更友好，但展开卡片会让长列表节奏更重，信息密度也更高。
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <div class="option-no">C</div>
+          <h2>工具栏主导，行内只给风险点</h2>
+          <p class="desc">把重翻译动作收敛到中间操作区，播放位基本禁用，只用风险点提示。</p>
+        </div>
+        <div class="body">
+          <div class="mock">
+            <div class="toolbar">
+              <span>Subtitle Audio Comparison</span>
+              <span>Toolbar-driven</span>
+            </div>
+
+            <div class="row needs">
+              <div class="row-top">
+                <div class="id">#024 · 00:01:14,900 → 00:01:16,300</div>
+                <span class="badge badge-danger">需要重翻译</span>
+              </div>
+              <div class="content">
+                <div class="cell">
+                  <h4>原字幕</h4>
+                  <p>Then cut right here, and keep the emphasis.</p>
+                </div>
+                <div class="dock">
+                  <div class="icon danger">✕</div>
+                  <div class="icon danger">🌐</div>
+                  <div class="icon">💾</div>
+                </div>
+                <div class="cell">
+                  <h4>翻译字幕</h4>
+                  <p>然后在这里切开，并保留语气重点。</p>
+                </div>
+              </div>
+              <div class="inline-note">
+                行内只给“不可试听”与警示点，用户需要去中间工具区点“重翻译”。
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="label alt">更克制</span>
+          <div class="fit">
+            视觉上最干净，但会增加用户找动作的成本，不够“就地解决”。
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

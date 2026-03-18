@@ -19,7 +19,7 @@ export function Stats({
         <ScrollAnimationWrapper>
           <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] p-8 md:p-12 backdrop-blur-md shadow-2xl">
             {/* Glow effect */}
-            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/[0.04] blur-[100px] rounded-full pointer-events-none" />
 
             <div className="grid gap-12 lg:grid-cols-2 items-center relative z-10">
               {/* Left: Text/Testimonial-like content */}

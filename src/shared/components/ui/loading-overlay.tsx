@@ -22,7 +22,7 @@ function WindowsBootDots({ className }: { className?: string }) {
                     return (
                         <span
                             key={i}
-                            className="absolute left-1/2 top-1/2 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_18px_rgba(167,139,250,0.45)]"
+                            className="absolute left-1/2 top-1/2 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_18px_rgba(255,255,255,0.15)]"
                             style={{
                                 transform: `translate(-50%, -50%) rotate(${i * 45}deg) translateY(-18px)`,
                                 opacity,
@@ -48,15 +48,15 @@ export function LoadingOverlay({ className, message }: LoadingOverlayProps) {
             <div aria-hidden className="absolute inset-0 bg-background" />
             <div aria-hidden className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-56 left-1/2 h-[520px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/22 via-primary/6 to-transparent blur-[90px] opacity-65" />
-                <div className="absolute -top-28 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-400/12 via-purple-400/0 to-transparent blur-[70px] opacity-55" />
-                <div className="absolute -bottom-56 right-[-18%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-sky-400/12 via-sky-400/0 to-transparent blur-[90px] opacity-55" />
+                <div className="absolute -top-28 right-[-10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent blur-[70px] opacity-55" />
+                <div className="absolute -bottom-56 right-[-18%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-rose-400/12 via-rose-400/0 to-transparent blur-[90px] opacity-55" />
                 <RetroGrid
                     className="opacity-25 mix-blend-screen motion-reduce:opacity-0"
                     angle={70}
                     cellSize={84}
                     opacity={0.12}
-                    lightLineColor="rgba(167, 139, 250, 0.18)"
-                    darkLineColor="rgba(167, 139, 250, 0.18)"
+                    lightLineColor="rgba(251, 113, 133, 0.18)"
+                    darkLineColor="rgba(251, 113, 133, 0.18)"
                 />
             </div>
 

@@ -48,6 +48,13 @@ function normalizeRevMs(v: unknown): number {
   return 0;
 }
 
+
+
+function hasMissingVoice(row: any) {
+  const status = typeof row?.vap_voice_status === 'string' ? row.vap_voice_status : '';
+  return row?.vap_needs_tts === true || status === 'missing' || status === 'failed';
+}
+
 function computeMergeInput(subtitleArray: any[]) {
   const ids: string[] = [];
   const h = createHash('sha256');
@@ -129,6 +136,9 @@ export async function GET(request: NextRequest) {
     }
 
     const subtitleArray = normalizeSubtitleArray((taskSubtitle as any)?.subtitleData);
+    if (subtitleArray.some((row) => hasMissingVoice(row))) {
+      return respErr('voice regeneration required before merge');
+    }
     const mergeInput = computeMergeInput(subtitleArray);
     const currentRequestKey = mergeInput.inputDigest ? makeRequestKey(['merge', taskId, mergeInput.inputDigest]) : '';
 
@@ -224,7 +234,7 @@ export async function GET(request: NextRequest) {
         let submitBack: any;
         try {
           submitBack = await pyMergeVideoJobStart(taskId, mergeInput.ids, { idempotencyKey: currentRequestKey });
-        } catch (e) {
+        } catch {
           // Retry once; Modal cold starts can drop the first request.
           submitBack = await pyMergeVideoJobStart(taskId, mergeInput.ids, { idempotencyKey: currentRequestKey });
         }
@@ -339,6 +349,9 @@ export async function POST(request: NextRequest) {
     }
 
     const subtitleArray = normalizeSubtitleArray((taskSubtitle as any)?.subtitleData);
+    if (subtitleArray.some((row) => hasMissingVoice(row))) {
+      return respErr('voice regeneration required before merge');
+    }
     const mergeInput = computeMergeInput(subtitleArray);
     if (!subtitleArray || mergeInput.ids.length === 0 || !mergeInput.inputDigest) {
       return respErr('没有合成的字幕数据');
@@ -365,7 +378,7 @@ export async function POST(request: NextRequest) {
     let submitBack: any;
     try {
       submitBack = await pyMergeVideoJobStart(taskId, mergeInput.ids, { idempotencyKey: requestKey });
-    } catch (e) {
+    } catch {
       // Retry once; Modal cold starts can drop the first request.
       submitBack = await pyMergeVideoJobStart(taskId, mergeInput.ids, { idempotencyKey: requestKey });
     }

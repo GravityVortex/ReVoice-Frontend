@@ -33,9 +33,9 @@ export const Track = memo(function Track({
   // 获取轨道颜色
   const getTrackColor = (type: string) => {
     switch (type) {
-      case 'video': return 'bg-blue-600/60 border-blue-400/40';
+      case 'video': return 'bg-white/15 border-white/10';
       case 'audio': return 'bg-emerald-600/60 border-emerald-400/40';
-      case 'bgm': return 'bg-purple-600/60 border-purple-400/40';
+      case 'bgm': return 'bg-white/12 border-white/8';
       default: return 'bg-slate-600/60 border-slate-400/40';
     }
   };

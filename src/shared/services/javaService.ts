@@ -142,6 +142,7 @@ export async function getPreSignedUrl(
       'Content-Type': 'text/plain',
     },
     body: encryptedRequestData,
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
@@ -325,6 +326,7 @@ export async function javaR2CoverWriteFile(sourcePath: string, targetPath: strin
       'Content-Type': 'text/plain',
     },
     body: encryptedRequestData,
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!response.ok) {

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
-// import {useParams} from 'next/navigation';
 import { twMerge } from 'tailwind-merge';
+import { getLangLabel } from '@/shared/lib/languages';
 
 const endpoint = process.env.R2_ENDPOINT!;
 
@@ -8,13 +8,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-//  "sourceLanguage": "auto",
-//  "targetLanguage": "zh",
 export const LanguageMap: any = {
   'zh-CN': '中文',
-  zh: '中文',
-  'en-US': '英文',
-  en: '英文',
+  zh: '简体中文',
+  'en-US': '英语',
+  en: '英语',
+  es: '西班牙语',
+  pt: '葡萄牙语',
+  fr: '法语',
+  de: '德语',
+  it: '意大利语',
+  ja: '日语',
   auto: '',
 
   中文: 'zh',
@@ -26,39 +30,29 @@ export const LanguageMapEn: any = {
   zh: 'chinese',
   'en-US': 'english',
   en: 'english',
+  es: 'spanish',
+  pt: 'portuguese',
+  fr: 'french',
+  de: 'german',
+  it: 'italian',
+  ja: 'japanese',
   auto: '',
 
   chinese: 'zh',
   english: 'en',
 };
 
-// const statusMap: any = {
-//   'pending': {label: '排队中', color: 'text-cyan-600'},
-//   'processing': {label: '转换中', color: 'text-orange-500'},
-//   'completed': {label: '转换成功', color: 'text-green-600'},
-//   'failed': {label: '转换失败', color: 'text-red-500'},
-//   'cancelled': {label: '已取消', color: 'text-gray-500'},
-// };
-
 export function getLanguageMapStr(key: string, locale = 'zh') {
-  if (locale === 'zh') {
-    return `${LanguageMap[key] || '未知'}`;
-  }
-  return `${LanguageMapEn[key] || '未知'}`;
+  return getLangLabel(key, locale) || (locale === 'zh' ? '未知' : 'Unknown');
 }
-/**
- * 语种转换
- * @param item {"sourceLanguage": "auto", "targetLanguage": "zh"}
- * @param locale
- * @returns
- */
+
 export function getLanguageConvertStr(item: any, locale = 'zh') {
-  // console.log('getLanguageConvertStr-->', locale, item)
+  const src = getLangLabel(item?.sourceLanguage, locale);
+  const tgt = getLangLabel(item?.targetLanguage, locale);
   if (locale === 'zh') {
-    return `${LanguageMap[item?.sourceLanguage] || ''}转${LanguageMap[item?.targetLanguage] || '未知语种'}`;
+    return `${src || ''} → ${tgt || '未知语种'}`;
   }
-  const temp = LanguageMapEn[item?.sourceLanguage];
-  return `${temp ? temp + ' ' : ''}to ${LanguageMapEn[item?.targetLanguage] || 'unknown language'}`;
+  return `${src || ''} → ${tgt || 'unknown language'}`;
 }
 
 /**
@@ -83,6 +77,53 @@ export function formatDate(dateStr: string) {
   if (!dateStr) return '-';
   try {
     return new Date(dateStr).toLocaleString('zh-CN');
+  } catch {
+    return dateStr;
+  }
+}
+
+export function timeAgo(dateStr: string, locale = 'zh'): string {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return '-';
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    const isZh = locale === 'zh';
+
+    if (diffSec < 60) return isZh ? '刚刚' : 'Just now';
+    if (diffMin < 60) return isZh ? `${diffMin} 分钟前` : `${diffMin}m ago`;
+    if (diffHour < 24) return isZh ? `${diffHour} 小时前` : `${diffHour}h ago`;
+    if (diffDay === 1) return isZh ? '昨天' : 'Yesterday';
+    if (diffDay < 7) return isZh ? `${diffDay} 天前` : `${diffDay}d ago`;
+
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = date.getFullYear();
+
+    return isZh ? `${year}年${month}月${day}日` : `${month}/${day}/${year}`;
+  } catch {
+    return dateStr;
+  }
+}
+
+export function formatFullDate(dateStr: string, locale = 'zh'): string {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    const loc = locale === 'zh' ? 'zh-CN' : 'en-US';
+    return date.toLocaleString(loc, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return dateStr;
   }

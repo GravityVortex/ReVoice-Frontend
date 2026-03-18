@@ -44,14 +44,14 @@
   },
   "audio": {
     "title": "Audio",
-    "description": "We recommend previewing before downloading.",
+    "description": "Preview or download audio tracks",
     "preview": "Preview",
     "download": "Subtitle Audio",
     "downloadBg": "Background Audio"
   },
   "subtitle": {
     "title": "Subtitle",
-    "description": "Supports original, translated, and bilingual subtitles.",
+    "description": "Compare or download subtitles",
     "compare": "Bilingual Compare",
     "download_yuan": "Original Subtitles",
     "download_tran": "Translated Subtitles",
@@ -112,22 +112,39 @@
     "previewTools": {
       "title": "Preview tools",
       "speed": "Speed",
-      "loop": "Loop"
+      "loop": "Loop",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen"
     },
     "outputs": "Outputs",
     "runs": "Runs",
+    "languages": {
+      "en": "English",
+      "zh": "Chinese",
+      "es": "Spanish",
+      "pt": "Portuguese",
+      "fr": "French",
+      "de": "German",
+      "it": "Italian",
+      "ja": "Japanese"
+    },
     "addRun": {
       "button": "New translation",
       "title": "New translation run",
       "description": "Each language pair can only be created once (failed/cancelled can be recreated).",
       "sourceLanguage": "Source language",
       "targetLanguage": "Target language",
+      "selectLanguage": "Select language",
+      "swap": "Swap languages",
       "speakerCount": "Speakers",
       "create": "Start",
       "creating": "Creating...",
       "costTitle": "Estimated cost",
       "costDuration": "Duration ~{minutes} min",
       "costPerMinute": "{points} credits/min",
+      "currentBalance": "Current Balance",
+      "insufficientCredits": "Need {amount} more credits",
+      "buyCredits": "Buy Credits",
       "duplicate": "This language pair already exists",
       "goToExisting": "View run",
       "noAvailable": "No available language pairs",
@@ -159,8 +176,8 @@
       "bilingualSubtitles": "Bilingual Subtitles"
     },
     "finalVideo": {
-      "title": "Final video",
-      "description": "Ready to deliver."
+      "title": "Final Video",
+      "description": "Edit or download the result"
     },
     "compareModal": {
       "title": "Bilingual Compare",
@@ -188,6 +205,57 @@
     },
     "progressLoadFailed": "Failed to load progress. Please try again later.",
     "progressEmpty": "No progress logs yet.",
-    "progressEmptyFailed": "No progress logs (the task may have failed to start)."
+    "progressEmptyFailed": "No progress logs (the task may have failed to start).",
+    "translations": "Translations",
+    "addLanguage": "Add Language",
+    "backToList": "Back to list",
+    "deliveredOn": "Delivered {date}",
+    "queued": "Queued — will start automatically",
+    "viewPreview": "Preview",
+    "source": "Source",
+    "from": "FROM",
+    "workbench": {
+      "summary": {
+        "title": "Task Summary",
+        "descriptionDelivery": "This language version is ready. You can keep refining it, preview outputs, and download the final assets.",
+        "descriptionActive": "The run is still moving in the background. Check progress first, then decide the next step.",
+        "descriptionRecoverable": "This run did not complete successfully. Review the cause first, then re-run the same language pair.",
+        "currentStep": "Current step: {step}",
+        "errorFallback": "No detailed error message is available right now. Re-running the translation is the safest next step."
+      },
+      "actions": {
+        "title": "Core Actions",
+        "deliveryTitle": "Deliverables are ready",
+        "deliveryDescription": "Preview the result, jump into the editor for refinements, then export the final deliverables.",
+        "activeTitle": "Stay on top of this run",
+        "activeDescription": "The task is still processing. Check the progress review now, or prepare the next language version.",
+        "recoverableTitle": "Recover this translation first",
+        "recoverableDescription": "Start by retrying the same language pair. If you already have other runs, switch and compare them.",
+        "trackProgress": "View current progress",
+        "switchRun": "Switch runs",
+        "readySoon": "Available right after completion",
+        "readySoonDescription": "As soon as this run finishes, the final video, audio, and subtitle assets will appear here automatically."
+      },
+      "deliverables": {
+        "title": "Asset Workspace",
+        "description": "Outputs are ready. Continue with editing, previewing, or downloading from each module.",
+        "editFinalVideo": "Edit final video",
+        "downloadVideo": "Download final video",
+        "previewAudio": "Preview audio",
+        "downloadAssets": "Download files",
+        "compareSubtitle": "Bilingual compare"
+      },
+      "progressReview": {
+        "title": "Progress Review",
+        "descriptionDelivery": "This run is complete. The process summary stays here so you can quickly confirm delivery status.",
+        "descriptionActive": "This section keeps reflecting task progress. You can leave the page and come back later.",
+        "descriptionRecoverable": "Use the status and error details here to decide whether to retry or switch to another run."
+      },
+      "recovery": {
+        "title": "Recovery Guidance",
+        "description": "Retry the same language pair first. If the issue persists, switch to another run and compare.",
+        "errorLabel": "Failure reason"
+      }
+    }
   }
 }

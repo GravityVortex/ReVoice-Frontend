@@ -57,7 +57,6 @@ export const localeMessagesPaths = [
   'admin/settings',
   'admin/apikeys',
   'activity/sidebar',
-  'video_convert/sidebar',
   'video_convert/myVideoList',
   'video_convert/projectDetail',
   'video_convert/projectAddConvertModal',

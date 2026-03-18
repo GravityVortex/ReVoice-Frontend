@@ -10,12 +10,13 @@ export default function DashboardProjectDetailPage() {
   const locale = (params.locale as string) || 'zh';
 
   return (
-    <ProjectDetailView
-      fileId={id}
-      locale={locale}
-      backHref="/dashboard/projects"
-      createHref="/dashboard/create"
-    />
+    <div className="flex min-h-0 flex-1 flex-col px-4 pt-6 pb-4 md:px-6 md:pt-8">
+      <ProjectDetailView
+        fileId={id}
+        locale={locale}
+        backHref="/dashboard/projects"
+      />
+    </div>
   );
 }
 

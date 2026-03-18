@@ -16,6 +16,7 @@
     "forgot_password": "Forgot password?",
     "or": "Or",
     "continue": "Continue",
+    "or_continue_with": "Or continue with",
     "no_account": "Don't have an account?",
     "already_have_account": "Already have an account?",
     "email_sign_in": "Sign in with Email",
@@ -29,6 +30,11 @@
     "name_placeholder": "Input your name here",
     "admin_title": "Admin System",
     "credits_title": "Credits: {credits}",
+    "remaining_credits": "Remaining credits (may take a moment to update)",
+    "buyCredits": "Buy Credits",
+    "viewHistory": "Transaction History",
+    "creditsLow": "Credits running low",
+    "creditsEmpty": "No credits remaining",
     "verification_code_title": "Verification Code",
     "verification_code_placeholder": "Enter verification code",
     "send_code": "Send Code",
@@ -45,7 +51,15 @@
     "marketing_slogan_desc": "AI-driven video translation that preserves your voice and emotion.",
     "terms_of_service": "Terms of Service",
     "privacy_policy": "Privacy Policy",
-    "legal_agreement": "By signing in, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>."
+    "legal_agreement": "By signing in, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
+    "processing": "Processing...",
+    "login_success": "Login successful!",
+    "login_failed": "Login failed",
+    "email_password_required": "Email and password are required",
+    "popup_blocked": "Popup was blocked. Please allow popups or try again.",
+    "login_success_no_opener": "Login successful! Click below to continue.",
+    "goto_target_page": "Go to target page",
+    "click_to_close": "Click to close"
   },
   "plans": {
     "standard": "Standard",
@@ -65,6 +79,13 @@
       "workstation": "Dashboard",
       "projects": "Video Translation",
       "create": "Create Translation",
+      "credits": {
+        "balance": "Credits Balance",
+        "topUp": "Top Up",
+        "buyNow": "Buy Now",
+        "low": "Running low",
+        "empty": "No credits"
+      },
       "user_nav": {
         "video": "My Videos",
         "billing": "Billing",

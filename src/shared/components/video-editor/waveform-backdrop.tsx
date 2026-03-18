@@ -13,13 +13,13 @@ function toneColors(tone: Tone | undefined) {
   // Subtle, "tech-minimal" palette. Must stay behind the clips.
   if (tone === 'bgm') {
     return {
-      wave: 'rgba(167, 139, 250, 0.30)', // violet
-      progress: 'rgba(167, 139, 250, 0.18)',
+      wave: 'rgba(255, 255, 255, 0.12)',
+      progress: 'rgba(255, 255, 255, 0.06)',
     };
   }
   return {
-    wave: 'rgba(14, 165, 233, 0.32)', // cyan
-    progress: 'rgba(14, 165, 233, 0.16)',
+    wave: 'rgba(255, 255, 255, 0.15)',
+    progress: 'rgba(255, 255, 255, 0.08)',
   };
 }
 

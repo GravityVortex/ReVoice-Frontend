@@ -217,14 +217,14 @@ export function Pricing({
 
       const displayedItem = currencyData
         ? {
-            ...item,
-            currency: currencyData.currency,
-            amount: currencyData.amount,
-            price: currencyData.price,
-            original_price: currencyData.original_price,
-            payment_product_id: currencyData.payment_product_id || item.payment_product_id,
-            payment_providers: currencyData.payment_providers || item.payment_providers,
-          }
+          ...item,
+          currency: currencyData.currency,
+          amount: currencyData.amount,
+          price: currencyData.price,
+          original_price: currencyData.original_price,
+          payment_product_id: currencyData.payment_product_id || item.payment_product_id,
+          payment_providers: currencyData.payment_providers || item.payment_providers,
+        }
         : item;
 
       initialCurrencyStates[item.product_id] = {
@@ -477,8 +477,8 @@ export function Pricing({
   return (
     <section id={pricing.id} className={cn('relative isolate overflow-hidden py-24 md:py-36', pricing.className, className)}>
       <div className="absolute inset-0 -z-10">
-        <div className="from-primary/20 via-primary/5 pointer-events-none absolute top-0 left-1/2 h-[800px] w-[120vw] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] to-transparent opacity-40 blur-[80px]" />
-        <div className="absolute inset-0 bg-[url('/grid.svg')] [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] bg-center" />
+        <div className="from-white/[0.04] via-white/[0.01] pointer-events-none absolute top-0 left-1/2 h-[800px] w-[120vw] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] to-transparent opacity-40 blur-[80px]" />
+        <div className="absolute inset-0 bg-[url('/grid.svg')] [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] bg-center opacity-30" />
       </div>
 
       <div className="mx-auto mb-12 px-4 text-center md:px-8">
@@ -530,7 +530,7 @@ export function Pricing({
                     <span className="relative z-10">{item.title}</span>
                     {item.label && (
                       <span className="relative z-10 ml-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                        <span className="bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">{item.label}</span>
+                        <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">{item.label}</span>
                       </span>
                     )}
                   </button>
@@ -543,17 +543,17 @@ export function Pricing({
         {activeSubscriptions.length > 0 && (
           <div className="mx-auto mb-8 flex w-full max-w-2xl items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-md">
             <div className="flex items-center gap-2.5 text-sm text-white/80">
-              <Sparkles className="h-4 w-4 shrink-0 text-amber-300" />
+              <Sparkles className="h-4 w-4 shrink-0 text-primary" />
               <span>
                 {activeSubscriptions.length === 1
                   ? t('status_bar_single', {
-                      plan: getLocalizedName(activeSubscriptions[0]),
-                      credits: String(totalActiveCredits),
-                    })
+                    plan: getLocalizedName(activeSubscriptions[0]),
+                    credits: String(totalActiveCredits),
+                  })
                   : t('status_bar_multiple', {
-                      count: String(activeSubscriptions.length),
-                      credits: String(totalActiveCredits),
-                    })}
+                    count: String(activeSubscriptions.length),
+                    credits: String(totalActiveCredits),
+                  })}
               </span>
             </div>
             <Link href="/settings/billing" className="text-primary hover:text-primary/80 shrink-0 text-xs font-medium transition-colors">
@@ -582,7 +582,7 @@ export function Pricing({
                   <div className="absolute top-0 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
                     <span className="shadow-primary/20 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-xs font-bold tracking-wider text-white uppercase shadow-lg backdrop-blur-xl">
                       <Zap className="text-primary size-3" />
-                      <span className="bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">{item.label}</span>
+                      <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">{item.label}</span>
                     </span>
                   </div>
                 )}
@@ -590,9 +590,9 @@ export function Pricing({
                 <Card
                   className={cn(
                     'relative flex h-full flex-col overflow-hidden rounded-3xl border backdrop-blur-xl transition-all duration-300',
-                    'hover:border-primary/50 hover:shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.3)]',
+                    'hover:border-white/20 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.05)]',
                     isFeatured
-                      ? 'border-primary/50 from-primary/10 bg-gradient-to-b via-white/5 to-transparent shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.3)]'
+                      ? 'border-primary/40 from-white/[0.06] bg-gradient-to-b via-white/[0.02] to-transparent shadow-[0_0_40px_-10px_rgba(255,255,255,0.05)]'
                       : 'border-white/10 bg-white/5'
                   )}
                 >
@@ -720,7 +720,7 @@ export function Pricing({
                     <ul className="list-outside space-y-3 text-sm">
                       {item.features?.map((feature, featureIndex) => (
                         <li key={featureIndex} className="flex items-start gap-3 text-white/70">
-                          <div className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+                          <div className="bg-white/[0.08] text-white/60 flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                             <Check className="size-3" />
                           </div>
                           <span className="flex-1">{feature}</span>

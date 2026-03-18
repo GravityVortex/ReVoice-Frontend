@@ -6,6 +6,10 @@ type ModalRequestOptions = {
   idempotencyKey?: string;
 };
 
+type SubtitleTtsRequestOptions = {
+  referenceSubtitleName?: string;
+};
+
 function resolveTtsBaseUrl(): string {
   // 单条字幕音频重生成已迁移到 TTS 服务：
   // - 优先使用 TTS_SERVER_BASE_URL（避免影响其它仍走 VAP 的接口）
@@ -124,14 +128,23 @@ export async function pyOriginalTxtTranslateJobStatus(jobId: string) {
  * @param params
  * @returns
  */
-export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, subtitleName: string) {
+export async function pyConvertTxtGenerateVoice(
+  taskId: string,
+  txt: string,
+  subtitleName: string,
+  opts: SubtitleTtsRequestOptions = {}
+) {
+  const referenceSubtitleName = String(opts.referenceSubtitleName || '').trim();
   // 请求数据测试
-  const params = {
+  const params: Record<string, string> = {
     text: txt,
     subtitle_name: subtitleName,// 0001_00-00-00-000_00-00-04-000
     // language_target: languageTarget,
     task_id: taskId,
   };
+  if (referenceSubtitleName) {
+    params.reference_subtitle_name = referenceSubtitleName;
+  }
 
   // console.log('解密明文--->', requestData);
   const baseUrl = resolveTtsBaseUrl();
@@ -146,6 +159,7 @@ export async function pyConvertTxtGenerateVoice(taskId: string, txt: string, sub
       ...buildPythonAuthHeaders(),
     },
     body: JSON.stringify(params),
+    signal: AbortSignal.timeout(120_000),
   });
   // {
   //   "code": 200,
@@ -211,13 +225,18 @@ export async function pyConvertTxtGenerateVoiceJobStart(
   taskId: string,
   txt: string,
   subtitleName: string,
+  reqOpts: SubtitleTtsRequestOptions = {},
   opts: ModalRequestOptions = {}
 ) {
-  const params = {
+  const referenceSubtitleName = String(reqOpts.referenceSubtitleName || '').trim();
+  const params: Record<string, string> = {
     text: txt,
     subtitle_name: subtitleName,
     task_id: taskId,
   };
+  if (referenceSubtitleName) {
+    params.reference_subtitle_name = referenceSubtitleName;
+  }
   const baseUrl = resolveTtsBaseUrl();
   const legacyBaseUrl = resolveLegacyPythonBaseUrl();
   const url = `${baseUrl}/api/internal/subtitles/translated/tts/jobs`;
@@ -306,4 +325,56 @@ export async function pyMergeVideoJobStatus(jobId: string) {
     throw new Error(`视频合成任务查询失败${msg}`);
   }
   return await response.json();
+}
+
+/**
+ * 音频切割（同步接口，不走 job 轮询）
+ * 调用 Python 侧 POST /api/internal/audio/split
+ */
+export async function pySplitAudio(
+  taskId: string,
+  userId: string,
+  audioR2Key: string,
+  splitAtMs: number,
+  clipStartMs: number,
+  clipEndMs: number,
+  leftOutputKey: string,
+  rightOutputKey: string,
+  backupKey?: string,
+): Promise<{
+  left_path: string;
+  left_duration: number;
+  right_path: string;
+  right_duration: number;
+}> {
+  const params = {
+    task_id: taskId,
+    user_id: userId,
+    audio_r2_key: audioR2Key,
+    split_at_ms: splitAtMs,
+    clip_start_ms: clipStartMs,
+    clip_end_ms: clipEndMs,
+    left_output_key: leftOutputKey,
+    right_output_key: rightOutputKey,
+    ...(backupKey ? { backup_key: backupKey } : {}),
+  };
+
+  const baseUrl = resolveLegacyPythonBaseUrl();
+  const url = `${baseUrl}/api/internal/audio/split`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildPythonAuthHeaders(),
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const msg = await response.text();
+    throw new Error(`音频切割失败: ${msg}`);
+  }
+  const backJO = await response.json();
+  return backJO.data ?? backJO;
 }

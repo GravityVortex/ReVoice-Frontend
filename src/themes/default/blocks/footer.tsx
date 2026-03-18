@@ -106,7 +106,7 @@ export function Footer({ footer }: { footer: FooterType }) {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {footer.show_theme !== false ? <ThemeToggler type="toggle" /> : null}
             {footer.show_locale !== false ? (
-              <LocaleSelector type="button" />
+              <LocaleSelector />
             ) : null}
           </div>
 

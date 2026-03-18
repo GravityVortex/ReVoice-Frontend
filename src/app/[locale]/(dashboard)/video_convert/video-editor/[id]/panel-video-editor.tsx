@@ -1,3 +1,8 @@
+/**
+ * @deprecated This component is no longer used. The new editor is composed of
+ * SubtitleWorkstation + VideoPreviewPanel + TimelinePanel in page.tsx.
+ * Kept temporarily for reference — safe to delete.
+ */
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -1207,7 +1212,7 @@ export function PanelVideoEditor({ className, onExport, initialVideo, convertObj
               onChange={handleVolumeChange}
               className="w-20 h-2 bg-muted rounded-lg appearance-none cursor-pointer slider-thumb"
               style={{
-                background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume}%, #4b5563 ${volume}%, #4b5563 100%)`
+                background: `linear-gradient(to right, rgb(var(--primary-rgb)) 0%, rgb(var(--primary-rgb)) ${volume}%, #4b5563 ${volume}%, #4b5563 100%)`
               }}
             />
             <span className="text-xs font-medium text-muted-foreground w-8">{volume}%</span>

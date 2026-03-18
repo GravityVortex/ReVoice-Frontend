@@ -34,7 +34,7 @@ export default function AuthLayout({
       </div>
       <div className="absolute top-4 right-4 flex items-center gap-4 z-50">
         <ThemeToggler />
-        <LocaleSelector type="button" />
+        <LocaleSelector />
       </div>
       <div className="w-full px-4">{children}</div>
     </div>

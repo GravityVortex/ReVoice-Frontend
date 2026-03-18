@@ -36,6 +36,7 @@ export interface SubtitleTrackItem {
   color?: string;
   fontFamily?: string;
   audioUrl?: string; // 字幕对应的音频URL
+  splitOperationId?: string; // 切割操作 ID，用于在时间轴上标识同组 split 子段
 }
 
 // 转换对象类型

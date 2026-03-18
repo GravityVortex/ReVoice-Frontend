@@ -24,8 +24,8 @@ export default async function NotFoundPage() {
   return (
     <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-black text-white selection:bg-white/20">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-[-20%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[120px]" />
+        <div className="absolute top-[-20%] left-[-10%] h-[500px] w-[500px] rounded-full bg-white/[0.03] blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] h-[500px] w-[500px] rounded-full bg-white/[0.02] blur-[120px]" />
       </div>
 
       <AnimatedGridPattern
@@ -49,7 +49,7 @@ export default async function NotFoundPage() {
         </div>
 
         <div className="relative">
-          <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-xl" />
+          <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-white/[0.05] to-white/[0.02] blur-xl" />
           <h1 className="relative bg-gradient-to-b from-white to-white/60 bg-clip-text text-9xl font-extrabold tracking-tighter text-transparent sm:text-[12rem]">
             404
           </h1>

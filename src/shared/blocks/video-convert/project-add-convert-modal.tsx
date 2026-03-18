@@ -23,16 +23,11 @@ import {
     SelectValue,
 } from "@/shared/components/ui/select";
 import { useAppContext } from "@/shared/contexts/app";
-import { Check, ChevronRight, Languages, Clock, Video, Droplet, BookText, Plus, Trash2, Upload, Link, BadgeDollarSign, Crown, CircleDollarSign } from 'lucide-react';
+import { Check, ChevronRight, ArrowLeftRight, ArrowRight, Languages, Clock, Video, Droplet, BookText, Plus, Trash2, Upload, Link, BadgeDollarSign, Crown, CircleDollarSign, CreditCard, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
-
-
-// 语言选项
-const LANGUAGES = [
-    { value: 'zh', key: 'zh' },
-    { value: 'en', key: 'en' },
-];
+import { SUPPORTED_LANGUAGES, getDefaultTargetLang, isValidLangCode } from '@/shared/lib/languages';
+import { LangBadge } from '@/shared/components/ui/lang-badge';
 
 // 单人多人
 const PEOPLES_OPTIONS = [
@@ -82,7 +77,7 @@ export function ProjectAddConvertModal({
     const t = useTranslations('video_convert.projectAddConvertModal');
     const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
-    const { user } = useAppContext();
+    const { user, fetchUserCredits } = useAppContext();
     const videoInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     // console.log("当前用户--->", user);
@@ -198,6 +193,15 @@ export function ProjectAddConvertModal({
         return duration;
     }
 
+    const currentBalance = user?.credits?.remainingCredits || 0;
+    const creditsNeeded = calculateCredits();
+    const isInsufficientCredits = creditsNeeded > 0 && currentBalance < creditsNeeded;
+    const shortBy = Math.max(0, creditsNeeded - currentBalance);
+
+    useEffect(() => {
+        if (currentStep === 3) fetchUserCredits();
+    }, [currentStep, fetchUserCredits]);
+
     // 保存到本地缓存
     const saveToCache = () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
@@ -276,9 +280,20 @@ export function ProjectAddConvertModal({
         video.preload = 'metadata';
         video.src = localUrl;
 
-        await new Promise<void>((resolve) => {
+        const MAX_VIDEO_DURATION_SECONDS = 3600;
+        const durationOk = await new Promise<boolean>((resolve) => {
             video.onloadedmetadata = () => {
                 const videoDuration = Math.round(video.duration * 10) / 10;
+                URL.revokeObjectURL(localUrl);
+
+                if (videoDuration > MAX_VIDEO_DURATION_SECONDS) {
+                    toast.error(t('upload.durationExceeded'));
+                    resetVideoData(false);
+                    setUploading(false);
+                    resolve(false);
+                    return;
+                }
+
                 setFormData(prev => ({
                     ...prev,
                     videoUpload: {
@@ -288,10 +303,11 @@ export function ProjectAddConvertModal({
                     },
                 }));
                 console.log('视频时长--->', videoDuration, '秒');
-                URL.revokeObjectURL(localUrl);
-                resolve();
+                resolve(true);
             };
         });
+
+        if (!durationOk) return;
 
 
         try {
@@ -478,7 +494,14 @@ export function ProjectAddConvertModal({
                 onClose();
             } else {
                 console.error('提交失败:', data);
-                toast.error(data?.message || t('messages.submitFailed'));
+                const msg = data?.message || t('messages.submitFailed');
+                const isCreditsError = msg.includes('积分不足') || msg.toLowerCase().includes('insufficient credit');
+                if (isCreditsError) {
+                    fetchUserCredits();
+                    toast.error(msg, { action: { label: t('confirm.buyCredits'), onClick: () => window.open('/pricing', '_blank') } });
+                } else {
+                    toast.error(msg);
+                }
             }
         } catch (e) {
             console.error('提交失败--->', e);
@@ -488,10 +511,9 @@ export function ProjectAddConvertModal({
         }
     };
 
-    // 获取语言标签
     const getLanguageLabel = (value: string) => {
-        const lang = LANGUAGES.find(l => l.value === value);
-        return lang ? t(`languages.${lang.key}`) : value;
+        const lang = SUPPORTED_LANGUAGES.find(l => l.code === value);
+        return lang ? t(`languages.${lang.code}`) : value;
     };
 
     // 获取单人双人
@@ -594,8 +616,8 @@ export function ProjectAddConvertModal({
                                                     <Upload className="w-6 h-6 mx-auto mb-1 animate-pulse" />
                                                     <span className="text-xs">{t('upload.uploading')}</span>
                                                     <div className='mt-2'>
-                                                        <div className="h-2 rounded-lg w-[80%] mx-auto bg-[#f0f0f0]">
-                                                            <div className="h-2 rounded-lg bg-[#10b981]" style={{ width: `${progress2}%`, transition: 'width 0.3s' }} />
+                                                        <div className="h-2 rounded-lg w-[80%] mx-auto bg-muted">
+                                                            <div className="h-2 rounded-lg bg-primary" style={{ width: `${progress2}%`, transition: 'width 0.3s' }} />
                                                         </div>
                                                         <p className='mt-2'>{progress2}%</p>
                                                     </div>
@@ -630,6 +652,7 @@ export function ProjectAddConvertModal({
                                     <p className="text-xs text-muted-foreground mt-1">
                                         {t('upload.currentAccount')}
                                         {`${t('upload.maxSize')} ${(config?.maxFileSizeMB / 1024 / 1024).toFixed(0)} MB`}
+                                        {` · ${t('upload.maxDuration')} 1h`}
                                     </p>
                                 </div>
                             </CardContent>
@@ -640,60 +663,76 @@ export function ProjectAddConvertModal({
                     {currentStep === 2 && (
                         <Card className="mt-2 pt-2 pb-5">
                             <CardContent className="pt-0 space-y-8">
-                                {/* 原语言 */}
-                                <div className="flex items-center justify-between h-20 gap-4 border-b pb-0 my-1">
-                                    <div className="flex items-center gap-3 py-4">
-                                        {/* <Languages className="w-5 h-5 text-primary" /> */}
-                                        <Label htmlFor="sourceLanguage" className="text-base font-medium whitespace-nowrap">
-                                            {t('config.sourceLanguage')} <span className="text-red-500">*</span>
-                                        </Label>
-                                    </div>
-                                    <Select
-                                        value={formData.sourceLanguage}
-                                        onValueChange={(value) => setFormData({ ...formData, sourceLanguage: value })}
-                                    >
-                                        <SelectTrigger id="sourceLanguage" className="
-                                        flex-1 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent 
-                                        data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto py-3 pr-0 
-                                        pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right focus:ring-0 focus:ring-offset-0">
-                                            <SelectValue placeholder={t('config.selectPlaceholder')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {LANGUAGES.map((lang) => (
-                                                <SelectItem key={lang.value} value={lang.value} className="focus:!bg-transparent hover:!bg-transparent data-[state=checked]:!bg-transparent">
-                                                    {t(`languages.${lang.key}`)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <ChevronRight className="w-5 h-5 text-muted-foreground mr-0" />
-                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-base font-semibold">{t('config.sourceLanguage')}</Label>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 space-y-1.5">
+                                            <span className="text-muted-foreground text-xs font-medium">{t('config.sourceLanguage')}</span>
+                                            <Select
+                                                value={formData.sourceLanguage}
+                                                onValueChange={(value) => {
+                                                    if (!isValidLangCode(value)) return;
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        sourceLanguage: value,
+                                                        targetLanguage: prev.targetLanguage === value ? getDefaultTargetLang(value) : prev.targetLanguage,
+                                                    }));
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 w-full text-base">
+                                                    <SelectValue placeholder={t('config.selectLanguage')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {SUPPORTED_LANGUAGES.map((lang) => (
+                                                        <SelectItem key={lang.code} value={lang.code} className="py-2.5 text-base">
+                                                            <LangBadge code={lang.code} size="sm" className="mr-2" />
+                                                            <span className="font-medium">{t(`languages.${lang.code}`)}</span>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
 
-                                <div className="flex items-center justify-between h-20 gap-4 border-b pb-0 my-1">
-                                    <div className="flex items-center gap-3 py-4">
-                                        {/* <Languages className="w-5 h-5 text-primary" /> */}
-                                        <Label htmlFor="targetLanguage" className="text-base font-medium whitespace-nowrap">
-                                            {t('config.targetLanguage')} <span className="text-red-500">*</span>
-                                        </Label>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            className="mt-5 h-10 w-10 shrink-0 rounded-full"
+                                            title={t('config.swap')}
+                                            onClick={() => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    sourceLanguage: prev.targetLanguage,
+                                                    targetLanguage: prev.sourceLanguage,
+                                                }));
+                                            }}
+                                        >
+                                            <ArrowLeftRight className="h-5 w-5" />
+                                        </Button>
+
+                                        <div className="flex-1 space-y-1.5">
+                                            <span className="text-muted-foreground text-xs font-medium">{t('config.targetLanguage')}</span>
+                                            <Select
+                                                value={formData.targetLanguage}
+                                                onValueChange={(value) => {
+                                                    if (!isValidLangCode(value)) return;
+                                                    setFormData(prev => ({ ...prev, targetLanguage: value }));
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 w-full text-base">
+                                                    <SelectValue placeholder={t('config.selectLanguage')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {SUPPORTED_LANGUAGES.filter((l) => l.code !== formData.sourceLanguage).map((lang) => (
+                                                        <SelectItem key={lang.code} value={lang.code} className="py-2.5 text-base">
+                                                            <LangBadge code={lang.code} size="sm" className="mr-2" />
+                                                            <span className="font-medium">{t(`languages.${lang.code}`)}</span>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                    <Select
-                                        value={formData.targetLanguage}
-                                        onValueChange={(value) => setFormData({ ...formData, targetLanguage: value })}
-                                    >
-                                        <SelectTrigger id="targetLanguage" className="flex-1 border-0 shadow-none bg-transparent hover:bg-transparent 
-                                        focus:bg-transparent data-[state=open]:bg-transparent dark:hover:bg-transparent font-medium h-auto 
-                                        py-3 pr-0 pl-4 [&>svg]:hidden [&>span]:ml-auto [&>span]:text-right">
-                                            <SelectValue placeholder={t('config.selectPlaceholder')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {LANGUAGES.map((lang) => (
-                                                <SelectItem key={lang.value} value={lang.value} className="focus:!bg-transparent hover:!bg-transparent data-[state=checked]:!bg-transparent">
-                                                    {t(`languages.${lang.key}`)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <ChevronRight className="w-5 h-5 text-muted-foreground mr-0" />
                                 </div>
 
                                 {/* 原视频时长 */}
@@ -746,60 +785,79 @@ export function ProjectAddConvertModal({
                                 <div className="space-y-4">
                                     {/* <h3 className="mb-0 text-lg font-semibold text-primary">视频转换配置确认</h3> */}
 
-                                    <div className="my-5 grid grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
-                                        <div className="col-span-1 space-y-2">
-                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.videoDuration')}</p>
-                                            <p className="font-semibold text-center">{Math.ceil(formData.videoUpload.videoDuration / 60)}分钟</p>
+                                    {/* Language pair */}
+                                    <div className="my-5 flex items-center justify-center gap-5 p-5 bg-muted/30 rounded-lg">
+                                        <div className="flex flex-col items-center text-center">
+                                            <LangBadge code={formData.sourceLanguage} size="lg" />
+                                            <p className="mt-1 text-base font-bold">{t(`languages.${formData.sourceLanguage}`)}</p>
                                         </div>
-                                        <div className="space-y-2">
-                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.sourceLanguage')}</p>
-                                            <p className="font-semibold text-center">{getLanguageLabel(formData.sourceLanguage)}</p>
+                                        <ArrowRight className="h-6 w-6 text-muted-foreground shrink-0" />
+                                        <div className="flex flex-col items-center text-center">
+                                            <LangBadge code={formData.targetLanguage} size="lg" />
+                                            <p className="mt-1 text-base font-bold">{t(`languages.${formData.targetLanguage}`)}</p>
                                         </div>
-                                        <div className="space-y-2">
-                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.targetLanguage')}</p>
-                                            <p className="font-semibold text-center">{getLanguageLabel(formData.targetLanguage)}</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                                        <div className="space-y-1 text-center">
+                                            <p className="text-xs text-muted-foreground">{t('confirm.videoDuration')}</p>
+                                            <p className="text-sm font-semibold">{Math.ceil(formData.videoUpload.videoDuration / 60)} {t('ui.minutes')}</p>
                                         </div>
-                                        <div className="space-y-2">
-                                            <p className="text-sm text-muted-foreground text-center">{t('confirm.speakerCount')}</p>
-                                            <p className="font-semibold text-center">{getWatermarkLabel(formData.peoples)}</p>
+                                        <div className="space-y-1 text-center">
+                                            <p className="text-xs text-muted-foreground">{t('confirm.speakerCount')}</p>
+                                            <p className="text-sm font-semibold">{getWatermarkLabel(formData.peoples)}</p>
+                                        </div>
+                                        <div className="space-y-1 text-center">
+                                            <p className="text-xs text-muted-foreground">{t('confirm.consumeCredits')}</p>
+                                            <p className="text-sm font-semibold">{calculateCredits()} {t('confirm.credits')}</p>
                                         </div>
                                     </div>
 
                                     {/* 积分消耗 */}
-                                    <div className="py-8 px-0 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
-                                        <div className="flex gap-1 items-center justify-between">
-
-                                            <div className="text-right flex-1 text-sm text-muted-foreground">
-                                                <p className='mt-1'>{t('confirm.consumeCredits')}: <span className='text-2xl text-red-600'>{calculateCredits()}</span> {t('confirm.credits')}</p>
-                                                <p className="mt-3 text-sm text-blue-800 dark:text-blue-200">
-                                                    💡 {t('confirm.creditsPerMinute', { points: config.pointsPerMinute })}
+                                    <div className={cn(
+                                        "py-6 px-4 rounded-lg border transition-colors",
+                                        isInsufficientCredits
+                                            ? "bg-destructive/5 border-destructive/20"
+                                            : "bg-muted/30 border-border"
+                                    )}>
+                                        <div className="flex gap-4 items-start justify-between">
+                                            <div className="flex-1 text-sm text-muted-foreground">
+                                                <p>{t('confirm.consumeCredits')}: <span className='text-2xl font-bold text-foreground'>{creditsNeeded}</span> {t('confirm.credits')}</p>
+                                                <p className="mt-2 text-xs text-muted-foreground">
+                                                    {t('confirm.creditsPerMinute', { points: config.pointsPerMinute })}
                                                 </p>
-                                                {(getConsumeCredits() <= 0) && (<p className="mt-3 text-sm text-blue-800 dark:text-blue-200">
-                                                    {t('confirm.insufficientCredits', { minutes: getConsumeTime() })}
-                                                </p>)}
                                             </div>
-                                            <div className='flex-1 gap-2'>
-                                                {/* <p className="text-sm text-muted-foreground mb-1">剩余积分</p> */}
-                                                <div className="flex items-baseline gap-2 justify-center">
-                                                    <span className="text-lg text-muted-foreground">{t('confirm.remainingCredits')}</span>
-                                                    <span className="text-4xl font-bold text-primary">{user?.credits?.remainingCredits}</span>
-                                                    {/* <span className="text-4xl font-bold text-primary">{calculateCredits()}</span> */}
-                                                    <span className="text-lg text-muted-foreground">{t('confirm.credits')}</span>
-                                                </div>
-                                                <div className="flex justify-center items-baseline gap-2">
-                                                    <a href="/pricing" target="_blank" className="flex items-center text-center flex-col mt-3 space-y-2 text-sm">
-                                                        <Crown className="text-sm text-blue-600 hover:underline">
-                                                            {t('confirm.subscribe')}
-                                                        </Crown>
-                                                        {t('confirm.subscribeTip')}
-                                                    </a>
-                                                </div>
+                                            <div className='flex-1 text-right'>
+                                                <p className="text-xs text-muted-foreground">{t('confirm.currentBalance')}</p>
+                                                <p className={cn("text-3xl font-bold", isInsufficientCredits ? "text-destructive" : "text-primary")}>
+                                                    {currentBalance}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">{t('confirm.credits')}</p>
                                             </div>
                                         </div>
+                                        {isInsufficientCredits && (
+                                            <div className="mt-4 rounded-lg bg-destructive/10 border border-destructive/20 p-3 space-y-2">
+                                                <p className="text-sm font-medium text-destructive flex items-center gap-1.5">
+                                                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                                                    {t('confirm.shortBy', { amount: shortBy })}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">{t('confirm.buyCreditsHint')}</p>
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="w-full"
+                                                    type="button"
+                                                    onClick={() => window.open('/pricing', '_blank')}
+                                                >
+                                                    <CreditCard className="mr-2 h-4 w-4" />
+                                                    {t('confirm.buyCredits')}
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    <div className="mt-8 p-4 bg-muted/50 rounded-lg border border-border">
+                                        <p className="text-sm text-muted-foreground">
                                             {t('confirm.estimatedTime')}
                                         </p>
                                     </div>
@@ -854,7 +912,7 @@ export function ProjectAddConvertModal({
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
-                                    disabled={submitting}
+                                    disabled={submitting || isInsufficientCredits}
                                 >
                                     {submitting ? t('buttons.submitting') : t('buttons.startConvert')}
                                 </Button>

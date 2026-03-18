@@ -30,7 +30,7 @@ export function Hero({
   const titleLines = titleText.split(/\r?\n|\\n/).filter((line) => line.trim());
 
   const renderHighlightedText = () => (
-    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
+    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-fuchsia-400">
       {highlightText}
     </span>
   );
@@ -76,7 +76,7 @@ export function Hero({
       )}
     >
       {/* Background Ambience - Vozo Style Radial Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[800px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[80px] opacity-40 pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[800px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/[0.04] via-white/[0.01] to-transparent blur-[80px] opacity-40 pointer-events-none" />
 
       <AnimatedGridPattern
         numSquares={50}
@@ -98,7 +98,7 @@ export function Hero({
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="mb-12 relative z-20"
         >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary/20 blur-[80px] rounded-full pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-white/[0.04] blur-[80px] rounded-full pointer-events-none" />
           <Image
             src={heroSrc}
             alt="SoulDub AI voice dubbing platform"
@@ -116,7 +116,7 @@ export function Hero({
             <Link
               href={hero.announcement.url || ''}
               target={hero.announcement.target || '_self'}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-xs font-medium text-primary hover:bg-primary/20 transition-colors mb-8"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.05] text-xs font-medium text-white/70 hover:bg-white/[0.08] transition-colors mb-8"
             >
               <span>{hero.announcement.title}</span>
               <ArrowRight className="w-3 h-3" />
@@ -144,8 +144,8 @@ export function Hero({
         {hero.buttons && (
           <motion.div
             {...createFadeInVariant(0.5)}
-              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
-            >
+            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
+          >
             {hero.buttons.map((button, idx) => {
               return (
                 <Button
@@ -154,7 +154,7 @@ export function Hero({
                   variant={idx === 0 ? 'default' : 'outline'}
                   className={cn(
                     "min-w-[160px] h-12 text-base px-8 rounded-full transition-all duration-300",
-                    idx === 0 && "bg-[#6366F1] hover:bg-[#5558DD] text-white shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)] border-none",
+                    idx === 0 && "bg-primary hover:opacity-90 text-primary-foreground shadow-[0_0_20px_-5px_var(--color-primary)] border-none",
                     idx !== 0 && "border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.4)]"
                   )}
                   key={idx}

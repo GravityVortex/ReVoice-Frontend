@@ -1,46 +1,39 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useRouter } from '@/core/i18n/navigation';
-import { useTranslations } from 'next-intl';
 import {
+  AlertTriangle,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowRight,
+  ChevronRight,
+  CreditCard,
   Download,
-  Loader2,
+  Film,
   Languages,
+  Loader2,
   MoreHorizontal,
   Pencil,
-  Repeat,
+  Plus,
+  Sparkles,
   Trash2,
   Users,
-  Waves,
-  Captions,
-  ListOrdered,
-  Film,
-  Sparkles,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
+import { Link, useRouter } from '@/core/i18n/navigation';
+import { useAppContext } from '@/shared/contexts/app';
 import { AudioPlayModal } from '@/shared/blocks/video-convert/Audio-play-modal';
 import { CompareSrtModal } from '@/shared/blocks/video-convert/compare-srt-modal';
 import { ProjectUpdateModal } from '@/shared/blocks/video-convert/project-update-modal';
 import { TaskStatusStepper } from '@/shared/blocks/video-convert/task-status-stepper';
+import { RetroGrid } from '@/shared/components/magicui/retro-grid';
 import { Badge } from '@/shared/components/ui/badge';
+import { ErrorState } from '@/shared/blocks/common/error-state';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Label } from '@/shared/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
-import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,10 +41,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
-import { RetroGrid } from '@/shared/components/magicui/retro-grid';
-import { cn, formatDate, getAudioR2PathName, getLanguageConvertStr, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from '@/shared/lib/utils';
-import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
+import { Label } from '@/shared/components/ui/label';
+import { LangBadge } from '@/shared/components/ui/lang-badge';
+import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
+import { ScrollArea } from '@/shared/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { PlyrVideoPlayer } from '@/shared/components/video-player';
+import {
+  buildResponsiveVideoFrameStyle,
+  DEFAULT_VIDEO_ASPECT_RATIO,
+  type VideoFrameViewport,
+} from '@/shared/components/video-player/video-frame';
+import { getDefaultTargetLang, getLangLabel, SUPPORTED_LANGUAGES } from '@/shared/lib/languages';
+import { getProjectDetailTaskRowState } from '@/shared/lib/project-detail-task-row';
+import { getProjectDetailWorkbenchState } from '@/shared/lib/project-detail-workbench';
+import { cn, formatDate, getAudioR2PathName, getPreviewCoverUrl, getVideoR2PathName, miao2Hms } from '@/shared/lib/utils';
 
 interface VideoDetail {
   id: string;
@@ -89,6 +95,13 @@ interface TaskMain {
   finalFileList?: TaskFinalFile[];
 }
 
+interface SubtitleItem {
+  id: string;
+  start: number;
+  end: number;
+  txt: string;
+}
+
 function isRunningStatus(status: string | undefined) {
   return status === 'pending' || status === 'processing';
 }
@@ -114,23 +127,10 @@ function normalizeSpeakerCountForCreate(speakerCount?: string | number | null) {
   return value === '2' || value === 'multiple' ? '2' : '1';
 }
 
-function getOppositeLanguage(lang: string) {
-  return lang === 'zh' ? 'en' : 'zh';
-}
-
-export function ProjectDetailView({
-  fileId,
-  locale,
-  backHref,
-  createHref,
-}: {
-  fileId: string;
-  locale: string;
-  backHref: string;
-  createHref?: string;
-}) {
+export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string; locale: string; backHref: string }) {
   const router = useRouter();
   const t = useTranslations('video_convert.projectDetail');
+  const { user, fetchUserCredits } = useAppContext();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -141,13 +141,16 @@ export function ProjectDetailView({
 
   // Add-run (new translation) UI
   const [isAddRunOpen, setIsAddRunOpen] = useState(false);
-  const [addRunSourceLanguage, setAddRunSourceLanguage] = useState<string>('zh');
-  const [addRunTargetLanguage, setAddRunTargetLanguage] = useState<string>('en');
+  const [addRunSourceLanguage, setAddRunSourceLanguage] = useState<string>('en');
+  const [addRunTargetLanguage, setAddRunTargetLanguage] = useState<string>('zh');
   const [addRunSpeakerCount, setAddRunSpeakerCount] = useState<string>('1');
   const [addRunSubmitting, setAddRunSubmitting] = useState(false);
   const addRunSubmitLockRef = useRef(false);
   const [addRunPointsPerMinute, setAddRunPointsPerMinute] = useState<number>(3);
   const [addRunConfigLoading, setAddRunConfigLoading] = useState(false);
+
+  // Two-state view: 'list' = task list landing, 'detail' = expanded detail
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
 
   // Preview source selection
   const [videoMode, setVideoMode] = useState<'result' | 'preview' | 'original'>('original');
@@ -157,22 +160,15 @@ export function ProjectDetailView({
   const urlCacheRef = useRef<Map<string, string>>(new Map());
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewAspectRatio, setPreviewAspectRatio] = useState<number>(DEFAULT_VIDEO_ASPECT_RATIO);
+  const previewSlotRef = useRef<HTMLDivElement>(null);
+  const [previewSlotSize, setPreviewSlotSize] = useState<VideoFrameViewport | null>(null);
   const previewProxyUrlRef = useRef<string>('');
-  const previewProxyFallbackTriedRef = useRef<Set<string>>(new Set());
   const [previewBuffering, setPreviewBuffering] = useState(false);
 
   // Preview tools (playback)
-  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
-  const [previewPlaybackRate, setPreviewPlaybackRate] = useState<number>(1);
-  const [previewLoop, setPreviewLoop] = useState(false);
-
-  usePausedVideoPrefetch(previewVideoRef, {
-    enabled: Boolean(previewUrl) && !previewLoading,
-    minBufferedAheadSeconds: 10,
-  });
-
-  // Right panel view (default: deliverables)
-  const [rightPanelTab, setRightPanelTab] = useState<'runs' | 'outputs'>('outputs');
+  const [previewPlaybackRate, _setPreviewPlaybackRate] = useState<number>(1);
+  const [previewLoop, _setPreviewLoop] = useState(false);
 
   // Progress (inline)
   const progressCardRef = useRef<HTMLDivElement>(null);
@@ -190,17 +186,56 @@ export function ProjectDetailView({
   const [subtitleAudioUrl, setSubtitleAudioUrl] = useState('');
   const [backgroundAudioUrl, setBackgroundAudioUrl] = useState('');
 
-  const selectedTask = useMemo(
-    () => taskList.find((t) => t.id === selectedTaskId) || null,
-    [taskList, selectedTaskId]
+  // Subtitle overlay state (for result video)
+  const [translatedSubtitles, setTranslatedSubtitles] = useState<SubtitleItem[]>([]);
+  const [, setSubtitlesLoading] = useState(false);
+
+  const selectedTask = useMemo(() => taskList.find((t) => t.id === selectedTaskId) || null, [taskList, selectedTaskId]);
+  const previewFrameStyle = useMemo(
+    () => buildResponsiveVideoFrameStyle(previewAspectRatio, previewSlotSize),
+    [previewAspectRatio, previewSlotSize]
   );
 
+  useEffect(() => {
+    if (viewMode !== 'detail') {
+      setPreviewSlotSize(null);
+      return;
+    }
+
+    const slot = previewSlotRef.current;
+    if (!slot || typeof ResizeObserver === 'undefined') return;
+
+    const updatePreviewSlotSize = (width: number, height: number) => {
+      if (width <= 0 || height <= 0) return;
+
+      const next = {
+        width: Math.round(width),
+        height: Math.round(height),
+      };
+
+      setPreviewSlotSize((current) => {
+        if (current?.width === next.width && current?.height === next.height) return current;
+        return next;
+      });
+    };
+
+    updatePreviewSlotSize(slot.clientWidth, slot.clientHeight);
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      updatePreviewSlotSize(entry.contentRect.width, entry.contentRect.height);
+    });
+
+    observer.observe(slot);
+    return () => observer.disconnect();
+  }, [viewMode]);
+
   const languageOptions = useMemo(() => {
-    const isZhUi = locale === 'zh';
-    return [
-      { value: 'zh', label: isZhUi ? '中文' : 'Chinese' },
-      { value: 'en', label: isZhUi ? '英文' : 'English' },
-    ] as const;
+    return SUPPORTED_LANGUAGES.map((l) => ({
+      value: l.code,
+      label: locale === 'zh' ? l.labelZh : l.labelEn,
+    }));
   }, [locale]);
 
   const pairKey = useCallback((source: string, target: string) => `${source}__${target}`, []);
@@ -237,10 +272,21 @@ export function ProjectDetailView({
 
   const statusMeta = useMemo(() => {
     const status = selectedTask?.status || 'pending';
-    const map: Record<string, { label: string; badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline'; badgeClassName?: string }> = {
-      pending: { label: t('status.pending'), badgeVariant: 'outline', badgeClassName: 'text-cyan-600 border-cyan-600/20 bg-cyan-500/5' },
-      processing: { label: t('status.processing'), badgeVariant: 'outline', badgeClassName: 'text-orange-500 border-orange-500/20 bg-orange-500/5' },
-      completed: { label: t('status.completed'), badgeVariant: 'outline', badgeClassName: 'text-green-600 border-green-600/20 bg-green-500/5' },
+    const map: Record<
+      string,
+      { label: string; badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline'; badgeClassName?: string }
+    > = {
+      pending: { label: t('status.pending'), badgeVariant: 'outline', badgeClassName: 'text-amber-500 border-amber-500/20 bg-amber-500/5' },
+      processing: {
+        label: t('status.processing'),
+        badgeVariant: 'outline',
+        badgeClassName: 'text-orange-500 border-orange-500/20 bg-orange-500/5',
+      },
+      completed: {
+        label: t('status.completed'),
+        badgeVariant: 'outline',
+        badgeClassName: 'text-green-600 border-green-600/20 bg-green-500/5',
+      },
       failed: { label: t('status.failed'), badgeVariant: 'outline', badgeClassName: 'text-red-500 border-red-500/20 bg-red-500/5' },
       cancelled: { label: t('status.cancelled'), badgeVariant: 'outline', badgeClassName: 'text-muted-foreground' },
     };
@@ -258,7 +304,30 @@ export function ProjectDetailView({
     [t]
   );
 
+  const workbenchState = useMemo(() => getProjectDetailWorkbenchState(selectedTask?.status), [selectedTask?.status]);
   const canUseOutputs = selectedTask?.status === 'completed';
+  const shouldStretchDetailColumns = canUseOutputs;
+
+  const uniqueSources = useMemo(() => {
+    const sources = new Set(taskList.map((t) => t.sourceLanguage).filter(Boolean));
+    return [...sources];
+  }, [taskList]);
+
+  const isSingleSourceMode = uniqueSources.length <= 1;
+
+  const getTaskStatusMeta = useCallback(
+    (status: string) => {
+      const map: Record<string, { label: string; cls: string }> = {
+        pending: { label: t('status.pending'), cls: 'text-amber-500 border-amber-500/20 bg-amber-500/5' },
+        processing: { label: t('status.processing'), cls: 'text-orange-500 border-orange-500/20 bg-orange-500/5' },
+        completed: { label: t('status.completed'), cls: 'text-green-600 border-green-600/20 bg-green-500/5' },
+        failed: { label: t('status.failed'), cls: 'text-red-500 border-red-500/20 bg-red-500/5' },
+        cancelled: { label: t('status.cancelled'), cls: 'text-muted-foreground' },
+      };
+      return map[status] || { label: status, cls: '' };
+    },
+    [t]
+  );
 
   const hasAvailableLanguagePairs = useMemo(() => {
     const values = languageOptions.map((x) => x.value);
@@ -283,6 +352,47 @@ export function ProjectDetailView({
     return addRunDurationMinutes * ppm;
   }, [addRunDurationMinutes, addRunPointsPerMinute]);
 
+  const addRunCurrentBalance = user?.credits?.remainingCredits || 0;
+  const addRunIsInsufficient = addRunCreditsEstimate > 0 && addRunCurrentBalance < addRunCreditsEstimate;
+  const addRunShortBy = Math.max(0, addRunCreditsEstimate - addRunCurrentBalance);
+
+  useEffect(() => {
+    if (isAddRunOpen) fetchUserCredits();
+  }, [isAddRunOpen, fetchUserCredits]);
+
+  const summaryStats = useMemo(() => {
+    if (!selectedTask) return [];
+
+    return [
+      {
+        label: t('progressModal.overview.startTime'),
+        value: formatDate(selectedTask.startedAt || selectedTask.createdAt || ''),
+      },
+      {
+        label: t('progressModal.overview.endTime'),
+        value: formatDate(selectedTask.completedAt || ''),
+      },
+      {
+        label: t('progressModal.overview.creditsConsumed'),
+        value:
+          typeof selectedTask.creditsConsumed === 'number'
+            ? String(selectedTask.creditsConsumed)
+            : addRunCreditsEstimate
+              ? String(addRunCreditsEstimate)
+              : '-',
+      },
+      {
+        label: t('progressModal.overview.processDuration'),
+        value:
+          selectedTask.processDurationSeconds > 0
+            ? miao2Hms(selectedTask.processDurationSeconds)
+            : videoDetail?.videoDurationSeconds
+              ? miao2Hms(videoDetail.videoDurationSeconds)
+              : '-',
+      },
+    ];
+  }, [addRunCreditsEstimate, selectedTask, t, videoDetail?.videoDurationSeconds]);
+
   const pickDefaultAddRunPair = useCallback(() => {
     const values = languageOptions.map((x) => x.value);
     for (const source of values) {
@@ -296,14 +406,6 @@ export function ProjectDetailView({
     // Fallback: keep deterministic defaults even if all pairs are blocked.
     return { sourceLanguage: values[0] || 'zh', targetLanguage: values[1] || values[0] || 'en' };
   }, [blockingTaskByPair, languageOptions, pairKey]);
-
-  useEffect(() => {
-    // Apply playback tool settings to the current <video>. Re-apply on source changes.
-    const el = previewVideoRef.current;
-    if (!el) return;
-    el.playbackRate = previewPlaybackRate;
-    el.loop = previewLoop;
-  }, [previewLoop, previewPlaybackRate, previewUrl]);
 
   // Media preconnect + buffering reset (helps on both desktop and mobile networks).
   useEffect(() => {
@@ -410,16 +512,7 @@ export function ProjectDetailView({
     if (videoMode === 'preview') return taskPreviewKey;
     if (resultVariant === '480p' && taskResultKey480p) return taskResultKey480p;
     return taskResultKey;
-  }, [
-    videoMode,
-    originalVariant,
-    originalVideoKey,
-    originalVideoKey480p,
-    taskPreviewKey,
-    resultVariant,
-    taskResultKey,
-    taskResultKey480p,
-  ]);
+  }, [videoMode, originalVariant, originalVideoKey, originalVideoKey480p, taskPreviewKey, resultVariant, taskResultKey, taskResultKey480p]);
 
   function toProxySignedMediaUrl(raw: string) {
     const src = (raw || '').trim();
@@ -428,9 +521,7 @@ export function ProjectDetailView({
     try {
       const u = new URL(src);
       // Match server-side allow-list in src/app/api/storage/proxy/route.ts.
-      const allow =
-        u.protocol === 'https:' &&
-        (u.hostname.endsWith('.r2.cloudflarestorage.com') || u.hostname.endsWith('.r2.dev'));
+      const allow = u.protocol === 'https:' && (u.hostname.endsWith('.r2.cloudflarestorage.com') || u.hostname.endsWith('.r2.dev'));
       return allow ? `/api/storage/proxy?src=${encodeURIComponent(src)}` : src;
     } catch {
       return src;
@@ -450,47 +541,92 @@ export function ProjectDetailView({
     return data.data.url as string;
   }, []);
 
-  // Fetch detail
-  const fetchDetail = useCallback(async ({ silent }: { silent: boolean }) => {
-    if (!fileId) return;
-    if (!silent) {
-      setLoading(true);
-      setError('');
-    }
-
+  // Fetch translated subtitles for result video overlay
+  const fetchTranslatedSubtitles = useCallback(async (taskId: string) => {
+    if (!taskId) return;
+    setSubtitlesLoading(true);
     try {
-      const response = await fetch(`/api/video-task/detail?fileId=${fileId}`);
-      const backJO = await response.json();
-      if (backJO?.code !== 0) {
-        if (!silent) setError(backJO?.message || '获取视频详情失败');
-        return;
+      const response = await fetch(`/api/video-task/getCompareSrtList?taskId=${taskId}`);
+      const result = await response.json();
+      if (result?.code === 0 && result?.data?.list) {
+        // Parse time string format (e.g., "00:00:08,439") to seconds
+        const parseTime = (str: string) => {
+          if (!str || typeof str !== 'string') return 0;
+          const parts = str.split(':');
+          if (parts.length !== 3) return 0;
+          const [h, m, s] = parts;
+          const [sec, ms] = (s || '0').split(/[.,]/);
+          const hh = Number.parseInt(h || '0', 10) || 0;
+          const mm = Number.parseInt(m || '0', 10) || 0;
+          const ss = Number.parseInt(sec || '0', 10) || 0;
+          const mss = Number.parseInt(ms || '0', 10) || 0;
+          return hh * 3600 + mm * 60 + ss + mss / 1000;
+        };
+
+        const subtitles: SubtitleItem[] = result.data.list
+          .map((item: any) => ({
+            id: item.id,
+            start: parseTime(item.start),
+            end: parseTime(item.end),
+            txt: item.tra_txt || '',
+          }))
+          .filter((item: SubtitleItem) => item.txt);
+        setTranslatedSubtitles(subtitles);
+      } else {
+        setTranslatedSubtitles([]);
+      }
+    } catch (e) {
+      console.error('[ProjectDetailView] Failed to fetch subtitles:', e);
+      setTranslatedSubtitles([]);
+    } finally {
+      setSubtitlesLoading(false);
+    }
+  }, []);
+
+  // Fetch detail
+  const fetchDetail = useCallback(
+    async ({ silent }: { silent: boolean }) => {
+      if (!fileId) return;
+      if (!silent) {
+        setLoading(true);
+        setError('');
       }
 
-      const tempItem = backJO.data.videoItem;
-      const pre = backJO.data.preUrl || '';
-      setVideoDetail({
-        ...tempItem,
-        cover: getPreviewCoverUrl(tempItem, pre),
-      });
-      const list: TaskMain[] = backJO.data.taskList || [];
-      setTaskList(list);
+      try {
+        const response = await fetch(`/api/video-task/detail?fileId=${fileId}`);
+        const backJO = await response.json();
+        if (backJO?.code !== 0) {
+          if (!silent) setError(backJO?.message || '获取视频详情失败');
+          return;
+        }
 
-      setSelectedTaskId((prev) => {
-        if (prev && list.some((t) => t.id === prev)) return prev;
-        const completed = list.filter((t) => t.status === 'completed');
-        const processing = list.filter((t) => isRunningStatus(t.status));
-        const byTimeDesc = (a: TaskMain, b: TaskMain) =>
-          new Date(b.createdAt || b.completedAt || 0).getTime() - new Date(a.createdAt || a.completedAt || 0).getTime();
-        const pick = (arr: TaskMain[]) => arr.slice().sort(byTimeDesc)[0]?.id;
-        return pick(completed) || pick(processing) || list[0]?.id || '';
-      });
-    } catch (e) {
-      console.error('[ProjectDetailView] Failed to fetch detail:', e);
-      if (!silent) setError('获取视频详情失败');
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [fileId]);
+        const tempItem = backJO.data.videoItem;
+        const pre = backJO.data.preUrl || '';
+        setVideoDetail({
+          ...tempItem,
+          cover: getPreviewCoverUrl(tempItem, pre),
+        });
+        const list: TaskMain[] = backJO.data.taskList || [];
+        setTaskList(list);
+
+        setSelectedTaskId((prev) => {
+          if (prev && list.some((t) => t.id === prev)) return prev;
+          const completed = list.filter((t) => t.status === 'completed');
+          const processing = list.filter((t) => isRunningStatus(t.status));
+          const byTimeDesc = (a: TaskMain, b: TaskMain) =>
+            new Date(b.createdAt || b.completedAt || 0).getTime() - new Date(a.createdAt || a.completedAt || 0).getTime();
+          const pick = (arr: TaskMain[]) => arr.slice().sort(byTimeDesc)[0]?.id;
+          return pick(completed) || pick(processing) || list[0]?.id || '';
+        });
+      } catch (e) {
+        console.error('[ProjectDetailView] Failed to fetch detail:', e);
+        if (!silent) setError('获取视频详情失败');
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [fileId]
+  );
 
   useEffect(() => {
     void fetchDetail({ silent: false });
@@ -501,8 +637,18 @@ export function ProjectDetailView({
     prevSelectedTaskIdRef.current = '';
     autoPreferredResultModeRef.current.clear();
     outputsRefreshedForTaskRef.current.clear();
-    setRightPanelTab('outputs');
+    initialViewModeSetRef.current = false;
+    setViewMode('list');
   }, [fileId]);
+
+  // Fetch translated subtitles when a completed task is selected
+  useEffect(() => {
+    if (selectedTask?.status === 'completed' && selectedTask.id) {
+      void fetchTranslatedSubtitles(selectedTask.id);
+    } else {
+      setTranslatedSubtitles([]);
+    }
+  }, [selectedTask?.id, selectedTask?.status, fetchTranslatedSubtitles]);
 
   // Keep video mode sane when selected task changes, but avoid showing modes that don't exist yet.
   useEffect(() => {
@@ -552,6 +698,7 @@ export function ProjectDetailView({
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      setPreviewAspectRatio(DEFAULT_VIDEO_ASPECT_RATIO);
       if (!activeVideoKey) {
         setPreviewUrl('');
         previewProxyUrlRef.current = '';
@@ -595,11 +742,11 @@ export function ProjectDetailView({
       prev.map((t) =>
         t.id === incoming.id
           ? {
-            ...t,
-            ...incoming,
-            // Preserve final outputs from detail endpoint.
-            finalFileList: t.finalFileList,
-          }
+              ...t,
+              ...incoming,
+              // Preserve final outputs from detail endpoint.
+              finalFileList: t.finalFileList,
+            }
           : t
       )
     );
@@ -678,7 +825,9 @@ export function ProjectDetailView({
           : getAudioR2PathName(videoDetail.userId, selectedTask.id, 'merge_audios/audio/audio_new.wav');
 
       try {
-        const response = await fetch(`/api/video-task/download-audio?taskId=${selectedTask.id}&key=${encodeURIComponent(key)}&expiresIn=60`);
+        const response = await fetch(
+          `/api/video-task/download-audio?taskId=${selectedTask.id}&key=${encodeURIComponent(key)}&expiresIn=60`
+        );
         const data = await response.json();
         if (data?.code !== 0) {
           toast.error(data?.message || '获取下载链接失败');
@@ -785,18 +934,34 @@ export function ProjectDetailView({
     });
   }, []);
 
-  const handleOpenProgress = useCallback(() => {
-    if (!selectedTask?.id) return;
-    // Ensure the card becomes visible inside the right-column scroll container.
-    requestAnimationFrame(() => {
-      progressCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [selectedTask?.id]);
+  // Auto-expand: if only 1 task, skip list and go to detail directly.
+  const initialViewModeSetRef = useRef(false);
+  useEffect(() => {
+    if (loading || initialViewModeSetRef.current) return;
+    if (taskList.length === 1) {
+      setSelectedTaskId(taskList[0].id);
+      setViewMode('detail');
+    }
+    initialViewModeSetRef.current = true;
+  }, [loading, taskList]);
+
+  const handleSelectTask = useCallback((taskId: string) => {
+    setSelectedTaskId(taskId);
+    setViewMode('detail');
+  }, []);
+
+  const handleBackToList = useCallback(() => {
+    setViewMode('list');
+  }, []);
 
   const handleOpenEditor = useCallback(() => {
     if (!selectedTask?.id) return;
     router.push(`/dashboard/projects/video-editor/${selectedTask.id}`);
   }, [router, selectedTask?.id]);
+
+  const focusProgressReview = useCallback(() => {
+    progressCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const openAddRun = useCallback(() => {
     const pair = pickDefaultAddRunPair();
@@ -806,12 +971,15 @@ export function ProjectDetailView({
     setIsAddRunOpen(true);
   }, [pickDefaultAddRunPair, selectedTask?.speakerCount]);
 
-  const jumpToExistingRun = useCallback((taskId: string) => {
-    if (!taskId) return;
-    setSelectedTaskId(taskId);
-    setIsAddRunOpen(false);
-    toast.info(t('ui.addRun.duplicateToast'));
-  }, [t]);
+  const jumpToExistingRun = useCallback(
+    (taskId: string) => {
+      if (!taskId) return;
+      setSelectedTaskId(taskId);
+      setIsAddRunOpen(false);
+      toast.info(t('ui.addRun.duplicateToast'));
+    },
+    [t]
+  );
 
   const handleCreateAddRun = useCallback(async () => {
     if (!fileId) return;
@@ -858,7 +1026,14 @@ export function ProjectDetailView({
         return;
       }
 
-      toast.error(data?.message || t('ui.addRun.failedToast'));
+      const msg = data?.message || t('ui.addRun.failedToast');
+      const isCreditsError = msg.includes('积分不足') || msg.toLowerCase().includes('insufficient credit');
+      if (isCreditsError) {
+        fetchUserCredits();
+        toast.error(msg, { action: { label: t('ui.addRun.buyCredits'), onClick: () => window.open('/pricing', '_blank') } });
+      } else {
+        toast.error(msg);
+      }
     } catch (e) {
       console.error('[ProjectDetailView] Failed to create add-run:', e);
       toast.error(t('ui.addRun.failedToast'));
@@ -872,114 +1047,87 @@ export function ProjectDetailView({
     addRunSubmitting,
     addRunTargetLanguage,
     fetchDetail,
+    fetchUserCredits,
     fileId,
     jumpToExistingRun,
     selectedAddRunBlockingTask?.id,
     t,
   ]);
 
+  const openEditProject = useCallback(() => {
+    setProjectItem({ ...(videoDetail || {}) });
+    setIsEditDialogOpen(true);
+  }, [videoDetail]);
+
   if (loading) {
     return (
-      <div className="relative mx-auto w-full max-w-7xl flex flex-1 min-h-0 flex-col gap-6">
-        {/* Keep the skeleton structure aligned with the real layout to avoid jank. */}
+      <div className="relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
-          <div className="absolute -top-48 left-1/2 h-[420px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[90px] opacity-70" />
-          <div className="absolute -bottom-56 right-[-18%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-400/10 via-emerald-400/0 to-transparent blur-[80px] opacity-60" />
+          <div className="absolute -top-48 left-1/2 h-[420px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/[0.03] via-white/[0.01] to-transparent opacity-50 blur-[90px]" />
+          <div className="absolute right-[-18%] -bottom-56 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent opacity-40 blur-[80px]" />
           <RetroGrid
             className="opacity-30 mix-blend-screen motion-reduce:opacity-0"
             angle={70}
             cellSize={74}
             opacity={0.22}
-            lightLineColor="rgba(167, 139, 250, 0.22)"
-            darkLineColor="rgba(167, 139, 250, 0.22)"
+            lightLineColor="rgba(255, 255, 255, 0.04)"
+            darkLineColor="rgba(255, 255, 255, 0.04)"
           />
         </div>
-
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 space-y-2">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-md" />
-              <Skeleton className="h-7 w-[320px] max-w-[60vw]" />
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <Skeleton className="h-4 w-20" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-md" />
+          <Skeleton className="h-7 w-[280px] max-w-[50vw]" />
+        </div>
+        {/* Video info */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-14 w-24 rounded-lg" />
+            <div className="flex items-center gap-4">
               <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-32" />
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-10 rounded-md" />
           </div>
         </div>
-
-        {/* Main */}
-        <div className="grid flex-1 min-h-0 gap-6 items-stretch lg:grid-cols-[minmax(0,1fr)_400px] lg:grid-rows-[minmax(0,1fr)]">
-          {/* Preview */}
-          <Card className="min-h-0 overflow-hidden flex flex-col gap-0 py-0">
-            <CardHeader className="pb-4 pt-5 border-b border-white/5">
-              <div className="flex items-center justify-between gap-3">
-                <Skeleton className="h-4 w-28" />
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <Skeleton className="h-9 w-72 rounded-md" />
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-8 w-16 rounded-full" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="min-h-0 flex-1 flex flex-col gap-4 px-6 pb-6">
-              <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
-                <Skeleton className="absolute inset-0" />
-              </div>
-              <Skeleton className="hidden lg:block h-[72px] w-full rounded-xl" />
-            </CardContent>
-          </Card>
-
-          {/* Side */}
-          <div className="flex h-full flex-col gap-5 min-h-0">
-            {/* Progress - Compact */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-20" />
-              </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-2 w-full" />
-              <Skeleton className="h-2 w-5/6" />
-            </div>
+        {/* Translations heading */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-5 w-8 rounded-full" />
           </div>
-
-            {/* Deliverables + Runs (tabbed) */}
-            <Card className="min-h-0 flex flex-1 flex-col overflow-hidden border-white/10 bg-white/[0.02] py-0 gap-0">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Skeleton className="h-8 w-44 rounded-md" />
-                  <Skeleton className="h-4 w-8" />
-                </div>
-                <Skeleton className="h-8 w-28 rounded-full" />
-              </div>
-
-              <div className="flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Skeleton className="h-[150px] w-full rounded-xl" />
-                      <Skeleton className="h-[150px] w-full rounded-xl" />
+          <Skeleton className="h-8 w-28 rounded-full" />
+        </div>
+        {/* Task cards */}
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="flex items-center gap-4">
+                {/* Status dot */}
+                <Skeleton className="size-2.5 shrink-0 rounded-full" />
+                {/* Main content */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-6 w-10 rounded" />
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-6 w-10 rounded" />
                     </div>
-                    <Skeleton className="h-[110px] w-full rounded-xl" />
+                    <Skeleton className="h-5 w-48" />
                   </div>
-                </ScrollArea>
+                  <div className="mt-2.5 flex items-center gap-3">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+                {/* Right side */}
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-7 w-16 rounded-full" />
+                  <Skeleton className="h-5 w-5" />
+                </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -987,147 +1135,387 @@ export function ProjectDetailView({
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-2xl flex flex-1 min-h-0 flex-col justify-center">
-        <Card>
-          <CardContent className="py-10 text-center space-y-2">
-            <p className="text-lg font-semibold text-destructive">{error}</p>
-            <div className="pt-3">
-              <Button variant="outline" asChild>
-                <Link href={backHref}>{t('ui.back')}</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorState
+        detail={error}
+        action={
+          <Button variant="outline" size="sm" asChild>
+            <Link href={backHref}>{t('ui.back')}</Link>
+          </Button>
+        }
+      />
     );
   }
 
   const sizeMb = ((videoDetail?.fileSizeBytes || 0) / 1024 / 1024).toFixed(2);
   const duration = videoDetail?.videoDurationSeconds ? miao2Hms(videoDetail.videoDurationSeconds) : '-';
 
-  return (
-    <div className="relative mx-auto w-full max-w-7xl flex flex-1 min-h-0 flex-col gap-6">
-      {/* Ambient, techy backdrop (subtle; dashboard already has a global glow). */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
-        <div className="absolute -top-48 left-1/2 h-[420px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-primary/5 to-transparent blur-[90px] opacity-70" />
-        <div className="absolute -bottom-56 right-[-18%] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-400/10 via-emerald-400/0 to-transparent blur-[80px] opacity-60" />
-        <RetroGrid
-          className="opacity-30 mix-blend-screen motion-reduce:opacity-0"
-          angle={70}
-          cellSize={74}
-          opacity={0.22}
-          lightLineColor="rgba(167, 139, 250, 0.22)"
-          darkLineColor="rgba(167, 139, 250, 0.22)"
-        />
-      </div>
+  const ambientBackdrop = (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
+      <div className="absolute -top-48 left-1/2 h-[420px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/[0.03] via-white/[0.01] to-transparent opacity-50 blur-[90px]" />
+      <div className="absolute right-[-18%] -bottom-56 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent opacity-40 blur-[80px]" />
+      <RetroGrid
+        className="opacity-30 mix-blend-screen motion-reduce:opacity-0"
+        angle={70}
+        cellSize={74}
+        opacity={0.22}
+        lightLineColor="rgba(255, 255, 255, 0.04)"
+        darkLineColor="rgba(255, 255, 255, 0.04)"
+      />
+    </div>
+  );
 
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0 space-y-2">
-          <div className="flex items-center gap-3">
+  const moreMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="More">
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={openEditProject}>
+          <Pencil className="size-4" />
+          {t('menu.editInfo')}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+          <Trash2 className="size-4" />
+          {t('menu.delete')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const renderTaskCard = (task: TaskMain) => {
+    const meta = getTaskStatusMeta(task.status);
+    const rowState = getProjectDetailTaskRowState(task.status);
+    return (
+      <button
+        key={task.id}
+        type="button"
+        onClick={() => handleSelectTask(task.id)}
+        className="group w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.025] text-left transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.04]"
+      >
+        <div className="flex items-center gap-4 p-3.5">
+          {rowState.showThumbnailPreview ? (
+            <div className="relative hidden h-16 w-28 shrink-0 overflow-hidden rounded-xl border border-white/8 bg-white/[0.04] sm:block">
+              {videoDetail?.cover ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={videoDetail.cover}
+                  alt=""
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent">
+                  <Film className="text-muted-foreground size-4" />
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          <div className="min-w-0 flex-1 py-0.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <LangBadge code={task.sourceLanguage} size="sm" />
+                  <ArrowRight className="text-muted-foreground/50 size-4 shrink-0" />
+                  <LangBadge code={task.targetLanguage} size="sm" />
+                </div>
+                <div className="text-foreground mt-2 truncate text-base font-semibold">
+                  {getLangLabel(task.sourceLanguage, locale)} → {getLangLabel(task.targetLanguage, locale)}
+                </div>
+              </div>
+
+              {rowState.showStatusBadge ? (
+                <div className="flex shrink-0 items-center gap-3">
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium',
+                      task.status === 'completed' && 'bg-emerald-500/10 text-emerald-400',
+                      task.status === 'processing' && 'bg-amber-500/10 text-amber-400',
+                      task.status === 'pending' && 'bg-zinc-500/10 text-zinc-400',
+                      task.status === 'failed' && 'bg-red-500/10 text-red-400',
+                      task.status === 'cancelled' && 'bg-zinc-500/10 text-zinc-500'
+                    )}
+                  >
+                    {meta.label}
+                  </span>
+                  <ChevronRight className="text-muted-foreground/30 group-hover:text-muted-foreground/60 size-5 transition-all group-hover:translate-x-0.5" />
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                <Users className="size-3" />
+                {getSpeakerLabel(t, task.speakerCount)}
+              </span>
+              <span className="text-muted-foreground/70 text-xs">
+                {task.status === 'completed' ? formatDate(task.completedAt || '') : formatDate(task.startedAt || task.createdAt || '')}
+              </span>
+              <span className="text-muted-foreground/70 text-xs">
+                {task.processDurationSeconds > 0 ? miao2Hms(task.processDurationSeconds) : duration}
+              </span>
+              {typeof task.creditsConsumed === 'number' && (
+                <span className="text-muted-foreground/70 text-xs">{task.creditsConsumed} credits</span>
+              )}
+              {task.status === 'processing' && task.currentStep && <span className="text-xs text-amber-400/80">{task.currentStep}</span>}
+            </div>
+
+            {rowState.showProgress && (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-1.5 max-w-[240px] flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="from-primary/60 to-primary h-full rounded-full bg-gradient-to-r transition-all duration-500"
+                    style={{ width: `${Math.max(5, task.progress || 0)}%` }}
+                  />
+                </div>
+                <span className="text-muted-foreground/70 font-mono text-xs">{task.progress || 0}%</span>
+              </div>
+            )}
+
+            {rowState.showErrorSummary && task.errorMessage ? (
+              <div className="text-destructive/85 mt-3 line-clamp-1 text-xs">{task.errorMessage}</div>
+            ) : null}
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const statusDotCls = (status: string) => {
+    if (status === 'completed') return 'bg-emerald-400';
+    if (status === 'processing' || status === 'pending') return 'bg-amber-400';
+    if (status === 'failed') return 'bg-red-400';
+    return 'bg-zinc-500';
+  };
+
+  const compactSwitcher = (
+    <div className="flex items-center gap-1.5 overflow-x-auto">
+      {(() => {
+        const renderItem = (task: TaskMain) => {
+          const selected = task.id === selectedTaskId;
+          const label = isSingleSourceMode
+            ? getLangLabel(task.targetLanguage, locale)
+            : `${getLangLabel(task.sourceLanguage, locale)} → ${getLangLabel(task.targetLanguage, locale)}`;
+          return (
+            <button
+              key={task.id}
+              type="button"
+              onClick={() => handleSelectTask(task.id)}
+              className={cn(
+                'relative flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all',
+                selected
+                  ? 'border-primary/40 bg-primary/10 text-foreground'
+                  : 'text-muted-foreground hover:text-foreground border-white/8 hover:border-white/20'
+              )}
+            >
+              <LangBadge code={task.targetLanguage} size="sm" />
+              <span className="font-medium">{label}</span>
+              <span className={cn('size-1.5 shrink-0 rounded-full', statusDotCls(task.status))} />
+            </button>
+          );
+        };
+
+        if (!isSingleSourceMode) {
+          const grouped = new Map<string, TaskMain[]>();
+          for (const task of taskList) {
+            const src = task.sourceLanguage;
+            if (!grouped.has(src)) grouped.set(src, []);
+            grouped.get(src)!.push(task);
+          }
+          return [...grouped.entries()].map(([, tasks], gi) => (
+            <div key={gi} className="flex items-center gap-1.5">
+              {gi > 0 && <div className="mx-1 h-5 w-px shrink-0 bg-white/10" />}
+              {tasks.map(renderItem)}
+            </div>
+          ));
+        }
+        return taskList.map(renderItem);
+      })()}
+      <button
+        type="button"
+        onClick={openAddRun}
+        disabled={!hasAvailableLanguagePairs}
+        className={cn(
+          'flex shrink-0 items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-sm transition-all',
+          hasAvailableLanguagePairs ? 'text-muted-foreground hover:border-primary/40 hover:text-primary border-white/15' : 'opacity-40'
+        )}
+      >
+        <Plus className="size-3.5" />
+        {t('ui.addLanguage')}
+      </button>
+    </div>
+  );
+
+  if (viewMode === 'list') {
+    return (
+      <div className="relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6">
+        {ambientBackdrop}
+
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             <Button variant="ghost" size="icon" className="shrink-0" asChild>
               <Link href={backHref} aria-label="Back">
                 <ArrowLeft className="size-5" />
               </Link>
             </Button>
-            <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">
-              {videoDetail?.fileName || 'Project'}
-            </h1>
-            {selectedTask && (
-              <Badge variant={statusMeta.badgeVariant} className={cn('ml-1', statusMeta.badgeClassName)}>
-                {statusMeta.label}
-              </Badge>
-            )}
+            <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">{videoDetail?.fileName || 'Project'}</h1>
           </div>
+          {moreMenu}
+        </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Film className="size-4" />
-              {duration}
-            </span>
-            <span>{sizeMb}MB</span>
-            <span>{t('videoInfo.uploadTime')}: {formatDate(videoDetail?.createdAt || '')}</span>
-            {selectedTask && (
-              <span className="inline-flex min-w-0 items-center gap-2">
-                <Sparkles className="size-4 shrink-0" />
-                <span className="min-w-0 truncate">{getLanguageConvertStr(selectedTask, locale)}</span>
-                <span
-                  className="shrink-0 rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground"
-                  title={t('progressModal.overview.speakerCount')}
-                >
-                  {getSpeakerLabel(t, selectedTask.speakerCount)}
+        {/* Video info */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-4">
+              {videoDetail?.cover && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={videoDetail.cover}
+                  alt=""
+                  className="hidden h-14 w-24 shrink-0 rounded-lg object-cover sm:block"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+              <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span className="inline-flex items-center gap-1">
+                  <Film className="size-4" />
+                  {duration}
                 </span>
-              </span>
-            )}
+                <span>{sizeMb}MB</span>
+                <span>
+                  {t('videoInfo.uploadTime')}: {formatDate(videoDetail?.createdAt || '')}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {selectedTask ? (
-            <Button
-              onClick={() => {
-                if (selectedTask.status === 'completed') void handleDownloadVideo();
-                else handleOpenProgress();
-              }}
-              disabled={!selectedTask?.id || (selectedTask.status === 'completed' ? false : !isRunningStatus(selectedTask.status) && selectedTask.status !== 'failed')}
-            >
-              {selectedTask.status === 'completed' ? (
-                <>
-                  <Download className="mr-2 size-4" />
-                  {t('buttons.download')}
-                </>
-              ) : (
-                <>
-                  <ListOrdered className="mr-2 size-4" />
-                  {t('buttons.progress')}
-                </>
-              )}
+        {/* Translations heading */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-semibold">{t('ui.translations')}</h2>
+            {taskList.length > 0 && (
+              <span className="bg-muted/30 text-muted-foreground rounded-full px-2.5 py-0.5 font-mono text-xs">{taskList.length}</span>
+            )}
+          </div>
+          <Button type="button" size="sm" onClick={openAddRun} disabled={!hasAvailableLanguagePairs} className="gap-2">
+            <Plus className="size-4" />
+            {t('ui.addLanguage')}
+          </Button>
+        </div>
+
+        {/* Task cards - scrollable area */}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {taskList.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
+              <div className="text-muted-foreground mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-white/[0.06]">
+                <Languages className="size-6" />
+              </div>
+              <div className="text-foreground text-sm font-semibold">{t('ui.emptyRuns')}</div>
+              <div className="text-muted-foreground mt-1 text-xs">{t('ui.statusHint.pending')}</div>
+              <div className="mt-5 flex justify-center">
+                <Button onClick={openAddRun} disabled={!hasAvailableLanguagePairs} className="gap-2">
+                  <Plus className="size-4" />
+                  {t('ui.addLanguage')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="space-y-2 pr-4">{taskList.map((task) => renderTaskCard(task))}</div>
+            </ScrollArea>
+          )}
+        </div>
+
+        {/* Modals (list view) */}
+        {renderModals()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4">
+      {ambientBackdrop}
+
+      {/* Header (detail view) */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          {taskList.length > 1 ? (
+            <Button variant="ghost" size="sm" className="shrink-0 gap-1.5" onClick={handleBackToList}>
+              <ArrowLeft className="size-4" />
+              {t('ui.backToList')}
             </Button>
           ) : (
-            createHref && (
-              <Button asChild>
-                <Link href={createHref}>{t('ui.startConvert')}</Link>
-              </Button>
-            )
+            <Button variant="ghost" size="icon" className="shrink-0" asChild>
+              <Link href={backHref} aria-label="Back">
+                <ArrowLeft className="size-5" />
+              </Link>
+            </Button>
           )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                onClick={() => {
-                  setProjectItem({ ...(videoDetail || {}) });
-                  setIsEditDialogOpen(true);
-                }}
-              >
-                <Pencil className="size-4" />
-                {t('menu.editInfo')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                <Trash2 className="size-4" />
-                {t('menu.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">{videoDetail?.fileName || 'Project'}</h1>
+          <Button variant="outline" size="sm" className="gap-2" onClick={openEditProject}>
+            <Pencil className="size-4" />
+            {t('menu.editInfo')}
+          </Button>
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-destructive/75 hover:bg-destructive/10 hover:text-destructive gap-2"
+          onClick={() => setShowDeleteDialog(true)}
+        >
+          <Trash2 className="size-4" />
+          {t('menu.delete')}
+        </Button>
       </div>
 
-      {/* Main */}
-      <div className="grid flex-1 min-h-0 gap-6 items-stretch lg:grid-cols-[minmax(0,1fr)_400px] lg:grid-rows-[minmax(0,1fr)]">
-        {/* Preview */}
-        <Card className="min-h-0 overflow-hidden flex flex-col gap-0 py-0">
-          <CardHeader className="pb-4 pt-5 border-b border-white/5">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base uppercase tracking-widest text-muted-foreground font-semibold">
-                {t('ui.preview')}
-              </CardTitle>
+      {/* Compact language switcher (or just add-language button for single task) */}
+      {taskList.length > 1 ? (
+        compactSwitcher
+      ) : (
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2.5">
+          {selectedTask && (
+            <div className="flex items-center gap-3">
+              <LangBadge code={selectedTask.sourceLanguage} size="md" />
+              <ArrowRight className="text-muted-foreground size-4" />
+              <LangBadge code={selectedTask.targetLanguage} size="md" />
+              <span className="text-foreground text-sm font-semibold">
+                {getLangLabel(selectedTask.sourceLanguage, locale)} → {getLangLabel(selectedTask.targetLanguage, locale)}
+              </span>
+              <Badge variant="outline" className={cn('text-xs', statusMeta.badgeClassName)}>
+                {statusMeta.label}
+              </Badge>
             </div>
+          )}
+          <Button type="button" size="sm" variant="outline" onClick={openAddRun} disabled={!hasAvailableLanguagePairs} className="gap-2">
+            <Plus className="size-4" />
+            {t('ui.addLanguage')}
+          </Button>
+        </div>
+      )}
 
+      {/* Main content */}
+      <div
+        className={cn(
+          'grid min-h-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]',
+          shouldStretchDetailColumns ? 'lg:flex-1 lg:items-stretch' : 'lg:items-start'
+        )}
+      >
+        {/* Preview */}
+        <Card className={cn('flex flex-col gap-0 overflow-hidden py-0', shouldStretchDetailColumns && 'lg:h-full')}>
+          <CardHeader className="border-b border-white/5 pt-5 pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-muted-foreground text-base font-semibold tracking-widest uppercase">{t('ui.preview')}</CardTitle>
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <Tabs value={videoMode} onValueChange={(v) => setVideoMode(v as typeof videoMode)}>
                 <TabsList className="h-9">
@@ -1142,683 +1530,485 @@ export function ProjectDetailView({
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  className={cn(
-                    'h-8 w-8 rounded-full border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
-                    previewLoop && 'border-primary/40 bg-primary/10 text-primary'
-                  )}
-                  onClick={() => setPreviewLoop((v) => !v)}
-                  title={t('ui.previewTools.loop')}
-                  aria-label={t('ui.previewTools.loop')}
-                >
-                  <Repeat className="size-4" />
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 rounded-full border-white/10 bg-white/[0.02] px-3 font-mono text-xs hover:bg-white/[0.04]"
-                      title={t('ui.previewTools.speed')}
-                      aria-label={`${t('ui.previewTools.speed')}: ${previewPlaybackRate}x`}
-                    >
-                      {previewPlaybackRate}x
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-24">
-                    {[0.75, 1, 1.25, 1.5].map((rate) => (
-                      <DropdownMenuItem
-                        key={rate}
-                        onClick={() => setPreviewPlaybackRate(rate)}
-                        className={cn('font-mono', previewPlaybackRate === rate && 'text-foreground')}
-                      >
-                        {rate}x
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </div>
           </CardHeader>
-          <CardContent className="min-h-0 flex-1 flex flex-col gap-4 px-6 pb-6">
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
-              {previewLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="size-8 animate-spin text-white/70" />
-                </div>
-              ) : previewUrl ? (
-                <video
-                  key={previewUrl}
-                  ref={previewVideoRef}
-                  src={previewUrl}
-                  controls
-                  preload="auto"
-                  playsInline
-                  className="absolute inset-0 h-full w-full object-contain"
-                  controlsList="nodownload"
-                  onWaiting={() => setPreviewBuffering(true)}
-                  onStalled={() => setPreviewBuffering(true)}
-                  onPlaying={() => setPreviewBuffering(false)}
-                  onCanPlay={() => setPreviewBuffering(false)}
-                  onError={() => {
-                    setPreviewBuffering(false);
-
-                    // Prefer 480p, but old tasks may not have it yet - fall back to source keys.
-                    if (videoMode === 'result' && resultVariant === '480p' && taskResultKey) {
-                      setResultVariant('source');
-                      return;
-                    }
-                    if (videoMode === 'original' && originalVariant === '480p' && originalVideoKey) {
-                      setOriginalVariant('source');
-                      return;
-                    }
-
-                    const direct = previewUrl;
-                    const proxy = previewProxyUrlRef.current;
-                    if (!proxy || proxy === direct) return;
-                    if (previewProxyFallbackTriedRef.current.has(direct)) return;
-                    previewProxyFallbackTriedRef.current.add(direct);
-                    setPreviewUrl(proxy);
-                  }}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                  {videoDetail?.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={videoDetail.cover}
-                      alt={videoDetail.fileName || 'cover'}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/imgs/cover_video_def.jpg';
-                      }}
-                    />
-                  ) : (
-                    <div className="text-sm text-muted-foreground">{t('ui.noPreview')}</div>
-                  )}
-                </div>
-              )}
-              {previewUrl && previewBuffering ? (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10"
-                >
-                  <Loader2 className="size-8 animate-spin text-white/70" />
-                </div>
-              ) : null}
-            </div>
-
-            {selectedTask ? (
-              <div className="hidden lg:block rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="space-y-0.5">
-                    <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                      {t('progressModal.overview.startTime')}
-                    </div>
-                    <div className="truncate text-xs font-semibold text-foreground">
-                      {formatDate(selectedTask.startedAt || selectedTask.createdAt || '')}
-                    </div>
+          <CardContent className={cn('flex flex-1 flex-col gap-3 px-3 py-3 md:px-4 md:py-4', shouldStretchDetailColumns && 'lg:min-h-0')}>
+            <div
+              ref={previewSlotRef}
+              className="flex min-h-[280px] w-full min-w-0 flex-1 items-center justify-center overflow-hidden lg:min-h-[420px]"
+            >
+              <div
+                className="relative overflow-hidden rounded-2xl bg-black transition-[width,height,max-width,max-height] duration-300"
+                style={previewFrameStyle}
+              >
+                {previewLoading ? (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center">
+                    <Loader2 className="size-8 animate-spin text-white/70" />
                   </div>
-
-                  <div className="space-y-0.5">
-                    <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                      {t('progressModal.overview.endTime')}
-                    </div>
-                    <div className="truncate text-xs font-semibold text-foreground">
-                      {formatDate(selectedTask.completedAt || '')}
-                    </div>
+                ) : previewUrl ? (
+                  <PlyrVideoPlayer
+                    key={previewUrl}
+                    src={previewUrl}
+                    subtitles={videoMode === 'result' ? translatedSubtitles : []}
+                    playbackRate={previewPlaybackRate}
+                    loop={previewLoop}
+                    onMetadataLoaded={({ aspectRatio }) => setPreviewAspectRatio(aspectRatio)}
+                  />
+                ) : (
+                  <div className="bg-muted absolute inset-0 flex items-center justify-center">
+                    {videoDetail?.cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={videoDetail.cover}
+                        alt={videoDetail.fileName || 'cover'}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/imgs/cover_video_def.jpg';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-muted-foreground text-sm">{t('ui.noPreview')}</div>
+                    )}
                   </div>
-
-                  <div className="space-y-0.5">
-                    <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                      {t('progressModal.overview.creditsConsumed')}
-                    </div>
-                    <div className="truncate font-mono text-xs font-semibold text-foreground">
-                      {typeof selectedTask.creditsConsumed === 'number'
-                        ? selectedTask.creditsConsumed
-                        : (addRunCreditsEstimate || '-')}
-                    </div>
+                )}
+                {previewUrl && previewBuffering ? (
+                  <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10">
+                    <Loader2 className="size-8 animate-spin text-white/70" />
                   </div>
-
-                  <div className="space-y-0.5">
-                    <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                      {t('progressModal.overview.processDuration')}
-                    </div>
-                    <div className="truncate font-mono text-xs font-semibold text-foreground">
-                      {selectedTask.processDurationSeconds > 0 ? miao2Hms(selectedTask.processDurationSeconds) : '-'}
-                    </div>
-                  </div>
-                </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Side */}
-        <div className="flex h-full flex-col gap-5 min-h-0">
-          {/* Progress - Compact */}
-          <div ref={progressCardRef} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                {t('conversion.progress')}
-              </span>
-              {selectedTask && (
-                <span className="text-xs font-medium text-foreground/80">
-                  {statusMeta.label}
-                </span>
-              )}
-            </div>
-            {selectedTask ? (
-              <>
-                <TaskStatusStepper
-                  status={selectedTask.status}
-                  progress={selectedTask.progress}
-                  currentStep={selectedTask.currentStep}
-                  copy={stepperCopy}
-                  hintVariant="inline"
-                  showHint={false}
-                  showPercent
-                />
-                {selectedTask.status === 'failed' && selectedTask.errorMessage ? (
-                  <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 text-xs text-destructive">
-                    {selectedTask.errorMessage}
+        {/* Side - Action workbench */}
+        <div className={cn('flex min-h-0 flex-col gap-4', shouldStretchDetailColumns && 'lg:h-full')}>
+          {selectedTask ? (
+            <Card className={cn('overflow-hidden border-white/10 bg-white/[0.02] py-0', shouldStretchDetailColumns && 'lg:h-full')}>
+              <CardContent className={cn('space-y-5 px-4 py-4', shouldStretchDetailColumns && 'lg:flex lg:h-full lg:flex-col')}>
+                <div className="rounded-[24px] border border-white/[0.05] bg-gradient-to-b from-white/[0.045] via-white/[0.028] to-white/[0.015] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 space-y-2.5">
+                      <div className="text-muted-foreground text-[11px] font-medium tracking-[0.22em] uppercase">
+                        {t('ui.workbench.summary.title')}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <LangBadge code={selectedTask.sourceLanguage} size="md" />
+                        <ArrowRight className="text-muted-foreground size-4" />
+                        <LangBadge code={selectedTask.targetLanguage} size="md" />
+                      </div>
+                      <div className="text-foreground text-base font-semibold">
+                        {getLangLabel(selectedTask.sourceLanguage, locale)} → {getLangLabel(selectedTask.targetLanguage, locale)}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={cn('shrink-0 text-xs', statusMeta.badgeClassName)}>
+                      {statusMeta.label}
+                    </Badge>
                   </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-2 w-full" />
-              </div>
-            )}
-          </div>
 
-          {/* Deliverables + Runs (tabbed to keep the panel usable on short viewports) */}
-          <Card className="min-h-0 flex flex-1 flex-col overflow-hidden border-white/10 bg-white/[0.02] py-0 gap-0">
-            <Tabs
-              value={rightPanelTab}
-              onValueChange={(v) => setRightPanelTab(v as 'runs' | 'outputs')}
-              className="min-h-0 flex flex-1 flex-col"
-            >
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <TabsList className="h-8 border-white/10 bg-white/[0.02] p-1">
-                    <TabsTrigger value="outputs" className="h-6 px-3 text-xs font-medium uppercase tracking-widest">
-                      {t('ui.outputs')}
-                    </TabsTrigger>
-                    <TabsTrigger value="runs" className="h-6 px-3 text-xs font-medium uppercase tracking-widest">
-                      {t('ui.runs')}
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="mt-4 grid grid-cols-2 gap-2.5">
+                    {summaryStats.map((item) => (
+                      <div key={item.label} className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
+                        <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{item.label}</div>
+                        <div className="text-foreground mt-1 truncate text-sm font-semibold">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={openAddRun}
-                  disabled={!hasAvailableLanguagePairs}
-                  className={cn(
-                    'h-8 gap-2 rounded-full border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
-                    !hasAvailableLanguagePairs && 'opacity-60'
-                  )}
-                  title={!hasAvailableLanguagePairs ? t('ui.addRun.noAvailable') : undefined}
-                >
-                  <Languages className="size-4" />
-                  {t('ui.addRun.button')}
-                </Button>
-              </div>
-
-              <TabsContent value="outputs" className="mt-0 flex-1 min-h-0">
                 {canUseOutputs ? (
-                  <ScrollArea className="h-full">
-                    <div className="p-4 space-y-4">
-                      {/* Video + Audio Row */}
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Video Card */}
-                        <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent p-4 transition-colors hover:border-emerald-500/30">
-                          <div className="absolute -right-4 -top-4 size-20 rounded-full bg-emerald-500/10 blur-2xl transition-opacity group-hover:opacity-80" />
-                          <div className="relative">
-                            <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-emerald-500/15">
-                              <Film className="size-5 text-emerald-400" />
-                            </div>
-                            <h4 className="text-sm font-semibold text-foreground">{t('ui.finalVideo.title')}</h4>
-                            <p className="mt-1 text-xs text-muted-foreground">{t('ui.finalVideo.description')}</p>
-                            <div className="mt-4 flex gap-2">
-                              <Button size="sm" className="h-8 flex-1" onClick={handleDownloadVideo}>
-                                <Download className="mr-1.5 size-3.5" />
-                                {t('buttons.download')}
-                              </Button>
-                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleOpenEditor}>
-                                <Pencil className="size-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Audio Card */}
-                        <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-sky-500/10 via-transparent to-transparent p-4 transition-colors hover:border-sky-500/30">
-                          <div className="absolute -right-4 -top-4 size-20 rounded-full bg-sky-500/10 blur-2xl transition-opacity group-hover:opacity-80" />
-                          <div className="relative">
-                            <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-sky-500/15">
-                              <Waves className="size-5 text-sky-400" />
-                            </div>
-                            <h4 className="text-sm font-semibold text-foreground">{t('audio.title')}</h4>
-                            <p className="mt-1 text-xs text-muted-foreground">{t('audio.description')}</p>
-                            <div className="mt-4 flex gap-2">
-                              <Button variant="outline" size="sm" className="h-8 flex-1" onClick={handleOpenAudioPreview}>
-                                {t('audio.preview')}
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="icon" className="h-8 w-8">
-                                    <Download className="size-3.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
-                                  <DropdownMenuItem onClick={() => void doDownloadAudio('subtitle')}>
-                                    {t('audio.download')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => void doDownloadAudio('background')}>
-                                    {t('audio.downloadBg')}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        </div>
+                  <div className="space-y-3 rounded-[24px] border border-white/[0.05] bg-gradient-to-b from-white/[0.03] to-transparent px-3 py-3">
+                    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                      <div className="min-w-0">
+                        <div className="text-foreground text-sm font-semibold">{t('ui.finalVideo.title')}</div>
+                        <div className="text-muted-foreground line-clamp-1 text-[11px]">{t('ui.finalVideo.description')}</div>
                       </div>
-
-                      {/* Subtitle Card - Full Width */}
-                      <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 via-transparent to-transparent p-4 transition-colors hover:border-violet-500/30">
-                        <div className="absolute -right-6 -top-6 size-24 rounded-full bg-violet-500/10 blur-2xl transition-opacity group-hover:opacity-80" />
-                        <div className="relative flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/15">
-                              <Captions className="size-5 text-violet-400" />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-foreground">{t('subtitle.title')}</h4>
-                              <p className="mt-1 text-xs text-muted-foreground">{t('subtitle.description')}</p>
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 gap-2">
-                            <Button variant="outline" size="sm" className="h-8" onClick={() => setIsCompareDialogOpen(true)}>
-                              {t('subtitle.compare')}
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="icon" className="h-8 w-8">
-                                  <Download className="size-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={() => void handleDownloadSrt('gen_srt')}>
-                                  {t('subtitle.download_yuan')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => void handleDownloadSrt('translate_srt')}>
-                                  {t('subtitle.download_tran')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => void handleDownloadSrt('double_srt')}>
-                                  {t('subtitle.download_double')}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button size="sm" className="h-8 rounded-xl" onClick={handleOpenEditor}>
+                          {t('buttons.edit')}
+                        </Button>
+                        <Button variant="outline" size="icon" className="size-8 rounded-xl" onClick={handleDownloadVideo}>
+                          <Download className="size-3.5" />
+                        </Button>
                       </div>
                     </div>
-                  </ScrollArea>
+
+                    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                      <div className="min-w-0">
+                        <div className="text-foreground text-sm font-semibold">{t('audio.title')}</div>
+                        <div className="text-muted-foreground line-clamp-1 text-[11px]">{t('audio.description')}</div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button variant="outline" size="sm" className="h-8 rounded-xl" onClick={handleOpenAudioPreview}>
+                          {t('audio.preview')}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="size-8 rounded-xl">
+                              <Download className="size-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => void doDownloadAudio('subtitle')}>{t('audio.download')}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => void doDownloadAudio('background')}>{t('audio.downloadBg')}</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                      <div className="min-w-0">
+                        <div className="text-foreground text-sm font-semibold">{t('subtitle.title')}</div>
+                        <div className="text-muted-foreground line-clamp-1 text-[11px]">{t('subtitle.description')}</div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button variant="outline" size="sm" className="h-8 rounded-xl" onClick={() => setIsCompareDialogOpen(true)}>
+                          {t('subtitle.compare')}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="size-8 rounded-xl">
+                              <Download className="size-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => void handleDownloadSrt('gen_srt')}>
+                              {t('subtitle.download_yuan')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => void handleDownloadSrt('translate_srt')}>
+                              {t('subtitle.download_tran')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => void handleDownloadSrt('double_srt')}>
+                              {t('subtitle.download_double')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <ScrollArea className="h-full">
-                    <div className="p-4">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6 text-center">
-                        <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <Sparkles className="size-5" />
-                        </div>
-                        <div className="text-sm font-semibold text-foreground">{t('ui.outputs')}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {selectedTask
-                            ? stepperCopy[selectedTask.status as keyof typeof stepperCopy]?.hint || t('ui.statusHint.pending')
-                            : t('ui.emptyRuns')}
-                        </div>
-                        {selectedTask ? (
-                          <div className="mt-4 flex justify-center">
-                            <Button variant="outline" size="sm" className="h-8" onClick={handleOpenProgress}>
-                              <ListOrdered className="mr-2 size-4" />
-                              {t('buttons.progress')}
-                            </Button>
-                          </div>
-                        ) : createHref ? (
-                          <div className="mt-4 flex justify-center">
-                            <Button asChild size="sm" className="h-8">
-                              <Link href={createHref}>{t('ui.startConvert')}</Link>
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </ScrollArea>
-                )}
-              </TabsContent>
+                  <div className="space-y-3 rounded-[24px] border border-white/[0.05] bg-gradient-to-b from-white/[0.03] to-transparent px-3 py-3">
+                    {workbenchState.mode !== 'recoverable' ? (
+                      <Button className="h-9 w-full rounded-xl" onClick={focusProgressReview}>
+                        <Sparkles className="size-4" />
+                        {t('ui.workbench.actions.trackProgress')}
+                      </Button>
+                    ) : null}
 
-              <TabsContent value="runs" className="mt-0 flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                      <div className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-                        {t('ui.runs')}
-                      </div>
-                      {taskList.length > 0 ? (
-                        <span className="rounded-full bg-muted/30 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                          {taskList.length}
-                        </span>
+                    <div
+                      ref={progressCardRef}
+                      className={cn(
+                        'rounded-[22px] border border-white/[0.06] bg-white/[0.02] p-3.5',
+                        workbenchState.showRecoveryActions && 'border-destructive/12 to-destructive/4 bg-linear-to-b from-white/[0.025]'
+                      )}
+                    >
+                      <TaskStatusStepper
+                        status={selectedTask.status}
+                        progress={selectedTask.progress}
+                        currentStep={selectedTask.currentStep}
+                        copy={stepperCopy}
+                        hintVariant="card"
+                        showHint={false}
+                        showPercent
+                      />
+
+                      {workbenchState.showRecoveryActions ? (
+                        <div className="mt-3 border-t border-white/[0.06] pt-3">
+                          <div className="text-destructive text-[11px] font-medium tracking-[0.18em] uppercase">
+                            {t('ui.workbench.recovery.errorLabel')}
+                          </div>
+                          <div className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-5 break-all">
+                            {selectedTask.errorMessage || t('ui.workbench.summary.errorFallback')}
+                          </div>
+                        </div>
                       ) : null}
                     </div>
-                    {taskList.length === 0 ? (
-                      <div className="rounded-lg border bg-muted/20 p-6 text-center">
-                        <div className="text-sm text-muted-foreground">{t('ui.emptyRuns')}</div>
-                        {createHref && (
-                          <div className="mt-3">
-                            <Button asChild>
-                              <Link href={createHref}>{t('ui.startConvert')}</Link>
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      taskList.map((task) => {
-                        const selected = task.id === selectedTaskId;
-                        const taskStatusMeta = (() => {
-                          const map: Record<string, { label: string; cls?: string }> = {
-                            pending: { label: t('status.pending'), cls: 'text-cyan-600 border-cyan-600/20 bg-cyan-500/5' },
-                            processing: { label: t('status.processing'), cls: 'text-orange-500 border-orange-500/20 bg-orange-500/5' },
-                            completed: { label: t('status.completed'), cls: 'text-green-600 border-green-600/20 bg-green-500/5' },
-                            failed: { label: t('status.failed'), cls: 'text-red-500 border-red-500/20 bg-red-500/5' },
-                            cancelled: { label: t('status.cancelled'), cls: 'text-muted-foreground' },
-                          };
-                          return map[task.status] || { label: task.status };
-                        })();
-
-                        return (
-                          <button
-                            key={task.id}
-                            type="button"
-                            onClick={() => setSelectedTaskId(task.id)}
-                            className={cn(
-                              'w-full rounded-lg border p-3 text-left transition-colors',
-                              selected ? 'border-primary bg-primary/5' : 'hover:bg-muted/30'
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <div className="min-w-0 truncate font-medium text-foreground">
-                                    {getLanguageConvertStr(task, locale)}
-                                  </div>
-                                  <span
-                                    className="shrink-0 rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground"
-                                    title={t('progressModal.overview.speakerCount')}
-                                  >
-                                    {getSpeakerLabel(t, task.speakerCount)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="shrink-0 text-right">
-                                <Badge variant="outline" className={cn('justify-end', taskStatusMeta.cls)}>
-                                  {taskStatusMeta.label}
-                                </Badge>
-                                {isRunningStatus(task.status) && (
-                                  <div className="mt-2 h-1.5 w-20 overflow-hidden rounded-full bg-muted/40">
-                                    <div className="h-full w-full bg-[linear-gradient(90deg,transparent,oklch(0.65_0.22_280_/_0.55),transparent)] [background-size:200%_100%] animate-shimmer motion-reduce:animate-none" />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
                   </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-white/10 bg-white/[0.02] py-0">
+              <CardContent className="flex items-center justify-center p-8">
+                <div className="text-center">
+                  <div className="text-muted-foreground mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-white/[0.06]">
+                    <Sparkles className="size-5" />
+                  </div>
+                  <div className="text-muted-foreground text-sm">{t('ui.statusHint.pending')}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
-      {/* Modals */}
-      <audio ref={audioRef} className="hidden" />
+      {renderModals()}
+    </div>
+  );
 
-      <ProjectUpdateModal
-        projectItem={projectItem}
-        isOpen={isEditDialogOpen}
-        onUpdateEvent={handleProjectUpdateEvent}
-        onClose={() => setIsEditDialogOpen(false)}
-      />
+  function renderModals() {
+    return (
+      <>
+        {/* Modals */}
+        <audio ref={audioRef} className="hidden" />
 
-      <CompareSrtModal
-        isOpen={isCompareDialogOpen}
-        onClose={() => setIsCompareDialogOpen(false)}
-        taskId={selectedTaskId}
-        onDownBtnsClick={(e, stepName) => {
-          e?.stopPropagation?.();
-          if (stepName === 'gen_srt' || stepName === 'translate_srt' || stepName === 'double_srt') {
-            void handleDownloadSrt(stepName);
-          }
-        }}
-      />
+        <ProjectUpdateModal
+          projectItem={projectItem}
+          isOpen={isEditDialogOpen}
+          onUpdateEvent={handleProjectUpdateEvent}
+          onClose={() => setIsEditDialogOpen(false)}
+        />
 
-      <AudioPlayModal
-        audioRef={audioRef}
-        isLoading={isAudioModalLoading}
-        isOpen={showAudioModal}
-        onClose={() => setShowAudioModal(false)}
-        subtitleAudioUrl={subtitleAudioUrl}
-        backgroundAudioUrl={backgroundAudioUrl}
-      />
+        <CompareSrtModal
+          isOpen={isCompareDialogOpen}
+          onClose={() => setIsCompareDialogOpen(false)}
+          taskId={selectedTaskId}
+          onDownBtnsClick={(e, stepName) => {
+            e?.stopPropagation?.();
+            if (stepName === 'gen_srt' || stepName === 'translate_srt' || stepName === 'double_srt') {
+              void handleDownloadSrt(stepName);
+            }
+          }}
+        />
 
-      {/* Add-run dialog */}
-      <Dialog
-        open={isAddRunOpen}
-        onOpenChange={(open) => {
-          setIsAddRunOpen(open);
-          if (!open) return;
-          const pair = pickDefaultAddRunPair();
-          setAddRunSourceLanguage(pair.sourceLanguage);
-          setAddRunTargetLanguage(pair.targetLanguage);
-          setAddRunSpeakerCount(normalizeSpeakerCountForCreate(selectedTask?.speakerCount));
-        }}
-      >
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Languages className="size-4" />
-              </span>
-              {t('ui.addRun.title')}
-            </DialogTitle>
-            <DialogDescription>{t('ui.addRun.description')}</DialogDescription>
-          </DialogHeader>
+        <AudioPlayModal
+          audioRef={audioRef}
+          isLoading={isAudioModalLoading}
+          isOpen={showAudioModal}
+          onClose={() => setShowAudioModal(false)}
+          subtitleAudioUrl={subtitleAudioUrl}
+          backgroundAudioUrl={backgroundAudioUrl}
+        />
 
-          <div className="space-y-4">
-            {/* Language pair */}
-            <div className="rounded-md border bg-muted/30 p-4">
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-muted-foreground">{t('ui.addRun.sourceLanguage')}</div>
+        {/* Add-run dialog */}
+        <Dialog open={isAddRunOpen} onOpenChange={setIsAddRunOpen}>
+          <DialogContent className="sm:max-w-[560px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <span className="bg-primary/10 text-primary inline-flex size-9 items-center justify-center rounded-lg">
+                  <Languages className="size-4" />
+                </span>
+                {t('ui.addRun.title')}
+              </DialogTitle>
+              <DialogDescription>{t('ui.addRun.description')}</DialogDescription>
+            </DialogHeader>
 
-                <RadioGroup
-                  value={addRunSourceLanguage}
-                  onValueChange={(v) => {
-                    setAddRunSourceLanguage(v);
-                    setAddRunTargetLanguage(getOppositeLanguage(v));
-                  }}
-                  className="grid grid-cols-2 gap-3"
-                >
-                  {(['zh', 'en'] as const).map((source) => {
-                    const target = getOppositeLanguage(source);
-                    const sourceLabel = languageOptions.find((x) => x.value === source)?.label || source;
-                    const targetLabel = languageOptions.find((x) => x.value === target)?.label || target;
-                    const blockingTask = blockingTaskByPair.get(pairKey(source, target));
+            <div className="space-y-4">
+              {/* Language pair */}
+              <div className="bg-muted/30 rounded-md border p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-1.5">
+                      <span className="text-muted-foreground text-xs font-medium">{t('ui.addRun.sourceLanguage')}</span>
+                      <Select
+                        value={addRunSourceLanguage}
+                        onValueChange={(v) => {
+                          setAddRunSourceLanguage(v);
+                          if (addRunTargetLanguage === v) {
+                            setAddRunTargetLanguage(getDefaultTargetLang(v));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-12 w-full text-base">
+                          <SelectValue placeholder={t('ui.addRun.selectLanguage')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languageOptions.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value} className="py-2.5 text-base">
+                              <LangBadge code={lang.value} size="sm" className="mr-2" />
+                              <span className="font-medium">{lang.label}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                    return (
-                      <div key={source} className="relative">
-                        <RadioGroupItem
-                          value={source}
-                          id={`add-run-source-${source}`}
-                          className="peer sr-only"
-                          disabled={Boolean(blockingTask)}
-                        />
-                        <Label
-                          htmlFor={`add-run-source-${source}`}
-                          className={cn(
-                            'flex flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-3 transition-all select-none peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5',
-                            blockingTask
-                              ? 'opacity-70 cursor-not-allowed'
-                              : 'cursor-pointer hover:bg-accent hover:text-accent-foreground'
-                          )}
-                          onClick={(e) => {
-                            if (!blockingTask) return;
-                            e.preventDefault();
-                            e.stopPropagation();
-                            jumpToExistingRun(blockingTask.id);
-                          }}
-                        >
-                          <Languages className="mb-1 h-5 w-5 text-muted-foreground peer-data-[state=checked]:text-primary" />
-                          <span className="font-semibold">
-                            {sourceLabel} → {targetLabel}
-                          </span>
-                          {blockingTask ? (
-                            <span className="mt-1 text-[11px] text-muted-foreground">
-                              {t('ui.addRun.duplicate')}
-                            </span>
-                          ) : null}
-                        </Label>
-                      </div>
-                    );
-                  })}
-                </RadioGroup>
-
-                {selectedAddRunNonBlockingTask?.id ? (
-                  <div className="pt-1 text-xs text-muted-foreground">{t('ui.addRun.recreateHint')}</div>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Speaker count */}
-            <div className="rounded-md border bg-muted/30 p-4">
-              <div className="text-xs font-medium text-muted-foreground">{t('ui.addRun.speakerCount')}</div>
-              <RadioGroup
-                value={addRunSpeakerCount}
-                onValueChange={(v) => setAddRunSpeakerCount(v)}
-                className="mt-3 grid grid-cols-2 gap-3"
-              >
-                {([
-                  { value: '1', label: t('progressModal.overview.single') },
-                  { value: '2', label: t('progressModal.overview.multiple') },
-                ] as const).map((opt) => (
-                  <div key={opt.value}>
-                    <RadioGroupItem value={opt.value} id={`add-run-spk-${opt.value}`} className="peer sr-only" />
-                    <Label
-                      htmlFor={`add-run-spk-${opt.value}`}
-                      className={cn(
-                        'flex flex-col items-center justify-center rounded-md border-2 border-muted bg-transparent p-3 transition-all cursor-pointer hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5'
-                      )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="mt-5 h-10 w-10 shrink-0 rounded-full"
+                      title={t('ui.addRun.swap')}
+                      onClick={() => {
+                        const prev = addRunSourceLanguage;
+                        setAddRunSourceLanguage(addRunTargetLanguage);
+                        setAddRunTargetLanguage(prev);
+                      }}
                     >
-                      <Users className="mb-1 h-5 w-5 text-muted-foreground peer-data-[state=checked]:text-primary" />
-                      <span className="font-semibold">{opt.label}</span>
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
+                      <ArrowLeftRight className="h-5 w-5" />
+                    </Button>
 
-            {/* Cost estimate */}
-            <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs font-medium uppercase tracking-widest text-primary/80">
-                    {t('ui.addRun.costTitle')}
+                    <div className="flex-1 space-y-1.5">
+                      <span className="text-muted-foreground text-xs font-medium">{t('ui.addRun.targetLanguage')}</span>
+                      <Select
+                        value={addRunTargetLanguage}
+                        onValueChange={(v) => {
+                          setAddRunTargetLanguage(v);
+                        }}
+                      >
+                        <SelectTrigger className="h-12 w-full text-base">
+                          <SelectValue placeholder={t('ui.addRun.selectLanguage')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languageOptions
+                            .filter((l) => l.value !== addRunSourceLanguage)
+                            .map((lang) => (
+                              <SelectItem key={lang.value} value={lang.value} className="py-2.5 text-base">
+                                <LangBadge code={lang.value} size="sm" className="mr-2" />
+                                <span className="font-medium">{lang.label}</span>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-primary">{addRunCreditsEstimate}</span>
-                    <span className="text-sm text-muted-foreground">{t('menu.credits')}</span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {addRunDurationMinutes
-                      ? t('ui.addRun.costDuration', { minutes: addRunDurationMinutes })
-                      : '-'}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {t('ui.addRun.costPerMinute', { points: addRunPointsPerMinute })}
-                    {addRunConfigLoading ? '…' : ''}
-                  </div>
+
+                  {selectedAddRunBlockingTask?.id ? (
+                    <div className="text-muted-foreground flex items-center gap-2 pt-1 text-xs">
+                      <span>{t('ui.addRun.duplicate')}</span>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => jumpToExistingRun(selectedAddRunBlockingTask.id)}
+                      >
+                        {t('ui.addRun.goToExisting')}
+                      </Button>
+                    </div>
+                  ) : selectedAddRunNonBlockingTask?.id ? (
+                    <div className="text-muted-foreground pt-1 text-xs">{t('ui.addRun.recreateHint')}</div>
+                  ) : null}
                 </div>
               </div>
+
+              {/* Speaker count */}
+              <div className="bg-muted/30 rounded-md border p-4">
+                <div className="text-muted-foreground text-xs font-medium">{t('ui.addRun.speakerCount')}</div>
+                <RadioGroup
+                  value={addRunSpeakerCount}
+                  onValueChange={(v) => setAddRunSpeakerCount(v)}
+                  className="mt-3 grid grid-cols-2 gap-3"
+                >
+                  {(
+                    [
+                      { value: '1', label: t('progressModal.overview.single') },
+                      { value: '2', label: t('progressModal.overview.multiple') },
+                    ] as const
+                  ).map((opt) => (
+                    <div key={opt.value}>
+                      <RadioGroupItem value={opt.value} id={`add-run-spk-${opt.value}`} className="peer sr-only" />
+                      <Label
+                        htmlFor={`add-run-spk-${opt.value}`}
+                        className={cn(
+                          'border-muted hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 bg-transparent p-3 transition-all'
+                        )}
+                      >
+                        <Users className="text-muted-foreground peer-data-[state=checked]:text-primary mb-1 h-5 w-5" />
+                        <span className="font-semibold">{opt.label}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {/* Cost estimate */}
+              <div className={cn(
+                "rounded-xl border p-4 transition-colors",
+                addRunIsInsufficient ? "border-destructive/20 bg-destructive/5" : "border-primary/15 bg-primary/5"
+              )}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-primary/80 text-xs font-medium tracking-widest uppercase">{t('ui.addRun.costTitle')}</div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-primary text-3xl font-bold">{addRunCreditsEstimate}</span>
+                      <span className="text-muted-foreground text-sm">{t('menu.credits')}</span>
+                    </div>
+                    <div className="text-muted-foreground mt-1 text-xs">
+                      {addRunDurationMinutes ? t('ui.addRun.costDuration', { minutes: addRunDurationMinutes }) : '-'}
+                    </div>
+                    <div className="text-muted-foreground mt-1 text-xs">
+                      {t('ui.addRun.costPerMinute', { points: addRunPointsPerMinute })}
+                      {addRunConfigLoading ? '…' : ''}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xs font-medium text-muted-foreground">{t('ui.addRun.currentBalance')}</div>
+                    <div className={cn("mt-1 text-2xl font-bold", addRunIsInsufficient ? "text-destructive" : "text-primary")}>
+                      {addRunCurrentBalance}
+                    </div>
+                  </div>
+                </div>
+                {addRunIsInsufficient && (
+                  <div className="mt-3 rounded-lg bg-destructive/10 border border-destructive/20 p-3 space-y-2">
+                    <p className="text-sm font-medium text-destructive flex items-center gap-1.5">
+                      <AlertTriangle className="size-4 shrink-0" />
+                      {t('ui.addRun.insufficientCredits', { amount: addRunShortBy })}
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => window.open('/pricing', '_blank')}
+                    >
+                      <CreditCard className="mr-2 size-4" />
+                      {t('ui.addRun.buyCredits')}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAddRunOpen(false)}
-              disabled={addRunSubmitting}
-            >
-              {t('buttons.cancel')}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCreateAddRun}
-              disabled={
-                addRunSubmitting ||
-                !addRunSourceLanguage ||
-                !addRunTargetLanguage ||
-                addRunSourceLanguage === addRunTargetLanguage ||
-                Boolean(selectedAddRunBlockingTask?.id)
-              }
-            >
-              {addRunSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  {t('ui.addRun.creating')}
-                </>
-              ) : (
-                <>
-                  {t('ui.addRun.create')}
-                  <ArrowRight className="ml-2 size-4" />
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddRunOpen(false)} disabled={addRunSubmitting}>
+                {t('buttons.cancel')}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreateAddRun}
+                disabled={
+                  addRunSubmitting ||
+                  !addRunSourceLanguage ||
+                  !addRunTargetLanguage ||
+                  addRunSourceLanguage === addRunTargetLanguage ||
+                  Boolean(selectedAddRunBlockingTask?.id) ||
+                  addRunIsInsufficient
+                }
+              >
+                {addRunSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    {t('ui.addRun.creating')}
+                  </>
+                ) : (
+                  <>
+                    {t('ui.addRun.create')}
+                    <ArrowRight className="ml-2 size-4" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Delete confirmation */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
-            <DialogDescription>{t('deleteDialog.description')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              {t('deleteDialog.cancel')}
-            </Button>
-            <Button variant="destructive" onClick={() => void handleDelete()}>
-              {t('deleteDialog.confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div >
-  );
+        {/* Delete confirmation */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
+              <DialogDescription>{t('deleteDialog.description')}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                {t('deleteDialog.cancel')}
+              </Button>
+              <Button variant="destructive" onClick={() => void handleDelete()}>
+                {t('deleteDialog.confirm')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 }

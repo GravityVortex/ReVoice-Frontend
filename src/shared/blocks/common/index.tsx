@@ -15,6 +15,7 @@ export * from './page-header';
 export * from './section-header';
 
 export * from './empty';
+export * from './error-state';
 export * from './lazy-image';
 export * from './image-uploader';
 export * from './markdown-preview';
@@ -25,3 +26,4 @@ export * from './mdx-content';
 export * from '../sign/sign-user';
 
 export * from './audio-player';
+export * from './credits-badge';

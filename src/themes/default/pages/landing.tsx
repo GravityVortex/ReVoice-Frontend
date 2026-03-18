@@ -72,7 +72,7 @@ export default async function LandingPage({
       {page.cta && (
         <CTA
           cta={page.cta}
-          className="bg-gradient-to-t from-primary/20 to-background border-t border-[rgba(255,255,255,0.1)]"
+          className="bg-gradient-to-t from-white/[0.03] to-background border-t border-[rgba(255,255,255,0.1)]"
         />
       )}
     </>

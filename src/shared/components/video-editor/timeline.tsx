@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/utils';
 
@@ -33,7 +33,7 @@ function formatTime(seconds: number) {
 const LABEL_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600] as const;
 const MINOR_TICK_STEPS = [0.25, 0.5, 1, 1.5, 2, 2.5, 4, 5, 8, 10, 15, 30, 60, 120, 300, 600] as const;
 
-function pickLabelStepSeconds(totalDuration: number, zoom: number) {
+function _pickLabelStepSeconds(totalDuration: number, zoom: number) {
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   // UX baseline: at 100% zoom we want a readable "2s per mark" ruler.
   // When zooming out, labels can be sparser; when zooming in, 1s labels are enough.
@@ -50,7 +50,7 @@ function pickLabelStepSeconds(totalDuration: number, zoom: number) {
   return best;
 }
 
-function pickMinorTickSeconds(zoom: number) {
+function _pickMinorTickSeconds(zoom: number) {
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   const target = 2 / z; // default: 2s per tick at 100%
   let best: number = MINOR_TICK_STEPS[0];
@@ -69,7 +69,7 @@ export function Timeline({
   className,
   currentTime,
   totalDuration,
-  zoom = 1,
+  zoom: _zoom = 1,
   onTimeLineClick,
   onTimeChange,
   onDragging,
@@ -81,10 +81,9 @@ export function Timeline({
   const startXRef = useRef<number>(0);
   const didDragRef = useRef(false);
 
-  // Throttle drag emits: this avoids turning pointermove into a full-react render loop.
-  const lastEmitMsRef = useRef(0);
   const rafIdRef = useRef<number | null>(null);
   const latestTimeRef = useRef(0);
+  const [dragPreviewTime, setDragPreviewTime] = useState<number | null>(null);
 
   const safeTotal = Math.max(0.001, totalDuration);
 
@@ -145,10 +144,6 @@ export function Timeline({
     if (rafIdRef.current != null) return;
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null;
-      const now = performance.now();
-      // 30fps feels smooth enough without hammering the whole editor.
-      if (now - lastEmitMsRef.current < 1000 / 30) return;
-      lastEmitMsRef.current = now;
       onTimeChange?.(latestTimeRef.current);
     });
   }, [onTimeChange]);
@@ -160,6 +155,7 @@ export function Timeline({
       startXRef.current = e.clientX;
       didDragRef.current = false;
       latestTimeRef.current = timeAtClientX(e.clientX);
+      setDragPreviewTime(latestTimeRef.current);
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     },
     [timeAtClientX]
@@ -170,10 +166,10 @@ export function Timeline({
       if (pointerIdRef.current == null || e.pointerId !== pointerIdRef.current) return;
       const dx = Math.abs(e.clientX - startXRef.current);
       latestTimeRef.current = timeAtClientX(e.clientX);
+      setDragPreviewTime(latestTimeRef.current);
 
       if (!didDragRef.current && dx >= 3) {
         didDragRef.current = true;
-        lastEmitMsRef.current = 0;
         onDragging?.(true);
         // Emit immediately so the UI "sticks" to the pointer.
         onTimeChange?.(latestTimeRef.current);
@@ -193,6 +189,7 @@ export function Timeline({
       const time = timeAtClientX(e.clientX);
       stopRaf();
       pointerIdRef.current = null;
+      setDragPreviewTime(null);
 
       if (didDragRef.current) {
         didDragRef.current = false;
@@ -209,6 +206,7 @@ export function Timeline({
   const handlePointerCancel = useCallback((e: React.PointerEvent) => {
     stopRaf();
     pointerIdRef.current = null;
+    setDragPreviewTime(null);
     if (didDragRef.current) {
       didDragRef.current = false;
       onDragging?.(false);
@@ -222,7 +220,8 @@ export function Timeline({
     }
   }, [onDragStop, onDragging, stopRaf]);
 
-  const playheadLeftPct = useMemo(() => clamp((currentTime / safeTotal) * 100, 0, 100), [currentTime, safeTotal]);
+  const playheadTime = dragPreviewTime ?? currentTime;
+  const playheadLeftPct = useMemo(() => clamp((playheadTime / safeTotal) * 100, 0, 100), [playheadTime, safeTotal]);
   const playheadH = playheadHeightPx ?? undefined;
 
   return (
@@ -248,31 +247,39 @@ export function Timeline({
         {labelEls}
       </div>
 
-      {/* Playhead (pro-editor style: crisp line + compact handle; overflows downward into tracks). */}
+      {/* Playhead: neon pro-editor style with strong visibility on dark timelines. */}
       <div
         aria-hidden
-        className={cn(
-          'absolute top-0 z-30 w-px',
-          'bg-primary',
-          'shadow-[0_0_0_1px_rgba(0,0,0,0.55),0_0_14px_rgba(0,0,0,0.25)]'
-        )}
+        className="absolute top-0 z-30 w-[10px] -translate-x-1/2 rounded-full bg-primary/20 blur-[8px]"
         style={{
-          left: `calc(${playheadLeftPct}% - 0.5px)`,
+          left: `${playheadLeftPct}%`,
           height: playheadH ?? '100%',
         }}
       />
-      <div aria-hidden className="absolute top-0 z-40 -translate-x-1/2" style={{ left: `${playheadLeftPct}%` }}>
+      <div
+        aria-hidden
+        className={cn(
+          'absolute top-0 z-40 w-[2px] -translate-x-1/2 rounded-full',
+          'bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(196,181,253,0.92)_18%,rgba(168,85,247,0.95)_48%,rgba(34,211,238,0.9)_100%)]',
+          'shadow-[0_0_0_1px_rgba(255,255,255,0.22),0_0_18px_rgba(168,85,247,0.45),0_0_34px_rgba(34,211,238,0.25)]'
+        )}
+        style={{
+          left: `${playheadLeftPct}%`,
+          height: playheadH ?? '100%',
+        }}
+      />
+      <div aria-hidden className="absolute top-0 z-50 -translate-x-1/2" style={{ left: `${playheadLeftPct}%` }}>
         <div
           className={cn(
-            'relative mt-1 h-4 w-6 rounded-[7px]',
-            'bg-primary',
-            'shadow-[0_10px_30px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.14)]'
+            'relative mt-1 flex h-5 min-w-[30px] items-center justify-center rounded-[9px] px-2.5',
+            'bg-[linear-gradient(135deg,rgba(168,85,247,0.98),rgba(76,29,149,0.94))]',
+            'shadow-[0_12px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.22),0_0_18px_rgba(168,85,247,0.42)]'
           )}
         >
-          {/* Grip */}
-          <div className="absolute inset-x-1.5 top-1 h-[2px] rounded bg-white/25" />
-          {/* Pointer */}
-          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-l-[7px] border-r-[7px] border-t-[8px] border-l-transparent border-r-transparent border-t-primary" />
+          <div className="absolute inset-x-2 top-1 h-[2px] rounded bg-white/35" />
+          <div className="absolute inset-x-[9px] bottom-1 h-[2px] rounded bg-cyan-300/35" />
+          <div className="h-[2px] w-3 rounded-full bg-white/55" />
+          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-[rgba(124,58,237,0.96)]" />
         </div>
       </div>
     </div>

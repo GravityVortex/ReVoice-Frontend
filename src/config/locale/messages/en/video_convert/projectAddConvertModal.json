@@ -1,10 +1,10 @@
 {
-  "title": "Upload Video for Conversion",
-  "description": "Upload video and create conversion task",
+  "title": "Upload Video & Create Translation Task",
+  "description": "Upload a video, set the source language, target language, and speaker count, then create a translation task.",
   "steps": {
     "uploadVideo": "Upload Video",
     "configParams": "Configure Parameters",
-    "confirmConvert": "Confirm Conversion"
+    "confirmConvert": "Review & Create Task"
   },
   "upload": {
     "videoFile": "Video File",
@@ -18,24 +18,34 @@
     "maxSizeExceeded": "Video file cannot exceed",
     "uploadSuccess": "Video uploaded successfully",
     "uploadFailed": "Video upload failed",
-    "videoDeleted": "Video deleted"
+    "videoDeleted": "Video deleted",
+    "durationExceeded": "Video duration cannot exceed 1 hour",
+    "maxDuration": "Duration limit"
   },
   "config": {
     "sourceLanguage": "Source Language",
     "targetLanguage": "Target Language",
+    "selectLanguage": "Select language",
+    "swap": "Swap languages",
     "speakerCount": "Number of Speakers in Video",
     "selectPlaceholder": "Please select"
   },
   "languages": {
+    "en": "English",
     "zh": "Chinese",
-    "en": "English"
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "ja": "Japanese"
   },
   "speakers": {
     "single": "Single",
     "multiple": "Multiple"
   },
   "confirm": {
-    "checkInfo": "Please review the details below",
+    "checkInfo": "Please review the translation task details below",
     "videoDuration": "Video Duration",
     "sourceLanguage": "Source Language",
     "targetLanguage": "Target Language",
@@ -47,19 +57,24 @@
     "credits": "Credits",
     "subscribe": "Subscribe",
     "subscribeTip": "Subscribe for more benefits",
-    "estimatedTime": "💡 Tip: Conversion tasks take approximately 3-10 minutes depending on video size."
+    "buyCredits": "Buy Credits",
+    "buyCreditsHint": "Credits refresh automatically after purchase",
+    "balanceAfter": "Balance after: {balance} credits",
+    "shortBy": "Insufficient credits, need {amount} more",
+    "currentBalance": "Current Balance",
+    "estimatedTime": "💡 Tip: After creation, translation tasks enter processing automatically and usually finish in 3-10 minutes."
   },
   "buttons": {
     "cancel": "Cancel",
     "next": "Next",
     "previous": "Previous",
-    "startConvert": "Start Conversion",
-    "submitting": "Submitting..."
+    "startConvert": "Create Translation Task",
+    "submitting": "Creating..."
   },
   "messages": {
     "uploadVideoRequired": "Please upload a video file",
     "targetLanguageRequired": "Please select target language",
-    "taskCreated": "Conversion task created!",
+    "taskCreated": "Translation task created!",
     "submitFailed": "Submission failed, please try again later!"
   },
   "credits_required": "Credits Required",

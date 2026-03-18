@@ -1,8 +1,12 @@
 {
   "title": "我的视频转换",
   "buttons": {
-    "upload": "上传"
+    "upload": "翻译新视频",
+    "editInfo": "编辑信息",
+    "videoEdit": "视频编辑",
+    "openTask": "查看任务"
   },
+  "videoEditDisabledTip": "视频转换完成后才能进行编辑",
   "loading": "加载中...",
   "error": "获取视频列表失败",
   "empty": "暂无视频",
@@ -17,15 +21,46 @@
   },
   "statusShort": {
     "all": "全部",
-    "pending": "等待",
-    "completed": "成功",
-    "processing": "转换中",
-    "failed": "失败",
-    "cancelled": "取消"
+    "pending": "准备中",
+    "completed": "已完成",
+    "processing": "翻译中...",
+    "failed": "遇到问题",
+    "cancelled": "已取消"
   },
   "fields": {
     "duration": "视频时长",
     "size": "视频大小",
     "uploadTime": "上传时间"
+  },
+  "cardSummary": {
+    "pending": "任务已创建，等待进入处理流程。",
+    "processing": "有任务正在后台处理中，点进来继续查看进度。",
+    "completed": "最近一条任务已经完成，可以继续查看成片与交付物。",
+    "failed": "最近一条任务处理失败，点进来查看原因并继续处理。",
+    "cancelled": "最近一条任务已取消，你可以重新进入任务页继续安排。"
+  },
+  "card": {
+    "noTranslations": "尚未开始翻译",
+    "translations": "个翻译",
+    "inProgress": "个进行中"
+  },
+  "stepName": {
+    "uploadComplete": "准备中...",
+    "splitting": "分析视频中...",
+    "genSrt": "识别字幕中...",
+    "translateSrt": "翻译字幕中...",
+    "tts": "生成语音中...",
+    "adjustAudio": "调整音频中...",
+    "merging": "合并音频中...",
+    "mergeVideo": "合成视频中..."
+  },
+  "emptyState": {
+    "title": "上传你的第一个视频",
+    "subtitle": "AI 自动翻译成多种语言，几分钟即可完成",
+    "cta": "开始翻译"
+  },
+  "pageSummary": {
+    "videos": "个视频",
+    "translating": "个正在翻译"
   }
 }

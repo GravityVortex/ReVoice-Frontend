@@ -44,14 +44,14 @@
   },
   "audio": {
     "title": "音频",
-    "description": "下载前建议先试听",
+    "description": "试听或下载音频轨道",
     "preview": "试听",
     "download": "字幕音频",
     "downloadBg": "背景音频"
   },
   "subtitle": {
     "title": "字幕",
-    "description": "支持原文、译文、双语",
+    "description": "对比或下载多语字幕",
     "compare": "双语对比",
     "download_yuan": "原字幕",
     "download_tran": "翻译字幕",
@@ -112,22 +112,39 @@
     "previewTools": {
       "title": "预览工具",
       "speed": "播放速度",
-      "loop": "循环"
+      "loop": "循环",
+      "fullscreen": "全屏",
+      "exitFullscreen": "退出全屏"
     },
     "outputs": "交付物",
     "runs": "转换记录",
+    "languages": {
+      "en": "英语",
+      "zh": "简体中文",
+      "es": "西班牙语",
+      "pt": "葡萄牙语",
+      "fr": "法语",
+      "de": "德语",
+      "it": "意大利语",
+      "ja": "日语"
+    },
     "addRun": {
       "button": "新增翻译",
       "title": "新增翻译任务",
       "description": "同一语种组合仅可创建一次（失败/取消可重新创建）",
       "sourceLanguage": "源语言",
       "targetLanguage": "目标语言",
+      "selectLanguage": "选择语言",
+      "swap": "交换语言",
       "speakerCount": "说话人数量",
       "create": "开始转换",
       "creating": "创建中...",
       "costTitle": "预计消耗",
       "costDuration": "视频时长约 {minutes} 分钟",
       "costPerMinute": "按 {points} 积分/分钟计费",
+      "currentBalance": "当前余额",
+      "insufficientCredits": "积分不足，还差 {amount} 积分",
+      "buyCredits": "购买积分",
       "duplicate": "该语种组合已存在",
       "goToExisting": "查看记录",
       "noAvailable": "没有可创建的语种组合",
@@ -160,7 +177,7 @@
     },
     "finalVideo": {
       "title": "成品视频",
-      "description": "可直接交付使用"
+      "description": "编辑或下载最终视频"
     },
     "compareModal": {
       "title": "双语对比",
@@ -188,6 +205,57 @@
     },
     "progressLoadFailed": "加载进度失败，请稍后重试",
     "progressEmpty": "暂无进度日志",
-    "progressEmptyFailed": "任务未生成进度日志（可能启动失败）"
+    "progressEmptyFailed": "任务未生成进度日志（可能启动失败）",
+    "translations": "翻译任务",
+    "addLanguage": "添加语言",
+    "backToList": "返回列表",
+    "deliveredOn": "交付于 {date}",
+    "queued": "已排队 — 即将自动开始",
+    "viewPreview": "预览",
+    "source": "源语言",
+    "from": "FROM",
+    "workbench": {
+      "summary": {
+        "title": "任务摘要",
+        "descriptionDelivery": "这个语种版本已经交付，可以继续编辑、试听并下载成品。",
+        "descriptionActive": "任务正在后台推进中，先看当前进度，再安排下一步动作。",
+        "descriptionRecoverable": "这次运行没有顺利完成，先确认原因，再重新发起同语种翻译。",
+        "currentStep": "当前阶段：{step}",
+        "errorFallback": "当前没有拿到明确错误详情，建议先重新发起一次翻译。"
+      },
+      "actions": {
+        "title": "核心动作",
+        "deliveryTitle": "交付已准备好",
+        "deliveryDescription": "先预览成片，再进入编辑器微调，最后导出最终交付物。",
+        "activeTitle": "先盯住这次运行",
+        "activeDescription": "任务仍在处理中。你可以查看过程回顾，或提前准备下一种语言版本。",
+        "recoverableTitle": "优先恢复这次翻译",
+        "recoverableDescription": "建议先重试当前语种组合；如果你还有其他版本，也可以切换查看。",
+        "trackProgress": "查看当前进度",
+        "switchRun": "切换其他记录",
+        "readySoon": "完成后即可使用",
+        "readySoonDescription": "任务完成后，成片、音频和字幕会自动出现在这里。"
+      },
+      "deliverables": {
+        "title": "资产工作区",
+        "description": "交付物已经就绪，按模块继续编辑、试听或下载。",
+        "editFinalVideo": "编辑成片",
+        "downloadVideo": "下载成片",
+        "previewAudio": "试听音频",
+        "downloadAssets": "下载文件",
+        "compareSubtitle": "双语对比"
+      },
+      "progressReview": {
+        "title": "过程回顾",
+        "descriptionDelivery": "本次运行已完成，这里保留过程概览，方便你快速确认交付状态。",
+        "descriptionActive": "这里会持续反映任务进展。你可以暂时离开页面，回来后继续查看。",
+        "descriptionRecoverable": "先根据这次运行的状态和错误判断是否重试，或切换其他记录对比。"
+      },
+      "recovery": {
+        "title": "恢复建议",
+        "description": "优先重试同一语种组合；如果问题持续存在，再切换到其他运行记录对比。",
+        "errorLabel": "失败原因"
+      }
+    }
   }
 }

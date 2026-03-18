@@ -5,6 +5,22 @@ import { eq, desc, and, inArray } from 'drizzle-orm';
 export type VtFileTask = typeof vtFileTask.$inferSelect;
 export type NewVtFileTask = typeof vtFileTask.$inferInsert;
 
+const vtFileTaskSelectFields = {
+  id: vtFileTask.id,
+  taskId: vtFileTask.taskId,
+  userId: vtFileTask.userId,
+  stepName: vtFileTask.stepName,
+  fileKey: vtFileTask.fileKey,
+  r2Key: vtFileTask.r2Key,
+  r2Bucket: vtFileTask.r2Bucket,
+  expiresAt: vtFileTask.expiresAt,
+  createdBy: vtFileTask.createdBy,
+  createdAt: vtFileTask.createdAt,
+  updatedBy: vtFileTask.updatedBy,
+  updatedAt: vtFileTask.updatedAt,
+  delStatus: vtFileTask.delStatus,
+};
+
 export async function getVtFileTaskList(params: {
   taskId?: string;
   stepName?: string;
@@ -23,7 +39,7 @@ export async function getVtFileTaskList(params: {
   }
 
   return await db()
-    .select()
+    .select(vtFileTaskSelectFields)
     .from(vtFileTask)
     .where(and(...conditions))
     .orderBy(desc(vtFileTask.createdAt));
@@ -49,4 +65,21 @@ export async function getVtFileTaskListByTaskId(taskId: string, stepNameArr?: st
     .from(vtFileTask)
     .where(and(...conditions))
     .orderBy(desc(vtFileTask.createdAt));
+}
+
+export async function findVtFileTaskByTaskIdAndR2Key(taskId: string, r2Key: string) {
+  const rows = await db()
+    .select(vtFileTaskSelectFields)
+    .from(vtFileTask)
+    .where(
+      and(
+        eq(vtFileTask.taskId, taskId),
+        eq(vtFileTask.r2Key, r2Key),
+        eq(vtFileTask.delStatus, 0)
+      )
+    )
+    .orderBy(desc(vtFileTask.createdAt))
+    .limit(1);
+
+  return rows[0] ?? null;
 }

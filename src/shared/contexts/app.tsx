@@ -246,9 +246,50 @@ export const AppContextProvider = ({
 
   useEffect(() => {
     if (user && !user.credits) {
-      // fetchUserCredits();
+      fetchUserCredits();
     }
   }, [user]);
+
+  // Smart polling: refresh credits every 30s when tab is visible.
+  // Immediately refresh once when the user switches back to this tab.
+  const CREDITS_POLL_INTERVAL = 30_000;
+
+  useEffect(() => {
+    if (!user) return;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        fetchUserCredits();
+      }, CREDITS_POLL_INTERVAL);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        fetchUserCredits();
+        startPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user?.id]);
 
   return (
     <AppContext.Provider

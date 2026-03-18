@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl';
 
 import { Link } from '@/core/i18n/navigation';
 import { SidebarTrigger } from '@/shared/components/ui/sidebar';
-import { LocaleSelector, ThemeToggler } from '@/shared/blocks/common';
+import { CreditsBadge, LocaleSelector, ThemeToggler } from '@/shared/blocks/common';
+import { Separator } from '@/shared/components/ui/separator';
 import { Crumb } from '@/shared/types/blocks/common';
 import { SidebarUser as SidebarUserType } from '@/shared/types/blocks/dashboard';
 
@@ -96,9 +97,11 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         <SidebarTrigger className="-ml-1" />
       </div>
       <div className="flex-1" />
-      <div className="flex items-center gap-2 px-4">
+      <div className="flex items-center gap-3 px-4">
         <ThemeToggler />
         <LocaleSelector />
+        <Separator orientation="vertical" className="h-4" />
+        <CreditsBadge />
         <UserNav user={resolvedUser} />
       </div>
     </header>

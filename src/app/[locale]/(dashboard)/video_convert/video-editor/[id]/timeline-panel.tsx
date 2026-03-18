@@ -3,14 +3,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
-import { Pause, Play, Volume2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Loader2, Music, Pause, Play, Scissors, Type, Undo2, Volume2, ZoomIn, ZoomOut } from 'lucide-react';
 import { Slider } from '@/shared/components/ui/slider';
 import { Timeline } from '@/shared/components/video-editor/timeline';
 import { SubtitleTrack } from '@/shared/components/video-editor/subtitle-track';
 import { SubtitleTrackItem } from '@/shared/components/video-editor/types';
 import { useLocale, useTranslations } from 'next-intl';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { audioMetaLoadQueue } from '@/shared/lib/waveform/loader';
 import { WaveformBackdrop } from '@/shared/components/video-editor/waveform-backdrop';
+import { getTimelineAutoFollowTarget } from '@/shared/lib/timeline/follow';
 
 interface TimelinePanelProps {
     className?: string;
@@ -38,6 +40,13 @@ interface TimelinePanelProps {
     onVolumeChange: (volume: number) => void;
     onToggleBgmMute: () => void;
     onToggleSubtitleMute: () => void;
+    onSplitAtCurrentTime?: () => void;
+    splitDisabled?: boolean;
+    splitLoading?: boolean;
+    onUndo?: () => void;
+    undoLoading?: boolean;
+    undoCountdown?: number;
+    onUndoCancel?: () => void;
 }
 
 function BufferingOrbitalDots({ label }: { label: string }) {
@@ -62,7 +71,7 @@ function BufferingOrbitalDots({ label }: { label: string }) {
                 }
                 .dot {
                     animation: dotFade 1100ms ease-in-out infinite;
-                    filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.25));
+                    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.1));
                 }
                 @keyframes orbit {
                     to {
@@ -110,11 +119,20 @@ export function TimelinePanel({
     onZoomChange,
     onVolumeChange,
     onToggleBgmMute,
-    onToggleSubtitleMute
+    onToggleSubtitleMute,
+    onSplitAtCurrentTime,
+    splitDisabled = false,
+    splitLoading = false,
+    onUndo,
+    undoLoading = false,
+    undoCountdown = 0,
+    onUndoCancel,
 }: TimelinePanelProps) {
     const t = useTranslations('video_convert.videoEditor.videoEditor');
     const locale = useLocale();
     const bufferingLabel = locale === 'zh' ? '缓冲中' : 'Buffering';
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+    const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';
 
     // Waveform + metadata probing are CPU/network heavy and can cause audible stutter on playback,
     // especially on mobile. Keep them off unless explicitly needed.
@@ -194,6 +212,7 @@ export function TimelinePanel({
 
     // --- Audio overrun markers (M4) ---
     const [audioDurationMsById, setAudioDurationMsById] = useState<Record<string, number>>({});
+    const [isTimelineDragging, setIsTimelineDragging] = useState(false);
     const audioDurationRef = useRef<Record<string, number>>({});
     const audioUrlByIdRef = useRef<Record<string, string>>({});
     const inflightRef = useRef<Map<string, AbortController>>(new Map());
@@ -401,22 +420,46 @@ export function TimelinePanel({
         };
     }, [enableAudioMeta, playingSubtitleIndex, queueDurationLoad]);
 
-    // Auto-scroll timeline to playhead on large time jumps (seek / audition).
+    // Auto-follow: edge-triggered and drag-aware. This feels more like a pro editor than constant centering.
     const lastAutoScrollTimeRef = useRef<number>(-1);
+    const autoFollowRafRef = useRef<number | null>(null);
     useEffect(() => {
         const prev = lastAutoScrollTimeRef.current;
         lastAutoScrollTimeRef.current = currentTime;
-        // Only auto-scroll on large jumps (> 2s), not on every playback tick.
-        if (prev >= 0 && Math.abs(currentTime - prev) <= 2) return;
         const scroller = document.getElementById('unified-scroll-container');
         if (!scroller) return;
+
         const pxPerSec = Math.max(1, Math.round(PX_PER_SECOND * zoom));
-        const playheadPx = currentTime * pxPerSec;
-        const viewportW = scroller.clientWidth;
-        // Center the playhead in the viewport.
-        const targetScroll = Math.max(0, playheadPx - viewportW / 3);
-        scroller.scrollTo({ left: targetScroll, behavior: 'smooth' });
-    }, [currentTime, zoom]);
+        const target = getTimelineAutoFollowTarget({
+            currentTime,
+            prevTime: prev >= 0 ? prev : currentTime,
+            pxPerSec,
+            scrollLeft: scroller.scrollLeft,
+            viewportWidth: scroller.clientWidth,
+            contentWidth: scroller.scrollWidth,
+            isDragging: isTimelineDragging,
+        });
+        if (!target) return;
+
+        if (autoFollowRafRef.current != null) window.cancelAnimationFrame(autoFollowRafRef.current);
+        autoFollowRafRef.current = window.requestAnimationFrame(() => {
+            autoFollowRafRef.current = null;
+            const currentLeft = scroller.scrollLeft;
+            if (target.mode === 'snap') {
+                scroller.scrollLeft = target.targetLeft;
+                return;
+            }
+            const nextLeft = currentLeft + (target.targetLeft - currentLeft) * 0.22;
+            scroller.scrollLeft = Math.abs(target.targetLeft - currentLeft) <= 1 ? target.targetLeft : nextLeft;
+        });
+
+        return () => {
+            if (autoFollowRafRef.current != null) {
+                window.cancelAnimationFrame(autoFollowRafRef.current);
+                autoFollowRafRef.current = null;
+            }
+        };
+    }, [currentTime, isTimelineDragging, zoom]);
 
     const handleConvertedSegmentClick = useCallback(
         (time: number) => {
@@ -430,49 +473,39 @@ export function TimelinePanel({
     return (
         <div className={cn("flex flex-col bg-background/60 border-t border-white/10 h-full", className)}>
             {/* 1. Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b border-white/10 bg-card/25 shrink-0">
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onPlayPause}
-                            className={cn("h-8 w-8", isBuffering && "cursor-wait")}
-                            title={isBuffering ? bufferingLabel : undefined}
-                        >
-                            {isBuffering ? (
-                                <BufferingOrbitalDots label={bufferingLabel} />
-                            ) : isPlaying ? (
-                                <Pause className="h-4 w-4" />
-                            ) : (
-                                <Play className="h-4 w-4" />
-                            )}
-                        </Button>
-                    </div>
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-white/10 bg-card/25 shrink-0">
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onPlayPause}
+                        className={cn("h-7 w-7", isBuffering && "cursor-wait")}
+                        aria-label={isPlaying ? t('tooltips.pause') : t('tooltips.play')}
+                    >
+                        {isBuffering ? (
+                            <BufferingOrbitalDots label={bufferingLabel} />
+                        ) : isPlaying ? (
+                            <Pause className="h-3.5 w-3.5" />
+                        ) : (
+                            <Play className="h-3.5 w-3.5" />
+                        )}
+                    </Button>
 
-                    <div className="h-4 w-px bg-border/50" />
+                    <span className="text-xs font-mono tabular-nums text-muted-foreground">
+                        {formatTime(currentTime)} / {formatTime(maxTrackWidth)}
+                    </span>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono tabular-nums text-muted-foreground">
-                            {formatTime(currentTime)} / {formatTime(maxTrackWidth)}
-                        </span>
-                    </div>
+                    <div className="h-4 w-px bg-border/50 hidden md:block" />
 
-                    {/* Volume */}
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                            <Volume2 className="h-4 w-4 text-muted-foreground" />
-                            <span className="w-10 text-right text-xs font-mono tabular-nums text-muted-foreground">
-                                {Math.round(volume)}%
-                            </span>
-                        </div>
+                    <div className="hidden md:flex items-center gap-1.5">
+                        <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
                         <Slider
                             aria-label="Volume"
                             value={[Math.round(volume)]}
                             min={0}
                             max={100}
                             step={1}
-                            className="w-28 md:w-44"
+                            className="w-20"
                             onValueChange={(v) => {
                                 const next = v?.[0];
                                 if (typeof next === 'number' && Number.isFinite(next)) onVolumeChange(next);
@@ -480,95 +513,194 @@ export function TimelinePanel({
                         />
                     </div>
 
-                    {/* Mute controls (no switches; clear tap targets). */}
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={onToggleSubtitleMute}
-                            className={cn(
-                                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] transition-colors',
-                                'border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
-                                isSubtitleMuted ? 'border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15' : null
-                            )}
-                            title={isSubtitleMuted ? t('tooltips.unmute') : t('tooltips.mute')}
-                            aria-label={isSubtitleMuted ? t('tooltips.unmute') : t('tooltips.mute')}
-                        >
-                            <span className="font-medium">{t('tracks.subtitleTranslated')}</span>
-                            <span className="text-muted-foreground/50">·</span>
-                            <span className="tabular-nums">{isSubtitleMuted ? t('tooltips.unmute') : t('tooltips.mute')}</span>
-                        </button>
+                    <div className="h-4 w-px bg-border/50 hidden md:block" />
+
+                    <div className="hidden md:flex items-center gap-1">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={onToggleSubtitleMute}
+                                    className={cn(
+                                        'inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors',
+                                        'border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
+                                        isSubtitleMuted ? 'border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15' : null
+                                    )}
+                                    aria-label={isSubtitleMuted ? t('tooltips.unmuteSubtitle') : t('tooltips.muteSubtitle')}
+                                >
+                                    <Type className="h-3.5 w-3.5" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                {isSubtitleMuted ? t('tooltips.unmuteSubtitle') : t('tooltips.muteSubtitle')}
+                            </TooltipContent>
+                        </Tooltip>
 
                         {bgmWaveformUrl ? (
-                            <button
-                                type="button"
-                                onClick={onToggleBgmMute}
-                                className={cn(
-                                    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] transition-colors',
-                                    'border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
-                                    isBgmMuted ? 'border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15' : null
-                                )}
-                                title={isBgmMuted ? t('tooltips.unmute') : t('tooltips.mute')}
-                                aria-label={isBgmMuted ? t('tooltips.unmute') : t('tooltips.mute')}
-                            >
-                                <span className="font-medium">{t('tracks.bgm')}</span>
-                                <span className="text-muted-foreground/50">·</span>
-                                <span className="tabular-nums">{isBgmMuted ? t('tooltips.unmute') : t('tooltips.mute')}</span>
-                            </button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        onClick={onToggleBgmMute}
+                                        className={cn(
+                                            'inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors',
+                                            'border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
+                                            isBgmMuted ? 'border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15' : null
+                                        )}
+                                        aria-label={isBgmMuted ? t('tooltips.unmuteBgm') : t('tooltips.muteBgm')}
+                                    >
+                                        <Music className="h-3.5 w-3.5" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                    {isBgmMuted ? t('tooltips.unmuteBgm') : t('tooltips.muteBgm')}
+                                </TooltipContent>
+                            </Tooltip>
                         ) : null}
                     </div>
 
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onZoomChange(Math.max(0.2, zoom - 0.2))} className="h-8 w-8">
-                        <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground w-10 text-center">{Math.round(zoom * 100)}%</span>
-                    <Button variant="ghost" size="icon" onClick={() => onZoomChange(Math.min(5, zoom + 0.2))} className="h-8 w-8">
-                        <ZoomIn className="h-4 w-4" />
-                    </Button>
+                <div className="flex items-center gap-1.5">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                onClick={onSplitAtCurrentTime}
+                                disabled={splitDisabled || splitLoading}
+                                className={cn(
+                                    'group relative h-7 rounded-md px-2.5 transition-all duration-200',
+                                    splitDisabled && !splitLoading
+                                      ? 'border border-white/10 bg-white/5 text-muted-foreground/50 opacity-60'
+                                      : 'border border-teal-400/40 bg-teal-400/10 text-teal-300 shadow-[0_0_16px_rgba(45,212,191,0.15)]',
+                                    !splitDisabled && !splitLoading
+                                      ? 'hover:border-teal-400/60 hover:bg-teal-400/15 hover:text-teal-200 hover:shadow-[0_0_20px_rgba(45,212,191,0.25)]'
+                                      : null,
+                                    splitLoading ? 'cursor-wait pointer-events-none border-teal-400/30 bg-teal-400/10 text-teal-300' : null
+                                )}
+                            >
+                                <span className="flex items-center gap-1.5 text-[11px] font-semibold">
+                                    {splitLoading ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                                            <span>{locale === 'zh' ? '切割中…' : 'Splitting…'}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Scissors className="h-3.5 w-3.5" />
+                                            <span>{t('tooltips.splitSubtitle')}</span>
+                                        </>
+                                    )}
+                                </span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{splitDisabled ? t('toast.splitNoClip') : t('tooltips.splitSubtitleWithUndo')}</TooltipContent>
+                    </Tooltip>
+
+                    {(onUndo || undoCountdown > 0) && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    onClick={undoCountdown > 0 ? onUndoCancel : onUndo}
+                                    disabled={undoLoading}
+                                    className={cn(
+                                        'h-7 rounded-md px-2 transition-all duration-200',
+                                        undoCountdown > 0
+                                          ? 'border border-amber-400/50 bg-amber-500/10 text-amber-300 hover:border-amber-400/70 hover:bg-amber-500/15'
+                                          : 'border border-white/10 bg-white/5 text-muted-foreground hover:border-amber-400/30 hover:bg-amber-500/[0.08] hover:text-amber-200',
+                                        undoLoading ? 'cursor-wait pointer-events-none' : null
+                                    )}
+                                >
+                                    <span className="flex items-center gap-1.5 text-[11px] font-medium">
+                                        {undoLoading ? (
+                                            <>
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                                                <span>{locale === 'zh' ? '恢复中…' : 'Restoring…'}</span>
+                                            </>
+                                        ) : undoCountdown > 0 ? (
+                                            <>
+                                                <span className="tabular-nums font-semibold">{undoCountdown}s</span>
+                                                <span>{locale === 'zh' ? '取消' : 'Cancel'}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Undo2 className="h-3.5 w-3.5" />
+                                                <span className="hidden lg:inline">{t('toast.undo')}</span>
+                                            </>
+                                        )}
+                                    </span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                {undoCountdown > 0
+                                  ? (locale === 'zh' ? '点击取消撤销' : 'Click to cancel undo')
+                                  : `${t('tooltips.undoSplit')} (${undoKey})`}
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+
+                    <div className="h-4 w-px bg-white/10" />
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => onZoomChange(Math.max(0.2, zoom - 0.2))} className="h-7 w-7 rounded-md border border-white/10 bg-white/[0.03] hover:bg-white/[0.06]">
+                                <ZoomOut className="h-3.5 w-3.5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{t('tooltips.zoomOut')}</TooltipContent>
+                    </Tooltip>
+                    <span className="w-10 text-center text-[11px] font-mono tabular-nums text-muted-foreground/80">{Math.round(zoom * 100)}%</span>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => onZoomChange(Math.min(5, zoom + 0.2))} className="h-7 w-7 rounded-md border border-white/10 bg-white/[0.03] hover:bg-white/[0.06]">
+                                <ZoomIn className="h-3.5 w-3.5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{t('tooltips.zoomIn')}</TooltipContent>
+                    </Tooltip>
                 </div>
             </div>
 
             {/* 2. Timeline Area */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Headers */}
-                <div className="w-28 md:w-36 border-r border-white/10 bg-muted/10 flex flex-col shrink-0">
-                    <div className="h-10 border-b border-white/10 flex items-center px-4 text-xs font-medium text-muted-foreground">
+                <div className="w-24 md:w-32 border-r border-white/10 bg-muted/10 flex flex-col shrink-0">
+                    <div className="h-8 border-b border-white/10 flex items-center px-3 text-[11px] font-medium text-muted-foreground">
                         <span className="truncate uppercase tracking-widest opacity-80">Timeline</span>
                     </div>
 
                     {/* Track Headers */}
                     <div className="flex-1 flex flex-col">
-                        <div className="h-14 border-b border-white/10 flex items-center justify-between gap-2 px-3 bg-muted/5">
+                        <div className="h-12 border-b border-white/10 flex items-center justify-between gap-2 px-3 bg-muted/5">
                             <div className="min-w-0">
                                 <div className="truncate text-[11px] font-medium text-muted-foreground/90">
                                     {t('tracks.subtitleTranslated')}
                                 </div>
                             </div>
                             {isSubtitleMuted ? (
-                                <span className="text-[9px] font-medium text-destructive/80 shrink-0">
+                                <span className="text-[10px] font-medium text-destructive/80 shrink-0">
                                     {t('tooltips.mute')}
                                 </span>
                             ) : null}
                         </div>
                         {subtitleTrackOriginal ? (
-                            <div className="h-10 border-b border-white/10 flex items-center justify-between px-3">
+                            <div className="h-12 border-b border-white/10 flex items-center justify-between px-3">
                                 <span className="truncate text-[11px] font-medium text-muted-foreground/80">
                                     {t('tracks.subtitleOriginal')}
                                 </span>
-                                <span className="text-[9px] text-muted-foreground/60 shrink-0">
+                                <span className="text-[10px] text-muted-foreground/60 shrink-0">
                                     {t('tracks.reference')}
                                 </span>
                             </div>
                         ) : null}
                         {bgmWaveformUrl ? (
-                            <div className="h-10 border-b border-white/10 flex items-center justify-between gap-2 px-3">
+                            <div className="h-8 border-b border-white/10 flex items-center justify-between gap-2 px-3">
                                 <span className="truncate text-[11px] font-medium text-muted-foreground/80">
                                     {t('tracks.bgm')}
                                 </span>
                                 {isBgmMuted ? (
-                                    <span className="text-[9px] font-medium text-destructive/80 shrink-0">
+                                    <span className="text-[10px] font-medium text-destructive/80 shrink-0">
                                         {t('tooltips.mute')}
                                     </span>
                                 ) : null}
@@ -594,13 +726,14 @@ export function TimelinePanel({
                     >
 
                         {/* Ruler */}
-                        <div className="h-10 border-b border-white/10 sticky top-0 bg-background/80 z-20 overflow-visible">
+                        <div className="h-8 border-b border-white/10 sticky top-0 bg-background/80 z-20 overflow-visible">
                             <Timeline
                                 currentTime={currentTime}
                                 totalDuration={maxTrackWidth}
                                 zoom={zoom}
                                 onTimeLineClick={(t) => onSeek(t, false)}
                                 onTimeChange={(t) => onSeek(t, true)}
+                                onDragging={setIsTimelineDragging}
                                 onDragStop={(t) => onSeek(t, false)}
                                 playheadHeightPx={playheadHeightPx}
                             />
@@ -609,9 +742,10 @@ export function TimelinePanel({
                         {/* Tracks */}
                         <div className={cn("transition-all duration-300", isSubtitleMuted && "opacity-50 grayscale")}>
                             <SubtitleTrack
-                                className="h-14 border-b border-white/10 bg-muted/5"
+                                className="h-12 border-b border-white/10 bg-muted/5"
                                 items={subtitleTrack}
                                 totalDuration={maxTrackWidth}
+                                currentTime={currentTime}
                                 playingIndex={playingSubtitleIndex}
                                 zoom={zoom}
                                 variant="converted"
@@ -624,9 +758,10 @@ export function TimelinePanel({
 
                         {subtitleTrackOriginal ? (
                             <SubtitleTrack
-                                className="h-10 border-b border-white/10"
+                                className="h-12 border-b border-white/10"
                                 items={subtitleTrackOriginal}
                                 totalDuration={maxTrackWidth}
+                                currentTime={currentTime}
                                 playingIndex={playingSubtitleIndex}
                                 zoom={zoom}
                                 variant="original"
@@ -635,9 +770,9 @@ export function TimelinePanel({
                         ) : null}
 
                         {bgmWaveformUrl ? (
-                            <div className={cn("relative h-10 border-b border-white/10 bg-muted/10 overflow-hidden group/bgm transition-all duration-300", isBgmMuted && "opacity-50 grayscale")}>
+                            <div className={cn("relative h-8 border-b border-white/10 bg-muted/10 overflow-hidden group/bgm transition-all duration-300", isBgmMuted && "opacity-50 grayscale")}>
                                 {/* Base Striped Block indicating track presence */}
-                                <div className="absolute inset-y-[6px] inset-x-0 rounded-sm bg-primary/20 border border-primary/30 overflow-hidden shadow-sm shadow-primary/10">
+                                <div className="absolute inset-y-[4px] inset-x-0 rounded-sm bg-primary/20 border border-primary/30 overflow-hidden shadow-sm shadow-primary/10">
                                     {/* Subtle repeating stripe to look like a solid track */}
                                     <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.05)_4px,rgba(255,255,255,0.05)_8px)]" />
                                 </div>

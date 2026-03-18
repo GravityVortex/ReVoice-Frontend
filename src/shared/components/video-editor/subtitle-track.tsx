@@ -1,6 +1,7 @@
 "use client";
 
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Scissors } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { SubtitleTrackItem } from './types';
 import { moveClipNoOverlap } from '@/shared/lib/timeline/collision';
@@ -37,7 +38,7 @@ export const SubtitleTrack = memo(function SubtitleTrack({
   items,
   totalDuration,
   currentTime,
-  zoom = 1,
+  zoom: _zoom = 1,
   selectedItem,
   onSelectItem,
   onSegmentClick,
@@ -78,6 +79,7 @@ export const SubtitleTrack = memo(function SubtitleTrack({
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [rippleHint, setRippleHint] = useState<{ id: string } | null>(null);
+  const [hoveredSplitOpId, setHoveredSplitOpId] = useState<string | null>(null);
 
   // Cleanup in case the component unmounts mid-drag.
   useEffect(() => {
@@ -137,10 +139,31 @@ export const SubtitleTrack = memo(function SubtitleTrack({
   const minorStepPct = Math.min(100, (minorStepSeconds / safeTotalDuration) * 100);
   const majorStepPct = Math.min(100, (majorStepSeconds / safeTotalDuration) * 100);
 
+  // 构建 splitOperationId → 相邻子段之间的分割点位置（用于渲染剪刀图标）
+  const splitScissorPositions = useMemo(() => {
+    const result: Array<{ leftPct: number; opId: string }> = [];
+    for (let i = 0; i + 1 < items.length; i++) {
+      const a = items[i];
+      const b = items[i + 1];
+      if (
+        a.splitOperationId &&
+        b.splitOperationId &&
+        a.splitOperationId === b.splitOperationId
+      ) {
+        const boundaryTime = a.startTime + a.duration;
+        result.push({
+          leftPct: (boundaryTime / safeTotalDuration) * 100,
+          opId: a.splitOperationId,
+        });
+      }
+    }
+    return result;
+  }, [items, safeTotalDuration]);
+
   const baseColors =
     variant === 'original'
       ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
-      : 'border-sky-200/20 bg-sky-500/15 hover:bg-sky-500/20';
+      : 'border-primary/20 bg-primary/12 hover:bg-primary/18';
 
   return (
     <div
@@ -189,6 +212,7 @@ export const SubtitleTrack = memo(function SubtitleTrack({
         const widthPercent = (item.duration / safeTotalDuration) * 100;
         const isSelected = selectedItem === item.id;
         const isPlaying = playingIndex === index;
+        const isAtPlayhead = typeof currentTime === 'number' && currentTime >= item.startTime && currentTime < item.startTime + item.duration;
         const isDragging = draggingId === item.id;
         const audioMs = audioDurationMsById?.[item.id];
         const windowMs = Math.max(0, Math.round(item.duration * 1000));
@@ -197,17 +221,40 @@ export const SubtitleTrack = memo(function SubtitleTrack({
           Number.isFinite(audioMs) &&
           audioMs > windowMs + audioOverrunToleranceMs;
 
+        const isSplitItem = variant === 'converted' && Boolean(item.splitOperationId);
+        const isSplitSiblingHovered = isSplitItem && hoveredSplitOpId === item.splitOperationId;
+
+        // split 子段用 teal 色系，普通子段用原有色系
+        const itemBaseColors = isSplitItem
+          ? 'border-teal-400/20 bg-teal-400/8 hover:bg-teal-400/12'
+          : baseColors;
+
         return (
           <div
             key={item.id}
             className={cn(
               'absolute top-2.5 h-11 rounded-md cursor-pointer border px-2.5',
               'transition-[background-color,border-color,box-shadow] duration-150',
-              baseColors,
+              itemBaseColors,
               isPlaying
-                ? 'bg-primary/18 border-primary/35 shadow-[0_0_0_1px_rgba(167,139,250,0.14),0_10px_30px_rgba(167,139,250,0.10)]'
+                ? isSplitItem
+                  ? 'bg-teal-400/20 border-teal-400/50 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_10px_30px_rgba(45,212,191,0.2)]'
+                  : 'bg-primary/20 border-primary/45 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_10px_30px_rgba(76,29,149,0.28)]'
                 : null,
-              isSelected ? 'border-primary/55 shadow-[0_0_0_1px_rgba(167,139,250,0.16)]' : null,
+              isAtPlayhead
+                ? isSplitItem
+                  ? 'border-teal-400/70 ring-1 ring-teal-400/35 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(45,212,191,0.18)]'
+                  : 'border-primary/70 ring-1 ring-primary/35 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(168,85,247,0.18)]'
+                : null,
+              isSelected
+                ? isSplitItem
+                  ? 'border-teal-400/55 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]'
+                  : 'border-primary/55 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]'
+                : null,
+              // 同组 sibling hover 联动
+              isSplitSiblingHovered && !isSelected && !isAtPlayhead
+                ? 'ring-1 ring-teal-400/25'
+                : null,
               isDragging ? 'z-40 cursor-grabbing ring-1 ring-primary/40 shadow-[0_18px_40px_rgba(0,0,0,0.35)]' : null
             )}
             style={{
@@ -223,6 +270,14 @@ export const SubtitleTrack = memo(function SubtitleTrack({
             ]
               .filter(Boolean)
               .join('\n')}
+            onPointerEnter={() => {
+              if (isSplitItem && item.splitOperationId) {
+                setHoveredSplitOpId(item.splitOperationId);
+              }
+            }}
+            onPointerLeave={() => {
+              if (isSplitItem) setHoveredSplitOpId(null);
+            }}
             onPointerDown={(e) => {
               if (!canEdit) return;
               if (e.button !== 0) return;
@@ -377,6 +432,7 @@ export const SubtitleTrack = memo(function SubtitleTrack({
             ) : null}
 
             <div className="relative flex min-w-0 items-center gap-2">
+              {isAtPlayhead ? <span aria-hidden className="absolute inset-y-1 left-0 w-[2px] rounded-full bg-[linear-gradient(180deg,rgba(168,85,247,0.9),rgba(34,211,238,0.9))] shadow-[0_0_14px_rgba(34,211,238,0.35)]" /> : null}
               {isPlaying ? (
                 <span
                   aria-hidden
@@ -393,6 +449,22 @@ export const SubtitleTrack = memo(function SubtitleTrack({
           </div>
         );
       })}
+
+      {/* Split 分割点连接线 + 剪刀图标 */}
+      {splitScissorPositions.map((pos) => (
+        <div
+          key={`scissors-${pos.opId}`}
+          aria-hidden
+          className="pointer-events-none absolute top-0 z-20 flex h-full -translate-x-1/2 flex-col items-center justify-center"
+          style={{ left: `${pos.leftPct}%` }}
+        >
+          <div className="absolute inset-y-0 w-px bg-teal-400/30" />
+          <div className="absolute inset-y-0 w-px bg-teal-400/20 blur-[2px]" />
+          <div className="relative flex items-center justify-center rounded-full border border-teal-400/40 bg-background/80 p-0.5 shadow-[0_0_8px_rgba(45,212,191,0.2)]">
+            <Scissors className="size-3 text-teal-400/90" />
+          </div>
+        </div>
+      ))}
 
       {items.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm pointer-events-none">

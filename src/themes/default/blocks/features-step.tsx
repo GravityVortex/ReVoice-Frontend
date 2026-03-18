@@ -39,7 +39,7 @@ export function FeaturesStep({
       <div className="m-4 rounded-[2rem]">
         <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-muted/10 via-background to-background">
           {/* Atmosphere: subtle grid + glow so the steps read as a single guided flow */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(99,102,241,0.25),transparent_60%),radial-gradient(900px_circle_at_80%_30%,rgba(16,185,129,0.14),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(255,255,255,0.03),transparent_60%),radial-gradient(900px_circle_at_80%_30%,rgba(255,255,255,0.02),transparent_55%)]" />
           <div className="pointer-events-none absolute inset-0 bg-grid-white/[0.03]" />
 
           <div className="@container relative w-full max-w-7xl mx-auto px-4 py-14 md:py-20">
@@ -77,7 +77,7 @@ export function FeaturesStep({
                         className="group relative rounded-3xl border border-white/10 bg-background/50 p-6 backdrop-blur-sm"
                       >
                         <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/5" />
-                        <div className="pointer-events-none absolute -top-12 left-1/2 h-24 w-24 -translate-x-1/2 rounded-full bg-primary/10 blur-2xl opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+                        <div className="pointer-events-none absolute -top-12 left-1/2 h-24 w-24 -translate-x-1/2 rounded-full bg-white/[0.04] blur-2xl opacity-50 transition-opacity duration-300 group-hover:opacity-100" />
 
                         <div className="relative flex items-start justify-between gap-6">
                           <div className="flex items-center gap-3">

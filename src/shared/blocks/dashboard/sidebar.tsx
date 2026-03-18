@@ -72,15 +72,15 @@ export function Sidebar({
     bottom_nav: {
       items: [
         {
+          title: t('credits.topUp'),
+          url: '/pricing',
+          icon: 'Coins',
+          target: '_blank',
+        },
+        {
           title: t('user_nav.settings'),
           url: '/settings',
           icon: 'Settings',
-        },
-        {
-          title: t('user_nav.support'),
-          url: 'https://docs.souldub.ai/',
-          icon: 'HelpCircle',
-          target: '_blank',
         },
       ],
     },

@@ -106,7 +106,7 @@ export function TaskStatusStepper({
     if (safeStatus === 'completed') return 'text-emerald-500';
     if (safeStatus === 'failed' || safeStatus === 'cancelled') return 'text-destructive';
     if (safeStatus === 'processing') return 'text-primary';
-    return 'text-cyan-500';
+    return 'text-amber-500';
   })();
 
   const pendingState: Parameters<typeof StageDot>[0]['state'] = stage > 0 ? 'done' : 'active';
@@ -173,7 +173,7 @@ export function TaskStatusStepper({
             className="absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
             style={{ left: `${Math.min(100, Math.max(0, visualPercent))}%` }}
           >
-            <div className="size-2 rounded-full bg-white/70 shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_22px_rgba(167,139,250,0.35)]" />
+            <div className="size-2 rounded-full bg-white/70 shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_22px_rgba(255,255,255,0.12)]" />
           </div>
         ) : null}
       </div>

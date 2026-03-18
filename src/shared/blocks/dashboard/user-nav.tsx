@@ -41,7 +41,7 @@ export function UserNav({ user }: { user: SidebarUserType }) {
 
     const handleSignOut = async () => {
         await signOut();
-        router.push(user.signout_callback || '/sign-in');
+        router.push('/');
     };
 
     if (!hasMounted) {
