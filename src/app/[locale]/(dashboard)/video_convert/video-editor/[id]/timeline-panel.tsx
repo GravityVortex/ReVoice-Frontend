@@ -714,12 +714,8 @@ export function TimelinePanel({
                 {/* Right Scrollable Timeline */}
                 <div
                     id="unified-scroll-container"
-                    className="group flex-1 overflow-x-auto overflow-y-hidden relative bg-muted/5"
+                    className="flex-1 overflow-x-auto overflow-y-hidden relative bg-muted/5"
                 >
-                    {/* Edge fades to hint horizontal scroll */}
-                    <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-30 w-10 bg-gradient-to-r from-background/80 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-30 w-10 bg-gradient-to-l from-background/80 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-
                     <div
                         className="flex flex-col h-full min-w-full"
                         style={{ width: `${contentWidthPx}px` }}
