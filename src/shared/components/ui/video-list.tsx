@@ -443,7 +443,7 @@ function GridVideoCard({
           ) : isFailed ? (
             <span className="text-red-400">{t("statusShort.failed")}</span>
           ) : isPartial ? (
-            <span className="text-amber-500">{t("statusShort.partial", { done: completedCount, total: taskCount })}</span>
+            <span className="text-amber-500">{t("statusShort.partial").replace("{done}", String(completedCount)).replace("{total}", String(taskCount))}</span>
           ) : taskCount === 0 ? (
             <span className="text-muted-foreground/60">{t("card.noTranslations")}</span>
           ) : (
