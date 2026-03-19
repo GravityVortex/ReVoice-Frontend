@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { cn } from '@/shared/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -10,19 +9,8 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/shared/components/ui/dialog';
-import { Card, CardContent } from '@/shared/components/ui/card';
 import { Label } from "@/shared/components/ui/label";
-import { Textarea } from "@/shared/components/ui/textarea";
 import { Button } from "@/shared/components/ui/button";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/shared/components/ui/select";
-import { useAppContext } from "@/shared/contexts/app";
-import { Check, ChevronRight, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/shared/components/ui/input';
 import { ImageUploader, ImageUploaderValue } from '@/shared/blocks/common/image-uploader';
@@ -45,36 +33,21 @@ export function ProjectUpdateModal({
     onUpdateEvent
 }: ProjectUpdateModalProps) {
     const t = useTranslations('video_convert.projectUpdateModal');
-    const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
-    const { user } = useAppContext();
-    // const [loading, setLoading] = useState(false);
 
-    // 模拟视频时长数据（分钟）
-    const [videoDuration, setVideoDuration] = useState(0);
-
-    // 表单数据
     const [formData, setFormData] = useState({
         title: "",
-        // description: "",
-        // content: "",
         cover_url: "",
         cover_key: "",
         cover_size: 0,
-        // source_vdo_url: "",
-        // result_vdo_url: "",
-        // duration: "",
     });
-    // console.log('modal---formData-->', formData)
 
 
     useEffect(() => {
         if (projectItem && isOpen) {
-            console.log("ProjectUpdateModal 接收到的 projectItem--->", projectItem);
             setFormData({
                 title: projectItem.fileName || "",
                 cover_size: projectItem.coverSizeBytes || 0,
-                // 列表页cover；
                 cover_url: projectItem.cover || "",
                 cover_key: projectItem.coverR2Key || "",
             });
@@ -137,104 +110,62 @@ export function ProjectUpdateModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <DialogContent className="max-w-3/5 h-[580px] flex flex-col p-0">
-                    <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
-                        <DialogTitle>{t('title')}</DialogTitle>
-                        <DialogDescription className="sr-only">
-                            {t('description')}
-                        </DialogDescription>
-                    </DialogHeader>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>{t('title')}</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        {t('description')}
+                    </DialogDescription>
+                </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto px-6 pb-0">
-                        <Card className="mt-2 pt-2 pb-5">
-                            <CardContent>
-                                {/* 封面上传 */}
-                                <div className="space-y-3 mt-4">
-                                    <Label>{t('fields.videoCover')}</Label>
-                                    <ImageUploader
-                                        allowMultiple={false}
-                                        maxImages={1}
-                                        maxSizeMB={3}
-                                        title=""
-                                        fileId={projectItem.id}
-                                        emptyHint={t('fields.coverUploadHint')}
-                                        defaultPreviews={formData.cover_url ? [formData.cover_url] : []}
-                                        imageClassName="w-full"
-                                        aspectRatio="16/9"
-                                        onChange={(items: ImageUploaderValue[]) => {
-                                            console.log("封面上传结果 items--->", items);
-                                            const uploadedItem = items.find(
-                                                (item) => item.status === 'uploaded' && item.url
-                                            );
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                cover_url: uploadedItem?.url || '',
-                                                cover_key: uploadedItem?.key || '',
-                                                cover_size: uploadedItem?.size || 0,
-                                            }));
-                                        }}
-                                    />
-                                </div>
-
-                                {/* 视频标题 */}
-                                <div className="space-y-3 mt-4">
-                                    <Label htmlFor="title">{t('fields.videoName')}</Label>
-                                    <Input
-                                        id="title"
-                                        value={formData.title}
-                                        onChange={(e) => handleChange("title", e.target.value)}
-                                        placeholder={t('fields.namePlaceholder')}
-                                        required
-                                    />
-                                </div>
-
-                                {/* 视频描述 */}
-                                {/* <div className="space-y-3">
-                                    <Label htmlFor="description">视频描述</Label>
-                                    <Input
-                                        id="description"
-                                        value={formData.description}
-                                        onChange={(e) => handleChange("description", e.target.value)}
-                                        placeholder="输入视频描述"
-                                    />
-                                </div> */}
-
-                                {/* 视频内容 */}
-                                {/* <div className="space-y-3 mt-4">
-                                    <Label htmlFor="content">视频内容</Label>
-                                    <Textarea
-                                        id="content"
-                                        value={formData.content}
-                                        onChange={(e) => handleChange("content", e.target.value)}
-                                        placeholder="输入视频详细内容"
-                                        rows={6}
-                                    />
-                                </div> */}
-
-                            </CardContent>
-                        </Card>
+                <div className="space-y-5 py-2">
+                    <div className="space-y-2">
+                        <Label>{t('fields.videoCover')}</Label>
+                        <ImageUploader
+                            allowMultiple={false}
+                            maxImages={1}
+                            maxSizeMB={3}
+                            title=""
+                            fileId={projectItem.id}
+                            emptyHint={t('fields.coverUploadHint')}
+                            defaultPreviews={formData.cover_url ? [formData.cover_url] : []}
+                            imageClassName="w-full"
+                            aspectRatio="16/9"
+                            onChange={(items: ImageUploaderValue[]) => {
+                                const uploadedItem = items.find(
+                                    (item) => item.status === 'uploaded' && item.url
+                                );
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    cover_url: uploadedItem?.url || '',
+                                    cover_key: uploadedItem?.key || '',
+                                    cover_size: uploadedItem?.size || 0,
+                                }));
+                            }}
+                        />
                     </div>
-                    {/* 底部按钮 */}
-                    <div className="shrink-0 border-t px-6 py-4 bg-muted/30">
-                        <div className="flex justify-between">
-                            <Button
-                                variant="outline"
-                                onClick={handleCancel}>
-                                {t('buttons.cancel')}
-                            </Button>
 
-                            <Button
-                                type="submit"
-                                onClick={handleSubmit}
-                                disabled={submitting} >
-                                {/* <Save className="mr-2 size-4" /> */}
-                                {submitting ? t('buttons.submitting') : t('buttons.save')}
-                            </Button>
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="title">{t('fields.videoName')}</Label>
+                        <Input
+                            id="title"
+                            value={formData.title}
+                            onChange={(e) => handleChange("title", e.target.value)}
+                            placeholder={t('fields.namePlaceholder')}
+                            required
+                        />
                     </div>
-                </DialogContent>
-            </form>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={handleCancel}>
+                        {t('buttons.cancel')}
+                    </Button>
+                    <Button onClick={handleSubmit} disabled={submitting}>
+                        {submitting ? t('buttons.submitting') : t('buttons.save')}
+                    </Button>
+                </div>
+            </DialogContent>
         </Dialog>
     );
 }

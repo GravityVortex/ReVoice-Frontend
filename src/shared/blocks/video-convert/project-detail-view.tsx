@@ -1461,20 +1461,19 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
             </Button>
           )}
           <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">{videoDetail?.fileName || 'Project'}</h1>
-          <Button variant="outline" size="sm" className="gap-2" onClick={openEditProject}>
-            <Pencil className="size-4" />
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5" onClick={openEditProject}>
+            <Pencil className="size-3.5" />
             {t('menu.editInfo')}
           </Button>
         </div>
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="text-destructive/75 hover:bg-destructive/10 hover:text-destructive gap-2"
+          size="icon"
+          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           onClick={() => setShowDeleteDialog(true)}
         >
           <Trash2 className="size-4" />
-          {t('menu.delete')}
         </Button>
       </div>
 
@@ -1512,30 +1511,25 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
       >
         {/* Preview */}
         <Card className={cn('flex flex-col gap-0 overflow-hidden py-0', shouldStretchDetailColumns && 'lg:h-full')}>
-          <CardHeader className="border-b border-white/5 pt-5 pb-4">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-muted-foreground text-base font-semibold tracking-widest uppercase">{t('ui.preview')}</CardTitle>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <Tabs value={videoMode} onValueChange={(v) => setVideoMode(v as typeof videoMode)}>
-                <TabsList className="h-9">
-                  <TabsTrigger value="result" disabled={!taskResultKey}>
-                    {t('ui.mode.result')}
-                  </TabsTrigger>
-                  <TabsTrigger value="preview" disabled={!taskPreviewKey}>
-                    {t('ui.mode.preview')}
-                  </TabsTrigger>
-                  <TabsTrigger value="original" disabled={!originalVideoKey}>
-                    {t('ui.mode.original')}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </CardHeader>
-          <CardContent className={cn('flex flex-1 flex-col gap-3 px-3 py-3 md:px-4 md:py-4', shouldStretchDetailColumns && 'lg:min-h-0')}>
+          <div className="flex items-center border-b border-white/5 px-3 py-3 md:px-4">
+            <Tabs value={videoMode} onValueChange={(v) => setVideoMode(v as typeof videoMode)}>
+              <TabsList className="h-9">
+                <TabsTrigger value="result" disabled={!taskResultKey}>
+                  {t('ui.mode.result')}
+                </TabsTrigger>
+                <TabsTrigger value="preview" disabled={!taskPreviewKey}>
+                  {t('ui.mode.preview')}
+                </TabsTrigger>
+                <TabsTrigger value="original" disabled={!originalVideoKey}>
+                  {t('ui.mode.original')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <CardContent className={cn('flex flex-1 flex-col p-2 md:p-3', shouldStretchDetailColumns && 'lg:min-h-0')}>
             <div
               ref={previewSlotRef}
-              className="flex min-h-[280px] w-full min-w-0 flex-1 items-center justify-center overflow-hidden lg:min-h-[420px]"
+              className="aspect-video w-full min-w-0 flex items-center justify-center overflow-hidden"
             >
               <div
                 className="relative overflow-hidden rounded-2xl bg-black transition-[width,height,max-width,max-height] duration-300"
@@ -1576,6 +1570,27 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
                     <Loader2 className="size-8 animate-spin text-white/70" />
                   </div>
                 ) : null}
+              </div>
+            </div>
+            <div className="flex flex-1 flex-col justify-center px-1 md:px-2">
+              <div className="rounded-[24px] border border-white/[0.05] bg-gradient-to-b from-white/[0.03] to-transparent px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <div className="text-muted-foreground text-[11px] font-medium tracking-[0.22em] uppercase">
+                  {t('videoInfo.originalVideo')}
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2.5">
+                  <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
+                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{t('videoInfo.duration')}</div>
+                    <div className="text-foreground mt-1 text-sm font-semibold">{duration}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
+                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{t('videoInfo.size')}</div>
+                    <div className="text-foreground mt-1 text-sm font-semibold">{sizeMb} MB</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
+                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{t('videoInfo.uploadTime')}</div>
+                    <div className="text-foreground mt-1 text-sm font-semibold">{formatDate(videoDetail?.createdAt || '')}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

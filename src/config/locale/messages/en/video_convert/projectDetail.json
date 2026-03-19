@@ -18,9 +18,9 @@
     "delete": "Delete"
   },
   "videoInfo": {
-    "originalVideo": "Original Video",
-    "size": "Original Video Size",
-    "duration": "Original Video Duration",
+    "originalVideo": "Source File Info",
+    "size": "Size",
+    "duration": "Duration",
     "uploadTime": "Upload Time"
   },
   "conversion": {

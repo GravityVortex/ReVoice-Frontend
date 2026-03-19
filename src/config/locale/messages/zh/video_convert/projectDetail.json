@@ -18,10 +18,10 @@
     "delete": "删除"
   },
   "videoInfo": {
-    "originalVideo": "原视频",
-    "size": "原视频大小",
-    "duration": "原视频时长",
-    "uploadTime": "原视频上传时间"
+    "originalVideo": "源文件信息",
+    "size": "大小",
+    "duration": "时长",
+    "uploadTime": "上传时间"
   },
   "conversion": {
     "progress": "转换进度",
