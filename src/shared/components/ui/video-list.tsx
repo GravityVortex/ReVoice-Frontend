@@ -377,7 +377,7 @@ function GridVideoCard({
             >
               {config.icon}
               {status === "partial"
-                ? t("statusShort.partial").replace("{done}", String(completedCount)).replace("{total}", String(taskCount))
+                ? `${t("statusShort.partial")} (${completedCount}/${taskCount})`
                 : t(`statusShort.${status}`)}
             </button>
           </div>
@@ -443,7 +443,7 @@ function GridVideoCard({
           ) : isFailed ? (
             <span className="text-red-400">{t("statusShort.failed")}</span>
           ) : isPartial ? (
-            <span className="text-amber-500">{t("statusShort.partial").replace("{done}", String(completedCount)).replace("{total}", String(taskCount))}</span>
+            <span className="text-amber-500">{`${t("statusShort.partial")} (${completedCount}/${taskCount})`}</span>
           ) : taskCount === 0 ? (
             <span className="text-muted-foreground/60">{t("card.noTranslations")}</span>
           ) : (
