@@ -377,7 +377,7 @@ function GridVideoCard({
             >
               {config.icon}
               {status === "partial"
-                ? t("statusShort.partial", { done: completedCount, total: taskCount })
+                ? t("statusShort.partial").replace("{done}", String(completedCount)).replace("{total}", String(taskCount))
                 : t(`statusShort.${status}`)}
             </button>
           </div>
