@@ -24,6 +24,7 @@ export default function DashboardProjectsPage() {
   const router = useRouter();
   const { user } = useAppContext();
   const t = useTranslations('video_convert.myVideoList');
+  const tCommon = useTranslations('common');
   const tDashboard = useTranslations('common.dashboard.sidebar');
 
   const [selectedVideo, setSelectedVideo] = useState<VideoListItem | null>(null);
@@ -277,7 +278,7 @@ export default function DashboardProjectsPage() {
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 bg-muted/20 py-20 text-center">
           <p className="text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => doGetVideoListFromNet()}>
-            {locale === 'zh' ? '重试' : 'Retry'}
+            {tCommon('errorState.retry')}
           </Button>
         </div>
       )}

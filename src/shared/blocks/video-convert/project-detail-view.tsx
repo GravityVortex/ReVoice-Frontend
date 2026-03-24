@@ -596,7 +596,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         const response = await fetch(`/api/video-task/detail?fileId=${fileId}`);
         const backJO = await response.json();
         if (backJO?.code !== 0) {
-          if (!silent) setError(backJO?.message || '获取视频详情失败');
+          if (!silent) setError(backJO?.message || t('toast.fetchDetailFailed'));
           return;
         }
 
@@ -620,7 +620,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         });
       } catch (e) {
         console.error('[ProjectDetailView] Failed to fetch detail:', e);
-        if (!silent) setError('获取视频详情失败');
+        if (!silent) setError(t('toast.fetchDetailFailed'));
       } finally {
         if (!silent) setLoading(false);
       }
@@ -797,7 +797,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
       const response = await fetch(`/api/video-task/download-video?taskId=${selectedTask.id}&expiresIn=60`);
       const data = await response.json();
       if (data?.code !== 0) {
-        toast.error(data?.message || '获取下载链接失败');
+        toast.error(data?.message || t('toast.downloadLinkFailed'));
         return;
       }
 
@@ -810,7 +810,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
       document.body.removeChild(link);
     } catch (e) {
       console.error('[ProjectDetailView] Download failed:', e);
-      toast.error('下载失败，请稍后重试');
+      toast.error(t('toast.downloadFailed'));
     }
   }, [selectedTask?.id, selectedTask?.status, videoDetail?.fileName]);
 
@@ -830,7 +830,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         );
         const data = await response.json();
         if (data?.code !== 0) {
-          toast.error(data?.message || '获取下载链接失败');
+          toast.error(data?.message || t('toast.downloadLinkFailed'));
           return;
         }
         const link = document.createElement('a');
@@ -842,7 +842,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         document.body.removeChild(link);
       } catch (e) {
         console.error('[ProjectDetailView] Audio download failed:', e);
-        toast.error('下载失败，请稍后重试');
+        toast.error(t('toast.downloadFailed'));
       }
     },
     [canUseOutputs, selectedTask?.id, videoDetail?.fileName, videoDetail?.userId]
@@ -862,7 +862,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
       setSubtitleAudioUrl(newUrl);
     } catch (e) {
       console.error('[ProjectDetailView] Failed to load audio urls:', e);
-      toast.error('获取音频失败，请稍后重试');
+      toast.error(t('toast.audioFetchFailed'));
       setShowAudioModal(false);
     } finally {
       setIsAudioModalLoading(false);
@@ -881,7 +881,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         const response = await fetch(downloadUrl);
         if (!response.ok) {
           const err = await response.json();
-          toast.error(err?.message || '下载字幕失败');
+          toast.error(err?.message || t('toast.subtitleDownloadFailed'));
           return;
         }
         const blob = await response.blob();
@@ -895,7 +895,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         window.URL.revokeObjectURL(url);
       } catch (e) {
         console.error('[ProjectDetailView] Subtitle download failed:', e);
-        toast.error('下载字幕失败，请稍后重试');
+        toast.error(t('toast.subtitleDownloadFailed'));
       }
     },
     [canUseOutputs, selectedTask?.id]
@@ -912,14 +912,14 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
       });
       const result = await response.json();
       if (result?.code === 0) {
-        toast.success('删除成功');
+        toast.success(t('toast.deleteSuccess'));
         router.push(backHref);
         return;
       }
-      toast.error(result?.message || '删除失败');
+      toast.error(result?.message || t('toast.deleteFailed'));
     } catch (e) {
       console.error('[ProjectDetailView] Delete failed:', e);
-      toast.error('删除失败，请稍后重试');
+      toast.error(t('toast.deleteFailedRetry'));
     }
   }, [backHref, fileId, router]);
 

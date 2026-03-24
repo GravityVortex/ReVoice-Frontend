@@ -257,5 +257,15 @@
         "errorLabel": "失败原因"
       }
     }
+  },
+  "toast": {
+    "fetchDetailFailed": "获取视频详情失败",
+    "downloadLinkFailed": "获取下载链接失败",
+    "downloadFailed": "下载失败，请稍后重试",
+    "audioFetchFailed": "获取音频失败，请稍后重试",
+    "subtitleDownloadFailed": "下载字幕失败，请稍后重试",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
+    "deleteFailedRetry": "删除失败，请稍后重试"
   }
 }

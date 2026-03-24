@@ -18,8 +18,8 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = '页面暂时无法加载',
-  description = '可能是网络波动，请稍后再试',
+  title = 'Page temporarily unavailable',
+  description = 'Network issue. Please try again later.',
   detail,
   action,
   compact = false,
@@ -72,10 +72,11 @@ export function ErrorState({
 interface ErrorBlockProps {
   message: string;
   onRetry?: () => void;
+  retryLabel?: string;
   className?: string;
 }
 
-export function ErrorBlock({ message, onRetry, className }: ErrorBlockProps) {
+export function ErrorBlock({ message, onRetry, retryLabel = 'Retry', className }: ErrorBlockProps) {
   return (
     <div
       className={cn(
@@ -92,7 +93,7 @@ export function ErrorBlock({ message, onRetry, className }: ErrorBlockProps) {
             onClick={onRetry}
             className="ml-1.5 inline-flex cursor-pointer items-center text-amber-500/80 underline underline-offset-2 transition-colors hover:text-amber-400"
           >
-            重试
+            {retryLabel}
           </button>
         )}
       </p>

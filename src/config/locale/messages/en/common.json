@@ -158,6 +158,11 @@
     }
   },
   "copyright": "All rights reserved.",
+  "errorState": {
+    "title": "Page temporarily unavailable",
+    "description": "Network issue. Please try again later.",
+    "retry": "Retry"
+  },
   "not_found": {
     "title": "Page Not Found",
     "heading": "Page Not Found",

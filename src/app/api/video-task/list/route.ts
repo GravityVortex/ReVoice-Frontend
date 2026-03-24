@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const paramUserId = searchParams.get('userId') || '';
-    const delFlag = (searchParams.get('delFlag') || 'all') as 'all' | 'noDel';
+    const delFlag = (searchParams.get('delFlag') || 'noDel') as 'all' | 'noDel';
     const status = searchParams.get('status') || 'all';
 
     const user = await getUserInfo();

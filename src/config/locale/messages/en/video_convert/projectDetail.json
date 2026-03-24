@@ -257,5 +257,15 @@
         "errorLabel": "Failure reason"
       }
     }
+  },
+  "toast": {
+    "fetchDetailFailed": "Failed to load video details",
+    "downloadLinkFailed": "Failed to get download link",
+    "downloadFailed": "Download failed. Please try again later.",
+    "audioFetchFailed": "Failed to load audio. Please try again later.",
+    "subtitleDownloadFailed": "Failed to download subtitles. Please try again later.",
+    "deleteSuccess": "Deleted successfully",
+    "deleteFailed": "Delete failed",
+    "deleteFailedRetry": "Delete failed. Please try again later."
   }
 }

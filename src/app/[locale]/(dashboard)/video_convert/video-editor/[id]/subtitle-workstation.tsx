@@ -82,6 +82,7 @@ export const SubtitleWorkstation = memo(
       ref
     ) => {
       const t = useTranslations('video_convert.videoEditor.audioList');
+      const tCommon = useTranslations('common');
       const { user, fetchUserCredits } = useAppContext();
 
       // State
@@ -1081,7 +1082,7 @@ export const SubtitleWorkstation = memo(
               )}
 
               {error && (
-                <ErrorBlock message={`${t('loadError')}: ${error}`} onRetry={loadSrtFiles} />
+                <ErrorBlock message={`${t('loadError')}: ${error}`} onRetry={loadSrtFiles} retryLabel={tCommon('errorState.retry')} />
               )}
 
               {!isLoading &&

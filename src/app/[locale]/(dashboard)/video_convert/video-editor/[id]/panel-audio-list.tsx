@@ -48,6 +48,7 @@ interface AudioListPanelProps {
 export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, AudioListPanelProps>(
   ({ onPlayingIndexChange, convertObj, playingSubtitleIndex = -1, onSeekToSubtitle, onShowTip, onUpdateSubtitleAudioUrl }, ref) => {
     const t = useTranslations('video_convert.videoEditor.audioList');
+    const tCommon = useTranslations('common');
     const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
     // 记录修改的字幕音频列表集合
     const [updateItemList, setUpdateItemList] = useState<SubtitleRowData[]>([]);
@@ -630,7 +631,7 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
             )}
 
             {error && (
-              <ErrorBlock message={`${t('loadError')}: ${error}`} onRetry={loadSrtFiles} />
+              <ErrorBlock message={`${t('loadError')}: ${error}`} onRetry={loadSrtFiles} retryLabel={tCommon('errorState.retry')} />
             )}
 
             {!isLoading &&

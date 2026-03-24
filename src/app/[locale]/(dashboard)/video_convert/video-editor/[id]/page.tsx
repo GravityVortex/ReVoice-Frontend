@@ -76,6 +76,7 @@ export default function VideoEditorPage() {
   const convertId = params.id as string;
   const locale = (params.locale as string) || "zh";
   const t = useTranslations('video_convert.videoEditor');
+  const tCommon = useTranslations('common');
   const tDetail = useTranslations('video_convert.projectDetail');
   const { user } = useAppContext();
   // --- CORE STATE ---
@@ -3326,7 +3327,7 @@ export default function VideoEditorPage() {
       detail={error}
       action={
         <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-          {locale === 'zh' ? '重试' : 'Retry'}
+          {tCommon('errorState.retry')}
         </Button>
       }
     />

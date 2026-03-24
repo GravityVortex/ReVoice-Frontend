@@ -158,6 +158,11 @@
     }
   },
   "copyright": "版权所有。",
+  "errorState": {
+    "title": "页面暂时无法加载",
+    "description": "可能是网络波动，请稍后再试",
+    "retry": "重试"
+  },
   "not_found": {
     "title": "页面未找到",
     "heading": "页面未找到",
