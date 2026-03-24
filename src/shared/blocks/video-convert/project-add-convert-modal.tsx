@@ -144,7 +144,7 @@ export function ProjectAddConvertModal({
         };
 
         if (isOpen) {
-            const cached = localStorage.getItem(STORAGE_KEY);
+            const cached = sessionStorage.getItem(STORAGE_KEY);
             if (cached) {
                 try {
                     const parsedData = JSON.parse(cached);
@@ -204,15 +204,15 @@ export function ProjectAddConvertModal({
 
     // 保存到本地缓存
     const saveToCache = () => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
         // localStorage.setItem(`${STORAGE_KEY}_duration`, videoDuration.toString());
         console.log('表单数据已缓存');
     };
 
     // 清除缓存
     const clearCache = () => {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(`${STORAGE_KEY}_duration`);
+        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(`${STORAGE_KEY}_duration`);
         console.log('缓存已清除');
     };
 

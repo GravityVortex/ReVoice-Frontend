@@ -242,7 +242,49 @@ export function ProjectCreateFlow() {
         };
     }, []);
 
-    // Load Config & Cache
+    // Load cache once on mount (sessionStorage is per-tab, safe from cross-tab pollution)
+    useEffect(() => {
+        const cached = sessionStorage.getItem(STORAGE_KEY);
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                const rawUpload = parsed?.videoUpload || {};
+                const normalizedUpload: VideoUploadData = {
+                    videoKey: String(rawUpload.videoKey || ''),
+                    videoSize: Number(rawUpload.videoSize || 0),
+                    videoDuration: Number(rawUpload.videoDuration || 0),
+                    thumbnailUrl: '',
+                    fileName: String(rawUpload.fileName || ''),
+                    fileType: String(rawUpload.fileType || ''),
+                    r2Key: String(rawUpload.r2Key || ''),
+                    r2Bucket: String(rawUpload.r2Bucket || ''),
+                    fileId: String(rawUpload.fileId || ''),
+                };
+                const rawSrc = String(parsed?.sourceLanguage || '');
+                const rawTgt = String(parsed?.targetLanguage || '');
+                const sourceLanguage: LangCode = isValidLangCode(rawSrc) ? rawSrc : 'en';
+                const targetLanguage: LangCode =
+                    isValidLangCode(rawTgt) && rawTgt !== sourceLanguage
+                        ? rawTgt
+                        : getDefaultTargetLang(sourceLanguage);
+                setFormData({
+                    ...parsed,
+                    videoUpload: normalizedUpload,
+                    sourceLanguage,
+                    targetLanguage,
+                });
+
+                if (normalizedUpload.fileId && normalizedUpload.videoKey) {
+                    didAutoSwitchToCloudRef.current = true;
+                    setPreviewSource('cloud');
+                }
+            } catch (e) {
+                console.error('Failed to parse cache', e);
+            }
+        }
+    }, []);
+
+    // Load config (re-fetch when user changes, e.g. after login)
     useEffect(() => {
         const fetchConfig = async () => {
             try {
@@ -266,47 +308,6 @@ export function ProjectCreateFlow() {
                 console.error("Failed to load config", e);
             }
         };
-
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached) {
-            try {
-                const parsed = JSON.parse(cached);
-                const rawUpload = parsed?.videoUpload || {};
-                const normalizedUpload: VideoUploadData = {
-                    videoKey: String(rawUpload.videoKey || ''),
-                    videoSize: Number(rawUpload.videoSize || 0),
-                    videoDuration: Number(rawUpload.videoDuration || 0),
-                    // 不缓存 URL，这里仅做兜底兼容（历史缓存/数据结构变化）。
-                    thumbnailUrl: '',
-                    fileName: String(rawUpload.fileName || ''),
-                    fileType: String(rawUpload.fileType || ''),
-                    r2Key: String(rawUpload.r2Key || ''),
-                    r2Bucket: String(rawUpload.r2Bucket || ''),
-                    fileId: String(rawUpload.fileId || ''),
-                };
-                const rawSrc = String(parsed?.sourceLanguage || '');
-                const rawTgt = String(parsed?.targetLanguage || '');
-                const sourceLanguage: LangCode = isValidLangCode(rawSrc) ? rawSrc : 'en';
-                const targetLanguage: LangCode =
-                    isValidLangCode(rawTgt) && rawTgt !== sourceLanguage
-                        ? rawTgt
-                        : getDefaultTargetLang(sourceLanguage);
-                setFormData({
-                    ...parsed,
-                    videoUpload: normalizedUpload,
-                    sourceLanguage,
-                    targetLanguage,
-                });
-
-                // 刷新后本地文件不可恢复：若已完成上传，默认展示云端预览（同源 stream）。
-                if (normalizedUpload.fileId && normalizedUpload.videoKey) {
-                    didAutoSwitchToCloudRef.current = true;
-                    setPreviewSource('cloud');
-                }
-            } catch (e) {
-                console.error('Failed to parse cache', e);
-            }
-        }
         fetchConfig();
     }, [user]);
 
@@ -344,11 +345,11 @@ export function ProjectCreateFlow() {
                 fileId: formData.videoUpload.fileId,
             },
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stableCache));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stableCache));
     }, [formData, isUploadComplete]);
 
     const clearCache = () => {
-        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_KEY);
     };
 
     const resetFormData = () => {
