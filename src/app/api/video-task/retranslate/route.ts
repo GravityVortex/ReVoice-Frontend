@@ -14,7 +14,7 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const RETRANSLATABLE_STATUSES = new Set(['completed', 'failed']);
+const RETRANSLATABLE_STATUSES = new Set(['completed', 'failed', 'cancelled']);
 
 const IN_PROGRESS_STATUSES = new Set(['pending', 'processing']);
 
@@ -68,7 +68,6 @@ export async function POST(req: Request) {
     const existingTasks = await getVtTaskMainListByFileIds([originalFileId], user.id);
     const inProgress = existingTasks.find(
       (t) =>
-        t.id !== existingTaskId &&
         t.sourceLanguage === sourceLanguage &&
         t.targetLanguage === targetLanguage &&
         IN_PROGRESS_STATUSES.has(t.status),

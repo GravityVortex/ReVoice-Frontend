@@ -1797,6 +1797,13 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
                         </div>
                       ) : null}
                     </div>
+
+                    {selectedTask.status !== 'pending' && selectedTask.status !== 'processing' && (
+                      <Button variant="outline" size="sm" className="h-8 w-full rounded-xl" onClick={() => setIsRetranslateOpen(true)}>
+                        <RefreshCw className="mr-1.5 size-3.5" />
+                        {t('buttons.retranslate')}
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
