@@ -60,6 +60,7 @@
   "buttons": {
     "download": "下载",
     "edit": "编辑",
+    "retranslate": "重新翻译",
     "progress": "进度",
     "cancel": "取消"
   },
@@ -127,6 +128,22 @@
       "de": "德语",
       "it": "意大利语",
       "ja": "日语"
+    },
+    "retranslate": {
+      "title": "重新翻译",
+      "description": "使用相同设置创建新的翻译任务，之前的结果仍会保留。",
+      "cancel": "取消",
+      "confirm": "重新翻译",
+      "confirming": "创建中...",
+      "costTitle": "预计消耗",
+      "costDuration": "视频时长约 {minutes} 分钟",
+      "costPerMinute": "按 {points} 积分/分钟计费",
+      "currentBalance": "当前余额",
+      "insufficientCredits": "积分不足，还差 {amount} 积分",
+      "buyCredits": "购买积分",
+      "success": "重新翻译任务已创建",
+      "duplicateBlocked": "该语种已有翻译任务正在执行中",
+      "failed": "创建失败，请稍后重试"
     },
     "addRun": {
       "button": "新增翻译",

@@ -53,7 +53,10 @@ export function getSubtitleRowInlineUiModel(input: GetSubtitleRowInlineUiModelIn
       tone: 'success',
       showHint: true,
       emphasizeHint: false,
-      actions: [{ kind: 'apply_voice', emphasis: 'primary', meta: null }],
+      actions: [
+        { kind: 'apply_voice', emphasis: 'primary', meta: null },
+        { kind: 'generate_voice', emphasis: 'secondary', meta: 'credit_2' },
+      ],
     };
   }
 

@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Sparkles,
   Trash2,
   Users,
@@ -148,6 +149,11 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
   const addRunSubmitLockRef = useRef(false);
   const [addRunPointsPerMinute, setAddRunPointsPerMinute] = useState<number>(3);
   const [addRunConfigLoading, setAddRunConfigLoading] = useState(false);
+
+  // Retranslate UI
+  const [isRetranslateOpen, setIsRetranslateOpen] = useState(false);
+  const [retranslateSubmitting, setRetranslateSubmitting] = useState(false);
+  const retranslateSubmitLockRef = useRef(false);
 
   // Two-state view: 'list' = task list landing, 'detail' = expanded detail
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
@@ -359,6 +365,10 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
   useEffect(() => {
     if (isAddRunOpen) fetchUserCredits();
   }, [isAddRunOpen, fetchUserCredits]);
+
+  useEffect(() => {
+    if (isRetranslateOpen) fetchUserCredits();
+  }, [isRetranslateOpen, fetchUserCredits]);
 
   const summaryStats = useMemo(() => {
     if (!selectedTask) return [];
@@ -1054,6 +1064,51 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
     t,
   ]);
 
+  const handleRetranslate = useCallback(async () => {
+    if (!selectedTask?.id) return;
+    if (retranslateSubmitting || retranslateSubmitLockRef.current) return;
+
+    retranslateSubmitLockRef.current = true;
+    setRetranslateSubmitting(true);
+
+    try {
+      const res = await fetch('/api/video-task/retranslate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ existingTaskId: selectedTask.id }),
+      });
+      const data = await res.json();
+
+      if (data?.code === 0) {
+        const newTaskId = data?.data?.id as string | undefined;
+        toast.success(t('ui.retranslate.success'));
+        setIsRetranslateOpen(false);
+        if (newTaskId) {
+          setSelectedTaskId(newTaskId);
+        }
+        void fetchDetail({ silent: true });
+        return;
+      }
+
+      const msg = data?.message || t('ui.retranslate.failed');
+      const isCreditsError = msg.includes('积分不足') || msg.toLowerCase().includes('insufficient credit');
+      if (isCreditsError) {
+        fetchUserCredits();
+        toast.error(msg, { action: { label: t('ui.retranslate.buyCredits'), onClick: () => window.open('/pricing', '_blank') } });
+      } else if (data?.data?.existingTaskId) {
+        toast.error(t('ui.retranslate.duplicateBlocked'));
+      } else {
+        toast.error(msg);
+      }
+    } catch (e) {
+      console.error('[ProjectDetailView] Failed to retranslate:', e);
+      toast.error(t('ui.retranslate.failed'));
+    } finally {
+      retranslateSubmitLockRef.current = false;
+      setRetranslateSubmitting(false);
+    }
+  }, [fetchDetail, fetchUserCredits, retranslateSubmitting, selectedTask?.id, t]);
+
   const openEditProject = useCallback(() => {
     setProjectItem({ ...(videoDetail || {}) });
     setIsEditDialogOpen(true);
@@ -1642,6 +1697,10 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
                         <Button size="sm" className="h-8 rounded-xl" onClick={handleOpenEditor}>
                           {t('buttons.edit')}
                         </Button>
+                        <Button variant="outline" size="sm" className="h-8 rounded-xl" onClick={() => setIsRetranslateOpen(true)}>
+                          <RefreshCw className="mr-1.5 size-3.5" />
+                          {t('buttons.retranslate')}
+                        </Button>
                         <Button variant="outline" size="icon" className="size-8 rounded-xl" onClick={handleDownloadVideo}>
                           <Download className="size-3.5" />
                         </Button>
@@ -1999,6 +2058,83 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
                   <>
                     {t('ui.addRun.create')}
                     <ArrowRight className="ml-2 size-4" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Retranslate confirmation */}
+        <Dialog open={isRetranslateOpen} onOpenChange={setIsRetranslateOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>{t('ui.retranslate.title')}</DialogTitle>
+              <DialogDescription>{t('ui.retranslate.description')}</DialogDescription>
+            </DialogHeader>
+
+            <div className={cn(
+              "rounded-xl border p-4 transition-colors",
+              addRunIsInsufficient ? "border-destructive/20 bg-destructive/5" : "border-primary/15 bg-primary/5"
+            )}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-primary/80 text-xs font-medium tracking-widest uppercase">{t('ui.retranslate.costTitle')}</div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-primary text-3xl font-bold">{addRunCreditsEstimate}</span>
+                    <span className="text-muted-foreground text-sm">{t('menu.credits')}</span>
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    {addRunDurationMinutes ? t('ui.retranslate.costDuration', { minutes: addRunDurationMinutes }) : '-'}
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    {t('ui.retranslate.costPerMinute', { points: addRunPointsPerMinute })}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-xs font-medium text-muted-foreground">{t('ui.retranslate.currentBalance')}</div>
+                  <div className={cn("mt-1 text-2xl font-bold", addRunIsInsufficient ? "text-destructive" : "text-primary")}>
+                    {addRunCurrentBalance}
+                  </div>
+                </div>
+              </div>
+              {addRunIsInsufficient && (
+                <div className="mt-3 rounded-lg bg-destructive/10 border border-destructive/20 p-3 space-y-2">
+                  <p className="text-sm font-medium text-destructive flex items-center gap-1.5">
+                    <AlertTriangle className="size-4 shrink-0" />
+                    {t('ui.retranslate.insufficientCredits', { amount: addRunShortBy })}
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => window.open('/pricing', '_blank')}
+                  >
+                    <CreditCard className="mr-2 size-4" />
+                    {t('ui.retranslate.buyCredits')}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsRetranslateOpen(false)} disabled={retranslateSubmitting}>
+                {t('ui.retranslate.cancel')}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleRetranslate}
+                disabled={retranslateSubmitting || addRunIsInsufficient}
+              >
+                {retranslateSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    {t('ui.retranslate.confirming')}
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 size-4" />
+                    {t('ui.retranslate.confirm')}
                   </>
                 )}
               </Button>

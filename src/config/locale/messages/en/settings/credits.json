@@ -30,6 +30,7 @@
       "convert_video": "Credits used for video conversion",
       "subtitle_retranslate": "Credits used for subtitle re-translation",
       "audio_regen": "Credits used for audio regeneration",
+      "retranslate_video": "Credits used for video retranslation",
       "ai_task": "Credits used for AI generation ({mediaType})"
     },
     "grant": {

@@ -170,6 +170,9 @@ export function splitSubtitlePayload(input: SplitSubtitlePayloadInput): SplitSub
     ? { audioPath: input.sourceAudioSplit.rightPath, duration: input.sourceAudioSplit.rightDuration }
     : undefined;
 
+  const leftTtsRef = input.sourceAudioSplit ? sourceIds.left : sourceTarget.id;
+  const rightTtsRef = input.sourceAudioSplit ? sourceIds.right : sourceTarget.id;
+
   const translateNext = input.translate.slice();
   translateNext.splice(
     splitIndex,
@@ -183,7 +186,7 @@ export function splitSubtitlePayload(input: SplitSubtitlePayloadInput): SplitSub
       input.splitOperationId,
       input.nowMs,
       translateTarget.id,
-      sourceTarget.id,
+      leftTtsRef,
     ),
     makeTranslateChild(
       translateTarget,
@@ -194,7 +197,7 @@ export function splitSubtitlePayload(input: SplitSubtitlePayloadInput): SplitSub
       input.splitOperationId,
       input.nowMs,
       translateTarget.id,
-      sourceTarget.id,
+      rightTtsRef,
     ),
   );
 

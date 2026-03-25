@@ -60,6 +60,7 @@
   "buttons": {
     "download": "Download",
     "edit": "Edit",
+    "retranslate": "Retranslate",
     "progress": "Progress",
     "cancel": "Cancel"
   },
@@ -127,6 +128,22 @@
       "de": "German",
       "it": "Italian",
       "ja": "Japanese"
+    },
+    "retranslate": {
+      "title": "Retranslate Video",
+      "description": "Create a new translation task with the same settings. The previous result will be kept.",
+      "cancel": "Cancel",
+      "confirm": "Retranslate",
+      "confirming": "Creating...",
+      "costTitle": "Estimated cost",
+      "costDuration": "Duration ~{minutes} min",
+      "costPerMinute": "{points} credits/min",
+      "currentBalance": "Current Balance",
+      "insufficientCredits": "Need {amount} more credits",
+      "buyCredits": "Buy Credits",
+      "success": "Retranslation task created",
+      "duplicateBlocked": "A translation task is already in progress",
+      "failed": "Failed to create. Please try again."
     },
     "addRun": {
       "button": "New translation",

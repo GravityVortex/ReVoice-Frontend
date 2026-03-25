@@ -1,6 +1,8 @@
 import EncryptionUtil from '@/shared/lib/EncryptionUtil';
 import { JAVA_SERVER_BASE_URL } from '@/shared/cache/system-config';
 
+const JAVA_FETCH_TIMEOUT_MS = 30_000; // 30s — fail fast before Cloudflare's 100s gateway limit
+
 type JavaApiResponse<T> = {
   code: number;
   message?: string;
@@ -19,6 +21,12 @@ async function postJavaEncrypted<T>(
       'Content-Type': 'text/plain',
     },
     body,
+    signal: AbortSignal.timeout(JAVA_FETCH_TIMEOUT_MS),
+  }).catch((err: Error) => {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      throw new Error(`Java backend timeout after ${JAVA_FETCH_TIMEOUT_MS / 1000}s: ${path}`);
+    }
+    throw new Error(`Java backend unreachable: ${path} — ${err.message}`);
   });
 
   const text = await res.text();
