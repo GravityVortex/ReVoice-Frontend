@@ -2,7 +2,7 @@ import { getSystemConfigByKey } from '@/shared/cache/system-config';
 import { respData, respErr } from '@/shared/lib/resp';
 import { getUserInfo } from '@/shared/models/user';
 import { findVtTaskMainById } from '@/shared/models/vt_task_main';
-import { updateSingleSubtitleItemById } from '@/shared/models/vt_task_subtitle';
+import { patchSubtitleItemById } from '@/shared/models/vt_task_subtitle';
 import { javaR2CoverWriteFile } from '@/shared/services/javaService';
 
 export const runtime = 'nodejs';
@@ -62,16 +62,17 @@ export async function POST(req: Request) {
     }
 
     const nowMs = Date.now();
-    const nextItem = {
-      ...item,
-      id,
+    const txt = typeof item?.txt === 'string' ? item.txt : undefined;
+
+    await patchSubtitleItemById(taskId, type, id, {
+      ...(txt !== undefined ? { txt } : {}),
       audio_url: `adj_audio_time/${id}.wav`,
       audio_rev_ms: nowMs,
       vap_voice_status: 'ready',
       vap_needs_tts: false,
-    };
-
-    await updateSingleSubtitleItemById(taskId, type, id, nextItem);
+      vap_draft_audio_path: null,
+      vap_draft_txt: null,
+    });
 
     return respData({ taskId, type, id, message: '保存成功' });
   } catch (e) {

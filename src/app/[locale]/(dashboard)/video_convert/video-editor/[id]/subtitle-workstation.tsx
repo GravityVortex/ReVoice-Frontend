@@ -705,14 +705,6 @@ export const SubtitleWorkstation = memo(
         if (!convertObj) return;
         if (type !== 'translate_srt') return;
 
-        const convertArr = (convertObj.srt_convert_arr || []) as any[];
-        const targetItem = convertArr.find((itm: any) => itm?.id === item.id);
-        if (!targetItem) {
-          toast.error(t('toast.itemNotFound'));
-          return;
-        }
-
-        const nextItem = { ...targetItem, txt: item.text_convert };
         const tempArr = item.audioUrl_convert_custom?.split('?') || [];
         const pathName = tempArr.length > 0 ? tempArr[0] : item.audioUrl_convert_custom;
         if (!pathName) {
@@ -733,9 +725,9 @@ export const SubtitleWorkstation = memo(
               userId: convertObj.userId,
               taskId: convertObj.id,
               type,
-              id: nextItem.id,
+              id: item.id,
               pathName,
-              item: nextItem,
+              item: { id: item.id, txt: item.text_convert },
             }),
           });
           const { code } = await resp.json();

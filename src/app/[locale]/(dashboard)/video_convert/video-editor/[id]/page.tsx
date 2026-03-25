@@ -2818,6 +2818,9 @@ export default function VideoEditorPage() {
       const newTranslate: any[] = back.data?.translate ?? [];
       const firstSplitChildId: string | null = back.data?.newIds?.leftTranslateId ?? null;
 
+      voiceCacheRef.current.clear();
+      voiceCacheBytesRef.current = 0;
+
       setConvertObj((prevObj) => {
         if (!prevObj) return prevObj;
         return {
