@@ -149,6 +149,8 @@
 - 统一解析原音、译音、vocal fallback 的播放地址
 - 优先消费后端提供的稳定字段
 - 仅在必要时基于 `audio_url` / `vap_source_mode` 做兜底解释
+- 复用 `src/shared/lib/timeline/split.ts` 中已有的 `resolveSourcePlaybackMode`，不再复制一套 mode 判定规则
+- 收敛当前分散在 `page.tsx`、`subtitle-workstation.tsx`、`panel-audio-list.tsx` 的 URL 构造逻辑
 
 不负责：
 
@@ -166,6 +168,8 @@
 
 - 原音试听与译音试听共用一套语义
 - fallback 策略内聚，不分散在页面回调里
+- 对原音 / vocal fallback 走 `HTMLAudioElement` 适配器
+- 对译音试听先包装现有 `ensureVoiceBuffer` / `cacheGetVoice` / `syncVoicePlaybackWebAudio` 管线，而不是并行维护另一套 ready 语义
 
 #### 4. `video-sync-controller.ts`
 
@@ -210,6 +214,7 @@ type EditorTransportState = {
   activeClipIndex: number;
   auditionStopAtSec: number | null;
   autoPlayNext: boolean;
+  pendingNextClipIndex: number | null;
   bufferingReason: 'video' | 'audio' | 'seek' | null;
   errorCode: string | null;
 };
@@ -267,6 +272,34 @@ type AudioReadyResult =
 - 使用 `convertObj.userId`，禁止依赖 `user?.id`
 - 统一封装代理规则，不允许各处自行 `new URL` 判断
 
+### 当前需要统一的 URL 构造点
+
+第一阶段至少要收敛以下位置：
+
+- `page.tsx` 中 source audition 的 `split_audio/audio/${sourceId}.wav`
+- `subtitle-workstation.tsx` 中 `buildPublicAudioUrl()`
+- `panel-audio-list.tsx` 中 source / convert 播放 URL 与更新 URL
+
+这些位置都不能再直接读取 `user?.id` 来拼接编辑页可播放地址。
+
+## WebAudio 协作策略
+
+当前 convert audition 不是简单的 `HTMLAudioElement` 播放，而是依赖现有的 WebAudio 预解码链路：
+
+- `cacheGetVoice`
+- `ensureVoiceBuffer`
+- `syncVoicePlaybackWebAudio`
+
+本次重构不在第一阶段推翻这条链路，而是做两件事：
+
+- 用 adapter 方式把 convert audition 接入统一的 transport / ready / cancel 语义
+- 把“是否 ready、何时可播、被新请求取消后如何收尾”的规则从 `page.tsx` 中抽出
+
+也就是说：
+
+- 底层后端暂时允许 source audition 和 convert audition 不同
+- 上层状态机、错误语义、取消语义必须统一
+
 ## 播放状态机
 
 ### 主要状态
@@ -314,6 +347,7 @@ idle
 
 - 解决 `Audio load failed` 的主要误判来源
 - 去掉前端拼源音 URL 的逻辑
+- 收敛 `page.tsx`、`subtitle-workstation.tsx`、`panel-audio-list.tsx` 中对 `user?.id` 的依赖
 
 ### Phase 2：抽出 Transport Reducer / Store
 
@@ -322,14 +356,21 @@ idle
 - 把 `page.tsx` 中的播放状态、试听状态、seek 状态迁移出去
 - 建立单一真相源
 
-### Phase 3：替换试听事件总线
+### Phase 3：引入 `video-sync-controller.ts`
+
+目标：
+
+- 把视频元素的播放、暂停、seek 跟随逻辑从 `page.tsx` 中剥离
+- 让 `HTMLVideoElement` 只由单一控制器消费 transport snapshot
+
+### Phase 4：替换试听事件总线
 
 目标：
 
 - 删除 `document.dispatchEvent('revoice-audition-*')`
 - 改为显式命令调用
 
-### Phase 4：UI 只保留订阅与意图输入
+### Phase 5：UI 只保留订阅与意图输入
 
 目标：
 
@@ -409,7 +450,9 @@ idle
 控制方式：
 
 - 优先新增文件
-- 最后再小心改 `page.tsx` 的接线层
+- 修改脏文件前先重新阅读当前内容，按最新工作区状态接线
+- 不允许用 stash / reset / checkout 覆盖现有改动
+- 如果与现有未提交改动的意图直接冲突，先停下并和人确认
 
 ### 风险 3：WebAudio 与 HTMLMediaElement 行为差异
 
