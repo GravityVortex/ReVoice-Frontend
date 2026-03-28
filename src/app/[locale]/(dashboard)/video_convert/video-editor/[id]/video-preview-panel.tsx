@@ -7,12 +7,13 @@ import { SubtitleTrackItem } from '@/shared/components/video-editor/types';
 import { useTranslations } from 'next-intl';
 import { usePausedVideoPrefetch } from '@/shared/hooks/use-paused-video-prefetch';
 
+import type { EditorTransportSnapshot } from './editor-transport';
+
 interface VideoPreviewPanelProps {
     className?: string;
     videoUrl?: string;
-    isPlaying: boolean;
+    transportSnapshot: EditorTransportSnapshot;
     subtitleTrack: SubtitleTrackItem[];
-    activeSubtitleIndex?: number;
     isVideoTextShow?: boolean;
     onPlayStateChange?: (isPlaying: boolean) => void;
     // Subtitle editing callbacks
@@ -26,9 +27,8 @@ export interface VideoPreviewRef {
 export const VideoPreviewPanel = memo(forwardRef<VideoPreviewRef, VideoPreviewPanelProps>(({
     className,
     videoUrl,
-    isPlaying,
+    transportSnapshot,
     subtitleTrack,
-    activeSubtitleIndex = -1,
     isVideoTextShow = true,
     onPlayStateChange,
     onSubtitleUpdate
@@ -50,6 +50,7 @@ export const VideoPreviewPanel = memo(forwardRef<VideoPreviewRef, VideoPreviewPa
         latestY: number;
         rafId: number | null;
     } | null>(null);
+    const activeSubtitleIndex = transportSnapshot.activeTimelineClipIndex;
     const activeSubtitle = useMemo(() => {
         if (activeSubtitleIndex == null || activeSubtitleIndex < 0) return null;
         return subtitleTrack[activeSubtitleIndex] || null;
@@ -69,8 +70,8 @@ export const VideoPreviewPanel = memo(forwardRef<VideoPreviewRef, VideoPreviewPa
     }, [subtitlePosition]);
 
     // Intentionally do NOT "drive" the <video> element from React state here.
-    // The parent (page.tsx) is the single controller for play/pause/seek to avoid play()↔pause() races
-    // that surface as AbortError and can leave audio transport in a bad state.
+    // The parent (page.tsx) owns the imperative sync boundary via video-sync-controller.ts,
+    // which avoids scattered play() / pause() / seek races inside the preview component.
 
     const clamp = useCallback((n: number, min: number, max: number) => {
         return Math.min(max, Math.max(min, n));

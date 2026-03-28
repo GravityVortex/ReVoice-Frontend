@@ -22,8 +22,14 @@ describe('TimelinePanel', () => {
     const html = renderToStaticMarkup(
       <TimelinePanel
         totalDuration={110}
-        currentTime={0}
-        isPlaying={false}
+        transportSnapshot={{
+          currentTimeSec: 0,
+          playbackStatus: 'paused',
+          activeTimelineClipIndex: -1,
+          activeAuditionClipIndex: null,
+          auditionMode: null,
+          autoPlayNext: false,
+        }}
         subtitleTrack={[
           {
             id: 'clip-1',

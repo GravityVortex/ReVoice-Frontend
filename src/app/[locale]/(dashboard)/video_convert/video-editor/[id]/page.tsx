@@ -31,19 +31,26 @@ import { primeAuditionAudio, settleAuditionPreparation, waitForAuditionReady } f
 import { resolveSourceAuditionAudio } from './audio-source-resolver';
 import {
   auditionEndedNaturally,
+  type EditorTransportSnapshot,
   auditionReady as markAuditionReady,
   clearPendingNextClip,
   createInitialTransportState,
   getActiveClipIndex,
   getAuditionStopAtSec,
+  pauseTimeline,
+  playTimeline,
   setAutoPlayNext as setTransportAutoPlayNext,
+  setActiveClipIndex,
+  seekTransport as _seekTransport,
   startConvertAudition,
   startSourceAudition,
   stopAudition as stopTransportAudition,
+  syncTransportTime,
   transportReducer,
 } from './editor-transport';
 import { SubtitleWorkstation, type SubtitleWorkstationHandle } from './subtitle-workstation';
 import { VideoPreviewPanel, VideoPreviewRef } from './video-preview-panel';
+import { createVideoSyncController, type VideoSyncSnapshot } from './video-sync-controller';
 import { TimelinePanel } from './timeline-panel';
 
 function isAbortError(err: unknown) {
@@ -264,6 +271,36 @@ export default function VideoEditorPage() {
     const stopAtSec = getAuditionStopAtSec(transportState);
     return stopAtSec == null ? null : Math.round(stopAtSec * 1000);
   })();
+  const transportSnapshot = useMemo<EditorTransportSnapshot>(() => ({
+    currentTimeSec: transportState.transportTimeSec,
+    playbackStatus:
+      isSubtitleBuffering || isVideoBuffering || transportState.status === 'buffering'
+        ? 'buffering'
+        : isPlaying
+          ? 'playing'
+          : 'paused',
+    activeTimelineClipIndex: transportActiveClipIndex ?? playingSubtitleIndex,
+    activeAuditionClipIndex: transportActiveClipIndex,
+    auditionMode: transportAuditionType,
+    autoPlayNext: transportState.autoPlayNext,
+  }), [
+    isPlaying,
+    isSubtitleBuffering,
+    isVideoBuffering,
+    playingSubtitleIndex,
+    transportActiveClipIndex,
+    transportAuditionType,
+    transportState.autoPlayNext,
+    transportState.status,
+    transportState.transportTimeSec,
+  ]);
+  const logEditorTransport = useCallback(
+    (level: 'debug' | 'warn' | 'error', event: string, meta: Record<string, unknown>) => {
+      if (process.env.NODE_ENV === 'test') return;
+      console[level]('[EditorTransport]', event, meta);
+    },
+    []
+  );
 
   useEffect(() => {
     isAutoPlayNextRef.current = transportState.autoPlayNext;
@@ -272,6 +309,11 @@ export default function VideoEditorPage() {
   useEffect(() => {
     dispatchTransport(setTransportAutoPlayNext(isAutoPlayNext));
   }, [isAutoPlayNext]);
+
+  useEffect(() => {
+    if (transportState.mode !== 'timeline') return;
+    dispatchTransport(setActiveClipIndex(playingSubtitleIndex >= 0 ? playingSubtitleIndex : null));
+  }, [playingSubtitleIndex, transportState.mode]);
 
   useEffect(() => {
     auditionActiveTypeRef.current = transportAuditionType;
@@ -1481,7 +1523,10 @@ export default function VideoEditorPage() {
     } catch (e) {
       if (playToken !== videoPlayTokenRef.current) return false;
       if (isAbortError(e)) return false;
-      console.error('[Transport] video play failed:', opts.reason, e);
+      console.error('[VideoSync]', 'play-failed', {
+        reason: opts.reason,
+        error: e,
+      });
       const name = e && typeof e === 'object' && 'name' in e ? String((e as any).name) : '';
       const msg = e && typeof e === 'object' && 'message' in e ? String((e as any).message || '') : '';
       if (name === 'NotSupportedError') {
@@ -1495,7 +1540,48 @@ export default function VideoEditorPage() {
     }
   }, [getMinStartBufferSeconds, t, waitForVideoWarmup]);
 
-  const beginSubtitleBuffering = useCallback(async (_reasonIndex: number, url: string) => {
+  const getVideoSyncMode = useCallback((
+    fallback: VideoSyncSnapshot['mode'] = transportState.mode
+  ): VideoSyncSnapshot['mode'] => {
+    if (auditionActiveTypeRef.current === 'source') return 'audition_source';
+    if (auditionActiveTypeRef.current === 'convert') return 'audition_convert';
+    return fallback;
+  }, [transportState.mode]);
+
+  const getVideoTransportTimeSec = useCallback((fallbackTimeSec = currentTime) => {
+    const videoTime = videoPreviewRef.current?.videoElement?.currentTime;
+    if (Number.isFinite(videoTime)) {
+      return Math.max(0, videoTime || 0);
+    }
+    return Math.max(0, fallbackTimeSec);
+  }, [currentTime]);
+
+  const applyVideoTransportSnapshot = useCallback(async (
+    snapshot: VideoSyncSnapshot,
+    opts?: { playReason?: string; seekToleranceSec?: number }
+  ) => {
+    const videoEl = videoPreviewRef.current?.videoElement;
+    if (!videoEl) return false;
+
+    const controller = createVideoSyncController(videoEl, {
+      seekToleranceSec: opts?.seekToleranceSec,
+      play: () => playVideoWithGate(videoEl, {
+        reason: opts?.playReason || `transport-${snapshot.mode}`,
+      }),
+      pause: () => {
+        try {
+          videoEl.pause();
+        } catch {
+          // ignore
+        }
+      },
+    });
+
+    await controller.apply(snapshot);
+    return true;
+  }, [playVideoWithGate]);
+
+  const beginSubtitleBuffering = useCallback(async (reasonIndex: number, url: string) => {
     if (isSubtitleBuffering) return;
     setIsSubtitleBuffering(true);
     try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
@@ -1512,11 +1598,13 @@ export default function VideoEditorPage() {
       return;
     }
 
-    try {
-      videoEl.pause();
-    } catch {
-      // ignore
-    }
+    await applyVideoTransportSnapshot({
+      mode: getVideoSyncMode(),
+      status: 'paused',
+      transportTimeSec: getVideoTransportTimeSec(),
+    }, {
+      seekToleranceSec: 0,
+    });
     try {
       bgmAudioRef.current?.pause();
     } catch {
@@ -1533,7 +1621,11 @@ export default function VideoEditorPage() {
     } catch (e) {
       if (controller.signal.aborted) return;
       // WebAudio decode can fail due to missing CORS; fall back to media playback.
-      console.error('[VoiceEngine] decode failed, falling back to <audio>:', e);
+      logEditorTransport('error', 'subtitle-buffer-decode-failed', {
+        clipId: subtitleTrackRef.current[reasonIndex]?.id ?? null,
+        mode: getVideoSyncMode(),
+        error: e,
+      });
       subtitleBackendRef.current = 'media';
       setIsSubtitleBuffering(false);
       toast.error(locale === 'zh' ? '语音解码失败，已切换到兼容模式' : 'Voice decode failed, switched to compatibility mode');
@@ -1547,13 +1639,33 @@ export default function VideoEditorPage() {
       void voiceAudioCtxRef.current?.resume?.().catch(() => {
         // ignore
       });
-      await playVideoWithGate(videoEl, { reason: 'subtitle-buffering-resume' });
+      await applyVideoTransportSnapshot({
+        mode: getVideoSyncMode(),
+        status: 'playing',
+        transportTimeSec: getVideoTransportTimeSec(),
+      }, {
+        playReason: 'subtitle-buffering-resume',
+      });
     } catch (e) {
       if (isAbortError(e)) return;
-      console.error('[VoiceEngine] resume failed:', e);
+      logEditorTransport('error', 'subtitle-buffer-resume-failed', {
+        clipId: subtitleTrackRef.current[reasonIndex]?.id ?? null,
+        mode: getVideoSyncMode(),
+        error: e,
+      });
       toast.error(locale === 'zh' ? '点击播放继续' : 'Tap Play to continue');
     }
-  }, [ensureVoiceBuffer, isSubtitleBuffering, locale, playVideoWithGate, stopAllSubtitleAudio, stopWebAudioVoice]);
+  }, [
+    applyVideoTransportSnapshot,
+    ensureVoiceBuffer,
+    logEditorTransport,
+    getVideoSyncMode,
+    getVideoTransportTimeSec,
+    isSubtitleBuffering,
+    locale,
+    stopAllSubtitleAudio,
+    stopWebAudioVoice,
+  ]);
 
   // Update Audio Playback based on current time
   const syncAudioPlayback = useCallback((time: number) => {
@@ -2143,11 +2255,13 @@ export default function VideoEditorPage() {
         videoPlayTokenRef.current += 1;
         transportIsStalledRef.current = false;
         setIsVideoBuffering(false);
-        try {
-          videoEl.pause();
-        } catch {
-          // ignore
-        }
+        void applyVideoTransportSnapshot({
+          mode: getVideoSyncMode(),
+          status: 'paused',
+          transportTimeSec: time,
+        }, {
+          seekToleranceSec: 0,
+        });
         // Also stop source audition audio immediately.
         try {
           if (sourceAuditionAudioRef.current) {
@@ -2170,6 +2284,7 @@ export default function VideoEditorPage() {
     if (Math.abs(time - lastUiTimeRef.current) >= 1 / 20) {
       lastUiTimeRef.current = time;
       setCurrentTime(time);
+      dispatchTransport(syncTransportTime(time));
     }
 
     if (subtitleBackendRef.current === 'webaudio') syncVoicePlaybackWebAudio(time);
@@ -2183,7 +2298,13 @@ export default function VideoEditorPage() {
     } else {
       rafIdRef.current = requestAnimationFrame(updateTimeLoop);
     }
-  }, [syncAudioPlayback, syncVoicePlaybackWebAudio]);
+  }, [
+    applyVideoTransportSnapshot,
+    dispatchTransport,
+    getVideoSyncMode,
+    syncAudioPlayback,
+    syncVoicePlaybackWebAudio,
+  ]);
 
   const startUpdateLoop = useCallback(() => {
     cancelUpdateLoop();
@@ -2472,6 +2593,10 @@ export default function VideoEditorPage() {
   const handlePlayPause = useCallback(() => {
     auditionTokenRef.current += 1;
     abortActiveAuditionPreparation();
+    const hadActiveAudition =
+      auditionActiveTypeRef.current != null ||
+      transportState.mode === 'audition_source' ||
+      transportState.mode === 'audition_convert';
     const videoEl = videoPreviewRef.current?.videoElement;
     if (isSubtitleBuffering) {
       try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
@@ -2480,6 +2605,7 @@ export default function VideoEditorPage() {
       // Cancel any in-flight play() promise handling.
       videoPlayTokenRef.current += 1;
       transportIsStalledRef.current = false;
+      dispatchTransport(hadActiveAudition ? stopTransportAudition() : pauseTimeline());
       return;
     }
     // Allow a second click to cancel the "buffer-before-play" warmup gate.
@@ -2488,14 +2614,18 @@ export default function VideoEditorPage() {
       videoPlayTokenRef.current += 1;
       transportIsStalledRef.current = false;
       setIsVideoBuffering(false);
+      dispatchTransport(hadActiveAudition ? stopTransportAudition() : pauseTimeline());
       return;
     }
     if (isPlaying) {
-      try {
-        videoEl?.pause();
-      } catch {
-        // ignore
-      }
+      dispatchTransport(hadActiveAudition ? stopTransportAudition() : pauseTimeline());
+      void applyVideoTransportSnapshot({
+        mode: getVideoSyncMode(),
+        status: 'paused',
+        transportTimeSec: getVideoTransportTimeSec(),
+      }, {
+        seekToleranceSec: 0,
+      });
       // If in audition, do a full audition cleanup so the next play starts fresh.
       if (auditionActiveTypeRef.current) {
         try {
@@ -2573,22 +2703,33 @@ export default function VideoEditorPage() {
       return;
     }
     transportIsStalledRef.current = false;
-    void playVideoWithGate(videoEl, { reason: 'user-play' });
+    dispatchTransport(playTimeline());
+    void applyVideoTransportSnapshot({
+      mode: getVideoSyncMode('timeline'),
+      status: 'playing',
+      transportTimeSec: getVideoTransportTimeSec(),
+    }, {
+      playReason: 'user-play',
+    });
   }, [
+    applyVideoTransportSnapshot,
     abortActiveAuditionPreparation,
     abortAllVoiceInflight,
     beginSubtitleBuffering,
     cacheGetVoice,
+    dispatchTransport,
     findSubtitleIndexAtTime,
     getAdaptivePrefetchCount,
     getOrCreateVoiceAudioCtx,
+    getVideoSyncMode,
+    getVideoTransportTimeSec,
     isPlaying,
     isVideoBuffering,
     isSubtitleBuffering,
     prefetchVoiceAroundTime,
-    playVideoWithGate,
     stopWebAudioVoice,
     t,
+    transportState.mode,
   ]);
 
   useEffect(() => {
@@ -2896,6 +3037,10 @@ export default function VideoEditorPage() {
     const clampedTime = Math.max(0, Math.min(time, totalDuration));
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const videoEl = videoPreviewRef.current?.videoElement;
+    const hadActiveAudition =
+      auditionActiveTypeRef.current != null ||
+      transportState.mode === 'audition_source' ||
+      transportState.mode === 'audition_convert';
 
     if (isDragging) {
       // Drag-start: do the heavy reset once. Drag-move: only update UI/time at a throttled rate.
@@ -2926,17 +3071,20 @@ export default function VideoEditorPage() {
 
         // Pause while dragging to avoid races and "silent play" confusion.
         if (isPlaying || (videoEl && !videoEl.paused)) {
-          try {
-            videoEl?.pause();
-          } catch {
-            // ignore
-          }
+          void applyVideoTransportSnapshot({
+            mode: getVideoSyncMode(),
+            status: 'paused',
+            transportTimeSec: getVideoTransportTimeSec(clampedTime),
+          }, {
+            seekToleranceSec: 0,
+          });
           try {
             bgmAudioRef.current?.pause();
           } catch {
             // ignore
           }
           setIsPlaying(false);
+          dispatchTransport(hadActiveAudition ? stopTransportAudition() : pauseTimeline());
         }
 
         stopAllSubtitleAudio();
@@ -2952,16 +3100,19 @@ export default function VideoEditorPage() {
 
           lastUiTimeRef.current = t;
           setCurrentTime(t);
+          dispatchTransport(_seekTransport(t));
 
           const msNow = typeof performance !== 'undefined' ? performance.now() : Date.now();
           if (msNow - seekDragLastMediaApplyMsRef.current < 140) return;
           seekDragLastMediaApplyMsRef.current = msNow;
 
-          try {
-            if (videoPreviewRef.current?.videoElement) videoPreviewRef.current.videoElement.currentTime = t;
-          } catch {
-            // ignore
-          }
+          void applyVideoTransportSnapshot({
+            mode: getVideoSyncMode(),
+            status: 'paused',
+            transportTimeSec: t,
+          }, {
+            seekToleranceSec: 0,
+          });
           try {
             if (bgmAudioRef.current) bgmAudioRef.current.currentTime = t;
           } catch {
@@ -2989,15 +3140,18 @@ export default function VideoEditorPage() {
 
     lastUiTimeRef.current = clampedTime;
     setCurrentTime(clampedTime);
+    dispatchTransport(_seekTransport(clampedTime));
 
     // Drag-stop commit: we already reset audio state at drag-start; just commit time + unpause the audio gate.
     if (wasDragging) {
       isAudioRefArrPause.current = false;
-      try {
-        if (videoPreviewRef.current?.videoElement) videoPreviewRef.current.videoElement.currentTime = clampedTime;
-      } catch {
-        // ignore
-      }
+      void applyVideoTransportSnapshot({
+        mode: getVideoSyncMode(),
+        status: 'paused',
+        transportTimeSec: clampedTime,
+      }, {
+        seekToleranceSec: 0,
+      });
       try {
         if (bgmAudioRef.current) bgmAudioRef.current.currentTime = clampedTime;
       } catch {
@@ -3055,11 +3209,13 @@ export default function VideoEditorPage() {
       isAudioRefArrPause.current = false;
       // Seeking is a user intent to reposition; pause playback to avoid "silent play" confusion.
       if (isPlaying || (videoEl && !videoEl.paused)) {
-        try {
-          videoEl?.pause();
-        } catch {
-          // ignore
-        }
+        void applyVideoTransportSnapshot({
+          mode: getVideoSyncMode(),
+          status: 'paused',
+          transportTimeSec: getVideoTransportTimeSec(clampedTime),
+        }, {
+          seekToleranceSec: 0,
+        });
         try {
           bgmAudioRef.current?.pause();
         } catch {
@@ -3067,14 +3223,17 @@ export default function VideoEditorPage() {
         }
         stopAllSubtitleAudio();
         setIsPlaying(false);
+        dispatchTransport(hadActiveAudition ? stopTransportAudition() : pauseTimeline());
       }
     }
 
-    try {
-      if (videoPreviewRef.current?.videoElement) videoPreviewRef.current.videoElement.currentTime = clampedTime;
-    } catch {
-      // ignore
-    }
+    void applyVideoTransportSnapshot({
+      mode: getVideoSyncMode(),
+      status: 'paused',
+      transportTimeSec: clampedTime,
+    }, {
+      seekToleranceSec: 0,
+    });
     try {
       if (bgmAudioRef.current) bgmAudioRef.current.currentTime = clampedTime;
     } catch {
@@ -3087,7 +3246,21 @@ export default function VideoEditorPage() {
       const seekedIdx = findSubtitleIndexAtTime(subtitleTrackRef.current, clampedTime);
       setPlayingSubtitleIndex(seekedIdx);
     }
-  }, [abortActiveAuditionPreparation, abortAllVoiceInflight, cancelUpdateLoop, findSubtitleIndexAtTime, isPlaying, stopAllSubtitleAudio, stopWebAudioVoice, totalDuration]);
+  }, [
+    abortActiveAuditionPreparation,
+    abortAllVoiceInflight,
+    applyVideoTransportSnapshot,
+    cancelUpdateLoop,
+    dispatchTransport,
+    findSubtitleIndexAtTime,
+    getVideoSyncMode,
+    getVideoTransportTimeSec,
+    isPlaying,
+    stopAllSubtitleAudio,
+    stopWebAudioVoice,
+    totalDuration,
+    transportState.mode,
+  ]);
 
   const handleSeekToSubtitle = useCallback((time: number) => {
     handleSeek(time, false);
@@ -3173,12 +3346,23 @@ export default function VideoEditorPage() {
     setIsVideoBuffering(false);
 
     const endedIndex = getActiveClipIndex(transportState) ?? playingSubtitleIndexRef.current ?? -1;
+    const endedClipId =
+      endedIndex >= 0 && endedIndex < subtitleTrackRef.current.length
+        ? subtitleTrackRef.current[endedIndex]?.id ?? null
+        : null;
+    logEditorTransport('debug', naturalEnd ? 'audition-natural-stop' : 'audition-stop', {
+      clipId: endedClipId,
+      mode: getVideoSyncMode(),
+      endedIndex,
+    });
 
-    try {
-      videoPreviewRef.current?.videoElement?.pause();
-    } catch {
-      // ignore
-    }
+    void applyVideoTransportSnapshot({
+      mode: getVideoSyncMode(),
+      status: 'paused',
+      transportTimeSec: getVideoTransportTimeSec(),
+    }, {
+      seekToleranceSec: 0,
+    });
     // Stop source audition audio if playing.
     try {
       if (sourceAuditionAudioRef.current) {
@@ -3208,7 +3392,7 @@ export default function VideoEditorPage() {
     if (naturalEnd && transportState.autoPlayNext && endedIndex >= 0) {
       playingSubtitleIndexRef.current = -1;
     }
-  }, [abortActiveAuditionPreparation, transportState]);
+  }, [abortActiveAuditionPreparation, applyVideoTransportSnapshot, getVideoSyncMode, getVideoTransportTimeSec, logEditorTransport, transportState]);
 
   useEffect(() => {
     handleAuditionStopRef.current = handleAuditionStop;
@@ -3217,6 +3401,11 @@ export default function VideoEditorPage() {
   const handleAuditionRequestPlay = useCallback(async (index: number, mode: 'source' | 'convert') => {
     if (index < 0 || index >= subtitleTrackRef.current.length) return;
     const item = subtitleTrackRef.current[index];
+    logEditorTransport('debug', 'audition-request', {
+      clipId: item.id,
+      mode,
+      index,
+    });
     const token = ++auditionTokenRef.current;
     abortActiveAuditionPreparation();
     const controller = new AbortController();
@@ -3279,14 +3468,13 @@ export default function VideoEditorPage() {
         convertObj,
         sourceEntry,
       });
-      console.log(
-        '[SourceAudition] primary:',
-        resolvedSourceAudio.primary?.url,
-        'fallback:',
-        resolvedSourceAudio.fallback?.url,
-        'sourceId:',
-        sourceEntry?.id || String(index + 1)
-      );
+      const sourceClipId = sourceEntry?.id || String(index + 1);
+      logEditorTransport('debug', 'source-audition-resolved', {
+        clipId: sourceClipId,
+        mode: mode,
+        primary: resolvedSourceAudio.primary?.source ?? null,
+        fallback: resolvedSourceAudio.fallback?.source ?? null,
+      });
 
       if (!sourceAuditionAudioRef.current) {
         sourceAuditionAudioRef.current = new Audio();
@@ -3341,6 +3529,10 @@ export default function VideoEditorPage() {
           {
             timeoutMs: candidate.source === 'vocal_fallback' ? 2500 : 4000,
             signal: controller.signal,
+            debugContext: {
+              clipId: sourceClipId,
+              mode,
+            },
           }
         );
         return { gesturePlayPromise, readyResult };
@@ -3357,10 +3549,11 @@ export default function VideoEditorPage() {
 
       if (!audioOk && resolvedSourceAudio.fallback?.url
         && resolvedSourceAudio.fallback.url !== resolvedSourceAudio.primary?.url) {
-        console.warn(
-          '[SourceAudition] primary source not ready, trying fallback:',
-          primaryAttempt.readyResult?.status
-        );
+        logEditorTransport('warn', 'source-audition-fallback', {
+          clipId: sourceClipId,
+          mode,
+          primaryStatus: primaryAttempt.readyResult?.status,
+        });
         const fallbackAttempt = await applySourceCandidate(resolvedSourceAudio.fallback);
         audioOk = fallbackAttempt.readyResult.status === 'ready';
         finalReadyStatus = fallbackAttempt.readyResult.status;
@@ -3379,10 +3572,16 @@ export default function VideoEditorPage() {
         releaseAuditionController();
         handleAuditionStop(false);
         if (finalReadyStatus === 'error') {
-          console.error('[SourceAudition] all audio sources failed');
+          logEditorTransport('error', 'source-audition-load-failed', {
+            clipId: sourceClipId,
+            mode,
+          });
           toast.error(t('videoEditor.toast.audioLoadFailed') || 'Audio load failed');
         } else {
-          console.warn('[SourceAudition] audio timed out before becoming ready');
+          logEditorTransport('warn', 'source-audition-timeout', {
+            clipId: sourceClipId,
+            mode,
+          });
         }
         return;
       }
@@ -3396,9 +3595,20 @@ export default function VideoEditorPage() {
         handleAuditionStopRef.current(true);
       };
       audioEl.play().catch((err) => {
-        console.error('[SourceAudition] play failed:', err);
+        logEditorTransport('error', 'source-audition-play-failed', {
+          clipId: sourceClipId,
+          mode,
+          error: err,
+        });
       });
-      if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
+      void applyVideoTransportSnapshot({
+        mode: 'audition_source',
+        status: 'playing',
+        transportTimeSec: item.startTime,
+      }, {
+        playReason: 'audition',
+        seekToleranceSec: 0,
+      });
 
     } else if (mode === 'convert') {
       // --- Convert audition: ensure voice buffer decoded before starting video ---
@@ -3409,10 +3619,20 @@ export default function VideoEditorPage() {
         try {
           const prepResult = await settleAuditionPreparation(
             ensureVoiceBuffer(voiceUrl, controller.signal),
-            { timeoutMs: 4000, signal: controller.signal }
+            {
+              timeoutMs: 4000,
+              signal: controller.signal,
+              debugContext: {
+                clipId: item.id,
+                mode,
+              },
+            }
           );
           if (prepResult.status === 'timeout') {
-            console.warn('[ConvertAudition] voice prepare timed out');
+            logEditorTransport('warn', 'convert-audition-prepare-timeout', {
+              clipId: item.id,
+              mode,
+            });
             controller.abort(ABORT_REASON);
             releaseAuditionController();
             handleAuditionStop(false);
@@ -3420,7 +3640,11 @@ export default function VideoEditorPage() {
           }
           if (prepResult.status === 'aborted') return;
           if (prepResult.status === 'error') {
-            console.warn('[ConvertAudition] voice prepare failed:', prepResult.code);
+            logEditorTransport('warn', 'convert-audition-prepare-failed', {
+              clipId: item.id,
+              mode,
+              code: prepResult.code,
+            });
             releaseAuditionController();
             handleAuditionStop(false);
             toast.error(t('videoEditor.toast.audioLoadFailed') || 'Audio load failed');
@@ -3434,10 +3658,17 @@ export default function VideoEditorPage() {
 
       releaseAuditionController();
       dispatchTransport(markAuditionReady());
-      if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
+      void applyVideoTransportSnapshot({
+        mode: 'audition_convert',
+        status: 'playing',
+        transportTimeSec: item.startTime,
+      }, {
+        playReason: 'audition',
+        seekToleranceSec: 0,
+      });
     }
     releaseAuditionController();
-  }, [abortActiveAuditionPreparation, cacheGetVoice, convertObj, ensureVoiceBuffer, handleAuditionStop, handleSeek, playVideoWithGate, t]);
+  }, [abortActiveAuditionPreparation, applyVideoTransportSnapshot, cacheGetVoice, convertObj, ensureVoiceBuffer, handleAuditionStop, handleSeek, logEditorTransport, t]);
 
   useEffect(() => {
     const nextIndex = transportState.pendingNextClipIndex;
@@ -3445,12 +3676,17 @@ export default function VideoEditorPage() {
     if (nextIndex == null || nextMode == null) return;
 
     const timer = window.setTimeout(() => {
+      logEditorTransport('debug', 'queue-next-audition', {
+        clipId: subtitleTrackRef.current[nextIndex]?.id ?? null,
+        mode: nextMode,
+        index: nextIndex,
+      });
       dispatchTransport(clearPendingNextClip());
       void handleAuditionRequestPlay(nextIndex, nextMode);
     }, 50);
 
     return () => window.clearTimeout(timer);
-  }, [handleAuditionRequestPlay, transportState.pendingNextClipIndex, transportState.pendingNextMode]);
+  }, [handleAuditionRequestPlay, logEditorTransport, transportState.pendingNextClipIndex, transportState.pendingNextMode]);
 
   const handleAuditionToggle = useCallback(() => {
     handlePlayPause();
@@ -3719,7 +3955,7 @@ export default function VideoEditorPage() {
                 <SubtitleWorkstation
                   ref={workstationRef}
                   convertObj={convertObj}
-                  playingSubtitleIndex={playingSubtitleIndex}
+                  transportSnapshot={transportSnapshot}
                   onSeekToSubtitle={handleSeekToSubtitle}
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
                   onSubtitleTextChange={handleSubtitleTextChange}
@@ -3731,10 +3967,6 @@ export default function VideoEditorPage() {
                   onRequestAuditionPlay={handleAuditionRequestPlay}
                   onRequestAuditionToggle={handleAuditionToggle}
                   onRequestAuditionStop={() => handleAuditionStop(false)}
-                  auditionPlayingIndex={transportActiveClipIndex ?? -1}
-                  auditionActiveType={transportAuditionType}
-                  isMediaPlaying={isPlaying}
-                  isAutoPlayNext={isAutoPlayNext}
                   onToggleAutoPlayNext={handleAutoPlayNextChange}
                   onDirtyStateChange={setWorkstationDirty}
                   onResetTiming={handleResetTiming}
@@ -3745,9 +3977,8 @@ export default function VideoEditorPage() {
               <div className="h-full bg-black/95">
                 <VideoPreviewPanel
                   ref={videoPreviewRef}
-                  isPlaying={isPlaying}
+                  transportSnapshot={transportSnapshot}
                   subtitleTrack={subtitleTrack}
-                  activeSubtitleIndex={playingSubtitleIndex}
                   videoUrl={videoTrack[0]?.url}
                   onPlayStateChange={setIsPlaying}
                   className="rounded-none"
@@ -3841,10 +4072,7 @@ export default function VideoEditorPage() {
         >
           <TimelinePanel
             totalDuration={totalDuration}
-            currentTime={currentTime}
-            isPlaying={isPlaying}
-            isBuffering={isSubtitleBuffering || isVideoBuffering}
-            playingSubtitleIndex={playingSubtitleIndex}
+            transportSnapshot={transportSnapshot}
             subtitleTrack={subtitleTrack}
             subtitleTrackOriginal={subtitleTrackOriginal.length ? subtitleTrackOriginal : undefined}
             onSubtitleTrackChange={handleSubtitleTrackChange}

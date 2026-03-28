@@ -61,6 +61,25 @@ vi.mock('./subtitle-row-item', () => ({
 
 import { SubtitleWorkstation } from './subtitle-workstation';
 
+function createTransportSnapshot(overrides?: Partial<{
+  currentTimeSec: number;
+  playbackStatus: 'paused' | 'buffering' | 'playing';
+  activeTimelineClipIndex: number;
+  activeAuditionClipIndex: number | null;
+  auditionMode: 'source' | 'convert' | null;
+  autoPlayNext: boolean;
+}>) {
+  return {
+    currentTimeSec: 0,
+    playbackStatus: 'paused' as const,
+    activeTimelineClipIndex: -1,
+    activeAuditionClipIndex: null,
+    auditionMode: null,
+    autoPlayNext: false,
+    ...overrides,
+  };
+}
+
 describe('SubtitleWorkstation', () => {
   beforeEach(() => {
     seededRows = [
@@ -90,6 +109,7 @@ describe('SubtitleWorkstation', () => {
     renderToStaticMarkup(
       <SubtitleWorkstation
         convertObj={{ id: 'task-1', targetLanguage: 'en' } as any}
+        transportSnapshot={createTransportSnapshot()}
         onRequestAuditionPlay={onRequestAuditionPlay}
       />
     );
@@ -107,8 +127,10 @@ describe('SubtitleWorkstation', () => {
     renderToStaticMarkup(
       <SubtitleWorkstation
         convertObj={{ id: 'task-1', targetLanguage: 'en' } as any}
-        auditionPlayingIndex={0}
-        auditionActiveType="source"
+        transportSnapshot={createTransportSnapshot({
+          activeAuditionClipIndex: 0,
+          auditionMode: 'source',
+        })}
         onRequestAuditionToggle={onRequestAuditionToggle}
       />
     );
@@ -118,5 +140,25 @@ describe('SubtitleWorkstation', () => {
     capturedRowProps[0].onPlayPauseSource();
 
     expect(onRequestAuditionToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('derives row playback highlights from the transport snapshot', () => {
+    renderToStaticMarkup(
+      <SubtitleWorkstation
+        convertObj={{ id: 'task-1', targetLanguage: 'en' } as any}
+        transportSnapshot={createTransportSnapshot({
+          playbackStatus: 'playing',
+          activeTimelineClipIndex: 0,
+          activeAuditionClipIndex: 0,
+          auditionMode: 'convert',
+          autoPlayNext: true,
+        })}
+      />
+    );
+
+    expect(capturedRowProps).toHaveLength(1);
+    expect(capturedRowProps[0].isPlayingSource).toBe(false);
+    expect(capturedRowProps[0].isPlayingConvert).toBe(true);
+    expect(capturedRowProps[0].isPlayingFromVideo).toBe(true);
   });
 });

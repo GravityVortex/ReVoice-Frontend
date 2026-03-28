@@ -15,13 +15,12 @@ import { getTimelineAutoFollowTarget } from '@/shared/lib/timeline/follow';
 import { cn } from '@/shared/lib/utils';
 import { audioMetaLoadQueue } from '@/shared/lib/waveform/loader';
 
+import type { EditorTransportSnapshot } from './editor-transport';
+
 interface TimelinePanelProps {
   className?: string;
   totalDuration: number;
-  currentTime: number;
-  isPlaying: boolean;
-  isBuffering?: boolean;
-  playingSubtitleIndex?: number;
+  transportSnapshot: EditorTransportSnapshot;
   subtitleTrack: SubtitleTrackItem[];
   subtitleTrackOriginal?: SubtitleTrackItem[];
   onSubtitleTrackChange?: (nextTrack: SubtitleTrackItem[]) => void;
@@ -103,10 +102,7 @@ function BufferingOrbitalDots({ label }: { label: string }) {
 export function TimelinePanel({
   className,
   totalDuration,
-  currentTime,
-  isPlaying,
-  isBuffering = false,
-  playingSubtitleIndex = -1,
+  transportSnapshot,
   subtitleTrack,
   subtitleTrackOriginal,
   onSubtitleTrackChange,
@@ -134,6 +130,10 @@ export function TimelinePanel({
   const t = useTranslations('video_convert.videoEditor.videoEditor');
   const tSub = useTranslations('video_convert.videoEditor.subtitleRow');
   const locale = useLocale();
+  const currentTime = transportSnapshot.currentTimeSec;
+  const isPlaying = transportSnapshot.playbackStatus === 'playing';
+  const isBuffering = transportSnapshot.playbackStatus === 'buffering';
+  const playingSubtitleIndex = transportSnapshot.activeTimelineClipIndex;
   const bufferingLabel = locale === 'zh' ? '缓冲中' : 'Buffering';
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';

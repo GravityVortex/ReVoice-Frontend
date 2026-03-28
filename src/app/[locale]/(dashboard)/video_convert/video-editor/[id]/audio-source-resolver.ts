@@ -1,5 +1,7 @@
 import { resolveSourcePlaybackMode } from '@/shared/lib/timeline/split';
 
+const AUDIO_RESOLVER_LOG_PREFIX = '[AudioResolver]';
+
 type ConvertLike = {
   userId?: string;
   id?: string;
@@ -61,6 +63,11 @@ function splitQuery(pathName: string) {
   };
 }
 
+function logAudioResolver(event: string, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV === 'test') return;
+  console.debug(AUDIO_RESOLVER_LOG_PREFIX, event, meta);
+}
+
 function toSeconds(srt: string) {
   const raw = trimString(srt);
   if (!raw) return null;
@@ -88,6 +95,13 @@ export function resolveEditorPublicAudioUrl(args: ResolveEditorPublicAudioUrlArg
   const env = trimString(args.convertObj?.env);
 
   if (!publicBase || !env || !userId || !taskId) {
+    logAudioResolver('public-url-fallback', {
+      pathName: base,
+      hasPublicBase: Boolean(publicBase),
+      hasEnv: Boolean(env),
+      hasUserId: Boolean(userId),
+      hasTaskId: Boolean(taskId),
+    });
     return appendCacheBust(base + (query ? `?${query}` : ''), args.cacheBust);
   }
 
@@ -120,16 +134,30 @@ export function resolveSourceAuditionAudio(args: ResolveSourceAuditionArgs): Res
     : null;
 
   if (sourceMode === 'fallback_vocal') {
-    return {
+    const result = {
       primary: fallbackCandidate,
       fallback: sourceCandidate,
       stopAtSec,
     };
+    logAudioResolver('resolve-source-audition', {
+      clipId: sourceId,
+      mode: sourceMode,
+      primary: result.primary?.source ?? null,
+      fallback: result.fallback?.source ?? null,
+    });
+    return result;
   }
 
-  return {
+  const result = {
     primary: sourceCandidate,
     fallback: fallbackCandidate,
     stopAtSec,
   };
+  logAudioResolver('resolve-source-audition', {
+    clipId: sourceId,
+    mode: sourceMode,
+    primary: result.primary?.source ?? null,
+    fallback: result.fallback?.source ?? null,
+  });
+  return result;
 }

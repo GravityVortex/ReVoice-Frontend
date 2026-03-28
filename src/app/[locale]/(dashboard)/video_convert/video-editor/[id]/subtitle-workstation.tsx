@@ -16,6 +16,7 @@ import { deriveSubtitleVoiceUiState, type SubtitleVoiceUiState } from '@/shared/
 import { cn } from '@/shared/lib/utils';
 
 import { resolveEditorPublicAudioUrl } from './audio-source-resolver';
+import type { EditorTransportSnapshot } from './editor-transport';
 import { SubtitleRowData, SubtitleRowItem } from './subtitle-row-item';
 
 interface SubtitleWorkstationProps {
@@ -34,14 +35,10 @@ interface SubtitleWorkstationProps {
   onRequestAuditionPlay?: (index: number, mode: 'source' | 'convert') => void;
   onRequestAuditionToggle?: () => void;
   onRequestAuditionStop?: () => void;
-  auditionPlayingIndex?: number;
-  auditionActiveType?: 'source' | 'convert' | null;
-  isMediaPlaying?: boolean;
-  isAutoPlayNext?: boolean;
+  transportSnapshot: EditorTransportSnapshot;
   onToggleAutoPlayNext?: (val: boolean) => void;
 
   convertObj: ConvertObj | null;
-  playingSubtitleIndex?: number;
   onSeekToSubtitle?: (time: number) => void;
   onShowTip?: () => void;
   onUpdateSubtitleAudioUrl?: (id: string, audioUrl: string) => void;
@@ -69,13 +66,9 @@ export const SubtitleWorkstation = memo(
         onRequestAuditionPlay,
         onRequestAuditionToggle,
         onRequestAuditionStop,
-        auditionPlayingIndex,
-        auditionActiveType,
-        isMediaPlaying,
-        isAutoPlayNext = false,
+        transportSnapshot,
         onToggleAutoPlayNext,
         convertObj,
-        playingSubtitleIndex = -1,
         onSeekToSubtitle,
         onShowTip,
         onUpdateSubtitleAudioUrl,
@@ -89,6 +82,11 @@ export const SubtitleWorkstation = memo(
       const t = useTranslations('video_convert.videoEditor.audioList');
       const tCommon = useTranslations('common');
       const { fetchUserCredits } = useAppContext();
+      const playingSubtitleIndex = transportSnapshot.activeTimelineClipIndex;
+      const auditionPlayingIndex = transportSnapshot.activeAuditionClipIndex ?? -1;
+      const auditionActiveType = transportSnapshot.auditionMode;
+      const isMediaPlaying = transportSnapshot.playbackStatus === 'playing';
+      const isAutoPlayNext = transportSnapshot.autoPlayNext;
 
       // State
       const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);

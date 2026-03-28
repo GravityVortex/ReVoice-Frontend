@@ -15,6 +15,15 @@ export type EditorTransportState = {
   pendingNextMode: EditorAuditionMode | null;
 };
 
+export type EditorTransportSnapshot = {
+  currentTimeSec: number;
+  playbackStatus: EditorTransportStatus;
+  activeTimelineClipIndex: number;
+  activeAuditionClipIndex: number | null;
+  auditionMode: EditorAuditionMode | null;
+  autoPlayNext: boolean;
+};
+
 type StartAuditionPayload = {
   index: number;
   timeSec: number;

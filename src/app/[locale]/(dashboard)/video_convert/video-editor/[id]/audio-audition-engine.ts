@@ -1,3 +1,5 @@
+const AUDIO_AUDITION_LOG_PREFIX = '[AudioAudition]';
+
 export type AuditionAudioLike = {
   readyState: number;
   addEventListener: (event: string, listener: () => void, options?: { once?: boolean }) => void;
@@ -13,12 +15,22 @@ export type AudioReadyResult =
   | { status: 'error'; latencyMs: number; code: string }
   | { status: 'aborted'; latencyMs: number };
 
+type AudioDebugContext = {
+  clipId?: string;
+  mode?: string;
+};
+
 function nowMs() {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
 
 function elapsedMs(startMs: number) {
   return Math.max(0, Math.round(nowMs() - startMs));
+}
+
+function logAudioAudition(event: string, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV === 'test') return;
+  console.debug(AUDIO_AUDITION_LOG_PREFIX, event, meta);
 }
 
 export async function primeAuditionAudio(audio: AuditionAudioLike) {
@@ -32,13 +44,21 @@ export async function primeAuditionAudio(audio: AuditionAudioLike) {
 
 export function settleAuditionPreparation(
   task: Promise<unknown>,
-  opts?: { timeoutMs?: number; signal?: AbortSignal }
+  opts?: { timeoutMs?: number; signal?: AbortSignal; debugContext?: AudioDebugContext }
 ): Promise<AudioReadyResult> {
   const timeoutMs = opts?.timeoutMs ?? 4000;
   const signal = opts?.signal;
+  const debugContext = opts?.debugContext;
   const startMs = nowMs();
 
   if (signal?.aborted) {
+    logAudioAudition('settle-preparation', {
+      clipId: debugContext?.clipId ?? null,
+      mode: debugContext?.mode ?? null,
+      status: 'aborted',
+      latencyMs: elapsedMs(startMs),
+      timeoutMs,
+    });
     return Promise.resolve({ status: 'aborted', latencyMs: elapsedMs(startMs) });
   }
 
@@ -50,6 +70,14 @@ export function settleAuditionPreparation(
       settled = true;
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
+      logAudioAudition('settle-preparation', {
+        clipId: debugContext?.clipId ?? null,
+        mode: debugContext?.mode ?? null,
+        status: result.status,
+        latencyMs: result.latencyMs,
+        timeoutMs,
+        code: 'code' in result ? result.code : null,
+      });
       resolve(result);
     };
 
@@ -74,16 +102,31 @@ export function settleAuditionPreparation(
 
 export function waitForAuditionReady(
   audio: AuditionAudioLike,
-  opts?: { timeoutMs?: number; signal?: AbortSignal }
+  opts?: { timeoutMs?: number; signal?: AbortSignal; debugContext?: AudioDebugContext }
 ): Promise<AudioReadyResult> {
   const timeoutMs = opts?.timeoutMs ?? 4000;
   const signal = opts?.signal;
+  const debugContext = opts?.debugContext;
   const startMs = nowMs();
 
   if (signal?.aborted) {
+    logAudioAudition('wait-ready', {
+      clipId: debugContext?.clipId ?? null,
+      mode: debugContext?.mode ?? null,
+      status: 'aborted',
+      latencyMs: elapsedMs(startMs),
+      timeoutMs,
+    });
     return Promise.resolve({ status: 'aborted', latencyMs: elapsedMs(startMs) });
   }
   if (audio.readyState >= 2) {
+    logAudioAudition('wait-ready', {
+      clipId: debugContext?.clipId ?? null,
+      mode: debugContext?.mode ?? null,
+      status: 'ready',
+      latencyMs: elapsedMs(startMs),
+      timeoutMs,
+    });
     return Promise.resolve({ status: 'ready', latencyMs: elapsedMs(startMs) });
   }
 
@@ -98,6 +141,14 @@ export function waitForAuditionReady(
       audio.removeEventListener('loadeddata', onReady);
       audio.removeEventListener('canplay', onReady);
       audio.removeEventListener('error', onError);
+      logAudioAudition('wait-ready', {
+        clipId: debugContext?.clipId ?? null,
+        mode: debugContext?.mode ?? null,
+        status: result.status,
+        latencyMs: result.latencyMs,
+        timeoutMs,
+        code: 'code' in result ? result.code : null,
+      });
       resolve(result);
     };
 
