@@ -47,6 +47,23 @@ function normalizeSubtitleArray(raw: unknown): any[] {
   }
 }
 
+function mapTranslateError(e: any): string {
+  const msg = String(e?.message || '');
+  if (msg.includes('rate limit') || msg.includes('Rate limit')) {
+    return 'Translation service is busy, please try again in a moment';
+  }
+  if (msg.includes('access denied') || msg.includes('403')) {
+    return 'Translation service temporarily unavailable';
+  }
+  if (msg.includes('timeout') || msg.includes('Timeout')) {
+    return 'Translation timed out, please try again';
+  }
+  if (msg.includes('connection') || msg.includes('Connection')) {
+    return 'Translation service connection error, please try again';
+  }
+  return 'Translation failed, please try again';
+}
+
 /**
  * 生成字幕语音
  */
@@ -123,18 +140,18 @@ export async function POST(request: NextRequest) {
         });
         translated = String(back?.textTranslated || '').trim();
       } catch (e: any) {
-        console.error('[generate-subtitle-voice] java subtitle translate failed:', e);
+        console.error('[generate-subtitle-voice] translate failed:', e?.message || e);
         if (consumedCreditId) {
           await refundCredits({ creditId: consumedCreditId }).catch(() => {});
         }
-        return respErr(`java报错：${e?.message || 'translate failed'}`);
+        return respErr(mapTranslateError(e));
       }
 
       if (!translated) {
         if (consumedCreditId) {
           await refundCredits({ creditId: consumedCreditId }).catch(() => {});
         }
-        return respErr('java报错：empty translation');
+        return respErr('Translation returned empty result, please try again');
       }
 
       // 保持刷新恢复能力：写入草稿文本，并清理旧 job 标记，避免前端误轮询。
@@ -289,7 +306,8 @@ export async function POST(request: NextRequest) {
         if (consumedCreditId) {
           await refundCredits({ creditId: consumedCreditId }).catch(() => {});
         }
-        return respErr('python报错：' + (back?.message || 'tts failed'));
+        console.error('[generate-subtitle-voice] tts failed:', back?.message);
+        return respErr('Voice generation failed, please try again');
       }
 
       // Persist draft result for seamless refresh/resume (without vt_task_main).

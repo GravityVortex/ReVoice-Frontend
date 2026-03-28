@@ -19,15 +19,16 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
-import { useAppContext } from '@/shared/contexts/app';
 import { RetroGrid } from '@/shared/components/magicui/retro-grid';
 import { toast } from 'sonner';
 import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
 import { createLimitedTaskQueue } from '@/shared/lib/waveform/loader';
 import { getBufferedAheadSeconds } from '@/shared/lib/media-buffer';
-import { collectMissingVoiceIds, resolveSourcePlaybackMode, resolveSplitTranslatedAudioPath } from '@/shared/lib/timeline/split';
+import { collectMissingVoiceIds, resolveSplitTranslatedAudioPath } from '@/shared/lib/timeline/split';
 
 // New Components
+import { primeAuditionAudio, settleAuditionPreparation, waitForAuditionReady } from './audio-audition-engine';
+import { resolveSourceAuditionAudio } from './audio-source-resolver';
 import { SubtitleWorkstation, type SubtitleWorkstationHandle } from './subtitle-workstation';
 import { VideoPreviewPanel, VideoPreviewRef } from './video-preview-panel';
 import { TimelinePanel } from './timeline-panel';
@@ -44,33 +45,6 @@ const ABORT_REASON = typeof DOMException !== 'undefined'
   ? new DOMException('Aborted', 'AbortError')
   : Object.assign(new Error('Aborted'), { name: 'AbortError' });
 
-function waitForAudioReady(
-  audioEl: HTMLAudioElement,
-  opts?: { timeoutMs?: number }
-): Promise<boolean> {
-  const timeout = opts?.timeoutMs ?? 4000;
-  // For preview playback we do not need full-file buffering (`canplaythrough`).
-  // Reaching HAVE_CURRENT_DATA / `canplay` is enough to start quickly.
-  if (audioEl.readyState >= 2) return Promise.resolve(true);
-  return new Promise<boolean>((resolve) => {
-    let done = false;
-    const cleanup = () => {
-      if (done) return;
-      done = true;
-      audioEl.removeEventListener('loadeddata', onReady);
-      audioEl.removeEventListener('canplay', onReady);
-      audioEl.removeEventListener('error', onError);
-      clearTimeout(timer);
-    };
-    const onReady = () => { cleanup(); resolve(true); };
-    const onError = () => { cleanup(); resolve(false); };
-    audioEl.addEventListener('loadeddata', onReady, { once: true });
-    audioEl.addEventListener('canplay', onReady, { once: true });
-    audioEl.addEventListener('error', onError, { once: true });
-    const timer = setTimeout(() => { cleanup(); resolve(false); }, timeout);
-  });
-}
-
 export default function VideoEditorPage() {
   const params = useParams();
   const convertId = params.id as string;
@@ -78,7 +52,6 @@ export default function VideoEditorPage() {
   const t = useTranslations('video_convert.videoEditor');
   const tCommon = useTranslations('common');
   const tDetail = useTranslations('video_convert.projectDetail');
-  const { user } = useAppContext();
   // --- CORE STATE ---
   const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,6 +84,8 @@ export default function VideoEditorPage() {
   const pendingTimingCount = useMemo(() => Object.keys(pendingTimingMap).length, [pendingTimingMap]);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [workstationDirty, setWorkstationDirty] = useState(false);
+  const [timingChangedHint, setTimingChangedHint] = useState(false);
+  const timingChangedHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isSplittingSubtitle, setIsSplittingSubtitle] = useState(false);
   const [isRollingBack, setIsRollingBack] = useState(false);
   const latestOperationIdRef = useRef<string | null>(null);
@@ -256,6 +231,7 @@ export default function VideoEditorPage() {
   const auditionStopAtMsRef = useRef<number | null>(null);
   const auditionActiveTypeRef = useRef<'source' | 'convert' | null>(null);
   const auditionTokenRef = useRef(0);
+  const auditionAbortRef = useRef<AbortController | null>(null);
   const isAutoPlayNextRef = useRef(false);
   const playingSubtitleIndexRef = useRef<number>(-1);
   const sourceAuditionAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -269,6 +245,23 @@ export default function VideoEditorPage() {
     bgmMuted: boolean;
     videoMuted: boolean;
   } | null>(null);
+
+  const abortActiveAuditionPreparation = useCallback(() => {
+    const controller = auditionAbortRef.current;
+    if (!controller) return;
+    auditionAbortRef.current = null;
+    try {
+      controller.abort(ABORT_REASON);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      abortActiveAuditionPreparation();
+    };
+  }, [abortActiveAuditionPreparation]);
 
   // Video transport buffering (waiting/stalled/seeking). When true, we freeze audio transport.
   const transportIsStalledRef = useRef(false);
@@ -390,6 +383,10 @@ export default function VideoEditorPage() {
           }
           return copy;
         });
+
+        if (timingChangedHintTimerRef.current) clearTimeout(timingChangedHintTimerRef.current);
+        setTimingChangedHint(true);
+        timingChangedHintTimerRef.current = setTimeout(() => setTimingChangedHint(false), 2000);
 
         // Keep the right-side list (convertObj.srt_convert_arr) in sync with the edited timings.
         setConvertObj((prevObj) => {
@@ -1218,11 +1215,14 @@ export default function VideoEditorPage() {
     const promise = voiceDecodeQueue
       .enqueue((queueSignal) => decodeVoiceBuffer(key, queueSignal), controller.signal)
       .then((buf) => {
-        if (signal.aborted) return undefined as unknown as AudioBuffer;
+        if (signal.aborted) throw ABORT_REASON;
         cacheSetVoice(key, buf);
         return buf;
       })
-      .catch(() => undefined as unknown as AudioBuffer)
+      .catch((error) => {
+        if (signal.aborted || isAbortError(error)) throw ABORT_REASON;
+        throw error;
+      })
       .finally(() => {
         voiceInflightRef.current.delete(key);
         try { signal.removeEventListener('abort', onAbort); } catch { /* ignore */ }
@@ -2434,6 +2434,7 @@ export default function VideoEditorPage() {
 
   const handlePlayPause = useCallback(() => {
     auditionTokenRef.current += 1;
+    abortActiveAuditionPreparation();
     const videoEl = videoPreviewRef.current?.videoElement;
     if (isSubtitleBuffering) {
       try { bufferingAbortRef.current?.abort(ABORT_REASON); } catch { /* ignore */ }
@@ -2538,6 +2539,7 @@ export default function VideoEditorPage() {
     transportIsStalledRef.current = false;
     void playVideoWithGate(videoEl, { reason: 'user-play' });
   }, [
+    abortActiveAuditionPreparation,
     abortAllVoiceInflight,
     beginSubtitleBuffering,
     cacheGetVoice,
@@ -2973,6 +2975,7 @@ export default function VideoEditorPage() {
     // Click-to-seek: reset subtitle-audio state.
     if (!isAuditionSeek) {
       auditionTokenRef.current += 1;
+      abortActiveAuditionPreparation();
       if (auditionRestoreRef.current) {
         const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
         setIsSubtitleMuted(subtitleMuted);
@@ -3049,7 +3052,7 @@ export default function VideoEditorPage() {
       const seekedIdx = findSubtitleIndexAtTime(subtitleTrackRef.current, clampedTime);
       setPlayingSubtitleIndex(seekedIdx);
     }
-  }, [abortAllVoiceInflight, cancelUpdateLoop, findSubtitleIndexAtTime, isPlaying, stopAllSubtitleAudio, stopWebAudioVoice, totalDuration]);
+  }, [abortActiveAuditionPreparation, abortAllVoiceInflight, cancelUpdateLoop, findSubtitleIndexAtTime, isPlaying, stopAllSubtitleAudio, stopWebAudioVoice, totalDuration]);
 
   const handleSeekToSubtitle = useCallback((time: number) => {
     handleSeek(time, false);
@@ -3072,6 +3075,47 @@ export default function VideoEditorPage() {
     setSubtitleTrack(prev => prev.map(item => item.id === id ? { ...item, text } : item));
   }, []);
 
+  const handleSubtitleVoiceStatusChange = useCallback(
+    (id: string, voiceStatus: string, needsTts: boolean) => {
+      setConvertObj((prev) => {
+        if (!prev) return prev;
+        const arr = (prev.srt_convert_arr || []) as any[];
+        const nextArr = arr.map((row) =>
+          row?.id === id
+            ? { ...row, vap_voice_status: voiceStatus, vap_needs_tts: needsTts }
+            : row,
+        );
+        return { ...prev, srt_convert_arr: nextArr };
+      });
+    },
+    [],
+  );
+
+  const handleResetTiming = useCallback((id: string, startMs: number, endMs: number) => {
+    setPendingTimingMap((prev) => ({ ...prev, [id]: { startMs, endMs } }));
+
+    setConvertObj((prevObj) => {
+      if (!prevObj) return prevObj;
+      const arr = (prevObj.srt_convert_arr || []) as any[];
+      const sourceArr = (prevObj.srt_source_arr || []) as any[];
+      const sourceRow = sourceArr.find((r: any) => r?.id === id);
+      if (!sourceRow) return prevObj;
+      const nextArr = arr.map((row: any) =>
+        row?.id === id ? { ...row, start: sourceRow.start, end: sourceRow.end } : row,
+      );
+      return { ...prevObj, srt_convert_arr: nextArr };
+    });
+
+    setSubtitleTrack((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const newStart = startMs / 1000;
+        const newDuration = Math.max(0, (endMs - startMs) / 1000);
+        return { ...item, startTime: newStart, duration: newDuration };
+      }),
+    );
+  }, []);
+
   const handleToggleBgmMute = useCallback(() => {
     setIsBgmMuted((v) => !v);
   }, []);
@@ -3084,6 +3128,7 @@ export default function VideoEditorPage() {
     // Cancel any in-flight warmup/play so it can't flip state later.
     videoStartGateTokenRef.current += 1;
     videoPlayTokenRef.current += 1;
+    abortActiveAuditionPreparation();
     transportIsStalledRef.current = false;
     setIsVideoBuffering(false);
 
@@ -3132,7 +3177,7 @@ export default function VideoEditorPage() {
         }, 50);
       }
     }
-  }, []);
+  }, [abortActiveAuditionPreparation]);
 
   useEffect(() => {
     const handleNaturalStop = () => handleAuditionStop(true);
@@ -3144,6 +3189,15 @@ export default function VideoEditorPage() {
     if (index < 0 || index >= subtitleTrackRef.current.length) return;
     const item = subtitleTrackRef.current[index];
     const token = ++auditionTokenRef.current;
+    abortActiveAuditionPreparation();
+    const controller = new AbortController();
+    auditionAbortRef.current = controller;
+
+    const releaseAuditionController = () => {
+      if (auditionAbortRef.current === controller) {
+        auditionAbortRef.current = null;
+      }
+    };
 
     // Stop any previous source audition audio.
     try { sourceAuditionAudioRef.current?.pause(); } catch { /* ignore */ }
@@ -3179,13 +3233,19 @@ export default function VideoEditorPage() {
     handleSeek(item.startTime, false, true);
 
     if (mode === 'source' && convertObj) {
-      // --- Source audition: split rows should go straight to vocal fallback instead of waiting for a missing segment file. ---
       const sourceEntry = convertObj.srt_source_arr?.[index];
-      const sourceId = sourceEntry?.id || String(index + 1);
-      const userId = user?.id || '';
-      const sourceAudioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/split_audio/audio/${sourceId}.wav`;
-      const sourceMode = resolveSourcePlaybackMode(sourceEntry);
-      console.log('[SourceAudition] url:', sourceAudioUrl, 'sourceId:', sourceId, 'userId:', userId, 'mode:', sourceMode);
+      const resolvedSourceAudio = resolveSourceAuditionAudio({
+        convertObj,
+        sourceEntry,
+      });
+      console.log(
+        '[SourceAudition] primary:',
+        resolvedSourceAudio.primary?.url,
+        'fallback:',
+        resolvedSourceAudio.fallback?.url,
+        'sourceId:',
+        sourceEntry?.id || String(index + 1)
+      );
 
       if (!sourceAuditionAudioRef.current) {
         sourceAuditionAudioRef.current = new Audio();
@@ -3202,66 +3262,92 @@ export default function VideoEditorPage() {
         return h * 3600 + m * 60 + sec + (Number(ms) || 0) / 1000;
       };
 
-      const applyVocalFallback = async () => {
-        if (!convertObj.vocalAudioUrl || !sourceEntry?.start) return { ready: false, gesturePlayPromise: null as Promise<void> | null };
+      const applySourceCandidate = async (
+        candidate: { url: string; source: 'source_segment' | 'vocal_fallback' } | null
+      ) => {
+        if (!candidate?.url || controller.signal.aborted) {
+          return {
+            gesturePlayPromise: null as Promise<void> | null,
+            readyResult: { status: 'aborted' as const, latencyMs: 0 },
+          };
+        }
         audioEl.preload = 'auto';
-        audioEl.src = convertObj.vocalAudioUrl;
-        const startSec = parseSrtTime(sourceEntry.start);
-        const endSec = sourceEntry.end ? parseSrtTime(sourceEntry.end) : startSec + 10;
-        audioEl.currentTime = startSec;
-        audioEl.ontimeupdate = () => {
-          if (audioEl.currentTime >= endSec) {
-            audioEl.ontimeupdate = null;
-            audioEl.onended = null;
-            audioEl.pause();
-            document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+        audioEl.src = candidate.url;
+        if (candidate.source === 'vocal_fallback') {
+          if (!sourceEntry?.start) {
+            return {
+              gesturePlayPromise: null as Promise<void> | null,
+              readyResult: { status: 'error' as const, latencyMs: 0, code: 'missing_source_timing' },
+            };
           }
-        };
-        audioEl.load();
-        const gesturePlayPromise = audioEl.play().catch(() => { /* expected pause below */ });
-        audioEl.pause();
-        const ready = await waitForAudioReady(audioEl, { timeoutMs: 2500 });
-        return { ready, gesturePlayPromise };
+          const startSec = parseSrtTime(sourceEntry.start);
+          const endSec = resolvedSourceAudio.stopAtSec ?? (sourceEntry.end ? parseSrtTime(sourceEntry.end) : startSec + 10);
+          audioEl.currentTime = startSec;
+          audioEl.ontimeupdate = () => {
+            if (audioEl.currentTime >= endSec) {
+              audioEl.ontimeupdate = null;
+              audioEl.onended = null;
+              audioEl.pause();
+              document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+            }
+          };
+        } else {
+          audioEl.currentTime = 0;
+        }
+        const gesturePlayPromise = primeAuditionAudio(audioEl);
+        const readyResult = await waitForAuditionReady(
+          audioEl,
+          {
+            timeoutMs: candidate.source === 'vocal_fallback' ? 2500 : 4000,
+            signal: controller.signal,
+          }
+        );
+        return { gesturePlayPromise, readyResult };
       };
 
       let audioOk = false;
       let gesturePlayPromise: Promise<void> | null = null;
+      let finalReadyStatus: 'ready' | 'timeout' | 'error' | 'aborted' = 'timeout';
+      const primaryAttempt = await applySourceCandidate(resolvedSourceAudio.primary);
+      audioOk = primaryAttempt.readyResult.status === 'ready';
+      finalReadyStatus = primaryAttempt.readyResult.status;
+      gesturePlayPromise = primaryAttempt.gesturePlayPromise;
+      if (controller.signal.aborted || token !== auditionTokenRef.current) return;
 
-      if (sourceMode === 'fallback_vocal') {
-        const fallback = await applyVocalFallback();
-        audioOk = fallback.ready;
-        gesturePlayPromise = fallback.gesturePlayPromise;
-        if (token !== auditionTokenRef.current) return;
-      } else {
-        audioEl.src = sourceAudioUrl;
-        audioEl.currentTime = 0;
-        audioEl.load();
-
-        gesturePlayPromise = audioEl.play().catch(() => { /* expected pause below */ });
-        audioEl.pause();
-
-        audioOk = await waitForAudioReady(audioEl, { timeoutMs: 4000 });
-        if (token !== auditionTokenRef.current) return;
-
-        if (!audioOk) {
-          console.warn('[SourceAudition] segment load failed, falling back to vocalAudioUrl');
-          const fallback = await applyVocalFallback();
-          audioOk = fallback.ready;
-          if (!gesturePlayPromise) gesturePlayPromise = fallback.gesturePlayPromise;
-          if (token !== auditionTokenRef.current) return;
-        }
+      if (!audioOk && resolvedSourceAudio.fallback?.url
+        && resolvedSourceAudio.fallback.url !== resolvedSourceAudio.primary?.url) {
+        console.warn(
+          '[SourceAudition] primary source not ready, trying fallback:',
+          primaryAttempt.readyResult?.status
+        );
+        const fallbackAttempt = await applySourceCandidate(resolvedSourceAudio.fallback);
+        audioOk = fallbackAttempt.readyResult.status === 'ready';
+        finalReadyStatus = fallbackAttempt.readyResult.status;
+        if (!gesturePlayPromise) gesturePlayPromise = fallbackAttempt.gesturePlayPromise;
+        if (controller.signal.aborted || token !== auditionTokenRef.current) return;
       }
 
       // Wait for the initial gesture play promise to settle before proceeding.
       if (gesturePlayPromise) await gesturePlayPromise;
 
+      if (controller.signal.aborted || token !== auditionTokenRef.current || finalReadyStatus === 'aborted') {
+        return;
+      }
+
       if (!audioOk) {
-        console.error('[SourceAudition] all audio sources failed');
-        toast.error(t('videoEditor.toast.audioLoadFailed') || 'Audio load failed');
+        releaseAuditionController();
+        handleAuditionStop(false);
+        if (finalReadyStatus === 'error') {
+          console.error('[SourceAudition] all audio sources failed');
+          toast.error(t('videoEditor.toast.audioLoadFailed') || 'Audio load failed');
+        } else {
+          console.warn('[SourceAudition] audio timed out before becoming ready');
+        }
         return;
       }
 
       if (token !== auditionTokenRef.current) return;
+      releaseAuditionController();
 
       // Both audio and video start together
       audioEl.onended = () => {
@@ -3279,17 +3365,36 @@ export default function VideoEditorPage() {
 
       if (voiceUrl && !cacheGetVoice(voiceUrl)) {
         try {
-          const ctrl = new AbortController();
-          await ensureVoiceBuffer(voiceUrl, ctrl.signal);
+          const prepResult = await settleAuditionPreparation(
+            ensureVoiceBuffer(voiceUrl, controller.signal),
+            { timeoutMs: 4000, signal: controller.signal }
+          );
+          if (prepResult.status === 'timeout') {
+            console.warn('[ConvertAudition] voice prepare timed out');
+            controller.abort(ABORT_REASON);
+            releaseAuditionController();
+            handleAuditionStop(false);
+            return;
+          }
+          if (prepResult.status === 'aborted') return;
+          if (prepResult.status === 'error') {
+            console.warn('[ConvertAudition] voice prepare failed:', prepResult.code);
+            releaseAuditionController();
+            handleAuditionStop(false);
+            toast.error(t('videoEditor.toast.audioLoadFailed') || 'Audio load failed');
+            return;
+          }
         } catch {
           // Decode failed; syncVoicePlaybackWebAudio will handle fallback at runtime.
         }
-        if (token !== auditionTokenRef.current) return;
+        if (controller.signal.aborted || token !== auditionTokenRef.current) return;
       }
 
+      releaseAuditionController();
       if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
     }
-  }, [cacheGetVoice, convertObj, ensureVoiceBuffer, handleSeek, playVideoWithGate, t, user?.id]);
+    releaseAuditionController();
+  }, [abortActiveAuditionPreparation, cacheGetVoice, convertObj, ensureVoiceBuffer, handleAuditionStop, handleSeek, playVideoWithGate, t]);
 
   useEffect(() => {
     const handleEventRequestPlay = (e: any) => handleAuditionRequestPlay(e.detail.index, e.detail.mode);
@@ -3568,6 +3673,7 @@ export default function VideoEditorPage() {
                   onSeekToSubtitle={handleSeekToSubtitle}
                   onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
                   onSubtitleTextChange={handleSubtitleTextChange}
+                  onSubtitleVoiceStatusChange={handleSubtitleVoiceStatusChange}
                   onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
                   onVideoMergeCompleted={handleVideoMergeCompleted}
                   onVideoMergeStarted={handleVideoMergeStarted}
@@ -3581,6 +3687,7 @@ export default function VideoEditorPage() {
                   isAutoPlayNext={isAutoPlayNext}
                   onToggleAutoPlayNext={setIsAutoPlayNext}
                   onDirtyStateChange={setWorkstationDirty}
+                  onResetTiming={handleResetTiming}
                 />
               </div>
             }
@@ -3710,6 +3817,7 @@ export default function VideoEditorPage() {
             undoLoading={isRollingBack}
             undoCountdown={undoCountdown}
             onUndoCancel={handleUndoCancel}
+            timingChangedHint={timingChangedHint}
           />
         </div>
       </div>
@@ -3747,4 +3855,3 @@ function LoadingSkeleton() {
     <Skeleton className="h-64 w-full" />
   </div>;
 }
-

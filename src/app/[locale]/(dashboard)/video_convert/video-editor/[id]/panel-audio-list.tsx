@@ -5,25 +5,11 @@
 'use client';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
-  ArrowDownToDot,
-  Bot,
-  Cpu,
   HeadphoneOff,
   Headphones,
-  Layers,
-  Lightbulb,
   Loader2,
-  Package,
-  Pause,
-  Pencil,
-  Play,
   RefreshCw,
-  Rocket,
   Save,
-  Sparkles,
-  Stars,
-  Wand2,
-  Zap,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -33,7 +19,7 @@ import { Button } from '@/shared/components/ui/button';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 
 import { ConvertObj } from '../../../../../../shared/components/video-editor';
-import { useAppContext } from '../../../../../../shared/contexts/app';
+import { resolveEditorPublicAudioUrl } from './audio-source-resolver';
 import { SubtitleRowData, SubtitleRowItem } from './subtitle-row-item';
 
 interface AudioListPanelProps {
@@ -65,9 +51,6 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
 
     const audioRef = useRef<HTMLAudioElement>(null);
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const { user } = useAppContext();
-
     // 监听左侧当前播放字幕索引，滚动右侧列表到对应位置
     useEffect(() => {
       setDoubleClickIdx(-1);
@@ -248,20 +231,23 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
       const item = subtitleItems[index];
       // const audioUrl = type === 'source' ? item.audioUrl_source : item.audioUrl_convert;
 
-      const userId = user?.id || '';
       // let folder = type === 'source' ? 'split_audio/audio' : 'adj_audio_time';
       let folderName = '';
       // 视频原字幕
       if (type === 'source') {
-        folderName = `split_audio/audio/${item.sourceId}.wav`;
+        folderName = item.audioUrl_source || `split_audio/audio/${item.sourceId}.wav`;
       }
       // 翻译后的字幕
       else {
-        folderName = item.audioUrl_convert_custom ? item.audioUrl_convert_custom : `adj_audio_time/${item.id}.wav?t=${item.newTime}`;
+        folderName = item.audioUrl_convert_custom || item.audioUrl_convert || `adj_audio_time/${item.id}.wav`;
       }
       console.log('folderName--->', folderName);
 
-      const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${folderName}`;
+      const audioUrl = resolveEditorPublicAudioUrl({
+        convertObj,
+        pathName: folderName,
+        cacheBust: type === 'convert' ? item.newTime : undefined,
+      });
       console.log('audioUrl--->', audioUrl);
 
       audioRef.current.src = audioUrl;
@@ -419,8 +405,11 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
           );
           // 此处更新panel-video-editor页面中字幕音频轨道数据
           if (type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
-            const userId = user?.id || '';
-            const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${resolvedData.path_name}?t=${newTime}`;
+            const audioUrl = resolveEditorPublicAudioUrl({
+              convertObj,
+              pathName: resolvedData.path_name,
+              cacheBust: newTime,
+            });
             onUpdateSubtitleAudioUrl(item.id, audioUrl);
           }
         } else {
@@ -486,7 +475,7 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
           toast.error(message || t('toast.videoSaveFailed'));
           return false;
         }
-      } catch (error) {
+      } catch {
         toast.error(t('toast.videoSaveFailed'));
         return false;
       }
@@ -503,11 +492,10 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
         // const sourceArr = convertObj.srt_source_arr || [];
         const convertArr = convertObj.srt_convert_arr || [];
 
-        let targetItem;
         if (type !== 'translate_srt') {
           return;
         }
-        targetItem = convertArr.find((itm: any) => itm.id === item.id);
+        const targetItem = convertArr.find((itm: any) => itm.id === item.id);
         if (targetItem) {
           targetItem.txt = item.text_convert;
         }
@@ -560,8 +548,11 @@ export const AudioListPanel = forwardRef<{ onVideoSaveClick: () => void }, Audio
           // 此处更新panel-video-editor页面中字幕音频轨道数据
           if (onUpdateSubtitleAudioUrl) {
             const newTime = new Date().getTime();
-            const userId = user?.id || '';
-            const audioUrl = `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/adj_audio_time/${item.id}.wav?t=${newTime}`;
+            const audioUrl = resolveEditorPublicAudioUrl({
+              convertObj,
+              pathName: `adj_audio_time/${item.id}.wav`,
+              cacheBust: newTime,
+            });
             onUpdateSubtitleAudioUrl(item.id, audioUrl);
           }
           // 添加item到updateItemList集合

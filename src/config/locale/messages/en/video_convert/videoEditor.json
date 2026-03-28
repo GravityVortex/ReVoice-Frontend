@@ -195,6 +195,12 @@
       "continueEditing": "Keep editing this translated line",
       "updateVoice": "Update subtitle voice",
       "updateVoiceWithCost": "Generate a preview voice for this text ({credits} credits)"
+    },
+    "timing": {
+      "driftedTooltip": "Timing adjusted · Original: {originalTime}",
+      "resetTooltip": "Reset to original timing ({originalTime})",
+      "resetSuccess": "Timing reset",
+      "dragFeedback": "Subtitle timing adjusted, will auto-save"
     }
   },
   "dialog": {

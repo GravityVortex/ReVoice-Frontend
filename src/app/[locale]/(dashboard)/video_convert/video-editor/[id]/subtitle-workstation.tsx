@@ -15,6 +15,7 @@ import { useAppContext } from '@/shared/contexts/app';
 import { deriveSubtitleVoiceUiState, type SubtitleVoiceUiState } from '@/shared/lib/subtitle-voice-state';
 import { cn } from '@/shared/lib/utils';
 
+import { resolveEditorPublicAudioUrl } from './audio-source-resolver';
 import { SubtitleRowData, SubtitleRowItem } from './subtitle-row-item';
 
 interface SubtitleWorkstationProps {
@@ -45,7 +46,9 @@ interface SubtitleWorkstationProps {
   onShowTip?: () => void;
   onUpdateSubtitleAudioUrl?: (id: string, audioUrl: string) => void;
   onSubtitleTextChange?: (id: string, text: string) => void;
+  onSubtitleVoiceStatusChange?: (id: string, voiceStatus: string, needsTts: boolean) => void;
   onDirtyStateChange?: (isDirty: boolean) => void;
+  onResetTiming?: (id: string, startMs: number, endMs: number) => void;
 }
 
 export interface SubtitleWorkstationHandle {
@@ -77,13 +80,15 @@ export const SubtitleWorkstation = memo(
         onShowTip,
         onUpdateSubtitleAudioUrl,
         onSubtitleTextChange,
+        onSubtitleVoiceStatusChange,
         onDirtyStateChange,
+        onResetTiming,
       },
       ref
     ) => {
       const t = useTranslations('video_convert.videoEditor.audioList');
       const tCommon = useTranslations('common');
-      const { user, fetchUserCredits } = useAppContext();
+      const { fetchUserCredits } = useAppContext();
 
       // State
       const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
@@ -107,6 +112,7 @@ export const SubtitleWorkstation = memo(
       const rootRef = useRef<HTMLDivElement>(null);
       const textChangeTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       const autoSaveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+      const autoSaveSourceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
       const debouncedTextChange = useCallback(
         (id: string, text: string) => {
@@ -138,12 +144,32 @@ export const SubtitleWorkstation = memo(
         [convertObj]
       );
 
+      const debouncedAutoSaveSourceText = useCallback(
+        (subtitleId: string, text: string) => {
+          if (!convertObj) return;
+          clearTimeout(autoSaveSourceTimersRef.current[subtitleId]);
+          autoSaveSourceTimersRef.current[subtitleId] = setTimeout(() => {
+            delete autoSaveSourceTimersRef.current[subtitleId];
+            fetch('/api/video-task/auto-save-source-text', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ taskId: convertObj.id, subtitleId, text }),
+            }).catch(() => {
+              /* best-effort */
+            });
+          }, 1500);
+        },
+        [convertObj]
+      );
+
       useEffect(() => {
         const timers = textChangeTimersRef.current;
         const saveTimers = autoSaveTimersRef.current;
+        const sourceTimers = autoSaveSourceTimersRef.current;
         return () => {
           Object.values(timers).forEach(clearTimeout);
           Object.values(saveTimers).forEach(clearTimeout);
+          Object.values(sourceTimers).forEach(clearTimeout);
         };
       }, []);
 
@@ -154,15 +180,13 @@ export const SubtitleWorkstation = memo(
 
       const buildPublicAudioUrl = useCallback(
         (pathName: string, cacheBust: string | number) => {
-          if (!convertObj) return buildDraftPreviewUrl(pathName, cacheBust);
-          const userId = user?.id || convertObj.userId || '';
-          if (!convertObj.r2preUrl || !convertObj.env || !userId) {
-            return buildDraftPreviewUrl(pathName, cacheBust);
-          }
-          const base = pathName.split('?')[0];
-          return `${convertObj.r2preUrl}/${convertObj.env}/${userId}/${convertObj.id}/${base}?t=${cacheBust}`;
+          return resolveEditorPublicAudioUrl({
+            convertObj,
+            pathName,
+            cacheBust,
+          }) || buildDraftPreviewUrl(pathName, cacheBust);
         },
-        [buildDraftPreviewUrl, convertObj, user?.id]
+        [buildDraftPreviewUrl, convertObj]
       );
 
       const deriveRowVoiceUiState = useCallback(
@@ -767,6 +791,7 @@ export const SubtitleWorkstation = memo(
             if (onUpdateSubtitleAudioUrl) {
               onUpdateSubtitleAudioUrl(item.id, buildPublicAudioUrl(savedAudioPath, savedAt));
             }
+            onSubtitleVoiceStatusChange?.(item.id, 'ready', false);
             setUpdateItemList((prev) => {
               const copy = [...prev];
               const existing = copy.findIndex((i) => i.order === item.order);
@@ -863,6 +888,12 @@ export const SubtitleWorkstation = memo(
 
       useImperativeHandle(ref, () => ({ onVideoSaveClick, scrollToItem }));
 
+      const srtTimeToMs = (srt: string): number => {
+        const [h, m, rest] = srt.split(':');
+        const [s, ms] = (rest || '0,0').split(',');
+        return (+h * 3600 + +m * 60 + +s) * 1000 + +ms;
+      };
+
       // Time Seconds Helper
       const parseTimeToSeconds = (timeStr: string): number => {
         const parts = timeStr.split(':');
@@ -891,7 +922,7 @@ export const SubtitleWorkstation = memo(
 
       const pendingSplitCount = useMemo(() => {
         return subtitleItems.filter((item) => {
-          if (!Boolean(item.splitParentId || item.splitOperationId)) return false;
+          if (!(item.splitParentId || item.splitOperationId)) return false;
           const state = deriveRowVoiceUiState(item);
           return state === 'stale' || state === 'text_ready' || state === 'audio_ready';
         }).length;
@@ -1101,12 +1132,13 @@ export const SubtitleWorkstation = memo(
                       handleSeek(item.startTime_convert);
                     }}
                     onUpdate={(itm: SubtitleRowData) => {
-                      const textActuallyChanged = itm.text_convert !== item.text_convert;
+                      const textConvertChanged = itm.text_convert !== item.text_convert;
+                      const textSourceChanged = itm.text_source !== item.text_source;
                       const hasExistingDraftAudio = Boolean(item.draftAudioPath || item.audioUrl_convert_custom);
 
                       setSubtitleItems((prev) => prev.map((current) => (current.id === itm.id ? { ...current, ...itm } : current)));
 
-                      if (textActuallyChanged && hasExistingDraftAudio) {
+                      if (textConvertChanged && hasExistingDraftAudio) {
                         setInvalidatedDraftAudioIds((prev) => {
                           const next = new Set(prev);
                           next.add(itm.id);
@@ -1114,8 +1146,13 @@ export const SubtitleWorkstation = memo(
                         });
                       }
 
-                      debouncedTextChange(itm.id, itm.text_convert);
-                      debouncedAutoSaveText(itm.id, itm.text_convert);
+                      if (textConvertChanged) {
+                        debouncedTextChange(itm.id, itm.text_convert);
+                        debouncedAutoSaveText(itm.id, itm.text_convert);
+                      }
+                      if (textSourceChanged) {
+                        debouncedAutoSaveSourceText(itm.id, itm.text_source);
+                      }
                     }}
                     onPlayPauseSource={() => togglePlayback(item.order, 'source')}
                     onPlayPauseConvert={() => togglePlayback(item.order, 'convert')}
@@ -1129,6 +1166,15 @@ export const SubtitleWorkstation = memo(
                       setBlockedPreviewHintId(item.id);
                       handleSeek(item.startTime_convert);
                     }}
+                    onResetTiming={
+                      onResetTiming
+                        ? () => {
+                            const startMs = srtTimeToMs(item.startTime_source);
+                            const endMs = srtTimeToMs(item.endTime_source);
+                            onResetTiming(item.id, startMs, endMs);
+                          }
+                        : undefined
+                    }
                   />
                 ))}
             </div>

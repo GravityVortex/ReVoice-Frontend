@@ -90,11 +90,10 @@ export function Timeline({
   // User expectation: keep the ruler readable and predictable.
   // Fixed tick grid: 0.5s per minor mark, 2s per major mark.
   // (Zoom changes the spacing in px, not the "seconds per tick".)
-  const minorStepSeconds = 0.5;
-  const majorStepSeconds = 2;
+  const minorStepSeconds = 0.25;
+  const majorStepSeconds = 1;
   // Labels are much more expensive than ticks; keep them sparse so playback doesn't stutter.
-  // (Still consistent with a 2s grid: label every major mark.)
-  const labelStepSeconds = 2;
+  const labelStepSeconds = 1;
 
   const minorStepPct = useMemo(() => Math.min(100, (minorStepSeconds / safeTotal) * 100), [minorStepSeconds, safeTotal]);
   const majorStepPct = useMemo(() => Math.min(100, (majorStepSeconds / safeTotal) * 100), [majorStepSeconds, safeTotal]);

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Loader2, Pause, Play, Scissors } from 'lucide-react';
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Loader2, Pause, Play, RotateCcw, Scissors } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/shared/components/ui/button';
@@ -58,9 +58,10 @@ interface SubtitleRowItemProps {
   onConvert: (item: SubtitleRowData, type: string) => void;
   onSave: (type: string) => void;
   onStartManualEdit?: () => void;
+  onResetTiming?: () => void;
 }
 
-function TimePill({ time, tone = 'muted' }: { time: string; tone?: 'muted' | 'active' | 'teal-active' }) {
+function TimePill({ time, tone = 'muted' }: { time: string; tone?: 'muted' | 'active' | 'teal-active' | 'drifted' }) {
   return (
     <span
       className={cn(
@@ -70,7 +71,9 @@ function TimePill({ time, tone = 'muted' }: { time: string; tone?: 'muted' | 'ac
           ? 'border-primary/25 bg-primary/10 text-primary/90'
           : tone === 'teal-active'
             ? 'border-teal-400/25 bg-teal-400/10 text-teal-300/90'
-            : 'text-muted-foreground/80 border-white/10 bg-white/[0.03]'
+            : tone === 'drifted'
+              ? 'border-amber-400/25 bg-amber-400/10 text-amber-300/90'
+              : 'text-muted-foreground/80 border-white/10 bg-white/[0.03]'
       )}
     >
       {time}
@@ -148,6 +151,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
     onSave,
     onPointerToPlaceClick,
     onStartManualEdit,
+    onResetTiming,
   },
   ref
 ) {
@@ -186,6 +190,32 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
     () => `${localItem.startTime_convert} → ${localItem.endTime_convert}`,
     [localItem.endTime_convert, localItem.startTime_convert]
   );
+
+  const timingDrifted = useMemo(
+    () =>
+      localItem.startTime_source !== localItem.startTime_convert ||
+      localItem.endTime_source !== localItem.endTime_convert,
+    [localItem.startTime_source, localItem.endTime_source, localItem.startTime_convert, localItem.endTime_convert]
+  );
+
+  const [resetJustDone, setResetJustDone] = useState(false);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleResetTiming = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      if (!onResetTiming) return;
+      onResetTiming();
+      setResetJustDone(true);
+      clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => setResetJustDone(false), 800);
+    },
+    [onResetTiming]
+  );
+
+  useEffect(() => {
+    return () => clearTimeout(resetTimerRef.current);
+  }, []);
 
   const stateLabel = useMemo(() => {
     const labelKey = getSubtitleRowStatusLabelKey({ isSplit, state: uiVoiceState }, { hasLabel: (key) => t.has(key) });
@@ -445,19 +475,24 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
 
           {/* 右端状态图标 */}
           <div className="flex min-w-0 items-start justify-end pt-0.5">
-            {compactStatus.showLabel && compactStatus.labelKey ? (
-              <span
-                className={cn(
-                  'inline-flex max-w-[96px] items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                  compactBadgeClassName
-                )}
-              >
+            <div className="relative">
+              {compactStatus.showLabel && compactStatus.labelKey ? (
+                <span
+                  className={cn(
+                    'inline-flex max-w-[96px] items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                    compactBadgeClassName
+                  )}
+                >
+                  <CompactStateIcon state={uiVoiceState} isSplit={isSplit} />
+                  <span className="truncate">{t(compactStatus.labelKey)}</span>
+                </span>
+              ) : (
                 <CompactStateIcon state={uiVoiceState} isSplit={isSplit} />
-                <span className="truncate">{t(compactStatus.labelKey)}</span>
-              </span>
-            ) : (
-              <CompactStateIcon state={uiVoiceState} isSplit={isSplit} />
-            )}
+              )}
+              {timingDrifted && (
+                <span className="absolute -top-0.5 -right-0.5 size-1 rounded-full bg-amber-400/70" />
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -552,10 +587,48 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
 
                 <div className="flex items-center justify-end gap-2">
                   {isPlayingConvert && !isPlayingFromVideo ? <EqualizerBars size="xs" isSplit={isSplit} /> : null}
-                  <TimePill
-                    time={timeConvert}
-                    tone={isPlayingFromVideo || isPlayingConvert ? (isSplit ? 'teal-active' : 'active') : 'muted'}
-                  />
+                  {timingDrifted ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <TimePill
+                            time={timeConvert}
+                            tone={isPlayingFromVideo || isPlayingConvert ? (isSplit ? 'teal-active' : 'active') : 'drifted'}
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {t('timing.driftedTooltip', { originalTime: timeSource })}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <TimePill
+                      time={timeConvert}
+                      tone={isPlayingFromVideo || isPlayingConvert ? (isSplit ? 'teal-active' : 'active') : 'muted'}
+                    />
+                  )}
+                  {timingDrifted && onResetTiming && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={handleResetTiming}
+                          className={cn(
+                            'inline-flex size-5 items-center justify-center rounded-md transition-colors',
+                            resetJustDone
+                              ? 'text-emerald-400'
+                              : 'text-amber-400/50 hover:text-amber-300 hover:bg-amber-400/10'
+                          )}
+                          aria-label={t('timing.resetTooltip', { originalTime: timeSource })}
+                        >
+                          {resetJustDone ? <Check className="size-3.5" /> : <RotateCcw className="size-3.5" />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {t('timing.resetTooltip', { originalTime: timeSource })}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

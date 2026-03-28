@@ -195,6 +195,12 @@
       "continueEditing": "继续编辑这句译文",
       "updateVoice": "更新字幕语音",
       "updateVoiceWithCost": "为当前译文生成试听译音（{credits} 积分）"
+    },
+    "timing": {
+      "driftedTooltip": "时间已调整 · 原始: {originalTime}",
+      "resetTooltip": "重置为原始时间 ({originalTime})",
+      "resetSuccess": "时间已重置",
+      "dragFeedback": "字幕时间已调整，将自动保存"
     }
   },
   "dialog": {

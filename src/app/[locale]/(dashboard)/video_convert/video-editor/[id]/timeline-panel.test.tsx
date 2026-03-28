@@ -54,4 +54,10 @@ describe('TimelinePanel', () => {
     expect(html).not.toContain('bg-gradient-to-r from-background/80 to-transparent');
     expect(html).not.toContain('bg-gradient-to-l from-background/80 to-transparent');
   });
+
+  it('passes the real pxPerSec density into each subtitle track', () => {
+    const source = readFileSync(new URL('./timeline-panel.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('pxPerSec={minPxPerSec}');
+  });
 });
