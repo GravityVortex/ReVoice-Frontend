@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useReducer, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircle2, Info, Loader2, Sparkles, XCircle } from 'lucide-react';
@@ -29,6 +29,19 @@ import { collectMissingVoiceIds, resolveSplitTranslatedAudioPath } from '@/share
 // New Components
 import { primeAuditionAudio, settleAuditionPreparation, waitForAuditionReady } from './audio-audition-engine';
 import { resolveSourceAuditionAudio } from './audio-source-resolver';
+import {
+  auditionEndedNaturally,
+  auditionReady as markAuditionReady,
+  clearPendingNextClip,
+  createInitialTransportState,
+  getActiveClipIndex,
+  getAuditionStopAtSec,
+  setAutoPlayNext as setTransportAutoPlayNext,
+  startConvertAudition,
+  startSourceAudition,
+  stopAudition as stopTransportAudition,
+  transportReducer,
+} from './editor-transport';
 import { SubtitleWorkstation, type SubtitleWorkstationHandle } from './subtitle-workstation';
 import { VideoPreviewPanel, VideoPreviewRef } from './video-preview-panel';
 import { TimelinePanel } from './timeline-panel';
@@ -72,8 +85,12 @@ export default function VideoEditorPage() {
   // Zoom
   const [zoom, setZoom] = useState(2);
   const [playingSubtitleIndex, setPlayingSubtitleIndex] = useState<number>(-1);
-  const [auditionActiveType, setAuditionActiveType] = useState<'source' | 'convert' | null>(null);
   const [isAutoPlayNext, setIsAutoPlayNext] = useState(false);
+  const [transportState, dispatchTransport] = useReducer(
+    transportReducer,
+    undefined,
+    () => createInitialTransportState()
+  );
   // 服务端持久化：上次“重新合成视频”时刻（用于刷新后恢复 pending 状态）
   const [serverLastMergedAtMs, setServerLastMergedAtMs] = useState(0);
   // 服务端持久化：正在进行中的“重新合成”任务（用于刷新/关闭页面后恢复轮询状态）
@@ -235,10 +252,31 @@ export default function VideoEditorPage() {
   const isAutoPlayNextRef = useRef(false);
   const playingSubtitleIndexRef = useRef<number>(-1);
   const sourceAuditionAudioRef = useRef<HTMLAudioElement | null>(null);
+  const handleAuditionStopRef = useRef<(naturalEnd?: boolean) => void>(() => {});
+  const transportAuditionType =
+    transportState.mode === 'audition_source'
+      ? 'source'
+      : transportState.mode === 'audition_convert'
+        ? 'convert'
+        : null;
+  const transportActiveClipIndex = getActiveClipIndex(transportState);
+  const transportAuditionStopAtMs = (() => {
+    const stopAtSec = getAuditionStopAtSec(transportState);
+    return stopAtSec == null ? null : Math.round(stopAtSec * 1000);
+  })();
 
   useEffect(() => {
-    isAutoPlayNextRef.current = isAutoPlayNext;
+    isAutoPlayNextRef.current = transportState.autoPlayNext;
+  }, [transportState.autoPlayNext]);
+
+  useEffect(() => {
+    dispatchTransport(setTransportAutoPlayNext(isAutoPlayNext));
   }, [isAutoPlayNext]);
+
+  useEffect(() => {
+    auditionActiveTypeRef.current = transportAuditionType;
+    auditionStopAtMsRef.current = transportAuditionStopAtMs;
+  }, [transportAuditionStopAtMs, transportAuditionType]);
   // 试听期间临时覆盖静音状态，结束时恢复
   const auditionRestoreRef = useRef<{
     subtitleMuted: boolean;
@@ -2121,9 +2159,8 @@ export default function VideoEditorPage() {
         } catch { /* ignore */ }
         setIsPlaying(false);
 
-        // Dispatch synthetic event to handleAuditionStop cleanly without async deps cycles
         window.setTimeout(() => {
-          document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+          handleAuditionStopRef.current(true);
         }, 10);
         return;
       }
@@ -2472,7 +2509,6 @@ export default function VideoEditorPage() {
         auditionStopAtMsRef.current = null;
         setPlayingSubtitleIndex(-1);
         playingSubtitleIndexRef.current = -1;
-        setAuditionActiveType(null);
         auditionActiveTypeRef.current = null;
         if (auditionRestoreRef.current) {
           const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
@@ -2987,7 +3023,6 @@ export default function VideoEditorPage() {
         }
         auditionRestoreRef.current = null;
       }
-      setAuditionActiveType(null);
       auditionActiveTypeRef.current = null;
       auditionStopAtMsRef.current = null;
       // Stop source audition audio when user seeks away from audition.
@@ -3124,6 +3159,11 @@ export default function VideoEditorPage() {
     setIsSubtitleMuted((v) => !v);
   }, []);
 
+  const handleAutoPlayNextChange = useCallback((value: boolean) => {
+    setIsAutoPlayNext(value);
+    dispatchTransport(setTransportAutoPlayNext(value));
+  }, []);
+
   const handleAuditionStop = useCallback((naturalEnd = false) => {
     // Cancel any in-flight warmup/play so it can't flip state later.
     videoStartGateTokenRef.current += 1;
@@ -3132,8 +3172,7 @@ export default function VideoEditorPage() {
     transportIsStalledRef.current = false;
     setIsVideoBuffering(false);
 
-    const endedIndex = playingSubtitleIndexRef.current ?? -1;
-    const endedType = auditionActiveTypeRef.current;
+    const endedIndex = getActiveClipIndex(transportState) ?? playingSubtitleIndexRef.current ?? -1;
 
     try {
       videoPreviewRef.current?.videoElement?.pause();
@@ -3151,10 +3190,8 @@ export default function VideoEditorPage() {
     } catch { /* ignore */ }
 
     setIsPlaying(false);
-    auditionStopAtMsRef.current = null;
     setPlayingSubtitleIndex(-1);
-    setAuditionActiveType(null);
-    auditionActiveTypeRef.current = null;
+    dispatchTransport(naturalEnd ? auditionEndedNaturally() : stopTransportAudition());
 
     if (auditionRestoreRef.current) {
       const { subtitleMuted, bgmMuted, videoMuted } = auditionRestoreRef.current;
@@ -3168,21 +3205,13 @@ export default function VideoEditorPage() {
       auditionRestoreRef.current = null;
     }
 
-    if (naturalEnd && isAutoPlayNextRef.current && endedIndex >= 0) {
-      const nextIdx = endedIndex + 1;
-      if (nextIdx < subtitleTrackRef.current.length) {
-        setTimeout(() => {
-          // Re-trigger via document event to avoid hook cycles
-          document.dispatchEvent(new CustomEvent('revoice-audition-request-play', { detail: { index: nextIdx, mode: endedType } }));
-        }, 50);
-      }
+    if (naturalEnd && transportState.autoPlayNext && endedIndex >= 0) {
+      playingSubtitleIndexRef.current = -1;
     }
-  }, [abortActiveAuditionPreparation]);
+  }, [abortActiveAuditionPreparation, transportState]);
 
   useEffect(() => {
-    const handleNaturalStop = () => handleAuditionStop(true);
-    document.addEventListener('revoice-audition-natural-stop', handleNaturalStop);
-    return () => document.removeEventListener('revoice-audition-natural-stop', handleNaturalStop);
+    handleAuditionStopRef.current = handleAuditionStop;
   }, [handleAuditionStop]);
 
   const handleAuditionRequestPlay = useCallback(async (index: number, mode: 'source' | 'convert') => {
@@ -3212,9 +3241,21 @@ export default function VideoEditorPage() {
 
     setPlayingSubtitleIndex(index);
     playingSubtitleIndexRef.current = index;
-    setAuditionActiveType(mode);
     auditionActiveTypeRef.current = mode;
     auditionStopAtMsRef.current = item.startTime * 1000 + item.duration * 1000;
+    dispatchTransport(
+      mode === 'source'
+        ? startSourceAudition({
+            index,
+            timeSec: item.startTime,
+            stopAtSec: item.startTime + item.duration,
+          })
+        : startConvertAudition({
+            index,
+            timeSec: item.startTime,
+            stopAtSec: item.startTime + item.duration,
+          })
+    );
 
     const videoEl = videoPreviewRef.current?.videoElement;
     if (mode === 'convert') {
@@ -3288,7 +3329,7 @@ export default function VideoEditorPage() {
               audioEl.ontimeupdate = null;
               audioEl.onended = null;
               audioEl.pause();
-              document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+              handleAuditionStopRef.current(true);
             }
           };
         } else {
@@ -3348,10 +3389,11 @@ export default function VideoEditorPage() {
 
       if (token !== auditionTokenRef.current) return;
       releaseAuditionController();
+      dispatchTransport(markAuditionReady());
 
       // Both audio and video start together
       audioEl.onended = () => {
-        document.dispatchEvent(new CustomEvent('revoice-audition-natural-stop'));
+        handleAuditionStopRef.current(true);
       };
       audioEl.play().catch((err) => {
         console.error('[SourceAudition] play failed:', err);
@@ -3391,16 +3433,24 @@ export default function VideoEditorPage() {
       }
 
       releaseAuditionController();
+      dispatchTransport(markAuditionReady());
       if (videoEl) playVideoWithGate(videoEl, { reason: 'audition' });
     }
     releaseAuditionController();
   }, [abortActiveAuditionPreparation, cacheGetVoice, convertObj, ensureVoiceBuffer, handleAuditionStop, handleSeek, playVideoWithGate, t]);
 
   useEffect(() => {
-    const handleEventRequestPlay = (e: any) => handleAuditionRequestPlay(e.detail.index, e.detail.mode);
-    document.addEventListener('revoice-audition-request-play', handleEventRequestPlay);
-    return () => document.removeEventListener('revoice-audition-request-play', handleEventRequestPlay);
-  }, [handleAuditionRequestPlay]);
+    const nextIndex = transportState.pendingNextClipIndex;
+    const nextMode = transportState.pendingNextMode;
+    if (nextIndex == null || nextMode == null) return;
+
+    const timer = window.setTimeout(() => {
+      dispatchTransport(clearPendingNextClip());
+      void handleAuditionRequestPlay(nextIndex, nextMode);
+    }, 50);
+
+    return () => window.clearTimeout(timer);
+  }, [handleAuditionRequestPlay, transportState.pendingNextClipIndex, transportState.pendingNextMode]);
 
   const handleAuditionToggle = useCallback(() => {
     handlePlayPause();
@@ -3681,11 +3731,11 @@ export default function VideoEditorPage() {
                   onRequestAuditionPlay={handleAuditionRequestPlay}
                   onRequestAuditionToggle={handleAuditionToggle}
                   onRequestAuditionStop={() => handleAuditionStop(false)}
-                  auditionPlayingIndex={playingSubtitleIndex}
-                  auditionActiveType={auditionActiveType}
+                  auditionPlayingIndex={transportActiveClipIndex ?? -1}
+                  auditionActiveType={transportAuditionType}
                   isMediaPlaying={isPlaying}
                   isAutoPlayNext={isAutoPlayNext}
-                  onToggleAutoPlayNext={setIsAutoPlayNext}
+                  onToggleAutoPlayNext={handleAutoPlayNextChange}
                   onDirtyStateChange={setWorkstationDirty}
                   onResetTiming={handleResetTiming}
                 />
