@@ -4,7 +4,7 @@ import { createHash } from 'crypto';
 import { checkReferenceAudioExists } from '@/shared/lib/reference-audio-exists';
 import { repairReferenceAudio } from '@/shared/lib/reference-audio-repair';
 import { resolveTranslatedTtsReference } from '@/shared/lib/subtitle-reference-audio';
-import { respData, respErr } from '@/shared/lib/resp';
+import { respData, respErr, respJson } from '@/shared/lib/resp';
 import { consumeCredits, findCreditByTransactionNo, refundCredits } from '@/shared/models/credit';
 import { getUserInfo } from '@/shared/models/user';
 import { findVtTaskSubtitleByTaskIdAndStepName, patchSubtitleItemById } from '@/shared/models/vt_task_subtitle';
@@ -14,9 +14,23 @@ import {
   pyConvertTxtGenerateVoice,
   pyConvertTxtGenerateVoiceJobStatus,
   pyOriginalTxtTranslateJobStatus,
+  StructuredFetchError,
+  StructuredErrorData,
 } from '@/shared/services/pythonService';
 
 const TERMINAL_MODAL_STATUSES = new Set(['FAILURE', 'INIT_FAILURE', 'TERMINATED', 'TIMEOUT']);
+
+function buildStructuredPayload(error: StructuredFetchError): StructuredErrorData {
+  return {
+    ...error.data,
+    reason: error.data?.reason ?? error.message,
+  };
+}
+
+function structuredErrorResponse(error: StructuredFetchError, message?: string) {
+  const payload = buildStructuredPayload(error);
+  return respJson(-1, message ?? payload.reason ?? error.message, payload, 503);
+}
 
 function makeRequestKey(parts: string[]) {
   // Short stable key so we can dedupe retries without blocking legit re-runs with new input.
@@ -277,6 +291,13 @@ export async function POST(request: NextRequest) {
 
       // A 路线（同步版，无 jobId）：直接调用 TTS 同步接口拿到 path_name/duration。
       let back: any;
+      const handleStructuredError = async (err: StructuredFetchError) => {
+        if (consumedCreditId) {
+          await refundCredits({ creditId: consumedCreditId }).catch(() => {});
+        }
+        return structuredErrorResponse(err, 'TTS 平台暂不可用，请稍后重试');
+      };
+
       try {
         back = await pyConvertTxtGenerateVoice(
           taskId,
@@ -284,7 +305,10 @@ export async function POST(request: NextRequest) {
           subtitleName,
           referenceSubtitleName ? { referenceSubtitleName } : undefined
         );
-      } catch {
+      } catch (error) {
+        if (error instanceof StructuredFetchError) {
+          return handleStructuredError(error);
+        }
         // Retry once; Modal cold starts can drop the first request.
         try {
           back = await pyConvertTxtGenerateVoice(
@@ -294,6 +318,9 @@ export async function POST(request: NextRequest) {
             referenceSubtitleName ? { referenceSubtitleName } : undefined
           );
         } catch (e2) {
+          if (e2 instanceof StructuredFetchError) {
+            return handleStructuredError(e2);
+          }
           console.error('[generate-subtitle-voice] tts sync failed:', e2);
           if (consumedCreditId) {
             await refundCredits({ creditId: consumedCreditId }).catch(() => {});
@@ -461,6 +488,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     console.error('[generate-subtitle-voice] status query failed:', e);
+    if (e instanceof StructuredFetchError) {
+      return structuredErrorResponse(e, 'TTS 平台暂不可用，请稍后重试');
+    }
     return respErr('failed');
   }
 }

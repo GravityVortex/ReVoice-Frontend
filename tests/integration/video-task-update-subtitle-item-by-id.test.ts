@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockGetSystemConfigByKey = vi.fn();
 const mockGetUserInfo = vi.fn();
 const mockFindVtTaskMainById = vi.fn();
-const mockUpdateSingleSubtitleItemById = vi.fn();
+const mockPatchSubtitleItemById = vi.fn();
 const mockJavaR2CoverWriteFile = vi.fn();
 
 vi.mock('@/shared/cache/system-config', () => ({
@@ -19,7 +19,7 @@ vi.mock('@/shared/models/vt_task_main', () => ({
 }));
 
 vi.mock('@/shared/models/vt_task_subtitle', () => ({
-  updateSingleSubtitleItemById: mockUpdateSingleSubtitleItemById,
+  patchSubtitleItemById: mockPatchSubtitleItemById,
 }));
 
 vi.mock('@/shared/services/javaService', () => ({
@@ -45,7 +45,7 @@ describe('/api/video-task/update-subtitle-item by id', () => {
     mockFindVtTaskMainById.mockResolvedValue({ id: 'task_1', userId: 'u1' });
     mockGetSystemConfigByKey.mockResolvedValue('zhesheng-public');
     mockJavaR2CoverWriteFile.mockResolvedValue({ code: 200 });
-    mockUpdateSingleSubtitleItemById.mockResolvedValue({});
+    mockPatchSubtitleItemById.mockResolvedValue({});
   });
 
   it('rejects when not authenticated', async () => {
@@ -85,17 +85,17 @@ describe('/api/video-task/update-subtitle-item by id', () => {
       'u1/task_1/adj_audio_time/00010002_00-00-02-000_00-00-04-000.wav',
       'zhesheng-public'
     );
-    expect(mockUpdateSingleSubtitleItemById).toHaveBeenCalledWith(
+    expect(mockPatchSubtitleItemById).toHaveBeenCalledWith(
       'task_1',
       'translate_srt',
       '00010002_00-00-02-000_00-00-04-000',
       expect.objectContaining({
-        id: '00010002_00-00-02-000_00-00-04-000',
         txt: 'edited child text',
-        vap_split_operation_id: 'split_op_1',
-        vap_split_parent_id: '0001_00-00-00-000_00-00-04-000',
         vap_voice_status: 'ready',
         vap_needs_tts: false,
+        audio_url: 'adj_audio_time/00010002_00-00-02-000_00-00-04-000.wav',
+        vap_draft_audio_path: null,
+        vap_draft_txt: null,
       })
     );
   });

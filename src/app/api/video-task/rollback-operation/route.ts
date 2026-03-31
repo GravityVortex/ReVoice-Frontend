@@ -6,7 +6,11 @@ import {
   getEditOperationsByTaskId,
   updateEditOperationRollbackStatus,
 } from '@/shared/models/vt_edit_operation';
-import { replaceSubtitleDataPairByTaskIdTx } from '@/shared/models/vt_task_subtitle';
+import {
+  findVtTaskSubtitleByTaskIdAndStepName,
+  replaceSubtitleDataPairByTaskIdTx,
+} from '@/shared/models/vt_task_subtitle';
+import { reindexSeqInPlace } from '@/shared/lib/timeline/split';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +26,19 @@ function normalizeJsonArray(raw: unknown): any[] {
     }
   }
   return [];
+}
+
+function incrementalSplitRollback(
+  currentArr: any[],
+  childIds: string[],
+  parentRow: any,
+): any[] {
+  const firstChildIdx = currentArr.findIndex((r) => childIds.includes(r?.id));
+  const filtered = currentArr.filter((r) => !childIds.includes(r?.id));
+  const insertAt = firstChildIdx >= 0 ? firstChildIdx : filtered.length;
+  filtered.splice(insertAt, 0, parentRow);
+  reindexSeqInPlace(filtered);
+  return filtered;
 }
 
 export async function POST(req: Request) {
@@ -45,29 +62,52 @@ export async function POST(req: Request) {
     if (!operation) return respErr('operation not found');
     if (operation.taskId !== taskId) return respErr('task mismatch');
 
-    // rollback_status: 0=未回滚  1=已回滚  2=回滚失败
     if (operation.rollbackStatus !== 0) return respErr('already rolled back');
 
-    // Stack constraint: only the latest non-rolled-back operation can be undone
     const allOps = await getEditOperationsByTaskId(taskId);
     const latestNonRolledBack = allOps.find((op) => op.rollbackStatus === 0);
     if (!latestNonRolledBack || latestNonRolledBack.operationId !== operationId) {
       return respErr('只能回滚最近一次操作');
     }
 
-    // Restore subtitle data from snapshot
-    const snapshotTranslate = normalizeJsonArray(operation.snapshotTranslate);
-    const snapshotSource = normalizeJsonArray(operation.snapshotSource);
+    const detail = operation.operationDetail as any;
+    const result = operation.resultDetail as any;
+    const canIncrementalRollback =
+      detail?.parentTranslateRow && detail?.parentSourceRow && result?.newIds;
+
+    let nextTranslate: any[];
+    let nextSource: any[];
+
+    if (canIncrementalRollback) {
+      const translateRow = await findVtTaskSubtitleByTaskIdAndStepName(taskId, 'translate_srt');
+      const sourceRow = await findVtTaskSubtitleByTaskIdAndStepName(taskId, 'gen_srt');
+      const currentTranslate = normalizeJsonArray((translateRow as any)?.subtitleData);
+      const currentSource = normalizeJsonArray((sourceRow as any)?.subtitleData);
+
+      const { leftTranslateId, rightTranslateId, leftSourceId, rightSourceId } = result.newIds;
+
+      nextTranslate = incrementalSplitRollback(
+        currentTranslate,
+        [leftTranslateId, rightTranslateId],
+        detail.parentTranslateRow,
+      );
+      nextSource = incrementalSplitRollback(
+        currentSource,
+        [leftSourceId, rightSourceId],
+        detail.parentSourceRow,
+      );
+    } else {
+      nextTranslate = normalizeJsonArray(operation.snapshotTranslate);
+      nextSource = normalizeJsonArray(operation.snapshotSource);
+    }
 
     await replaceSubtitleDataPairByTaskIdTx(taskId, {
-      translate: snapshotTranslate,
-      source: snapshotSource,
+      translate: nextTranslate,
+      source: nextSource,
     });
 
-    // Mark operation as rolled back (status=1)
     await updateEditOperationRollbackStatus(operation.id, 1, user.id);
 
-    // Invalidate merged video metadata so the frontend knows it needs re-merge
     try {
       const currentMeta = typeof task.metadata === 'string'
         ? JSON.parse(task.metadata)
@@ -86,8 +126,8 @@ export async function POST(req: Request) {
     }
 
     return respData({
-      translate: snapshotTranslate,
-      source: snapshotSource,
+      translate: nextTranslate,
+      source: nextSource,
     });
   } catch (error) {
     console.error('rollback operation failed:', error);

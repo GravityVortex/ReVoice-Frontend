@@ -21,8 +21,12 @@
   "header": {
     "backToProject": "返回上一页",
     "mergingVideo": "正在更新视频，请稍等",
+    "mergeStatusRetryTooltip": "暂时无法确认最新合成状态，请检查网络后重试状态",
     "noChanges": "修改左侧字幕或配音后，点这里更新视频",
-    "regenerateTooltip": "把你的修改更新到视频中"
+    "regenerateTooltip": "把你的修改更新到视频中",
+    "retryMergeStatus": "重试状态",
+    "moreDownloads": "更多下载",
+    "downloadUpdatingHint": "正在生成最新成片，下载入口会在状态确认后恢复"
   },
   "audioList": {
     "title": "字幕音频对照表",
@@ -68,9 +72,12 @@
       "videoSaveSuccess": "已提交，预计 1~2 分钟合成完成，关闭页面不影响进度",
       "videoSaveCompleted": "视频合成完成，可在视频列表查看最新版本",
       "videoSaveFailed": "合成视频失败",
+      "mergeBlockedProcessing": "还有字幕正在处理，请等待完成后再更新视频",
+      "mergeBlockedVoice": "还有字幕未完成配音，请先处理高亮字幕",
       "itemNotFound": "未找到要更新的字幕项",
       "saveSuccess": "保存成功！",
       "saveFailed": "保存失败！",
+      "sourceSaveFailed": "原字幕修改保存失败，请重试后再继续",
       "insufficientCreditsError": "积分不足，请充值积分。"
     }
   },
@@ -112,6 +119,7 @@
       "zoomIn": "放大时间轴",
       "addSubtitle": "添加字幕",
       "pointerVisible": "播放指针可见",
+      "structuralEditBlocked": "视频仍在更新中，请先等待当前状态确认后再修改字幕结构",
       "export": "导出项目",
       "mute": "静音",
       "unmute": "取消静音",
@@ -135,6 +143,42 @@
     },
     "placeholder": {
       "addVideoToTrack": "请在视频轨道中添加视频文件"
+    },
+    "previewEdit": {
+      "commitRejected": "该段正在处理中，暂时不能提交，请稍后重试"
+    },
+    "playbackGate": {
+      "clipLabel": "第 {index} 段",
+      "clipLabelFallback": "当前段",
+      "title": {
+        "loading": "正在加载配音",
+        "retrying": "网络抖动，正在重试",
+        "networkFailed": "网络失败，播放已暂停",
+        "voiceUnavailable": "配音尚未准备"
+      },
+      "description": {
+        "loading": "正在缓冲 {clip} 的配音，稍等即可继续",
+        "retrying": "{clip} 的配音正在重新下载，网络稳定后会自动恢复",
+        "networkFailed": "当前网络无法拉取 {clip} 的配音，请检查网络后重试",
+        "voiceUnavailable": "{clip} 的配音尚未生成，请先完成配音再试听"
+      },
+      "detail": {
+        "loading": "网络短抖动自动恢复中",
+        "retrying": "若持续失败，可先取消再稍后重试",
+        "networkFailed": "手动重试或取消播放",
+        "voiceUnavailable": "生成配音后再继续审听"
+      },
+      "action": {
+        "cancel": "取消播放",
+        "retry": "重试本段",
+        "locateClip": "跳转到此段"
+      },
+      "badge": {
+        "loading": "加载中",
+        "retrying": "重试中",
+        "networkFailed": "网络失败",
+        "voiceUnavailable": "需配音"
+      }
     }
   },
   "subtitleRow": {

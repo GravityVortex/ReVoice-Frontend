@@ -232,3 +232,48 @@ export async function patchSubtitleItemById(
   );
   return result;
 }
+
+export async function patchSubtitleDraftByIdIfNewer(
+  taskId: string,
+  stepName: string,
+  id: string,
+  draftTxt: string,
+  editedAtMs: number,
+) {
+  const normalizedEditedAtMs = Number.isFinite(editedAtMs) ? Math.max(0, Math.round(editedAtMs)) : 0;
+
+  const result = await db().execute(
+    sql`UPDATE vt_task_subtitle
+        SET subtitle_data = (
+          SELECT jsonb_agg(
+            CASE
+              WHEN elem->>'id' = ${id}
+                AND COALESCE(NULLIF(elem->>'vap_draft_updated_at_ms', '')::bigint, 0) <= ${normalizedEditedAtMs}
+              THEN jsonb_set(
+                jsonb_set(
+                  elem,
+                  ARRAY['vap_draft_txt']::text[],
+                  to_jsonb(${draftTxt}::text),
+                  true
+                ),
+                ARRAY['vap_draft_updated_at_ms']::text[],
+                to_jsonb(${normalizedEditedAtMs}::numeric),
+                true
+              )
+              ELSE elem
+            END
+            ORDER BY ord
+          )
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(subtitle_data::jsonb) = 'string'
+              THEN (subtitle_data #>> '{}')::jsonb
+              ELSE subtitle_data::jsonb
+            END
+          ) WITH ORDINALITY AS t(elem, ord)
+        ),
+        updated_at = NOW()
+        WHERE task_id = ${taskId} AND step_name = ${stepName}
+        RETURNING *`
+  );
+  return result;
+}

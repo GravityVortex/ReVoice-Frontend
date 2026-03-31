@@ -34,6 +34,9 @@ interface SubtitleTrackProps {
   };
   audioDurationMsById?: Record<string, number | undefined>;
   audioOverrunToleranceMs?: number;
+  blockedItemId?: string | null;
+  blockedState?: 'loading' | 'retrying' | 'network_failed' | 'voice_unavailable' | null;
+  blockedLabel?: string | null;
 }
 
 function getRelativeRunPct(runLeftPct: number, runWidthPct: number, valuePct: number) {
@@ -57,6 +60,9 @@ export const SubtitleTrack = memo(function SubtitleTrack({
   waveform,
   audioDurationMsById,
   audioOverrunToleranceMs = 80,
+  blockedItemId = null,
+  blockedState = null,
+  blockedLabel = null,
 }: SubtitleTrackProps) {
   const safeTotalDuration = Math.max(0.001, totalDuration);
   const pxPerSec = Math.max(1, pxPerSecProp ?? Math.round(40 * _zoom));
@@ -193,14 +199,16 @@ export const SubtitleTrack = memo(function SubtitleTrack({
     return result;
   }, [orderedEntries, safeTotalDuration]);
 
+  const blockedEntry = useMemo(
+    () => (blockedItemId ? entryById.get(blockedItemId) ?? null : null),
+    [blockedItemId, entryById]
+  );
+
   const getEntryState = useCallback((entry: (typeof orderedEntries)[number]) => {
     const { item } = entry;
     const isSelected = selectedItem === item.id;
     const isPlaying = playingItemId === item.id;
-    const isAtPlayhead =
-      typeof currentTime === 'number' &&
-      currentTime >= item.startTime &&
-      currentTime < item.startTime + item.duration;
+    const isAtPlayhead = isPlaying;
     const isDragging = draggingId === item.id;
     const audioMs = audioDurationMsById?.[item.id];
     const windowMs = Math.max(0, Math.round(item.duration * 1000));
@@ -228,7 +236,6 @@ export const SubtitleTrack = memo(function SubtitleTrack({
   }, [
     audioDurationMsById,
     audioOverrunToleranceMs,
-    currentTime,
     draggingId,
     hoveredSplitOpId,
     playingItemId,
@@ -434,7 +441,7 @@ export const SubtitleTrack = memo(function SubtitleTrack({
         if (run.mode === 'dense') {
           const denseEntries = run.itemIds
             .map((itemId) => entryById.get(itemId))
-            .filter(Boolean);
+            .filter((entry): entry is NonNullable<typeof entry> => entry != null);
 
           const denseStates = denseEntries.map((entry) => ({
             entry,
@@ -833,6 +840,27 @@ export const SubtitleTrack = memo(function SubtitleTrack({
           </div>
         </div>
       ))}
+
+      {blockedEntry && blockedState && blockedLabel ? (
+        <div
+          data-blocked-item-id={blockedEntry.item.id}
+          data-blocked-state={blockedState}
+          className="pointer-events-none absolute top-0 z-40 -translate-x-1/2"
+          style={{ left: `${blockedEntry.leftPct + blockedEntry.widthPct / 2}%` }}
+        >
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium backdrop-blur',
+              blockedState === 'loading' && 'border-amber-300/30 bg-amber-400/12 text-amber-100',
+              blockedState === 'retrying' && 'border-orange-300/30 bg-orange-400/12 text-orange-100',
+              blockedState === 'network_failed' && 'border-rose-300/30 bg-rose-400/12 text-rose-100',
+              blockedState === 'voice_unavailable' && 'border-sky-300/30 bg-sky-400/12 text-sky-100'
+            )}
+          >
+            {blockedLabel}
+          </span>
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm pointer-events-none">

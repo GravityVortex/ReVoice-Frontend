@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createHash } from 'crypto';
 
 import { respData, respErr } from '@/shared/lib/resp';
+import { requiresVoiceGeneration } from '@/shared/lib/subtitle-voice-state';
 import { getUserInfo } from '@/shared/models/user';
 import { findVtTaskMainById, updateVtTaskMain } from '@/shared/models/vt_task_main';
 import { findVtTaskSubtitleByTaskIdAndStepName } from '@/shared/models/vt_task_subtitle';
@@ -48,11 +49,18 @@ function normalizeRevMs(v: unknown): number {
   return 0;
 }
 
-
+function isPendingActiveMerge(active: Record<string, any> | null | undefined) {
+  if (!active || typeof active !== 'object') return false;
+  const state = typeof active.state === 'string' ? active.state.trim().toLowerCase() : '';
+  return !state || state === 'pending';
+}
 
 function hasMissingVoice(row: any) {
-  const status = typeof row?.vap_voice_status === 'string' ? row.vap_voice_status : '';
-  return row?.vap_needs_tts === true || status === 'missing' || status === 'failed';
+  return requiresVoiceGeneration({
+    voiceStatus: row?.vap_voice_status,
+    needsTts: row?.vap_needs_tts,
+    persistedAudioPath: row?.audio_url,
+  });
 }
 
 function computeMergeInput(subtitleArray: any[]) {
@@ -136,9 +144,6 @@ export async function GET(request: NextRequest) {
     }
 
     const subtitleArray = normalizeSubtitleArray((taskSubtitle as any)?.subtitleData);
-    if (subtitleArray.some((row) => hasMissingVoice(row))) {
-      return respErr('voice regeneration required before merge');
-    }
     const mergeInput = computeMergeInput(subtitleArray);
     const currentRequestKey = mergeInput.inputDigest ? makeRequestKey(['merge', taskId, mergeInput.inputDigest]) : '';
 
@@ -220,11 +225,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (subtitleArray.some((row) => hasMissingVoice(row))) {
+      return respErr('voice regeneration required before merge');
+    }
+
     let jobId = jobIdParam;
     if (!jobId) {
       // Prefer the persisted active job (same requestKey) if present.
       const storedRequestKey = typeof storedActive?.requestKey === 'string' ? String(storedActive.requestKey) : '';
-      if (storedRequestKey && storedRequestKey === currentRequestKey && storedJobId) {
+      if (storedRequestKey && storedRequestKey === currentRequestKey && storedJobId && isPendingActiveMerge(storedActive)) {
         jobId = storedJobId;
       } else {
         if (!subtitleArray || mergeInput.ids.length === 0) {
@@ -366,7 +375,7 @@ export async function POST(request: NextRequest) {
     const storedRequestKey = typeof storedActive?.requestKey === 'string' ? String(storedActive.requestKey) : '';
 
     // If the same input is already being merged, reuse the persisted jobId.
-    if (storedJobId && storedRequestKey && storedRequestKey === requestKey) {
+    if (storedJobId && storedRequestKey && storedRequestKey === requestKey && isPendingActiveMerge(storedActive)) {
       return respData({
         status: 'pending',
         jobId: storedJobId,

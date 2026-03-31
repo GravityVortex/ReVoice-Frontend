@@ -75,6 +75,17 @@ async function call(body: any) {
   return { res, json };
 }
 
+function expectProbeFetchCalledWith(url: string) {
+  expect(fetch).toHaveBeenCalledWith(
+    url,
+    expect.objectContaining({
+      method: 'GET',
+      headers: { Range: 'bytes=0-0' },
+      signal: expect.any(AbortSignal),
+    })
+  );
+}
+
 describe('/api/video-task/generate-subtitle-voice', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -169,10 +180,7 @@ describe('/api/video-task/generate-subtitle-voice', () => {
       'split_audio/audio/0003_00-00-08-794_00-00-14-475.wav'
     );
     expect(mockGetPreSignedUrl).not.toHaveBeenCalled();
-    expect(fetch).toHaveBeenCalledWith(
-      'https://pub.example.com/dev/u1/task_1/split_audio/audio/0003_00-00-08-794_00-00-14-475.wav',
-      { method: 'GET', headers: { Range: 'bytes=0-0' } }
-    );
+    expectProbeFetchCalledWith('https://pub.example.com/dev/u1/task_1/split_audio/audio/0003_00-00-08-794_00-00-14-475.wav');
     expect(mockPyConvertTxtGenerateVoice).toHaveBeenCalledWith(
       'task_1',
       '新的子字幕译文',
@@ -254,10 +262,7 @@ describe('/api/video-task/generate-subtitle-voice', () => {
 
     expect(json.code).toBe(0);
     expect(mockJavaR2CoverWriteFile).not.toHaveBeenCalled();
-    expect(fetch).toHaveBeenCalledWith(
-      'https://pub.example.com/dev/u1/task_1/split_audio/audio/source-parent.wav',
-      { method: 'GET', headers: { Range: 'bytes=0-0' } }
-    );
+    expectProbeFetchCalledWith('https://pub.example.com/dev/u1/task_1/split_audio/audio/source-parent.wav');
     expect(mockPyConvertTxtGenerateVoice).toHaveBeenCalledWith(
       'task_1',
       '右半段子字幕译文',
@@ -338,10 +343,7 @@ describe('/api/video-task/generate-subtitle-voice', () => {
     });
 
     expect(json.code).toBe(0);
-    expect(fetch).toHaveBeenCalledWith(
-      'https://pub.example.com/dev/u1/task_1/split_audio/audio/source-parent.wav',
-      { method: 'GET', headers: { Range: 'bytes=0-0' } }
-    );
+    expectProbeFetchCalledWith('https://pub.example.com/dev/u1/task_1/split_audio/audio/source-parent.wav');
     expect(mockPyConvertTxtGenerateVoice).toHaveBeenCalledWith(
       'task_1',
       '右半段子字幕译文',

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -37,6 +38,7 @@ vi.mock('react', async () => {
 });
 
 vi.mock('next-intl', () => ({
+  useLocale: () => 'zh',
   useTranslations: () => {
     const translator = ((key: string) => key) as ((key: string) => string) & {
       has: (key: string) => boolean;
@@ -81,6 +83,8 @@ function createTransportSnapshot(overrides?: Partial<{
 }
 
 describe('SubtitleWorkstation', () => {
+  const source = readFileSync(new URL('./subtitle-workstation.tsx', import.meta.url), 'utf8');
+
   beforeEach(() => {
     seededRows = [
       {
@@ -160,5 +164,82 @@ describe('SubtitleWorkstation', () => {
     expect(capturedRowProps[0].isPlayingSource).toBe(false);
     expect(capturedRowProps[0].isPlayingConvert).toBe(true);
     expect(capturedRowProps[0].isPlayingFromVideo).toBe(true);
+  });
+
+  it('routes source-text edits through sourceId after translated ids are renamed by timing saves', () => {
+    seededRows = [
+      {
+        order: 0,
+        id: 'clip-renamed',
+        sourceId: 'source-1',
+        startTime_source: '00:00:01,000',
+        endTime_source: '00:00:02,000',
+        text_source: 'source text',
+        audioUrl_source: 'split_audio/audio/source-1.wav',
+        startTime_convert: '00:00:01,100',
+        endTime_convert: '00:00:02,100',
+        text_convert: 'convert text',
+        persistedText_convert: 'convert text',
+        audioUrl_convert: 'adj_audio_time/clip-renamed.wav',
+        newTime: '',
+      },
+    ];
+    const onSourceSubtitleTextChange = vi.fn();
+
+    renderToStaticMarkup(
+      <SubtitleWorkstation
+        convertObj={{ id: 'task-1', targetLanguage: 'en' } as any}
+        transportSnapshot={createTransportSnapshot()}
+        onSourceSubtitleTextChange={onSourceSubtitleTextChange}
+      />
+    );
+
+    capturedRowProps[0].onUpdate({
+      ...seededRows[0],
+      text_source: 'updated source text',
+    });
+
+    expect(onSourceSubtitleTextChange).toHaveBeenCalledWith('source-1', 'updated source text');
+  });
+
+  it('passes both converted id and sourceId when resetting timing to the original segment', () => {
+    seededRows = [
+      {
+        order: 0,
+        id: 'clip-renamed',
+        sourceId: 'source-1',
+        startTime_source: '00:00:01,000',
+        endTime_source: '00:00:02,000',
+        text_source: 'source text',
+        audioUrl_source: 'split_audio/audio/source-1.wav',
+        startTime_convert: '00:00:01,100',
+        endTime_convert: '00:00:02,100',
+        text_convert: 'convert text',
+        persistedText_convert: 'convert text',
+        audioUrl_convert: 'adj_audio_time/clip-renamed.wav',
+        newTime: '',
+      },
+    ];
+    const onResetTiming = vi.fn();
+
+    renderToStaticMarkup(
+      <SubtitleWorkstation
+        convertObj={{ id: 'task-1', targetLanguage: 'en' } as any}
+        transportSnapshot={createTransportSnapshot()}
+        onResetTiming={onResetTiming}
+      />
+    );
+
+    capturedRowProps[0].onResetTiming();
+
+    expect(onResetTiming).toHaveBeenCalledWith('clip-renamed', 'source-1', 1000, 2000);
+  });
+
+  it('tags draft autosave requests with the local edit timestamp and surfaces background refresh failures', () => {
+    expect(source).toContain('const editedAtMs = Date.now();');
+    expect(source).toContain('debouncedAutoSaveText(nextItem.id, nextItem.text_convert, editedAtMs);');
+    expect(source).toContain("body: JSON.stringify({ taskId, subtitleId, draftTxt: text, editedAtMs })");
+    expect(source).toContain('const [isRefreshing, setIsRefreshing] = useState(false);');
+    expect(source).toContain("toast.error(locale === 'zh' ? '刷新失败，当前仍显示旧数据' : 'Refresh failed. Showing the last synced data.');");
   });
 });

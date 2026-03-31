@@ -93,4 +93,19 @@ describe('video-sync-controller', () => {
 
     expect(video.currentTime).toBe(10.02);
   });
+
+  it('propagates a false start verdict from the play delegate so callers can stop stale audition flows', async () => {
+    const video = createFakeVideoElement();
+    const play = vi.fn(async () => false);
+    const controller = createVideoSyncController(video, { play });
+
+    const started = await controller.apply({
+      status: 'playing',
+      mode: 'audition_convert',
+      transportTimeSec: 3,
+    });
+
+    expect(started).toBe(false);
+    expect(play).toHaveBeenCalledTimes(1);
+  });
 });

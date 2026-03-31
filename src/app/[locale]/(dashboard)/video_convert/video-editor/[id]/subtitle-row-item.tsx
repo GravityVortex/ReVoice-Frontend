@@ -556,6 +556,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                   placeholder={t('placeholder.original')}
                   onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange('text_source', event.target.value)}
                   rows={2}
+                  disabled={isRowBusy}
                   className={cn(
                     'resize-none border-white/10 bg-black/10',
                     isSplit ? 'focus-visible:ring-teal-400/30' : 'focus-visible:ring-primary/30'
@@ -672,6 +673,7 @@ export const SubtitleRowItem = forwardRef<HTMLDivElement, SubtitleRowItemProps>(
                   onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange('text_convert', event.target.value)}
                   placeholder={t('placeholder.converted')}
                   rows={2}
+                  disabled={isRowBusy}
                   className={cn(
                     'resize-none border-white/10 bg-black/10 text-right',
                     isSplit ? 'focus-visible:ring-teal-400/30' : 'focus-visible:ring-primary/30'

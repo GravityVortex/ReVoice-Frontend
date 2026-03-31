@@ -2,7 +2,7 @@
 
 import React, { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { HeadphoneOff, Loader2, RefreshCw, Scissors, Search, Sparkles, Square } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { ErrorBlock } from '@/shared/blocks/common/error-state';
@@ -12,24 +12,39 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { ConvertObj } from '@/shared/components/video-editor/types';
 import { useAppContext } from '@/shared/contexts/app';
-import { deriveSubtitleVoiceUiState, type SubtitleVoiceUiState } from '@/shared/lib/subtitle-voice-state';
+import { deriveSubtitleVoiceUiState, shouldBlockVoicePlayback, type SubtitleVoiceUiState } from '@/shared/lib/subtitle-voice-state';
 import { cn } from '@/shared/lib/utils';
 
 import { resolveEditorPublicAudioUrl } from './audio-source-resolver';
 import type { EditorTransportSnapshot } from './editor-transport';
+import { fetchWithTimeout, isAbortLikeError } from './runtime/network/fetch-with-timeout';
+import { pollSubtitleJob } from './subtitle-job-poll';
+import { mergeLoadedSubtitleItems } from './subtitle-editor-state';
 import { SubtitleRowData, SubtitleRowItem } from './subtitle-row-item';
+import type { VideoEditorBoundDetailReloadAction } from './video-editor-reload-contract';
+import {
+  getPendingSourceSaveEntries,
+  hasSubtitleWorkstationDirtyState,
+  remapSubtitleIdRecordBySourceId,
+  remapSubtitleIdSetBySourceId,
+  resolveLinkedSourceId,
+  shouldApplySubtitleAsyncResult,
+} from './subtitle-workstation-state';
+
+const SOURCE_TEXT_SAVE_TIMEOUT_MS = 15_000;
+const WORKSTATION_REQUEST_TIMEOUT_MS = 15_000;
 
 interface SubtitleWorkstationProps {
   onPlayingIndexChange?: (index: number) => void;
   onPendingChangesChange?: (pendingCount: number) => void;
-  // 提供给父组件：本地“已应用但未重新合成”的字幕段 id 列表（用于合并服务端 pending 计算）
-  onPendingVoiceIdsChange?: (ids: string[]) => void;
-  // 重新合成完成（成功）回调：用于父组件更新 lastMergedAtMs，让右上角按钮自动变灰
-  onVideoMergeCompleted?: (args: { mergedAtMs: number }) => void;
+  // 提供给父组件：本地“已应用但未重新合成”的字幕段及其应用时间（用于和最近一次合成基线做比较）
+  onPendingVoiceIdsChange?: (ids: Array<{ id: string; updatedAtMs: number }>) => void;
+  // 提供给父组件：当前文本与可播放配音不匹配的字幕段 id（用于主播放链阻断）
+  onPlaybackBlockedVoiceIdsChange?: (ids: string[]) => void;
+  // 父组件的最新合成完成时间：用于工作台清空“已应用待合成”的本地状态
+  lastMergedAtMs?: number;
   // 合成任务启动回调：父组件用 jobId 追踪合成进度，刷新后也能恢复
   onVideoMergeStarted?: (args: { jobId: string; createdAtMs: number }) => void;
-  // 合成任务失败/超时回调：父组件清除合成进行中状态
-  onVideoMergeFailed?: () => void;
 
   // Audition Playback API
   onRequestAuditionPlay?: (index: number, mode: 'source' | 'convert') => void;
@@ -41,16 +56,21 @@ interface SubtitleWorkstationProps {
   convertObj: ConvertObj | null;
   onSeekToSubtitle?: (time: number) => void;
   onShowTip?: () => void;
-  onUpdateSubtitleAudioUrl?: (id: string, audioUrl: string) => void;
+  onUpdateSubtitleAudioUrl?: (id: string, audioUrl: string, previewAudioUrl?: string) => void;
   onSubtitleTextChange?: (id: string, text: string) => void;
+  onSourceSubtitleTextChange?: (sourceId: string, text: string) => void;
   onSubtitleVoiceStatusChange?: (id: string, voiceStatus: string, needsTts: boolean) => void;
   onDirtyStateChange?: (isDirty: boolean) => void;
-  onResetTiming?: (id: string, startMs: number, endMs: number) => void;
+  onResetTiming?: (id: string, sourceId: string, startMs: number, endMs: number) => void;
+  onReloadFromServer?: VideoEditorBoundDetailReloadAction;
 }
 
 export interface SubtitleWorkstationHandle {
+  prepareForVideoMerge: () => Promise<boolean>;
+  prepareForStructuralEdit: () => Promise<boolean>;
   onVideoSaveClick: () => Promise<boolean>;
   scrollToItem: (id: string) => void;
+  commitPreviewSubtitleText: (id: string, text: string) => boolean;
 }
 
 export const SubtitleWorkstation = memo(
@@ -60,9 +80,9 @@ export const SubtitleWorkstation = memo(
         onPlayingIndexChange,
         onPendingChangesChange,
         onPendingVoiceIdsChange,
-        onVideoMergeCompleted,
+        onPlaybackBlockedVoiceIdsChange,
+        lastMergedAtMs,
         onVideoMergeStarted,
-        onVideoMergeFailed,
         onRequestAuditionPlay,
         onRequestAuditionToggle,
         onRequestAuditionStop,
@@ -73,12 +93,15 @@ export const SubtitleWorkstation = memo(
         onShowTip,
         onUpdateSubtitleAudioUrl,
         onSubtitleTextChange,
+        onSourceSubtitleTextChange,
         onSubtitleVoiceStatusChange,
         onDirtyStateChange,
         onResetTiming,
+        onReloadFromServer,
       },
       ref
     ) => {
+      const locale = useLocale();
       const t = useTranslations('video_convert.videoEditor.audioList');
       const tCommon = useTranslations('common');
       const { fetchUserCredits } = useAppContext();
@@ -90,7 +113,7 @@ export const SubtitleWorkstation = memo(
 
       // State
       const [subtitleItems, setSubtitleItems] = useState<SubtitleRowData[]>([]);
-      const [updateItemList, setUpdateItemList] = useState<SubtitleRowData[]>([]); // Track modified items
+      const [pendingAppliedVoiceMap, setPendingAppliedVoiceMap] = useState<Record<string, number>>({});
       const [selectedId, setSelectedId] = useState<string | null>(null);
       const [isLoading, setIsLoading] = useState(false);
       const [error, setError] = useState<string | null>(null);
@@ -98,76 +121,175 @@ export const SubtitleWorkstation = memo(
       const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
       const [invalidatedDraftAudioIds, setInvalidatedDraftAudioIds] = useState<Set<string>>(() => new Set());
       const [textPreparedForVoiceIds, setTextPreparedForVoiceIds] = useState<Set<string>>(() => new Set());
+      const [pendingSourceSaveMap, setPendingSourceSaveMap] = useState<Record<string, number>>({});
       const [blockedPreviewHintId, setBlockedPreviewHintId] = useState<string | null>(null);
       const [focusConvertedEditorId, setFocusConvertedEditorId] = useState<string | null>(null);
       const [searchText, setSearchText] = useState('');
       const [showOnlySplitPending, setShowOnlySplitPending] = useState(false);
+      const [isRefreshing, setIsRefreshing] = useState(false);
 
       // Refs
       const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+      const activeTaskIdRef = useRef<string | null>(null);
+      const subtitleItemsRef = useRef<SubtitleRowData[]>([]);
+      const scrollToItemTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+      const scrollIntoViewRafRef = useRef<number | null>(null);
+      const localStateTaskIdRef = useRef<string | null>(null);
       const resumedJobsRef = useRef<Set<string>>(new Set());
-      const ttsWarmupStartedRef = useRef(false);
+      const ttsWarmupTaskIdRef = useRef<string | null>(null);
       const rootRef = useRef<HTMLDivElement>(null);
-      const textChangeTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       const autoSaveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       const autoSaveSourceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-      const debouncedTextChange = useCallback(
-        (id: string, text: string) => {
-          if (!onSubtitleTextChange) return;
-          clearTimeout(textChangeTimersRef.current[id]);
-          textChangeTimersRef.current[id] = setTimeout(() => {
-            onSubtitleTextChange(id, text);
-            delete textChangeTimersRef.current[id];
-          }, 350);
-        },
-        [onSubtitleTextChange]
-      );
+      const sourceSaveInflightRef = useRef<Record<string, { editedAtMs: number; promise: Promise<boolean> }>>({});
+      const sourceSaveAbortRef = useRef<Record<string, AbortController>>({});
+      const lastClearedMergedAtMsRef = useRef(0);
 
       const debouncedAutoSaveText = useCallback(
-        (subtitleId: string, text: string) => {
+        (subtitleId: string, text: string, editedAtMs: number) => {
           if (!convertObj) return;
+          const taskId = convertObj.id;
           clearTimeout(autoSaveTimersRef.current[subtitleId]);
           autoSaveTimersRef.current[subtitleId] = setTimeout(() => {
             delete autoSaveTimersRef.current[subtitleId];
+            if (activeTaskIdRef.current !== taskId) return;
             fetch('/api/video-task/auto-save-draft', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ taskId: convertObj.id, subtitleId, draftTxt: text }),
+              body: JSON.stringify({ taskId, subtitleId, draftTxt: text, editedAtMs }),
             }).catch(() => {
               /* best-effort */
             });
           }, 1500);
         },
         [convertObj]
+      );
+
+      const persistSourceTextNow = useCallback(
+        async (subtitleId: string, text: string, editedAtMs: number, silent: boolean) => {
+          if (!convertObj) return false;
+          const taskId = convertObj.id;
+
+          const inflight = sourceSaveInflightRef.current[subtitleId];
+          if (inflight && inflight.editedAtMs === editedAtMs) {
+            return inflight.promise;
+          }
+
+          const currentAbortController = sourceSaveAbortRef.current[subtitleId];
+          currentAbortController?.abort();
+
+          if (inflight && inflight.editedAtMs !== editedAtMs) {
+            await inflight.promise.catch(() => false);
+          }
+
+          const abortController = new AbortController();
+          sourceSaveAbortRef.current[subtitleId] = abortController;
+
+          const promise = fetchWithTimeout('/api/video-task/auto-save-source-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taskId, subtitleId, text }),
+            signal: abortController.signal,
+            timeoutMs: SOURCE_TEXT_SAVE_TIMEOUT_MS,
+          })
+            .then(async (resp) => {
+              const back = await resp.json().catch(() => null);
+              if (!resp.ok || back?.code !== 0) {
+                throw new Error(back?.message || 'auto save source text failed');
+              }
+              if (activeTaskIdRef.current !== taskId) return false;
+              setPendingSourceSaveMap((prev) => {
+                if (prev[subtitleId] !== editedAtMs) return prev;
+                const next = { ...prev };
+                delete next[subtitleId];
+                return next;
+              });
+              return true;
+            })
+            .catch((error: unknown) => {
+              if (activeTaskIdRef.current !== taskId) return false;
+              if (!silent && !isAbortLikeError(error)) {
+                toast.error(t('toast.sourceSaveFailed'));
+              }
+              return false;
+            })
+            .finally(() => {
+              const current = sourceSaveInflightRef.current[subtitleId];
+              if (current?.promise === promise) {
+                delete sourceSaveInflightRef.current[subtitleId];
+              }
+              if (sourceSaveAbortRef.current[subtitleId] === abortController) {
+                delete sourceSaveAbortRef.current[subtitleId];
+              }
+            });
+
+          sourceSaveInflightRef.current[subtitleId] = {
+            editedAtMs,
+            promise,
+          };
+
+          return promise;
+        },
+        [convertObj, t]
       );
 
       const debouncedAutoSaveSourceText = useCallback(
-        (subtitleId: string, text: string) => {
+        (subtitleId: string, text: string, editedAtMs: number) => {
           if (!convertObj) return;
+          const taskId = convertObj.id;
           clearTimeout(autoSaveSourceTimersRef.current[subtitleId]);
           autoSaveSourceTimersRef.current[subtitleId] = setTimeout(() => {
             delete autoSaveSourceTimersRef.current[subtitleId];
-            fetch('/api/video-task/auto-save-source-text', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ taskId: convertObj.id, subtitleId, text }),
-            }).catch(() => {
-              /* best-effort */
-            });
+            if (activeTaskIdRef.current !== taskId) return;
+            void persistSourceTextNow(subtitleId, text, editedAtMs, true);
           }, 1500);
         },
-        [convertObj]
+        [convertObj, persistSourceTextNow]
       );
 
       useEffect(() => {
-        const timers = textChangeTimersRef.current;
+        activeTaskIdRef.current = convertObj?.id ?? null;
+      }, [convertObj?.id]);
+
+      useEffect(() => {
+        subtitleItemsRef.current = subtitleItems;
+      }, [subtitleItems]);
+
+      useEffect(() => {
+        const saveTimers = autoSaveTimersRef.current;
+        const sourceTimers = autoSaveSourceTimersRef.current;
+        Object.values(saveTimers).forEach(clearTimeout);
+        Object.values(sourceTimers).forEach(clearTimeout);
+        if (scrollToItemTimerRef.current) {
+          clearTimeout(scrollToItemTimerRef.current);
+          scrollToItemTimerRef.current = null;
+        }
+        if (scrollIntoViewRafRef.current != null) {
+          cancelAnimationFrame(scrollIntoViewRafRef.current);
+          scrollIntoViewRafRef.current = null;
+        }
+        Object.values(sourceSaveAbortRef.current).forEach((controller) => controller.abort());
+        autoSaveTimersRef.current = {};
+        autoSaveSourceTimersRef.current = {};
+        sourceSaveInflightRef.current = {};
+        sourceSaveAbortRef.current = {};
+      }, [convertObj?.id]);
+
+      useEffect(() => {
         const saveTimers = autoSaveTimersRef.current;
         const sourceTimers = autoSaveSourceTimersRef.current;
         return () => {
-          Object.values(timers).forEach(clearTimeout);
           Object.values(saveTimers).forEach(clearTimeout);
           Object.values(sourceTimers).forEach(clearTimeout);
+          if (scrollToItemTimerRef.current) {
+            clearTimeout(scrollToItemTimerRef.current);
+            scrollToItemTimerRef.current = null;
+          }
+          if (scrollIntoViewRafRef.current != null) {
+            cancelAnimationFrame(scrollIntoViewRafRef.current);
+            scrollIntoViewRafRef.current = null;
+          }
+          Object.values(sourceSaveAbortRef.current).forEach((controller) => controller.abort());
+          sourceSaveAbortRef.current = {};
         };
       }, []);
 
@@ -178,13 +300,15 @@ export const SubtitleWorkstation = memo(
 
       const buildPublicAudioUrl = useCallback(
         (pathName: string, cacheBust: string | number) => {
-          return resolveEditorPublicAudioUrl({
+          const resolvedUrl = resolveEditorPublicAudioUrl({
             convertObj,
             pathName,
             cacheBust,
-          }) || buildDraftPreviewUrl(pathName, cacheBust);
+          });
+          if (!resolvedUrl || !/^https?:\/\//i.test(resolvedUrl)) return '';
+          return resolvedUrl;
         },
-        [buildDraftPreviewUrl, convertObj]
+        [convertObj]
       );
 
       const deriveRowVoiceUiState = useCallback(
@@ -192,6 +316,7 @@ export const SubtitleWorkstation = memo(
           return deriveSubtitleVoiceUiState({
             persistedText: item.persistedText_convert ?? '',
             effectiveText: item.text_convert ?? '',
+            persistedAudioPath: item.audioUrl_convert,
             voiceStatus: item.voiceStatus,
             needsTts: item.needsTts,
             splitParentId: item.splitParentId,
@@ -212,38 +337,86 @@ export const SubtitleWorkstation = memo(
         type: 'gen_srt' | 'translate_srt';
         jobId: string;
         requestKey?: string;
+        requestTextSnapshot?: string;
       };
 
-      async function pollSubtitleJob(args: {
-        taskId: string;
-        subtitleName: string;
-        type: PendingJob['type'];
-        jobId: string;
-        requestKey?: string;
-        timeoutMs?: number;
-      }) {
-        const { taskId, subtitleName, type, jobId, requestKey, timeoutMs = 30 * 60 * 1000 } = args;
-        const startedAt = Date.now();
-        while (Date.now() - startedAt < timeoutMs) {
-          await new Promise((r) => setTimeout(r, 2000));
-          const pollResp = await fetch(
-            `/api/video-task/generate-subtitle-voice?taskId=${encodeURIComponent(taskId)}&subtitleName=${encodeURIComponent(subtitleName)}&type=${encodeURIComponent(type)}&jobId=${encodeURIComponent(jobId)}${requestKey ? `&requestKey=${encodeURIComponent(requestKey)}` : ''}`
-          );
-          const pollBack = await pollResp.json().catch(() => null);
-          if (pollBack?.code === 0) {
-            const d = pollBack?.data;
-            if (type === 'translate_srt' && d?.path_name) return d;
-            if (type === 'gen_srt' && d?.text_translated) return d;
-          } else if (pollBack?.code != null) {
-            throw new Error(pollBack?.message || t('toast.generateFailed'));
+      const applySubtitleItemUpdate = useCallback(
+        (nextItem: SubtitleRowData, previousItemOverride?: SubtitleRowData | null) => {
+          const previousItem =
+            previousItemOverride ?? subtitleItemsRef.current.find((current) => current.id === nextItem.id) ?? null;
+          if (!previousItem) return false;
+
+          const textConvertChanged = nextItem.text_convert !== previousItem.text_convert;
+          const textSourceChanged = nextItem.text_source !== previousItem.text_source;
+          const hasExistingDraftAudio = Boolean(previousItem.draftAudioPath || previousItem.audioUrl_convert_custom);
+
+          if (!textConvertChanged && !textSourceChanged) return false;
+
+          setSubtitleItems((prev) => prev.map((current) => (current.id === nextItem.id ? { ...current, ...nextItem } : current)));
+
+          if (textConvertChanged && hasExistingDraftAudio) {
+            setInvalidatedDraftAudioIds((prev) => {
+              const next = new Set(prev);
+              next.add(nextItem.id);
+              return next;
+            });
           }
+
+          if (textConvertChanged) {
+            const editedAtMs = Date.now();
+            onSubtitleTextChange?.(nextItem.id, nextItem.text_convert);
+            debouncedAutoSaveText(nextItem.id, nextItem.text_convert, editedAtMs);
+          }
+
+          if (textSourceChanged) {
+            const sourceId = resolveLinkedSourceId(nextItem);
+            const editedAtMs = Date.now();
+            if (sourceId) {
+              setPendingSourceSaveMap((prev) => ({ ...prev, [sourceId]: editedAtMs }));
+              onSourceSubtitleTextChange?.(sourceId, nextItem.text_source);
+              debouncedAutoSaveSourceText(sourceId, nextItem.text_source, editedAtMs);
+            }
+          }
+
+          return true;
+        },
+        [debouncedAutoSaveSourceText, debouncedAutoSaveText, onSourceSubtitleTextChange, onSubtitleTextChange]
+      );
+
+      const handleRefreshClick = useCallback(async () => {
+        if (!onReloadFromServer || isRefreshing) return;
+        setIsRefreshing(true);
+        try {
+          const result = await onReloadFromServer();
+          if (result?.ok === false && result.mode === 'background' && result.error) {
+            toast.error(locale === 'zh' ? '刷新失败，当前仍显示旧数据' : 'Refresh failed. Showing the last synced data.');
+          }
+        } finally {
+          setIsRefreshing(false);
         }
-        throw new Error(t('toast.generateFailed'));
-      }
+      }, [isRefreshing, locale, onReloadFromServer]);
+
+      const commitPreviewSubtitleText = useCallback(
+        (id: string, text: string) => {
+          if (convertingMap[id] || savingIds.has(id)) return false;
+          const currentItem = subtitleItemsRef.current.find((item) => item.id === id);
+          if (!currentItem) return false;
+
+          return applySubtitleItemUpdate(
+            {
+              ...currentItem,
+              text_convert: text,
+            },
+            currentItem
+          );
+        },
+        [applySubtitleItemUpdate, convertingMap, savingIds]
+      );
 
       async function resumePendingJob(job: PendingJob) {
         if (!convertObj) return;
-        const resumeKey = `${job.type}:${job.jobId}`;
+        const taskId = convertObj.id;
+        const resumeKey = `${taskId}:${job.type}:${job.jobId}`;
         if (resumedJobsRef.current.has(resumeKey)) return;
         resumedJobsRef.current.add(resumeKey);
 
@@ -254,14 +427,26 @@ export const SubtitleWorkstation = memo(
 
         try {
           const resolvedData = await pollSubtitleJob({
-            taskId: convertObj.id,
+            taskId,
             subtitleName: job.subtitleId,
             type: job.type,
             jobId: job.jobId,
             requestKey: job.requestKey,
+            failureMessage: t('toast.generateFailed'),
           });
+          if (activeTaskIdRef.current !== taskId) return;
           const newTime = Date.now();
           if (job.type === 'gen_srt') {
+            const currentItem = subtitleItemsRef.current.find((itm) => itm.id === job.subtitleId);
+            if (
+              !currentItem ||
+              !shouldApplySubtitleAsyncResult({
+                currentText: currentItem.text_source ?? '',
+                requestTextSnapshot: job.requestTextSnapshot ?? '',
+              })
+            ) {
+              return;
+            }
             setSubtitleItems((prev) =>
               prev.map((itm) =>
                 itm.id === job.subtitleId
@@ -286,6 +471,16 @@ export const SubtitleWorkstation = memo(
           }
 
           if (job.type === 'translate_srt') {
+            const currentItem = subtitleItemsRef.current.find((itm) => itm.id === job.subtitleId);
+            if (
+              !currentItem ||
+              !shouldApplySubtitleAsyncResult({
+                currentText: currentItem.text_convert ?? '',
+                requestTextSnapshot: job.requestTextSnapshot ?? '',
+              })
+            ) {
+              return;
+            }
             setSubtitleItems((prev) =>
               prev.map((itm) =>
                 itm.id === job.subtitleId
@@ -306,12 +501,17 @@ export const SubtitleWorkstation = memo(
           }
 
           if (job.type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
-            onUpdateSubtitleAudioUrl(job.subtitleId, buildPublicAudioUrl(resolvedData.path_name, newTime));
+            const resolvedPublicAudioUrl = buildPublicAudioUrl(resolvedData.path_name, newTime);
+            onUpdateSubtitleAudioUrl(job.subtitleId, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));
           }
         } catch (e) {
           // Silent resume failure: the user will see "generate failed" only if they actively retry.
           console.warn('[subtitle-workstation] resume job failed:', e);
+          if (activeTaskIdRef.current === taskId) {
+            resumedJobsRef.current.delete(resumeKey);
+          }
         } finally {
+          if (activeTaskIdRef.current !== taskId) return;
           setConvertingMap((prev) => {
             const next = { ...prev };
             delete next[job.subtitleId];
@@ -326,6 +526,7 @@ export const SubtitleWorkstation = memo(
           setError(t('error.missingData', { ns: 'video_convert.videoEditor' }));
           return;
         }
+        const currentTaskId = convertObj.id;
 
         setIsLoading(true);
         setError(null);
@@ -396,6 +597,7 @@ export const SubtitleWorkstation = memo(
                 type: 'gen_srt',
                 jobId: trJobId,
                 requestKey: convertItem?.vap_tr_request_key as string | undefined,
+                requestTextSnapshot: nextItem.text_source,
               });
             }
             const ttsJobId = convertItem?.vap_tts_job_id as string | undefined;
@@ -405,40 +607,82 @@ export const SubtitleWorkstation = memo(
                 type: 'translate_srt',
                 jobId: ttsJobId,
                 requestKey: convertItem?.vap_tts_request_key as string | undefined,
+                requestTextSnapshot: nextItem.text_convert,
               });
             }
 
             items.push(nextItem);
           }
 
-          setSubtitleItems(items);
+          if (activeTaskIdRef.current !== currentTaskId) return;
+          const shouldReuseLocalState = localStateTaskIdRef.current === currentTaskId;
+          const previousItems = subtitleItemsRef.current;
+
+          setSubtitleItems((prev) => (shouldReuseLocalState ? mergeLoadedSubtitleItems(prev, items) : items));
           const validIds = new Set(items.map((item) => item.id));
-          setInvalidatedDraftAudioIds((prev) => {
-            const next = new Set<string>();
-            prev.forEach((id) => {
-              if (validIds.has(id)) next.add(id);
+          if (!shouldReuseLocalState) {
+            resumedJobsRef.current.clear();
+            lastClearedMergedAtMsRef.current = 0;
+            setPendingAppliedVoiceMap({});
+            setConvertingMap({});
+            setSavingIds(new Set<string>());
+            setInvalidatedDraftAudioIds(new Set<string>());
+            setTextPreparedForVoiceIds(new Set<string>());
+            setPendingSourceSaveMap({});
+            setSelectedId(null);
+            setBlockedPreviewHintId(null);
+            setFocusConvertedEditorId(null);
+          } else {
+            setPendingAppliedVoiceMap((prev) => {
+              return remapSubtitleIdRecordBySourceId(prev, previousItems, items);
             });
-            return next;
-          });
-          setTextPreparedForVoiceIds((prev) => {
-            const next = new Set<string>();
-            prev.forEach((id) => {
-              if (validIds.has(id)) next.add(id);
+            setConvertingMap((prev) => {
+              return remapSubtitleIdRecordBySourceId(prev, previousItems, items);
             });
-            return next;
-          });
-          setSelectedId((prev) => (prev && validIds.has(prev) ? prev : null));
-          setBlockedPreviewHintId((prev) => (prev && validIds.has(prev) ? prev : null));
-          setFocusConvertedEditorId((prev) => (prev && validIds.has(prev) ? prev : null));
+            setSavingIds((prev) => {
+              return remapSubtitleIdSetBySourceId(prev, previousItems, items);
+            });
+            setInvalidatedDraftAudioIds((prev) => {
+              return remapSubtitleIdSetBySourceId(prev, previousItems, items);
+            });
+            setTextPreparedForVoiceIds((prev) => {
+              return remapSubtitleIdSetBySourceId(prev, previousItems, items);
+            });
+          }
+          const validSourceIds = new Set(items.map((item) => resolveLinkedSourceId(item)).filter((id) => id.length > 0));
+          if (shouldReuseLocalState) {
+            setPendingSourceSaveMap((prev) => {
+              const next: Record<string, number> = {};
+              for (const [id, updatedAtMs] of Object.entries(prev)) {
+                if (validSourceIds.has(id)) next[id] = updatedAtMs;
+              }
+              return next;
+            });
+            setSelectedId((prev) => {
+              if (!prev) return null;
+              return Array.from(remapSubtitleIdSetBySourceId(new Set([prev]), previousItems, items))[0] ?? null;
+            });
+            setBlockedPreviewHintId((prev) => {
+              if (!prev) return null;
+              return Array.from(remapSubtitleIdSetBySourceId(new Set([prev]), previousItems, items))[0] ?? null;
+            });
+            setFocusConvertedEditorId((prev) => {
+              if (!prev) return null;
+              return Array.from(remapSubtitleIdSetBySourceId(new Set([prev]), previousItems, items))[0] ?? null;
+            });
+          }
+          localStateTaskIdRef.current = currentTaskId;
           // Fire-and-forget resume so the UI keeps moving after refresh.
           for (const job of pendingJobs) {
             void resumePendingJob(job);
           }
         } catch (err) {
+          if (activeTaskIdRef.current !== currentTaskId) return;
           const errorMessage = err instanceof Error ? err.message : t('loadError');
           setError(errorMessage);
           console.error('Failed to load SRT files:', err);
         } finally {
+          if (activeTaskIdRef.current !== currentTaskId) return;
           setIsLoading(false);
         }
       };
@@ -456,8 +700,8 @@ export const SubtitleWorkstation = memo(
       // - 成本控制：用户不活跃/切到后台时自动停止 keepalive
       useEffect(() => {
         if (!convertObj) return;
-        if (ttsWarmupStartedRef.current) return;
-        ttsWarmupStartedRef.current = true;
+        if (ttsWarmupTaskIdRef.current === convertObj.id) return;
+        ttsWarmupTaskIdRef.current = convertObj.id;
 
         let stopped = false;
         // 仅当用户在字幕工作台内发生过交互后才开始 keepalive：
@@ -565,12 +809,32 @@ export const SubtitleWorkstation = memo(
 
       // --- Sync with Video Player ---
       useEffect(() => {
+        return () => {
+          if (scrollIntoViewRafRef.current != null) {
+            cancelAnimationFrame(scrollIntoViewRafRef.current);
+            scrollIntoViewRafRef.current = null;
+          }
+        };
+      }, [subtitleItems, convertObj?.id]);
+
+      useEffect(() => {
+        if (scrollIntoViewRafRef.current != null) {
+          cancelAnimationFrame(scrollIntoViewRafRef.current);
+          scrollIntoViewRafRef.current = null;
+        }
         if (playingSubtitleIndex == null || playingSubtitleIndex < 0) return;
         const el = itemRefs.current[playingSubtitleIndex];
         if (!el) return;
-        requestAnimationFrame(() => {
+        scrollIntoViewRafRef.current = requestAnimationFrame(() => {
+          scrollIntoViewRafRef.current = null;
           el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
         });
+        return () => {
+          if (scrollIntoViewRafRef.current != null) {
+            cancelAnimationFrame(scrollIntoViewRafRef.current);
+            scrollIntoViewRafRef.current = null;
+          }
+        };
       }, [playingSubtitleIndex]);
 
       useEffect(() => {
@@ -582,18 +846,46 @@ export const SubtitleWorkstation = memo(
       }, [playingSubtitleIndex, subtitleItems]);
 
       useEffect(() => {
-        onPendingChangesChange?.(updateItemList.length);
-        onPendingVoiceIdsChange?.(updateItemList.map((it) => it?.id).filter((id): id is string => typeof id === 'string' && id.length > 0));
-      }, [updateItemList, onPendingChangesChange, onPendingVoiceIdsChange]);
+        const pendingAppliedVoiceCount = Object.keys(pendingAppliedVoiceMap).length;
+        onPendingChangesChange?.(pendingAppliedVoiceCount);
+        onPendingVoiceIdsChange?.(Object.entries(pendingAppliedVoiceMap).map(([id, updatedAtMs]) => ({ id, updatedAtMs })));
+      }, [onPendingChangesChange, onPendingVoiceIdsChange, pendingAppliedVoiceMap]);
+
+      useEffect(() => {
+        if (!onPlaybackBlockedVoiceIdsChange) return;
+        onPlaybackBlockedVoiceIdsChange(
+          subtitleItems
+            .filter((item) => shouldBlockVoicePlayback(deriveRowVoiceUiState(item)))
+            .map((item) => item.id)
+        );
+      }, [deriveRowVoiceUiState, onPlaybackBlockedVoiceIdsChange, subtitleItems]);
 
       useEffect(() => {
         if (!onDirtyStateChange) return;
-        const hasPendingVoiceWork = subtitleItems.some((item) => {
-          const state = deriveRowVoiceUiState(item);
-          return state === 'audio_ready' || state === 'text_ready';
+        onDirtyStateChange(
+          hasSubtitleWorkstationDirtyState({
+            rowVoiceStates: subtitleItems.map((item) => deriveRowVoiceUiState(item)),
+            pendingAppliedVoiceCount: Object.keys(pendingAppliedVoiceMap).length,
+            pendingSourceSaveCount: Object.keys(pendingSourceSaveMap).length,
+          })
+        );
+      }, [deriveRowVoiceUiState, onDirtyStateChange, pendingAppliedVoiceMap, pendingSourceSaveMap, subtitleItems]);
+
+      useEffect(() => {
+        const mergedAt = Number(lastMergedAtMs || 0);
+        if (!Number.isFinite(mergedAt) || mergedAt <= 0) return;
+        const normalizedMergedAt = Math.round(mergedAt);
+        if (normalizedMergedAt <= lastClearedMergedAtMsRef.current) return;
+        lastClearedMergedAtMsRef.current = normalizedMergedAt;
+        setPendingAppliedVoiceMap((prev) => {
+          const next: Record<string, number> = {};
+          for (const [id, updatedAtMs] of Object.entries(prev)) {
+            const ts = Number.isFinite(updatedAtMs) ? Math.round(updatedAtMs) : 0;
+            if (ts > normalizedMergedAt) next[id] = ts;
+          }
+          return next;
         });
-        onDirtyStateChange(hasPendingVoiceWork || updateItemList.length > 0);
-      }, [deriveRowVoiceUiState, onDirtyStateChange, subtitleItems, updateItemList]);
+      }, [lastMergedAtMs]);
 
       // --- Audio Playback ---
       const stopPlayback = () => {
@@ -612,6 +904,8 @@ export const SubtitleWorkstation = memo(
       // --- Actions ---
       const handleConvert = async (item: SubtitleRowData, type: string, index: number) => {
         if (!convertObj) return;
+        const taskId = convertObj.id;
+        const requestTextSnapshot = type === 'gen_srt' ? item.text_source : item.text_convert;
 
         setConvertingMap((prev) => ({
           ...prev,
@@ -649,12 +943,24 @@ export const SubtitleWorkstation = memo(
               const jobId = typeof data?.jobId === 'string' && data.jobId.length > 0 ? (data.jobId as string) : '';
               const requestKey = typeof data?.requestKey === 'string' && data.requestKey.length > 0 ? (data.requestKey as string) : '';
               resolvedData = await pollSubtitleJob({
-                taskId: convertObj.id,
+                taskId,
                 subtitleName: item.id,
                 type: type as PendingJob['type'],
                 jobId,
                 requestKey,
+                failureMessage: t('toast.generateFailed'),
               });
+            }
+            if (activeTaskIdRef.current !== taskId) return;
+            const currentItem = subtitleItemsRef.current.find((itm) => itm.id === item.id);
+            if (
+              !currentItem ||
+              !shouldApplySubtitleAsyncResult({
+                currentText: type === 'gen_srt' ? currentItem.text_source ?? '' : currentItem.text_convert ?? '',
+                requestTextSnapshot,
+              })
+            ) {
+              return;
             }
 
             void fetchUserCredits();
@@ -706,15 +1012,18 @@ export const SubtitleWorkstation = memo(
             }
 
             if (type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
-              onUpdateSubtitleAudioUrl(item.id, buildPublicAudioUrl(resolvedData.path_name, newTime));
+              const resolvedPublicAudioUrl = buildPublicAudioUrl(resolvedData.path_name, newTime);
+              onUpdateSubtitleAudioUrl(item.id, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));
             }
           } else {
             toast.error(message || t('toast.generateFailed'));
           }
         } catch (e) {
+          if (activeTaskIdRef.current !== taskId) return;
           const isTimeout = e instanceof DOMException && e.name === 'TimeoutError';
           toast.error(isTimeout ? t('toast.generateTimeout') : t('toast.generateFailed'));
         } finally {
+          if (activeTaskIdRef.current !== taskId) return;
           setConvertingMap((prev) => {
             const next = { ...prev };
             delete next[item.id];
@@ -724,14 +1033,16 @@ export const SubtitleWorkstation = memo(
       };
 
       const handleSave = async (item: SubtitleRowData, type: string) => {
-        if (!convertObj) return;
-        if (type !== 'translate_srt') return;
+        if (!convertObj) return false;
+        if (type !== 'translate_srt') return false;
+        const taskId = convertObj.id;
+        const requestTextSnapshot = item.text_convert;
 
         const tempArr = item.audioUrl_convert_custom?.split('?') || [];
         const pathName = tempArr.length > 0 ? tempArr[0] : item.audioUrl_convert_custom;
         if (!pathName) {
           toast.error(t('toast.saveFailed'));
-          return;
+          return false;
         }
 
         setSavingIds((prev) => {
@@ -741,7 +1052,7 @@ export const SubtitleWorkstation = memo(
         });
 
         try {
-          const resp = await fetch('/api/video-task/update-subtitle-item', {
+          const resp = await fetchWithTimeout('/api/video-task/update-subtitle-item', {
             method: 'POST',
             body: JSON.stringify({
               userId: convertObj.userId,
@@ -751,9 +1062,21 @@ export const SubtitleWorkstation = memo(
               pathName,
               item: { id: item.id, txt: item.text_convert },
             }),
+            timeoutMs: WORKSTATION_REQUEST_TIMEOUT_MS,
           });
           const { code } = await resp.json();
+          if (activeTaskIdRef.current !== taskId) return false;
           if (code === 0) {
+            const currentItem = subtitleItemsRef.current.find((itm) => itm.id === item.id);
+            if (
+              !currentItem ||
+              !shouldApplySubtitleAsyncResult({
+                currentText: currentItem.text_convert ?? '',
+                requestTextSnapshot,
+              })
+            ) {
+              return false;
+            }
             toast.success(t('toast.saveSuccess'));
             const savedAt = Date.now();
             const savedAudioPath = `adj_audio_time/${item.id}.wav`;
@@ -790,20 +1113,19 @@ export const SubtitleWorkstation = memo(
               onUpdateSubtitleAudioUrl(item.id, buildPublicAudioUrl(savedAudioPath, savedAt));
             }
             onSubtitleVoiceStatusChange?.(item.id, 'ready', false);
-            setUpdateItemList((prev) => {
-              const copy = [...prev];
-              const existing = copy.findIndex((i) => i.order === item.order);
-              if (existing > -1) copy[existing] = item;
-              else copy.push(item);
-              return copy;
-            });
+            setPendingAppliedVoiceMap((prev) => ({ ...prev, [item.id]: savedAt }));
             onShowTip?.();
+            return true;
           } else {
             toast.error(t('toast.saveFailed'));
+            return false;
           }
         } catch {
+          if (activeTaskIdRef.current !== taskId) return false;
           toast.error(t('toast.saveFailed'));
+          return false;
         } finally {
+          if (activeTaskIdRef.current !== taskId) return false;
           setSavingIds((prev) => {
             const next = new Set(prev);
             next.delete(item.id);
@@ -812,52 +1134,132 @@ export const SubtitleWorkstation = memo(
         }
       };
 
+      const scrollToItem = useCallback((id: string) => {
+        const taskId = activeTaskIdRef.current;
+        if (!taskId) return;
+        setSelectedId(id);
+        if (scrollToItemTimerRef.current) {
+          clearTimeout(scrollToItemTimerRef.current);
+        }
+        // 等 convertObj 更新后 subtitleItems 重载，再用 ref 滚动
+        scrollToItemTimerRef.current = setTimeout(() => {
+          scrollToItemTimerRef.current = null;
+          if (!taskId || activeTaskIdRef.current !== taskId) return;
+          const idx = subtitleItemsRef.current.findIndex((itm) => itm.id === id);
+          if (idx < 0) return;
+          itemRefs.current[subtitleItemsRef.current[idx].order]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+      }, []);
+
+      const focusMergeBlockingItem = useCallback(
+        (id: string) => {
+          setBlockedPreviewHintId(id);
+          setFocusConvertedEditorId(id);
+          scrollToItem(id);
+        },
+        [scrollToItem]
+      );
+
+      const focusPendingSourceSaveItem = useCallback(
+        (sourceId: string) => {
+          const item = subtitleItems.find((entry) => resolveLinkedSourceId(entry) === sourceId);
+          if (!item) return;
+          setSelectedId(item.id);
+          setFocusConvertedEditorId(null);
+          setBlockedPreviewHintId(null);
+          scrollToItem(item.id);
+        },
+        [scrollToItem, subtitleItems]
+      );
+
+      const prepareForVideoMerge = async () => {
+        if (!convertObj) return false;
+        const blockedItem = subtitleItems.find((item) => {
+          const state = deriveRowVoiceUiState(item);
+          return state === 'stale' || state === 'text_ready' || state === 'processing';
+        });
+        if (blockedItem) {
+          focusMergeBlockingItem(blockedItem.id);
+          const blockedState = deriveRowVoiceUiState(blockedItem);
+          toast.error(blockedState === 'processing' ? t('toast.mergeBlockedProcessing') : t('toast.mergeBlockedVoice'));
+          return false;
+        }
+
+        const pendingSourceEntries = getPendingSourceSaveEntries(subtitleItems, pendingSourceSaveMap);
+        for (const entry of pendingSourceEntries) {
+          const timer = autoSaveSourceTimersRef.current[entry.sourceId];
+          if (timer) {
+            clearTimeout(timer);
+            delete autoSaveSourceTimersRef.current[entry.sourceId];
+          }
+
+          const ok = await persistSourceTextNow(entry.sourceId, entry.text, entry.editedAtMs, false);
+          if (!ok) {
+            focusPendingSourceSaveItem(entry.sourceId);
+            return false;
+          }
+        }
+
+        const audioReadyItems = subtitleItems.filter((item) => deriveRowVoiceUiState(item) === 'audio_ready');
+        for (const item of audioReadyItems) {
+          const ok = await handleSave(item, 'translate_srt');
+          if (!ok) return false;
+        }
+        return true;
+      };
+
+      const prepareForStructuralEdit = async () => {
+        if (!convertObj) return false;
+
+        const blockedItem = subtitleItems.find((item) => {
+          const state = deriveRowVoiceUiState(item);
+          return state === 'processing' || state === 'audio_ready';
+        });
+        if (blockedItem) {
+          focusMergeBlockingItem(blockedItem.id);
+          const blockedState = deriveRowVoiceUiState(blockedItem);
+          toast.error(blockedState === 'processing' ? t('toast.mergeBlockedProcessing') : t('toast.mergeBlockedVoice'));
+          return false;
+        }
+
+        const pendingSourceEntries = getPendingSourceSaveEntries(subtitleItems, pendingSourceSaveMap);
+        for (const entry of pendingSourceEntries) {
+          const timer = autoSaveSourceTimersRef.current[entry.sourceId];
+          if (timer) {
+            clearTimeout(timer);
+            delete autoSaveSourceTimersRef.current[entry.sourceId];
+          }
+
+          const ok = await persistSourceTextNow(entry.sourceId, entry.text, entry.editedAtMs, false);
+          if (!ok) {
+            focusPendingSourceSaveItem(entry.sourceId);
+            return false;
+          }
+        }
+
+        return true;
+      };
+
       const onVideoSaveClick = async () => {
         if (!convertObj) return false;
+        const taskId = convertObj.id;
         // 用“触发合成的时间”作为 lastMergedAtMs 的保守值：
         // - 合成完成后更新为该时间，可确保“合成过程中新增的修改”不会被误判为已合成。
         const mergeTriggeredAtMs = Date.now();
         try {
-          const resp = await fetch('/api/video-task/generate-video', {
+          const resp = await fetchWithTimeout('/api/video-task/generate-video', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ taskId: convertObj.id }),
+            body: JSON.stringify({ taskId }),
+            timeoutMs: WORKSTATION_REQUEST_TIMEOUT_MS,
           });
           const { code, message, data } = await resp.json();
+          if (activeTaskIdRef.current !== taskId) return false;
           if (code === 0) {
             toast.success(t('toast.videoSaveSuccess'));
-
-            // Async job: poll completion in background so the user doesn't need to guess.
             if (data?.status === 'pending') {
-              const startedAt = Date.now();
-              const timeoutMs = 60 * 60 * 1000;
-              const jobTaskId = convertObj.id;
               const jobId = typeof data?.jobId === 'string' && data.jobId.length > 0 ? (data.jobId as string) : '';
               onVideoMergeStarted?.({ jobId, createdAtMs: mergeTriggeredAtMs });
-              (async () => {
-                while (Date.now() - startedAt < timeoutMs) {
-                  await new Promise((r) => setTimeout(r, 4000));
-                  const pollResp = await fetch(
-                    jobId
-                      ? `/api/video-task/generate-video?taskId=${encodeURIComponent(jobTaskId)}&jobId=${encodeURIComponent(jobId)}`
-                      : `/api/video-task/generate-video?taskId=${encodeURIComponent(jobTaskId)}`
-                  );
-                  const pollBack = await pollResp.json().catch(() => null);
-                  if (pollBack?.code === 0 && pollBack?.data?.video_new_preview) {
-                    toast.success(t('toast.videoSaveCompleted'));
-                    setUpdateItemList([]);
-                    onVideoMergeCompleted?.({ mergedAtMs: mergeTriggeredAtMs });
-                    return;
-                  }
-                  if (pollBack?.code !== 0) {
-                    toast.error(pollBack?.message || t('toast.videoSaveFailed'));
-                    onVideoMergeFailed?.();
-                    return;
-                  }
-                }
-                toast.error(t('toast.videoSaveFailed'));
-                onVideoMergeFailed?.();
-              })();
             }
             return true;
           } else {
@@ -865,26 +1267,19 @@ export const SubtitleWorkstation = memo(
             return false;
           }
         } catch {
+          if (activeTaskIdRef.current !== taskId) return false;
           toast.error(t('toast.videoSaveFailed'));
           return false;
         }
       };
 
-      const scrollToItem = useCallback((id: string) => {
-        setSelectedId(id);
-        // 等 convertObj 更新后 subtitleItems 重载，再用 ref 滚动
-        setTimeout(() => {
-          setSubtitleItems((items) => {
-            const idx = items.findIndex((itm) => itm.id === id);
-            if (idx >= 0) {
-              itemRefs.current[items[idx].order]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return items;
-          });
-        }, 200);
-      }, []);
-
-      useImperativeHandle(ref, () => ({ onVideoSaveClick, scrollToItem }));
+      useImperativeHandle(ref, () => ({
+        onVideoSaveClick,
+        prepareForVideoMerge,
+        prepareForStructuralEdit,
+        scrollToItem,
+        commitPreviewSubtitleText,
+      }));
 
       const srtTimeToMs = (srt: string): number => {
         const [h, m, rest] = srt.split(':');
@@ -954,9 +1349,9 @@ export const SubtitleWorkstation = memo(
           {/* Toolbar */}
           <div className="bg-card/40 flex items-center justify-between border-b border-white/[0.04] px-3 py-2 backdrop-blur-xl">
             <div className="flex items-center gap-3">
-              {updateItemList.length > 0 && (
+              {Object.keys(pendingAppliedVoiceMap).length > 0 && (
                 <span className="text-muted-foreground rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium shadow-sm">
-                  {t('pendingChanges', { count: updateItemList.length })}
+                  {t('pendingChanges', { count: Object.keys(pendingAppliedVoiceMap).length })}
                 </span>
               )}
               {pendingSplitCount > 0 && (
@@ -1064,10 +1459,10 @@ export const SubtitleWorkstation = memo(
                     variant="outline"
                     size="icon"
                     className="bg-background/50 h-9 w-9 shrink-0 rounded-full border-white/10 shadow-sm transition-all hover:border-white/15 hover:bg-white/[0.06]"
-                    onClick={loadSrtFiles}
-                    disabled={isLoading}
+                    onClick={() => void handleRefreshClick()}
+                    disabled={isLoading || isRefreshing}
                   >
-                    <RefreshCw className={cn('text-muted-foreground h-4 w-4', isLoading && 'text-primary animate-spin')} />
+                    <RefreshCw className={cn('text-muted-foreground h-4 w-4', (isLoading || isRefreshing) && 'text-primary animate-spin')} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">{t('tooltips.refresh')}</TooltipContent>
@@ -1130,27 +1525,7 @@ export const SubtitleWorkstation = memo(
                       handleSeek(item.startTime_convert);
                     }}
                     onUpdate={(itm: SubtitleRowData) => {
-                      const textConvertChanged = itm.text_convert !== item.text_convert;
-                      const textSourceChanged = itm.text_source !== item.text_source;
-                      const hasExistingDraftAudio = Boolean(item.draftAudioPath || item.audioUrl_convert_custom);
-
-                      setSubtitleItems((prev) => prev.map((current) => (current.id === itm.id ? { ...current, ...itm } : current)));
-
-                      if (textConvertChanged && hasExistingDraftAudio) {
-                        setInvalidatedDraftAudioIds((prev) => {
-                          const next = new Set(prev);
-                          next.add(itm.id);
-                          return next;
-                        });
-                      }
-
-                      if (textConvertChanged) {
-                        debouncedTextChange(itm.id, itm.text_convert);
-                        debouncedAutoSaveText(itm.id, itm.text_convert);
-                      }
-                      if (textSourceChanged) {
-                        debouncedAutoSaveSourceText(itm.id, itm.text_source);
-                      }
+                      applySubtitleItemUpdate(itm, item);
                     }}
                     onPlayPauseSource={() => togglePlayback(item.order, 'source')}
                     onPlayPauseConvert={() => togglePlayback(item.order, 'convert')}
@@ -1169,7 +1544,7 @@ export const SubtitleWorkstation = memo(
                         ? () => {
                             const startMs = srtTimeToMs(item.startTime_source);
                             const endMs = srtTimeToMs(item.endTime_source);
-                            onResetTiming(item.id, startMs, endMs);
+                            onResetTiming(item.id, resolveLinkedSourceId(item), startMs, endMs);
                           }
                         : undefined
                     }

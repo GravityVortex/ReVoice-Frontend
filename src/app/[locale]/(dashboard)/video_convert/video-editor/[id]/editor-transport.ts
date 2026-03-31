@@ -4,6 +4,18 @@ export type EditorTransportStatus = 'paused' | 'buffering' | 'playing';
 
 export type EditorAuditionMode = 'source' | 'convert';
 
+export type TransportBlockingReason = 'missing' | 'needs_regen' | 'server_failed';
+
+export type TransportBlockingKind = 'loading' | 'retrying' | 'network_failed' | 'voice_unavailable';
+
+export type TransportBlockingState = {
+  kind: TransportBlockingKind;
+  clipIndex: number;
+  subtitleId?: string;
+  retryCount?: number;
+  reason?: TransportBlockingReason;
+};
+
 export type EditorTransportState = {
   mode: EditorTransportMode;
   status: EditorTransportStatus;
@@ -13,6 +25,7 @@ export type EditorTransportState = {
   autoPlayNext: boolean;
   pendingNextClipIndex: number | null;
   pendingNextMode: EditorAuditionMode | null;
+  blockingState: TransportBlockingState | null;
 };
 
 export type EditorTransportSnapshot = {
@@ -22,6 +35,7 @@ export type EditorTransportSnapshot = {
   activeAuditionClipIndex: number | null;
   auditionMode: EditorAuditionMode | null;
   autoPlayNext: boolean;
+  blockingState?: TransportBlockingState | null;
 };
 
 type StartAuditionPayload = {
@@ -36,8 +50,11 @@ export type EditorTransportAction =
   | { type: 'audition_ready' }
   | { type: 'audition_ended_naturally' }
   | { type: 'stop_audition' }
+  | { type: 'reset_transport'; payload?: { autoPlayNext?: boolean } }
   | { type: 'set_auto_play_next'; payload: { value: boolean } }
   | { type: 'clear_pending_next_clip' }
+  | { type: 'set_blocking_state'; payload: TransportBlockingState }
+  | { type: 'clear_blocking_state' }
   | { type: 'sync_transport_time'; payload: { timeSec: number } }
   | { type: 'seek_transport'; payload: { timeSec: number } }
   | { type: 'set_active_clip_index'; payload: { index: number | null } }
@@ -56,6 +73,7 @@ export function createInitialTransportState(
     autoPlayNext: false,
     pendingNextClipIndex: null,
     pendingNextMode: null,
+    blockingState: null,
     ...overrides,
   };
 }
@@ -76,7 +94,7 @@ function finishAudition(
     status: 'paused',
     activeClipIndex: null,
     auditionStopAtSec: null,
-    pendingNextClipIndex: shouldQueueNext ? state.activeClipIndex + 1 : null,
+    pendingNextClipIndex: shouldQueueNext && state.activeClipIndex != null ? state.activeClipIndex + 1 : null,
     pendingNextMode: shouldQueueNext
       ? state.mode === 'audition_source'
         ? 'source'
@@ -112,16 +130,31 @@ export function transportReducer(
         pendingNextClipIndex: null,
         pendingNextMode: null,
       };
-    case 'audition_ready':
-      if (!isAuditioning(state)) return state;
-      return {
-        ...state,
-        status: 'playing',
-      };
-    case 'audition_ended_naturally':
-      return finishAudition(state, { naturalEnd: true });
+  case 'audition_ready':
+    if (!isAuditioning(state)) return state;
+    return {
+      ...state,
+      status: 'playing',
+    };
+  case 'set_blocking_state':
+    return {
+      ...state,
+      blockingState: action.payload,
+    };
+  case 'clear_blocking_state':
+    if (state.blockingState == null) return state;
+    return {
+      ...state,
+      blockingState: null,
+    };
+  case 'audition_ended_naturally':
+    return finishAudition(state, { naturalEnd: true });
     case 'stop_audition':
       return finishAudition(state);
+    case 'reset_transport':
+      return createInitialTransportState({
+        autoPlayNext: action.payload?.autoPlayNext ?? state.autoPlayNext,
+      });
     case 'set_auto_play_next':
       return {
         ...state,
@@ -183,6 +216,10 @@ export function stopAudition(): EditorTransportAction {
   return { type: 'stop_audition' };
 }
 
+export function resetTransport(options?: { autoPlayNext?: boolean }): EditorTransportAction {
+  return { type: 'reset_transport', payload: options };
+}
+
 export function setAutoPlayNext(value: boolean): EditorTransportAction {
   return { type: 'set_auto_play_next', payload: { value } };
 }
@@ -190,6 +227,17 @@ export function setAutoPlayNext(value: boolean): EditorTransportAction {
 export function clearPendingNextClip(): EditorTransportAction {
   return { type: 'clear_pending_next_clip' };
 }
+
+export function setBlockingState(state: TransportBlockingState): EditorTransportAction {
+  return { type: 'set_blocking_state', payload: state };
+}
+
+export function clearBlockingState(): EditorTransportAction {
+  return { type: 'clear_blocking_state' };
+}
+
+export const setTransportBlockingState = setBlockingState;
+export const clearTransportBlockingState = clearBlockingState;
 
 export function syncTransportTime(timeSec: number): EditorTransportAction {
   return { type: 'sync_transport_time', payload: { timeSec } };

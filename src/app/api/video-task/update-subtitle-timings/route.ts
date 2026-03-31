@@ -15,6 +15,11 @@ type TimingUpdate = {
   endMs: number;
 };
 
+type AudioRenameOp = {
+  sourcePath: string;
+  targetPath: string;
+};
+
 const LEGACY_ID_RE = /^(\d+)_([0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3})_([0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3})$/;
 
 function msToSrtTime(msInput: number) {
@@ -121,6 +126,7 @@ export async function POST(req: Request) {
     let updated = 0;
     const nowMs = Date.now();
     const idMap = new Map<string, string>();
+    const audioRenameOps: AudioRenameOp[] = [];
     const nextSubtitleData = subtitleData.map((row: any) => {
       const id = row?.id;
       if (typeof id !== 'string') return row;
@@ -134,6 +140,7 @@ export async function POST(req: Request) {
       const end = msToSrtTime(up.endMs);
 
       let nextId = id;
+      const currentAudioUrl = typeof row?.audio_url === 'string' ? row.audio_url.trim() : '';
       const m = id.match(LEGACY_ID_RE);
       if (m) {
         const seq = m[1];
@@ -149,9 +156,15 @@ export async function POST(req: Request) {
 
       // timing_rev_ms：只在时间轴真正发生变化并落库时更新，用于刷新后判断是否需要重新合成视频。
       const out = { ...row, id: nextId, start, end, timing_rev_ms: nowMs };
-      if (typeof out.audio_url === 'string' && m) {
-        // Best-effort: keep derived paths consistent with the new id (if present).
-        out.audio_url = out.audio_url.replaceAll(id, nextId);
+      if (currentAudioUrl && m) {
+        const nextAudioUrl = currentAudioUrl.replaceAll(id, nextId);
+        out.audio_url = nextAudioUrl;
+        if (nextAudioUrl !== currentAudioUrl) {
+          audioRenameOps.push({
+            sourcePath: `${task.userId}/${taskId}/${currentAudioUrl}`,
+            targetPath: `${task.userId}/${taskId}/${nextAudioUrl}`,
+          });
+        }
       }
       return out;
     });
@@ -173,17 +186,14 @@ export async function POST(req: Request) {
 
     // If ids are time-coded, we must copy the existing audio file to the new id
     // so that the merge step (external) can keep working without protocol changes.
-    const renameOps = [...idMap.entries()];
-    if (renameOps.length > 0) {
+    if (audioRenameOps.length > 0) {
       const bucketName = (await getSystemConfigByKey('r2.bucket.public')) || 'zhesheng-public';
 
-      await mapLimit(renameOps, 4, async ([oldId, newId]) => {
-        const sourcePath = `${task.userId}/${taskId}/adj_audio_time/${oldId}.wav`;
-        const targetPath = `${task.userId}/${taskId}/adj_audio_time/${newId}.wav`;
+      await mapLimit(audioRenameOps, 4, async ({ sourcePath, targetPath }) => {
         const backJO = await javaR2CoverWriteFile(sourcePath, targetPath, bucketName);
         if (!backJO || (backJO as any).code !== 200) {
           const msg = typeof (backJO as any)?.message === 'string' ? (backJO as any).message : '';
-          throw new Error(`r2 overwrite-file failed: ${oldId} -> ${newId}${msg ? ` (${msg})` : ''}`);
+          throw new Error(`r2 overwrite-file failed: ${sourcePath} -> ${targetPath}${msg ? ` (${msg})` : ''}`);
         }
       });
     }
@@ -193,7 +203,7 @@ export async function POST(req: Request) {
       updatedAt: new Date(),
     });
 
-    return respData({ updated, renamed: renameOps.length, idMap: Object.fromEntries(idMap) });
+    return respData({ updated, renamed: idMap.size, idMap: Object.fromEntries(idMap) });
   } catch (e) {
     console.log('update subtitle timings failed:', e);
     return respErr('update subtitle timings failed');

@@ -33,7 +33,11 @@ export function usePopupSignIn() {
       messageHandlerRef.current = null;
     }
     if (channelRef.current) {
-      try { channelRef.current.close(); } catch {}
+      try {
+        channelRef.current.close();
+      } catch {
+        // 忽略通道已关闭等清理期异常
+      }
       channelRef.current = null;
     }
     popupRef.current = null;
@@ -82,7 +86,9 @@ export function usePopupSignIn() {
               '<div style="color:#555;font-size:14px">Loading...</div></body></html>',
           );
           popup.document.close();
-        } catch {}
+        } catch {
+          // about:blank 预写入失败不影响后续 OAuth 跳转
+        }
       }
 
       popupRef.current = popup;

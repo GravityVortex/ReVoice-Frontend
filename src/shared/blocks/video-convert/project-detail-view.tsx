@@ -1627,23 +1627,23 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
                 ) : null}
               </div>
             </div>
-            <div className="flex flex-1 flex-col justify-center px-1 md:px-2">
-              <div className="rounded-[24px] border border-white/[0.05] bg-gradient-to-b from-white/[0.03] to-transparent px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                <div className="text-muted-foreground text-[11px] font-medium tracking-[0.22em] uppercase">
+            <div className="px-1 pt-2 md:px-2">
+              <div className="rounded-[22px] border border-white/[0.05] bg-gradient-to-b from-white/[0.03] to-transparent px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
                   {t('videoInfo.originalVideo')}
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2.5">
-                  <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
-                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{t('videoInfo.duration')}</div>
-                    <div className="text-foreground mt-1 text-sm font-semibold">{duration}</div>
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <div className="rounded-xl border border-white/[0.06] bg-black/10 px-3 py-2">
+                    <div className="text-muted-foreground text-[9px] font-medium tracking-[0.14em] uppercase">{t('videoInfo.duration')}</div>
+                    <div className="text-foreground mt-1 text-sm font-semibold leading-none">{duration}</div>
                   </div>
-                  <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
-                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{t('videoInfo.size')}</div>
-                    <div className="text-foreground mt-1 text-sm font-semibold">{sizeMb} MB</div>
+                  <div className="rounded-xl border border-white/[0.06] bg-black/10 px-3 py-2">
+                    <div className="text-muted-foreground text-[9px] font-medium tracking-[0.14em] uppercase">{t('videoInfo.size')}</div>
+                    <div className="text-foreground mt-1 text-sm font-semibold leading-none">{sizeMb} MB</div>
                   </div>
-                  <div className="rounded-2xl border border-white/[0.06] bg-black/10 px-3 py-3">
-                    <div className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">{t('videoInfo.uploadTime')}</div>
-                    <div className="text-foreground mt-1 text-sm font-semibold">{formatDate(videoDetail?.createdAt || '')}</div>
+                  <div className="rounded-xl border border-white/[0.06] bg-black/10 px-3 py-2">
+                    <div className="text-muted-foreground text-[9px] font-medium tracking-[0.14em] uppercase">{t('videoInfo.uploadTime')}</div>
+                    <div className="text-foreground mt-1 line-clamp-1 text-sm font-semibold leading-none">{formatDate(videoDetail?.createdAt || '')}</div>
                   </div>
                 </div>
               </div>
@@ -1655,7 +1655,7 @@ export function ProjectDetailView({ fileId, locale, backHref }: { fileId: string
         <div className={cn('flex min-h-0 flex-col gap-4', shouldStretchDetailColumns && 'lg:h-full')}>
           {selectedTask ? (
             <Card className={cn('overflow-hidden border-white/10 bg-white/[0.02] py-0', shouldStretchDetailColumns && 'lg:h-full')}>
-              <CardContent className={cn('space-y-5 px-4 py-4', shouldStretchDetailColumns && 'lg:flex lg:h-full lg:flex-col')}>
+              <CardContent className="space-y-5 overflow-y-auto px-4 py-4">
                 <div className="rounded-[24px] border border-white/[0.05] bg-gradient-to-b from-white/[0.045] via-white/[0.028] to-white/[0.015] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2.5">

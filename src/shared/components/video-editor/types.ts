@@ -36,6 +36,7 @@ export interface SubtitleTrackItem {
   color?: string;
   fontFamily?: string;
   audioUrl?: string; // 字幕对应的音频URL
+  previewAudioUrl?: string; // 工作台内允许使用的试听 URL，可为本地草稿路径
   splitOperationId?: string; // 切割操作 ID，用于在时间轴上标识同组 split 子段
 }
 

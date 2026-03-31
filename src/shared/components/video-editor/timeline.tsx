@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/utils';
+
+export type TimelineHandle = {
+  setTime: (sec: number) => void;
+  getRootElement: () => HTMLDivElement | null;
+};
 
 type TimelineProps = {
   className?: string;
@@ -65,7 +70,7 @@ function _pickMinorTickSeconds(zoom: number) {
   return best;
 }
 
-export function Timeline({
+export const Timeline = forwardRef<TimelineHandle, TimelineProps>(function Timeline({
   className,
   currentTime,
   totalDuration,
@@ -75,17 +80,41 @@ export function Timeline({
   onDragging,
   onDragStop,
   playheadHeightPx,
-}: TimelineProps) {
+}, ref) {
   const rootRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number | null>(null);
   const startXRef = useRef<number>(0);
   const didDragRef = useRef(false);
+
+  const glowRef = useRef<HTMLDivElement>(null);
+  const lineRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
 
   const rafIdRef = useRef<number | null>(null);
   const latestTimeRef = useRef(0);
   const [dragPreviewTime, setDragPreviewTime] = useState<number | null>(null);
 
   const safeTotal = Math.max(0.001, totalDuration);
+
+  const safeTotalRef = useRef(safeTotal);
+  safeTotalRef.current = safeTotal;
+
+  useImperativeHandle(ref, () => ({
+    setTime(sec: number) {
+      const el = rootRef.current;
+      if (!el) return;
+      const total = safeTotalRef.current;
+      const pct = clamp(sec / total, 0, 1);
+      const px = pct * el.clientWidth;
+      const tx = `translateX(${px}px)`;
+      if (glowRef.current) glowRef.current.style.transform = tx;
+      if (lineRef.current) lineRef.current.style.transform = tx;
+      if (headRef.current) headRef.current.style.transform = tx;
+    },
+    getRootElement() {
+      return rootRef.current;
+    },
+  }), []);
 
   // User expectation: keep the ruler readable and predictable.
   // Fixed tick grid: 0.5s per minor mark, 2s per major mark.
@@ -219,16 +248,39 @@ export function Timeline({
     }
   }, [onDragStop, onDragging, stopRaf]);
 
-  const playheadTime = dragPreviewTime ?? currentTime;
-  const playheadLeftPct = useMemo(() => clamp((playheadTime / safeTotal) * 100, 0, 100), [playheadTime, safeTotal]);
   const playheadH = playheadHeightPx ?? undefined;
+
+  // During drag, use React state for preview; otherwise fall back to the
+  // imperative ref path (which is driven externally at 60fps).
+  // We still compute an initial CSS position from currentTime so the playhead
+  // appears correctly on mount / when not being driven imperatively.
+  const playheadTime = dragPreviewTime ?? currentTime;
+  const playheadPx = useMemo(() => {
+    const el = rootRef.current;
+    if (el) return clamp(playheadTime / safeTotal, 0, 1) * el.clientWidth;
+    return 0;
+  }, [playheadTime, safeTotal]);
+
+  // Sync imperative refs when React-driven position changes (drag preview, seek).
+  const syncPlayheadRefs = useCallback((px: number) => {
+    const tx = `translateX(${px}px)`;
+    if (glowRef.current) glowRef.current.style.transform = tx;
+    if (lineRef.current) lineRef.current.style.transform = tx;
+    if (headRef.current) headRef.current.style.transform = tx;
+  }, []);
+
+  // When drag preview or initial mount, push to refs too.
+  const prevSyncPx = useRef<number>(-1);
+  if (playheadPx !== prevSyncPx.current) {
+    prevSyncPx.current = playheadPx;
+    syncPlayheadRefs(playheadPx);
+  }
 
   return (
     <div
       ref={rootRef}
       className={cn(
         'relative h-full w-full select-none',
-        // Grid ticks.
         '[background-image:linear-gradient(to_right,rgba(148,163,184,0.10)_1px,transparent_1px),linear-gradient(to_right,rgba(148,163,184,0.16)_1px,transparent_1px)]',
         className
       )}
@@ -246,28 +298,37 @@ export function Timeline({
         {labelEls}
       </div>
 
-      {/* Playhead: neon pro-editor style with strong visibility on dark timelines. */}
+      {/* Playhead glow */}
       <div
+        ref={glowRef}
         aria-hidden
-        className="absolute top-0 z-30 w-[10px] -translate-x-1/2 rounded-full bg-primary/20 blur-[8px]"
+        className="pointer-events-none absolute left-0 top-0 z-30 w-[10px] -translate-x-1/2 rounded-full bg-primary/20 blur-[8px]"
         style={{
-          left: `${playheadLeftPct}%`,
           height: playheadH ?? '100%',
+          willChange: 'transform',
         }}
       />
+      {/* Playhead line */}
       <div
+        ref={lineRef}
         aria-hidden
         className={cn(
-          'absolute top-0 z-40 w-[2px] -translate-x-1/2 rounded-full',
+          'pointer-events-none absolute left-0 top-0 z-40 w-[2px] -translate-x-1/2 rounded-full',
           'bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(196,181,253,0.92)_18%,rgba(168,85,247,0.95)_48%,rgba(34,211,238,0.9)_100%)]',
           'shadow-[0_0_0_1px_rgba(255,255,255,0.22),0_0_18px_rgba(168,85,247,0.45),0_0_34px_rgba(34,211,238,0.25)]'
         )}
         style={{
-          left: `${playheadLeftPct}%`,
           height: playheadH ?? '100%',
+          willChange: 'transform',
         }}
       />
-      <div aria-hidden className="absolute top-0 z-50 -translate-x-1/2" style={{ left: `${playheadLeftPct}%` }}>
+      {/* Playhead handle */}
+      <div
+        ref={headRef}
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 z-50 -translate-x-1/2"
+        style={{ willChange: 'transform' }}
+      >
         <div
           className={cn(
             'relative mt-1 flex h-5 min-w-[30px] items-center justify-center rounded-[9px] px-2.5',
@@ -283,4 +344,4 @@ export function Timeline({
       </div>
     </div>
   );
-}
+});

@@ -6,12 +6,12 @@ export function respOk() {
   return respJson(0, 'ok');
 }
 
-export function respErr(message: string) {
+export function respErr(message: string, status?: number) {
   // Keep wrapper shape stable for callers that always read `resp.data`.
-  return respJson(-1, message, null);
+  return respJson(-1, message, null, status);
 }
 
-export function respJson(code: number, message: string, data?: any) {
+export function respJson(code: number, message: string, data?: any, status = 200) {
   const json: any = {
     code: code,
     message: message,
@@ -21,5 +21,5 @@ export function respJson(code: number, message: string, data?: any) {
     json['data'] = data;
   }
 
-  return Response.json(json);
+  return Response.json(json, { status });
 }

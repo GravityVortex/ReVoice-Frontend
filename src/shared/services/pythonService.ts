@@ -10,6 +10,93 @@ type SubtitleTtsRequestOptions = {
   referenceSubtitleName?: string;
 };
 
+export type StructuredErrorData = {
+  errorCode?: string;
+  traceId?: string;
+  retryAfterS?: number;
+  upstreamStatus?: string;
+  platform?: string;
+  reason?: string;
+  [key: string]: unknown;
+};
+
+export class StructuredFetchError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly statusText: string,
+    public readonly data?: StructuredErrorData
+  ) {
+    super(message);
+    this.name = 'StructuredFetchError';
+  }
+}
+
+export function normalizeStructuredErrorData(raw?: unknown): StructuredErrorData | undefined {
+  if (!raw || typeof raw !== 'object') {
+    return undefined;
+  }
+  const base = raw as Record<string, unknown>;
+  return {
+    ...base,
+    errorCode:
+      (base.errorCode as string | undefined) ??
+      (base.error_code as string | undefined) ??
+      (typeof base.code === 'string' ? base.code : undefined),
+    traceId: (base.traceId as string | undefined) ?? (base.trace_id as string | undefined),
+    retryAfterS:
+      (typeof base.retryAfterS === 'number' ? base.retryAfterS : undefined) ??
+      (typeof base.retry_after_s === 'number' ? base.retry_after_s : undefined),
+    upstreamStatus:
+      (base.upstreamStatus as string | undefined) ??
+      (base.modal_status as string | undefined) ??
+      (base.modalStatus as string | undefined),
+    platform: (base.platform as string | undefined) ?? (base.service as string | undefined),
+    reason:
+      (base.reason as string | undefined) ??
+      (typeof base.message === 'string' ? base.message : undefined),
+  };
+}
+
+async function createStructuredFetchError(response: Response): Promise<StructuredFetchError> {
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  let payload: unknown = null;
+  if (contentType.includes('application/json')) {
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+  } else {
+    try {
+      payload = await response.text();
+    } catch {
+      payload = null;
+    }
+  }
+  const data = normalizeStructuredErrorData(
+    typeof payload === 'object' && payload ? payload : undefined
+  );
+  const message =
+    typeof payload === 'object' && payload
+      ? String(
+          (payload as Record<string, unknown>).message ||
+            (payload as Record<string, unknown>).error ||
+            response.statusText ||
+            `HTTP ${response.status}`
+        )
+      : String(payload ?? response.statusText ?? `HTTP ${response.status}`);
+  return new StructuredFetchError(message, response.status, response.statusText, data);
+}
+
+export async function fetchJsonWithStructuredError<T>(url: string, init: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    throw await createStructuredFetchError(response.clone());
+  }
+  return response.json();
+}
+
 function resolveTtsBaseUrl(): string {
   // 单条字幕音频重生成已迁移到 TTS 服务：
   // - 优先使用 TTS_SERVER_BASE_URL（避免影响其它仍走 VAP 的接口）
@@ -21,18 +108,6 @@ function resolveTtsBaseUrl(): string {
 
 function resolveLegacyPythonBaseUrl(): string {
   return String(PYTHON_SERVER_BASE_URL || '').trim();
-}
-
-async function fetchWithOptionalFallback(
-  primaryUrl: string,
-  init: RequestInit,
-  fallbackUrl: string
-): Promise<Response> {
-  const primary = await fetch(primaryUrl, init);
-  // 兼容：新 TTS 服务可能还未实现 jobs 接口；遇到 404/405 时回退到旧 PYTHON_SERVER_BASE_URL。
-  if (primary.status !== 404 && primary.status !== 405) return primary;
-  if (!fallbackUrl || fallbackUrl === primaryUrl) return primary;
-  return await fetch(fallbackUrl, init);
 }
 
 /**
@@ -53,7 +128,7 @@ export async function pyOriginalTxtTranslate(param: any) {
   // 请求python服务器
   const url = `${PYTHON_SERVER_BASE_URL}/api/internal/subtitle/single/translate`;
   console.log('请求python服务器--->', url);
-  const response = await fetch(url, {
+  const backJO = await fetchJsonWithStructuredError(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -61,18 +136,6 @@ export async function pyOriginalTxtTranslate(param: any) {
     },
     body: JSON.stringify(params),
   });
-  // {
-  //   "code": 200,
-  //   "message": "xxxxx",
-  //   "text_translated": "Hello World",
-  // }
-  if (!response.ok) {
-    // console.log('python服务器返回--->', response.statusText);
-    const msg = await response.text();
-    console.log('python服务器返回--->', msg);
-    throw new Error(`原字幕文本翻译失败${msg}`);
-  }
-  const backJO = await response.json();
   console.log('python服务器返回--->', backJO);
   return backJO;
 }
@@ -151,8 +214,7 @@ export async function pyConvertTxtGenerateVoice(
   const url = `${baseUrl}/api/internal/subtitles/translated/tts`;
   console.log('请求tts服务器--->', url);
   console.log('请求tts服务器--params--->', params);
-
-  const response = await fetch(url, {
+  const backJO = await fetchJsonWithStructuredError(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -161,19 +223,6 @@ export async function pyConvertTxtGenerateVoice(
     body: JSON.stringify(params),
     signal: AbortSignal.timeout(120_000),
   });
-  // {
-  //   "code": 200,
-  //   "message": "xxxxx",
-  //   "path_name": "adj_audio_time_temp/0001_00-00-00-000_00-00-04-000.wav",
-  //   "duration": 2.34
-  // }
-  if (!response.ok) {
-    // console.log('python服务器返回--->', response.statusText);
-    const msg = await response.text();
-    console.log('python服务器返回--->', msg);
-    throw new Error(`翻译字幕转语音失败${msg}`);
-  }
-  const backJO = await response.json();
   console.log('python服务器返回--->', backJO);
   return backJO;
 }
@@ -242,7 +291,7 @@ export async function pyConvertTxtGenerateVoiceJobStart(
   const url = `${baseUrl}/api/internal/subtitles/translated/tts/jobs`;
   const fallbackUrl = legacyBaseUrl ? `${legacyBaseUrl}/api/internal/subtitles/translated/tts/jobs` : '';
 
-  const response = await fetchWithOptionalFallback(url, {
+  const init: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -250,13 +299,20 @@ export async function pyConvertTxtGenerateVoiceJobStart(
       ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
     },
     body: JSON.stringify(params),
-  }, fallbackUrl);
+  };
 
-  if (!response.ok) {
-    const msg = await response.text();
-    throw new Error(`字幕TTS任务提交失败${msg}`);
+  try {
+    return await fetchJsonWithStructuredError(url, init);
+  } catch (error) {
+    if (
+      error instanceof StructuredFetchError &&
+      fallbackUrl &&
+      (error.status === 404 || error.status === 405)
+    ) {
+      return await fetchJsonWithStructuredError(fallbackUrl, init);
+    }
+    throw error;
   }
-  return await response.json();
 }
 
 export async function pyConvertTxtGenerateVoiceJobStatus(jobId: string) {
@@ -265,19 +321,26 @@ export async function pyConvertTxtGenerateVoiceJobStatus(jobId: string) {
   const url = `${baseUrl}/api/internal/subtitles/translated/tts/jobs/${jobId}`;
   const fallbackUrl = legacyBaseUrl ? `${legacyBaseUrl}/api/internal/subtitles/translated/tts/jobs/${jobId}` : '';
 
-  const response = await fetchWithOptionalFallback(url, {
+  const init: RequestInit = {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
       ...buildPythonAuthHeaders(),
     },
-  }, fallbackUrl);
+  };
 
-  if (!response.ok) {
-    const msg = await response.text();
-    throw new Error(`字幕TTS任务查询失败${msg}`);
+  try {
+    return await fetchJsonWithStructuredError(url, init);
+  } catch (error) {
+    if (
+      error instanceof StructuredFetchError &&
+      fallbackUrl &&
+      (error.status === 404 || error.status === 405)
+    ) {
+      return await fetchJsonWithStructuredError(fallbackUrl, init);
+    }
+    throw error;
   }
-  return await response.json();
 }
 
 /**

@@ -21,8 +21,12 @@
   "header": {
     "backToProject": "Go back",
     "mergingVideo": "Updating video, please wait",
+    "mergeStatusRetryTooltip": "Can't confirm the latest merge status right now. Check your network and retry status.",
     "noChanges": "Edit subtitles or voice first, then click here to update",
-    "regenerateTooltip": "Update video with your changes"
+    "regenerateTooltip": "Update video with your changes",
+    "retryMergeStatus": "Retry status",
+    "moreDownloads": "More downloads",
+    "downloadUpdatingHint": "The latest video is still generating. Downloads will re-enable after status is confirmed."
   },
   "audioList": {
     "title": "Subtitle Audio Comparison",
@@ -68,9 +72,12 @@
       "videoSaveSuccess": "Submitted — takes about 1–2 min, closing the page won't affect progress",
       "videoSaveCompleted": "Video is ready — check your video list for the latest version",
       "videoSaveFailed": "Video synthesis failed",
+      "mergeBlockedProcessing": "Some subtitle actions are still running. Wait for them to finish before updating the video.",
+      "mergeBlockedVoice": "Some subtitles still need voice work. Resolve the highlighted row before updating the video.",
       "itemNotFound": "Subtitle item not found",
       "saveSuccess": "Saved successfully!",
       "saveFailed": "Save failed!",
+      "sourceSaveFailed": "Couldn't save the original subtitle edits. Retry before continuing.",
       "insufficientCreditsError": "Insufficient credits, please recharge."
     }
   },
@@ -112,6 +119,7 @@
       "zoomIn": "Zoom in",
       "addSubtitle": "Add subtitle",
       "pointerVisible": "Playback pointer visible",
+      "structuralEditBlocked": "The video is still updating. Wait for the current status to settle before changing subtitle structure.",
       "export": "Export project",
       "mute": "Mute",
       "unmute": "Unmute",
@@ -135,6 +143,42 @@
     },
     "placeholder": {
       "addVideoToTrack": "Please add video file to video track"
+    },
+    "previewEdit": {
+      "commitRejected": "This clip is still busy, so the edit can't be committed yet. Try again in a moment."
+    },
+    "playbackGate": {
+      "clipLabel": "Clip {index}",
+      "clipLabelFallback": "Current clip",
+      "title": {
+        "loading": "Loading voice",
+        "retrying": "Unstable network, retrying",
+        "networkFailed": "Network failed, playback paused",
+        "voiceUnavailable": "Voice unavailable"
+      },
+      "description": {
+        "loading": "Buffering {clip}, hang tight and it will resume",
+        "retrying": "{clip} is being retried; it will auto-resume once the connection stabilizes",
+        "networkFailed": "Unable to load {clip} over the current network, please check your connection",
+        "voiceUnavailable": "{clip} has no generated voice yet; create the voice before previewing"
+      },
+      "detail": {
+        "loading": "Short network hiccup, auto recovery in progress",
+        "retrying": "If retries keep failing you can cancel and try again later",
+        "networkFailed": "Retry this clip or cancel playback",
+        "voiceUnavailable": "Generate the voice before previewing this clip"
+      },
+      "action": {
+        "cancel": "Cancel playback",
+        "retry": "Retry clip",
+        "locateClip": "Locate clip"
+      },
+      "badge": {
+        "loading": "Loading",
+        "retrying": "Retrying",
+        "networkFailed": "Network failed",
+        "voiceUnavailable": "Needs voice"
+      }
     }
   },
   "subtitleRow": {

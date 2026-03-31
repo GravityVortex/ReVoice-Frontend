@@ -121,4 +121,39 @@ describe('SubtitleTrack', () => {
     expect(html).not.toContain('data-dense-selected-item="micro-1"');
     expect(html).not.toContain('data-dense-selected-item="micro-3"');
   });
+
+  it('renders a blocking badge anchored to the affected subtitle segment', () => {
+    const html = renderToStaticMarkup(
+      <SubtitleTrack
+        items={[
+          {
+            id: 'clip-1',
+            type: 'video',
+            name: 'Clip 1',
+            text: '第一条',
+            startTime: 0,
+            duration: 3,
+          },
+          {
+            id: 'clip-2',
+            type: 'video',
+            name: 'Clip 2',
+            text: '第二条',
+            startTime: 4,
+            duration: 3,
+          },
+        ]}
+        totalDuration={10}
+        currentTime={4}
+        pxPerSec={50}
+        blockedItemId="clip-2"
+        blockedState="retrying"
+        blockedLabel="重试中"
+      />
+    );
+
+    expect(html).toContain('重试中');
+    expect(html).toContain('data-blocked-item-id="clip-2"');
+    expect(html).toContain('data-blocked-state="retrying"');
+  });
 });

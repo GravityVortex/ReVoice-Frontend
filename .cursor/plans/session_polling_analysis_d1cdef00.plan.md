@@ -3,7 +3,7 @@ name: Session Polling Analysis
 overview: 完整梳理 /api/auth/get-session 接口的作用、调用机制、频繁调用的原因，并提供业界最佳实践的优化方案来减少不必要的请求（不影响现有功能）。
 todos:
   - id: set-polling-interval
-    content: "设置合理的轮询间隔 sessionOptions.refetchInterval: 60（秒）"
+    content: '设置合理的轮询间隔 sessionOptions.refetchInterval: 60（秒）'
     status: completed
   - id: optimize-fetch-user
     content: 优化 fetchUserInfo 调用逻辑，只在用户真正变化时调用
@@ -14,6 +14,7 @@ todos:
   - id: test-auth-flow
     content: 测试登录/登出/多标签页同步，确保功能正常
     status: completed
+isProject: false
 ---
 
 # /api/auth/get-session 接口完整梳理
@@ -29,14 +30,14 @@ todos:
 ### 接口路由
 
 - 路径：`/api/auth/[...all]/route.ts` - 这是一个 catch-all 路由
-- Better Auth 自动处理所有 `/api/auth/*` 请求
+- Better Auth 自动处理所有 `/api/auth/` 请求
 - `get-session` 是 Better Auth 内置的端点之一
 
 相关文件：
 
-- [`src/app/api/auth/[...all]/route.ts`](src/app/api/auth/[...all]/route.ts) - API 路由处理器
-- [`src/core/auth/index.ts`](src/core/auth/index.ts) - Auth 实例创建
-- [`src/core/auth/config.ts`](src/core/auth/config.ts) - Auth 配置
+- `[src/app/api/auth/[...all]/route.ts](src/app/api/auth/[...all]/route.ts)` - API 路由处理器
+- `[src/core/auth/index.ts](src/core/auth/index.ts)` - Auth 实例创建
+- `[src/core/auth/config.ts](src/core/auth/config.ts)` - Auth 配置
 
 ## 二、调用链路分析
 
@@ -58,24 +59,24 @@ flowchart TD
 
 ### 关键调用点
 
-1. **AppContextProvider** ([`src/shared/contexts/app.tsx`](src/shared/contexts/app.tsx):40)
-   ```tsx
-   const { data: session, isPending } = useSession();
-   ```
+1. **AppContextProvider** (`[src/shared/contexts/app.tsx](src/shared/contexts/app.tsx)`:40)
 
+```tsx
+const { data: session, isPending } = useSession();
+```
 
-   - 在应用根布局中使用，每个页面都会执行
-   - `useSession` 来自 Better Auth 的 React Hook
+- 在应用根布局中使用，每个页面都会执行
+- `useSession` 来自 Better Auth 的 React Hook
 
-2. **SidebarUser / SocialCreditsHandler**
+1. **SidebarUser / SocialCreditsHandler**
 
-   - 已统一改用 `useAppContext()` 读取 `user/isCheckSign`，不再重复调用 `useSession()`
+- 已统一改用 `useAppContext()` 读取 `user/isCheckSign`，不再重复调用 `useSession()`
 
 ## 三、为什么"疯狂调用"
 
 ### 根本原因：会话刷新策略 + 多处订阅联动
 
-在 [`src/core/auth/client.ts`](src/core/auth/client.ts) 中：
+在 `[src/core/auth/client.ts](src/core/auth/client.ts)` 中：
 
 ```typescript
 export const authClient = createAuthClient({
@@ -104,7 +105,7 @@ export const authClient = createAuthClient({
 
 ### 额外的连锁反应
 
-在 [`src/shared/contexts/app.tsx`](src/shared/contexts/app.tsx):132-147：
+在 `[src/shared/contexts/app.tsx](src/shared/contexts/app.tsx)`:132-147：
 
 ```typescript
 useEffect(() => {
@@ -134,7 +135,7 @@ flowchart LR
     A --> C[智能缓存]
     A --> D[条件触发]
     A --> E[状态共享]
-    
+
     B --> B1[延长间隔]
     C --> C1[Cookie缓存]
     D --> D1[仅必要时更新]
@@ -151,7 +152,7 @@ flowchart LR
 
 **实施方案：**
 
-修改 [`src/core/auth/client.ts`](src/core/auth/client.ts)：
+修改 `[src/core/auth/client.ts](src/core/auth/client.ts)`：
 
 ```typescript
 export const authClient = createAuthClient({
@@ -178,7 +179,7 @@ export const authClient = createAuthClient({
 
 **解决方案：**
 
-修改 [`src/shared/contexts/app.tsx`](src/shared/contexts/app.tsx):132-147：
+修改 `[src/shared/contexts/app.tsx](src/shared/contexts/app.tsx)`:132-147：
 
 ```typescript
 // 添加 ref 记录上次的 user id（避免 session refresh 导致重复触发）
@@ -189,11 +190,7 @@ useEffect(() => {
     const sessionUser = session.user as User;
 
     // Preserve already-fetched credits if the session payload doesn't include them.
-    setUser((prev) =>
-      sessionUser.credits
-        ? sessionUser
-        : { ...sessionUser, credits: prev?.credits }
-    );
+    setUser((prev) => (sessionUser.credits ? sessionUser : { ...sessionUser, credits: prev?.credits }));
 
     // 只在用户真正变化时才调用 fetchUserInfo
     if (sessionUser.id && sessionUser.id !== lastSessionUserIdRef.current) {
@@ -224,7 +221,7 @@ useEffect(() => {
 1. **保留** `AppContextProvider` 中的 `useSession()`
 2. **移除** 其他组件中的 `useSession()`，改用 `useAppContext()`
 
-修改 [`src/shared/blocks/dashboard/sidebar-user.tsx`](src/shared/blocks/dashboard/sidebar-user.tsx):
+修改 `[src/shared/blocks/dashboard/sidebar-user.tsx](src/shared/blocks/dashboard/sidebar-user.tsx)`:
 
 ```typescript
 // 删除这行
@@ -234,7 +231,7 @@ useEffect(() => {
 const { user, isCheckSign } = useAppContext();
 ```
 
-修改 [`src/shared/blocks/sign/social-credits-handler.tsx`](src/shared/blocks/sign/social-credits-handler.tsx):
+修改 `[src/shared/blocks/sign/social-credits-handler.tsx](src/shared/blocks/sign/social-credits-handler.tsx)`:
 
 ```typescript
 // 删除这行
@@ -256,7 +253,7 @@ const { user } = useAppContext();
 
 **解决方案：**
 
-修改 [`src/core/auth/client.ts`](src/core/auth/client.ts)：
+修改 `[src/core/auth/client.ts](src/core/auth/client.ts)`：
 
 ```typescript
 export const authClient = createAuthClient({
@@ -281,16 +278,16 @@ export const authClient = createAuthClient({
 
 ### 阶段2：深度优化（15分钟）
 
-3. ✅ 移除冗余的 `useSession()` 调用
-4. ✅ 添加离线检测（可选）
+1. ✅ 移除冗余的 `useSession()` 调用
+2. ✅ 添加离线检测（可选）
 
 **预期效果：** 减少 **95%+** 请求
 
 ### 阶段3：测试验证（10分钟）
 
-5. ✅ 测试登录/登出流程
-6. ✅ 测试多标签页同步
-7. ✅ 监控 Network 面板
+1. ✅ 测试登录/登出流程
+2. ✅ 测试多标签页同步
+3. ✅ 监控 Network 面板
 
 ## 六、方案对比
 

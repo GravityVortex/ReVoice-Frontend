@@ -15,6 +15,18 @@ describe('resolveSplitTranslatedAudioPath', () => {
     expect(path).toBe('');
   });
 
+  it('keeps a persisted audio path when the backend is stale missing but playback is still available', () => {
+    const path = resolveSplitTranslatedAudioPath({
+      id: 'clip-1',
+      vap_voice_status: 'missing',
+      vap_needs_tts: false,
+      audio_url: 'adj_audio_time/clip-1.wav',
+      vap_draft_audio_path: '',
+    });
+
+    expect(path).toBe('adj_audio_time/clip-1.wav');
+  });
+
   it('keeps legacy fallback when explicit split status is absent', () => {
     const path = resolveSplitTranslatedAudioPath({
       id: '0001_00-00-00-000_00-00-04-000',

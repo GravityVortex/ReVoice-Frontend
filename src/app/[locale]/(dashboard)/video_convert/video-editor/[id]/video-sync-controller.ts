@@ -15,7 +15,7 @@ export type VideoLikeElement = {
 
 type VideoSyncControllerOptions = {
   seekToleranceSec?: number;
-  play?: () => Promise<unknown>;
+  play?: () => Promise<boolean | unknown>;
   pause?: () => void;
 };
 
@@ -32,7 +32,7 @@ export function createVideoSyncController(
 
   return {
     async apply(snapshot: VideoSyncSnapshot) {
-      if (!Number.isFinite(snapshot.transportTimeSec)) return;
+      if (!Number.isFinite(snapshot.transportTimeSec)) return false;
 
       if (Math.abs(video.currentTime - snapshot.transportTimeSec) > seekToleranceSec) {
         video.currentTime = snapshot.transportTimeSec;
@@ -48,8 +48,8 @@ export function createVideoSyncController(
           mode: snapshot.mode,
           transportTimeSec: snapshot.transportTimeSec,
         });
-        await (opts?.play ? opts.play() : video.play());
-        return;
+        const playResult = await (opts?.play ? opts.play() : video.play());
+        return playResult !== false;
       }
 
       if (!video.paused) {
@@ -60,6 +60,8 @@ export function createVideoSyncController(
         if (opts?.pause) opts.pause();
         else video.pause();
       }
+
+      return true;
     },
   };
 }

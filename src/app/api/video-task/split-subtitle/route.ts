@@ -152,6 +152,8 @@ export async function POST(req: Request) {
         effectiveConvertText,
         parentSourceAudioUrl,
         audioSplitSuccess: !!sourceAudioSplit,
+        parentTranslateRow: translate[result.splitIndex],
+        parentSourceRow: source[result.splitIndex],
       },
       audioSnapshot: {
         source_audio: parentSourceAudioUrl ? {

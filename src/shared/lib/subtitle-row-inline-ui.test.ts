@@ -32,12 +32,15 @@ describe('subtitle row inline ui model', () => {
     ]);
   });
 
-  it('returns a single apply action for audio_ready', () => {
+  it('keeps audio_ready focused on apply first while still allowing direct regen', () => {
     expect(getSubtitleRowInlineUiModel({ state: 'audio_ready', isSelected: true })).toEqual({
       tone: 'success',
       showHint: true,
       emphasizeHint: false,
-      actions: [{ kind: 'apply_voice', emphasis: 'primary', meta: null }],
+      actions: [
+        { kind: 'apply_voice', emphasis: 'primary', meta: null },
+        { kind: 'generate_voice', emphasis: 'secondary', meta: 'credit_2' },
+      ],
     });
   });
 

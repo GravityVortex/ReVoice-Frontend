@@ -1,3 +1,5 @@
+import { requiresVoiceGeneration } from '@/shared/lib/subtitle-voice-state';
+
 const LEGACY_ID_RE = /^(\d+)_([0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3})_([0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3})$/;
 
 type SplitChildIdsInput = {
@@ -61,7 +63,7 @@ function msToSrtTime(msInput: number) {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
 }
 
-function reindexSeqInPlace(rows: any[]) {
+export function reindexSeqInPlace(rows: any[]) {
   rows.forEach((row, index) => {
     if (row && typeof row === 'object') row.seq = String(index + 1);
   });
@@ -233,8 +235,11 @@ export function collectMissingVoiceIds(rows: any[]) {
     if (typeof id !== 'string' || !id) continue;
     const hasExplicitStatus = typeof row?.vap_voice_status === 'string' || typeof row?.vap_needs_tts === 'boolean';
     if (!hasExplicitStatus) continue;
-    const status = String(row?.vap_voice_status || '');
-    if (row?.vap_needs_tts === true || status === 'missing' || status === 'failed') {
+    if (requiresVoiceGeneration({
+      voiceStatus: row?.vap_voice_status,
+      needsTts: row?.vap_needs_tts,
+      persistedAudioPath: row?.audio_url,
+    })) {
       out.push(id);
     }
   }
@@ -253,11 +258,22 @@ export function resolveSplitTranslatedAudioPath(row: any) {
   if (draftPath) return draftPath;
 
   const explicitStatus = typeof row?.vap_voice_status === 'string' ? row.vap_voice_status : '';
-  if (explicitStatus === 'missing' || explicitStatus === 'failed' || row?.vap_needs_tts === true) {
+  const persistedPath = typeof row?.audio_url === 'string' ? row.audio_url.trim() : '';
+  if (persistedPath && !requiresVoiceGeneration({
+    voiceStatus: explicitStatus,
+    needsTts: row?.vap_needs_tts,
+    persistedAudioPath: persistedPath,
+  })) {
+    return persistedPath;
+  }
+  if (requiresVoiceGeneration({
+    voiceStatus: explicitStatus,
+    needsTts: row?.vap_needs_tts,
+    persistedAudioPath: persistedPath,
+  })) {
     return '';
   }
 
-  const persistedPath = typeof row?.audio_url === 'string' ? row.audio_url.trim() : '';
   if (persistedPath) return persistedPath;
 
   const id = typeof row?.id === 'string' ? row.id : '';

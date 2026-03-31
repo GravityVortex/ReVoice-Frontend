@@ -49,3 +49,61 @@ describe('pyConvertTxtGenerateVoice', () => {
     );
   });
 });
+
+describe('fetchJsonWithStructuredError', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockBuildPythonAuthHeaders.mockReturnValue({ Authorization: 'Bearer test-token' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('throws StructuredFetchError with normalized data on 503 JSON body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: {
+        get: () => 'application/json',
+      },
+      json: async () => ({
+        code: -1,
+        message: 'platform busy',
+        error_code: 'PLATFORM_BUSY',
+        trace_id: 'trace-123',
+        retry_after_s: 40,
+        modal_status: 'FAILURE',
+        platform: 'modal',
+      }),
+      text: async () => 'platform busy',
+      clone: function () {
+        return this;
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { fetchJsonWithStructuredError, StructuredFetchError } = await import('./pythonService');
+
+    await expect(fetchJsonWithStructuredError('https://tts.example.com', { method: 'GET' })).rejects.toEqual(
+      expect.objectContaining({
+        status: 503,
+        statusText: 'Service Unavailable',
+        data: expect.objectContaining({
+          errorCode: 'PLATFORM_BUSY',
+          traceId: 'trace-123',
+          retryAfterS: 40,
+          upstreamStatus: 'FAILURE',
+          platform: 'modal',
+          reason: 'platform busy',
+        }),
+      })
+    );
+
+    await expect(async () => {
+      await fetchJsonWithStructuredError('https://tts.example.com', { method: 'GET' });
+    }).rejects.toThrow(StructuredFetchError);
+  });
+});

@@ -8,7 +8,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Slider } from '@/shared/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { SubtitleTrack } from '@/shared/components/video-editor/subtitle-track';
-import { Timeline } from '@/shared/components/video-editor/timeline';
+import { Timeline, type TimelineHandle } from '@/shared/components/video-editor/timeline';
 import { SubtitleTrackItem } from '@/shared/components/video-editor/types';
 import { WaveformBackdrop } from '@/shared/components/video-editor/waveform-backdrop';
 import { getTimelineAutoFollowTarget } from '@/shared/lib/timeline/follow';
@@ -17,15 +17,17 @@ import { audioMetaLoadQueue } from '@/shared/lib/waveform/loader';
 
 import type { EditorTransportSnapshot } from './editor-transport';
 
+export type { TimelineHandle };
+
 interface TimelinePanelProps {
   className?: string;
   totalDuration: number;
   transportSnapshot: EditorTransportSnapshot;
   subtitleTrack: SubtitleTrackItem[];
   subtitleTrackOriginal?: SubtitleTrackItem[];
-  onSubtitleTrackChange?: (nextTrack: SubtitleTrackItem[]) => void;
   vocalWaveformUrl?: string;
   bgmWaveformUrl?: string;
+  timelineRef?: React.RefObject<TimelineHandle | null>;
 
   // State
   zoom: number;
@@ -42,12 +44,14 @@ interface TimelinePanelProps {
   onToggleSubtitleMute: () => void;
   onSplitAtCurrentTime?: () => void;
   splitDisabled?: boolean;
+  splitTooltipText?: string | null;
   splitLoading?: boolean;
   onUndo?: () => void;
+  undoDisabled?: boolean;
   undoLoading?: boolean;
   undoCountdown?: number;
+  undoTooltipText?: string | null;
   onUndoCancel?: () => void;
-  timingChangedHint?: boolean;
 }
 
 function BufferingOrbitalDots({ label }: { label: string }) {
@@ -105,9 +109,9 @@ export function TimelinePanel({
   transportSnapshot,
   subtitleTrack,
   subtitleTrackOriginal,
-  onSubtitleTrackChange,
   vocalWaveformUrl,
   bgmWaveformUrl,
+  timelineRef,
   zoom,
   volume,
   isBgmMuted,
@@ -125,15 +129,14 @@ export function TimelinePanel({
   undoLoading = false,
   undoCountdown = 0,
   onUndoCancel,
-  timingChangedHint = false,
 }: TimelinePanelProps) {
   const t = useTranslations('video_convert.videoEditor.videoEditor');
-  const tSub = useTranslations('video_convert.videoEditor.subtitleRow');
   const locale = useLocale();
   const currentTime = transportSnapshot.currentTimeSec;
   const isPlaying = transportSnapshot.playbackStatus === 'playing';
   const isBuffering = transportSnapshot.playbackStatus === 'buffering';
   const playingSubtitleIndex = transportSnapshot.activeTimelineClipIndex;
+  const blockingState = transportSnapshot.blockingState ?? null;
   const bufferingLabel = locale === 'zh' ? '缓冲中' : 'Buffering';
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';
@@ -209,6 +212,28 @@ export function TimelinePanel({
     if (!vocalWaveformProxyUrl) return undefined;
     return { url: vocalWaveformProxyUrl, minPxPerSec, tone: 'vocal' as const };
   }, [enableWaveform, minPxPerSec, vocalWaveformProxyUrl]);
+
+  const blockedConvertedItemId = useMemo(() => {
+    if (!blockingState) return null;
+    const entry = subtitleTrack[blockingState.clipIndex];
+    return entry?.id ?? blockingState.subtitleId ?? null;
+  }, [blockingState, subtitleTrack]);
+
+  const blockedConvertedLabel = useMemo(() => {
+    if (!blockingState) return null;
+    switch (blockingState.kind) {
+      case 'loading':
+        return t('playbackGate.badge.loading');
+      case 'retrying':
+        return t('playbackGate.badge.retrying');
+      case 'network_failed':
+        return t('playbackGate.badge.networkFailed');
+      case 'voice_unavailable':
+        return t('playbackGate.badge.voiceUnavailable');
+      default:
+        return null;
+    }
+  }, [blockingState, t]);
 
   // --- Audio overrun markers (M4) ---
   const [audioDurationMsById, setAudioDurationMsById] = useState<Record<string, number>>({});
@@ -423,46 +448,15 @@ export function TimelinePanel({
     };
   }, [enableAudioMeta, playingSubtitleIndex, queueDurationLoad]);
 
-  // Auto-follow: edge-triggered and drag-aware. This feels more like a pro editor than constant centering.
+  // Auto-follow: now driven imperatively from the parent's rAF loop via
+  // onAutoFollow callback, removing the high-frequency useEffect(currentTime) cascade.
+  // We keep a low-frequency fallback for when React state updates (e.g. subtitle index change).
   const lastAutoScrollTimeRef = useRef<number>(-1);
   const autoFollowRafRef = useRef<number | null>(null);
-  useEffect(() => {
-    const prev = lastAutoScrollTimeRef.current;
-    lastAutoScrollTimeRef.current = currentTime;
-    const scroller = document.getElementById('unified-scroll-container');
-    if (!scroller) return;
-
-    const pxPerSec = Math.max(1, Math.round(PX_PER_SECOND * zoom));
-    const target = getTimelineAutoFollowTarget({
-      currentTime,
-      prevTime: prev >= 0 ? prev : currentTime,
-      pxPerSec,
-      scrollLeft: scroller.scrollLeft,
-      viewportWidth: scroller.clientWidth,
-      contentWidth: scroller.scrollWidth,
-      isDragging: isTimelineDragging,
-    });
-    if (!target) return;
-
-    if (autoFollowRafRef.current != null) window.cancelAnimationFrame(autoFollowRafRef.current);
-    autoFollowRafRef.current = window.requestAnimationFrame(() => {
-      autoFollowRafRef.current = null;
-      const currentLeft = scroller.scrollLeft;
-      if (target.mode === 'snap') {
-        scroller.scrollLeft = target.targetLeft;
-        return;
-      }
-      const nextLeft = currentLeft + (target.targetLeft - currentLeft) * 0.22;
-      scroller.scrollLeft = Math.abs(target.targetLeft - currentLeft) <= 1 ? target.targetLeft : nextLeft;
-    });
-
-    return () => {
-      if (autoFollowRafRef.current != null) {
-        window.cancelAnimationFrame(autoFollowRafRef.current);
-        autoFollowRafRef.current = null;
-      }
-    };
-  }, [currentTime, isTimelineDragging, zoom]);
+  const isTimelineDraggingRef = useRef(isTimelineDragging);
+  isTimelineDraggingRef.current = isTimelineDragging;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   const handleConvertedSegmentClick = useCallback(
     (time: number) => {
@@ -711,6 +705,7 @@ export function TimelinePanel({
             {/* Ruler */}
             <div className="bg-background/80 sticky top-0 z-20 h-8 overflow-visible border-b border-white/10">
               <Timeline
+                ref={timelineRef}
                 currentTime={currentTime}
                 totalDuration={maxTrackWidth}
                 zoom={zoom}
@@ -728,12 +723,13 @@ export function TimelinePanel({
                 className="bg-muted/5 h-12 border-b border-white/10"
                 items={subtitleTrack}
                 totalDuration={maxTrackWidth}
-                currentTime={currentTime}
                 playingIndex={playingSubtitleIndex}
+                blockedItemId={blockedConvertedItemId}
+                blockedState={blockingState?.kind ?? null}
+                blockedLabel={blockedConvertedLabel}
                 zoom={zoom}
                 pxPerSec={minPxPerSec}
                 variant="converted"
-                onItemsChange={onSubtitleTrackChange}
                 onSegmentClick={handleConvertedSegmentClick}
                 waveform={vocalWaveform}
                 audioDurationMsById={enableAudioMeta ? audioDurationMsById : undefined}
@@ -745,7 +741,6 @@ export function TimelinePanel({
                 className="h-12 border-b border-white/10"
                 items={subtitleTrackOriginal}
                 totalDuration={maxTrackWidth}
-                currentTime={currentTime}
                 playingIndex={playingSubtitleIndex}
                 zoom={zoom}
                 pxPerSec={minPxPerSec}
@@ -785,14 +780,6 @@ export function TimelinePanel({
           </div>
         </div>
 
-        {timingChangedHint && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 pointer-events-none absolute bottom-1 left-1/2 z-30 -translate-x-1/2 duration-300">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/15 bg-amber-400/10 px-3 py-1 text-[11px] text-amber-300/80 backdrop-blur-sm">
-              <span className="size-1 rounded-full bg-amber-400/70" />
-              {tSub('timing.dragFeedback')}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );

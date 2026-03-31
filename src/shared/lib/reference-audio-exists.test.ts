@@ -21,6 +21,17 @@ vi.mock('@/shared/services/javaService', () => ({
 
 import { checkReferenceAudioExists } from './reference-audio-exists';
 
+function expectProbeFetchCalledWith(url: string) {
+  expect(fetch).toHaveBeenCalledWith(
+    url,
+    expect.objectContaining({
+      method: 'GET',
+      headers: { Range: 'bytes=0-0' },
+      signal: expect.any(AbortSignal),
+    })
+  );
+}
+
 describe('checkReferenceAudioExists', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,10 +73,7 @@ describe('checkReferenceAudioExists', () => {
       'split_audio/audio/ref-id.wav'
     );
     expect(mockGetPreSignedUrl).not.toHaveBeenCalled();
-    expect(fetch).toHaveBeenCalledWith('https://pub.example.com/dev/u1/task_1/split_audio/audio/ref-id.wav', {
-      method: 'GET',
-      headers: { Range: 'bytes=0-0' },
-    });
+    expectProbeFetchCalledWith('https://pub.example.com/dev/u1/task_1/split_audio/audio/ref-id.wav');
   });
 
   it('returns explicit db_record_missing when task file row is absent', async () => {
@@ -123,10 +131,7 @@ describe('checkReferenceAudioExists', () => {
       ],
       { forceRefresh: true }
     );
-    expect(fetch).toHaveBeenCalledWith('https://example.com/ref.wav', {
-      method: 'GET',
-      headers: { Range: 'bytes=0-0' },
-    });
+    expectProbeFetchCalledWith('https://example.com/ref.wav');
   });
 
   it('returns object_missing when db row exists but object probe returns 404', async () => {
