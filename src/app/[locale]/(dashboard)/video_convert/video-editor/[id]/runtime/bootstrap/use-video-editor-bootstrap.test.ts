@@ -44,7 +44,8 @@ describe('use video editor bootstrap shell boundary', () => {
     expect(hookSource).toContain("if (mode === 'blocking') {");
     expect(hookSource).toContain('return { ok: true, error: null, mode };');
     expect(hookSource).toContain("return { ok: false, error: err instanceof Error ? err.message : t('error.fetchFailed'), mode };");
-    expect(shellSource).toContain('onReloadFromServer={() => reloadConvertDetail({ silent: true })}');
+    expect(shellSource).toContain('workspaceCapabilities={workspaceCapabilities}');
+    expect(shellSource).toContain("onReloadFromServer: () => reloadConvertDetail({ silent: true }),");
     expect(shellSource).toContain('onClick={() => void reloadConvertDetail()}');
   });
 

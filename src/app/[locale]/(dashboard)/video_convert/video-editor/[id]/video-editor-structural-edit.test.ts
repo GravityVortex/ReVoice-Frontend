@@ -11,6 +11,14 @@ describe('video editor structural edit guards', () => {
   it('blocks split and rollback while a video update is still active', () => {
     expect(
       getStructuralEditBlockReason({
+        isGeneratingVideo: true,
+        isTaskRunning: false,
+        isMergeJobActive: false,
+      } as any)
+    ).toBe('video-updating');
+
+    expect(
+      getStructuralEditBlockReason({
         isTaskRunning: false,
         isMergeJobActive: true,
       })

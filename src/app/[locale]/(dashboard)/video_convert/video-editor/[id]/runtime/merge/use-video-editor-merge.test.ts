@@ -9,6 +9,7 @@ import {
 
 describe('use video editor merge helpers', () => {
   const shellSource = readFileSync(new URL('../../video-editor-page-shell.tsx', import.meta.url), 'utf8');
+  const gateSource = readFileSync(new URL('../orchestration/video-editor-page-gates.ts', import.meta.url), 'utf8');
 
   it('lets the page shell delegate merge owner state to useVideoEditorMerge', () => {
     const hookSource = readFileSync(new URL('./use-video-editor-merge.ts', import.meta.url), 'utf8');
@@ -20,14 +21,22 @@ describe('use video editor merge helpers', () => {
     expect(shellSource).not.toContain('const [mergeStatusRequiresManualRetry, setMergeStatusRequiresManualRetry] = useState(false);');
     expect(shellSource).not.toContain('const handleRetryMergeStatus = useCallback(() => {');
     expect(shellSource).not.toContain('const handleGenerateVideo = useCallback(async () => {');
+    expect(shellSource).toContain('const pageGateState = useMemo(');
+    expect(shellSource).toContain('headerDownloadTooltipKey: pageGateState.header.downloadState.tooltipKey,');
 
-    expect(hookSource).toContain("const [taskStatus, setTaskStatus] = useState<string>('pending');");
-    expect(hookSource).toContain('const [serverActiveMergeJob, setServerActiveMergeJob] = useState<ActiveVideoMergeJob | null>(null);');
-    expect(hookSource).toContain('const [mergeStatusRequiresManualRetry, setMergeStatusRequiresManualRetry] = useState(false);');
+    expect(hookSource).toContain("import { buildVideoEditorMergeSession } from './video-editor-merge-session';");
+    expect(hookSource).toContain("import { createInitialMergeSessionState, mergeSessionReducer } from './merge-session-owner';");
+    expect(hookSource).toContain('const [mergeState, dispatchMerge] = useReducer(');
     expect(hookSource).toContain('const handleRetryMergeStatus = useCallback(() => {');
     expect(hookSource).toContain('const handleGenerateVideo = useCallback(async () => {');
-    expect(hookSource).toContain('getVideoMergePrimaryActionState({');
-    expect(hookSource).toContain('getHeaderDownloadState({');
+    expect(hookSource).not.toContain('const mergePrimaryAction = useMemo(');
+    expect(hookSource).not.toContain('const showHeaderBusySpinner =');
+    expect(hookSource).not.toContain('const headerDownloadState = useMemo(');
+    expect(hookSource).toContain('downloadGuardRef');
+    expect(hookSource).not.toContain('getHeaderDownloadState({');
+    expect(gateSource).toContain('getVideoMergePrimaryActionState({');
+    expect(gateSource).not.toContain('getHeaderDownloadState({');
+    expect(shellSource).toContain('getHeaderDownloadState({');
   });
 
   it('guards the async generate-video chain by active convert task so stale clicks cannot rewrite the next task', () => {
@@ -36,11 +45,13 @@ describe('use video editor merge helpers', () => {
     expect(hookSource).toContain('const activeConvertIdRef = useRef(convertId);');
     expect(hookSource).toContain('activeConvertIdRef.current = convertId;');
     expect(hookSource).toContain('const taskId = convertId;');
-    expect(hookSource).toContain('if (activeConvertIdRef.current !== taskId || !readyForMerge) return;');
-    expect(hookSource).toContain('if (activeConvertIdRef.current !== taskId || !timingReady) return;');
     expect(hookSource).toContain('if (activeConvertIdRef.current !== taskId) return;');
-    expect(hookSource).toContain('if (activeConvertIdRef.current === taskId) {');
-    expect(hookSource).toContain('setIsGeneratingVideo(false);');
+    expect(hookSource).toContain('if (!readyForMerge) {');
+    expect(hookSource).toContain('if (!timingReady) {');
+    expect(hookSource).toContain('if (activeConvertIdRef.current !== taskId) return;');
+    expect(hookSource).toContain("dispatchMerge({ type: 'generate_started' });");
+    expect(hookSource).toContain("dispatchMerge({ type: 'generate_cancelled' });");
+    expect(hookSource).toContain("type: 'task_state_hydrated'");
   });
 
   it('hydrates metadata monotonically so stale metadata never rewinds the merge baseline', () => {
@@ -129,11 +140,15 @@ describe('use video editor merge helpers', () => {
     const first = getNextMergeStatusPollState(0);
     const second = getNextMergeStatusPollState(first.failureCount);
     const third = getNextMergeStatusPollState(second.failureCount);
+    const fourth = getNextMergeStatusPollState(third.failureCount);
+    const fifth = getNextMergeStatusPollState(fourth.failureCount);
 
     expect(first.requiresManualRetry).toBe(false);
     expect(second.requiresManualRetry).toBe(false);
-    expect(third).toEqual({
-      failureCount: 3,
+    expect(third.requiresManualRetry).toBe(false);
+    expect(fourth.requiresManualRetry).toBe(false);
+    expect(fifth).toEqual({
+      failureCount: 5,
       requiresManualRetry: true,
     });
   });

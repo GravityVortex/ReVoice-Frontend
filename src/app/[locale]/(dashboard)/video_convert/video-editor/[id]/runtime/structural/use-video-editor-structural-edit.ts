@@ -5,16 +5,10 @@ import { toast } from 'sonner';
 
 import type { ConvertObj, SubtitleTrackItem } from '@/shared/components/video-editor/types';
 
-import {
-  getStructuralEditBlockReason,
-  getSubtitleSplitAvailability,
-  remapSubtitleIdAfterTimingSave,
-  reconcilePendingTimingAfterPersist,
-  reconcilePendingTimingMap,
-} from '../../video-editor-structural-edit';
+import { getStructuralEditBlockReason, getSubtitleSplitAvailability } from '../../video-editor-structural-edit';
 import { fetchWithTimeout, isAbortLikeError } from '../network/fetch-with-timeout';
+import type { VideoEditorTimingSession } from '../timing/video-editor-timing-session';
 
-const TIMING_SAVE_TIMEOUT_MS = 15_000;
 const STRUCTURAL_REQUEST_TIMEOUT_MS = 15_000;
 const OPERATION_HISTORY_TIMEOUT_MS = 10_000;
 
@@ -31,14 +25,13 @@ type UseVideoEditorStructuralEditArgs = {
   isGeneratingVideo: boolean;
   isTaskRunning: boolean;
   isMergeJobActive: boolean;
-  pendingTimingMap: Record<string, { startMs: number; endMs: number }>;
-  setPendingTimingMap: Dispatch<SetStateAction<Record<string, { startMs: number; endMs: number }>>>;
-  pendingTimingCount: number;
+  timingSession: VideoEditorTimingSession;
   setConvertObj: Dispatch<SetStateAction<ConvertObj | null>>;
   clearActiveTimelineClip: () => void;
   prepareForStructuralEdit: () => Promise<boolean | undefined>;
   scrollToItem: (id: string) => void;
-  pausePlaybackBeforeSplit?: () => void;
+  // High Fix #6: Make pausePlaybackBeforeSplit async
+  pausePlaybackBeforeSplit?: () => Promise<void>;
   clearVoiceCache: () => void;
 };
 
@@ -59,9 +52,7 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
     isGeneratingVideo,
     isTaskRunning,
     isMergeJobActive,
-    pendingTimingMap,
-    setPendingTimingMap,
-    pendingTimingCount,
+    timingSession,
     setConvertObj,
     clearActiveTimelineClip,
     prepareForStructuralEdit,
@@ -74,23 +65,23 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [hasUndoableOps, setHasUndoableOps] = useState(false);
   const [undoCountdown, setUndoCountdown] = useState(0);
-  const autoSaveTimingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const undoLatestOpRef = useRef<OperationHistoryItem | null>(null);
   const undoFetchPromiseRef = useRef<Promise<OperationHistoryItem | null> | null>(null);
   const activeTaskIdRef = useRef<string | null>(null);
   const splitScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const timingSaveAbortRef = useRef<AbortController | null>(null);
-  const latestTimingPersistIdMapRef = useRef<Record<string, string>>({});
+  // High Fix #5: Track timeout ID for proper cleanup
+  const timingPersistTimeoutIdRef = useRef<number | null>(null);
 
   const structuralEditBlockReason = useMemo(
     () =>
       getStructuralEditBlockReason({
+        isGeneratingVideo,
         isTaskRunning,
         isMergeJobActive,
       }),
-    [isMergeJobActive, isTaskRunning]
+    [isGeneratingVideo, isMergeJobActive, isTaskRunning]
   );
 
   const splitAvailability = useMemo(
@@ -139,17 +130,10 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
   useEffect(() => {
     activeTaskIdRef.current = convertId || null;
     handleUndoCancel();
-    if (autoSaveTimingRef.current) {
-      clearTimeout(autoSaveTimingRef.current);
-      autoSaveTimingRef.current = null;
-    }
     if (splitScrollTimerRef.current) {
       clearTimeout(splitScrollTimerRef.current);
       splitScrollTimerRef.current = null;
     }
-    timingSaveAbortRef.current?.abort();
-    timingSaveAbortRef.current = null;
-    latestTimingPersistIdMapRef.current = {};
     setIsSplittingSubtitle(false);
     setIsRollingBack(false);
     setHasUndoableOps(false);
@@ -167,129 +151,13 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
 
   useEffect(() => {
     return () => {
-      if (autoSaveTimingRef.current) {
-        clearTimeout(autoSaveTimingRef.current);
-        autoSaveTimingRef.current = null;
-      }
       if (splitScrollTimerRef.current) {
         clearTimeout(splitScrollTimerRef.current);
         splitScrollTimerRef.current = null;
       }
-      timingSaveAbortRef.current?.abort();
-      timingSaveAbortRef.current = null;
       handleUndoCancel();
     };
   }, [handleUndoCancel]);
-
-  const applySavedTimingPayload = useCallback(
-    (items: Array<{ id: string; startMs: number; endMs: number }>, back: any) => {
-      const idMap = (back?.data?.idMap ?? {}) as Record<string, string>;
-      latestTimingPersistIdMapRef.current = idMap;
-      const touchedIds = new Set(items.map((item) => item.id));
-      const savedAtMs = Date.now();
-      setConvertObj((prevObj) => {
-        if (!prevObj) return prevObj;
-        const arr = (prevObj.srt_convert_arr || []) as any[];
-        const nextArr = arr.map((row) => {
-          const id = row?.id;
-          if (typeof id !== 'string') return row;
-          const mapped = idMap?.[id];
-          const nextId = typeof mapped === 'string' && mapped.length > 0 ? mapped : id;
-          const shouldMark = touchedIds.has(id);
-          if (nextId === id && !shouldMark) return row;
-          const out = { ...row };
-          if (nextId !== id) out.id = nextId;
-          if (shouldMark) out.timing_rev_ms = savedAtMs;
-          return out;
-        });
-        return { ...prevObj, srt_convert_arr: nextArr };
-      });
-      setPendingTimingMap((prev) =>
-        reconcilePendingTimingAfterPersist({
-          currentPendingTimingMap: prev,
-          requestedItems: items,
-          idMap,
-        })
-      );
-    },
-    [setConvertObj, setPendingTimingMap]
-  );
-
-  const persistTimingItems = useCallback(
-    async (items: Array<{ id: string; startMs: number; endMs: number }>, options?: { silent?: boolean }) => {
-      if (items.length === 0) return true;
-      const taskId = convertId;
-      timingSaveAbortRef.current?.abort();
-      const abortController = new AbortController();
-      timingSaveAbortRef.current = abortController;
-
-      try {
-        const resp = await fetchWithTimeout('/api/video-task/update-subtitle-timings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ taskId: convertId, stepName: 'translate_srt', items }),
-          signal: abortController.signal,
-          timeoutMs: TIMING_SAVE_TIMEOUT_MS,
-        });
-        const back = await resp.json().catch(() => null);
-        if (activeTaskIdRef.current !== taskId) return false;
-        if (!resp.ok || back?.code !== 0) {
-          if (!options?.silent) {
-            toast.error(back?.message || back?.msg || (locale === 'zh' ? '保存时间轴失败' : 'Failed to save timeline'));
-          }
-          return false;
-        }
-
-        applySavedTimingPayload(items, back);
-        return true;
-      } catch (error) {
-        if (activeTaskIdRef.current !== taskId) return false;
-        if (!options?.silent && !isAbortLikeError(error)) {
-          toast.error(locale === 'zh' ? '保存时间轴失败' : 'Failed to save timeline');
-        }
-        return false;
-      } finally {
-        if (timingSaveAbortRef.current === abortController) {
-          timingSaveAbortRef.current = null;
-        }
-      }
-    },
-    [applySavedTimingPayload, convertId, locale]
-  );
-
-  useEffect(() => {
-    if (Object.keys(pendingTimingMap).length === 0) return;
-    if (autoSaveTimingRef.current) clearTimeout(autoSaveTimingRef.current);
-    autoSaveTimingRef.current = setTimeout(async () => {
-      autoSaveTimingRef.current = null;
-      const items = Object.entries(pendingTimingMap).map(([id, value]) => ({
-        id,
-        startMs: value.startMs,
-        endMs: value.endMs,
-      }));
-      try {
-        await persistTimingItems(items, { silent: true });
-      } catch {
-        /* best-effort */
-      }
-    }, 3000);
-
-    return () => {
-      if (autoSaveTimingRef.current) clearTimeout(autoSaveTimingRef.current);
-    };
-  }, [pendingTimingMap, persistTimingItems]);
-
-  const persistPendingTimingsIfNeeded = useCallback(async () => {
-    if (pendingTimingCount === 0) return true;
-
-    const items = Object.entries(pendingTimingMap).map(([id, value]) => ({
-      id,
-      startMs: value.startMs,
-      endMs: value.endMs,
-    }));
-
-    return persistTimingItems(items);
-  }, [pendingTimingCount, pendingTimingMap, persistTimingItems]);
 
   const executeUndoNow = useCallback(async () => {
     const taskId = convertId;
@@ -352,7 +220,7 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
           srt_source_arr: back.data?.source ?? prevObj.srt_source_arr,
         };
       });
-      setPendingTimingMap((prev) => reconcilePendingTimingMap(prev, back.data?.translate ?? []));
+      timingSession.actions.reconcilePendingTimingAfterRollback(back.data?.translate ?? []);
 
       toast.success(t('rollback.success'));
       try {
@@ -375,7 +243,7 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
       undoLatestOpRef.current = null;
       undoFetchPromiseRef.current = null;
     }
-  }, [clearVoiceCache, convertId, fetchOperationHistory, notifyStructuralEditBlocked, prepareForStructuralEdit, setConvertObj, setPendingTimingMap, structuralEditBlockReason, t]);
+  }, [clearVoiceCache, convertId, fetchOperationHistory, notifyStructuralEditBlocked, prepareForStructuralEdit, setConvertObj, structuralEditBlockReason, t, timingSession]);
 
   const handleRollbackLatest = useCallback(() => {
     if (isRollingBack || undoCountdown > 0) return;
@@ -446,14 +314,43 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
       if (activeTaskIdRef.current !== taskId) return;
       if (!structuralEditReady) return;
 
-      const okTiming = await persistPendingTimingsIfNeeded();
+      // High Fix #5: Increase timeout from 20s to 30s and track timeout ID
+      const timingPersistPromise = timingSession.actions.persistPendingTimingsIfNeeded({ reason: 'split' });
+      const timeoutPromise = new Promise<boolean>((_, reject) => {
+        timingPersistTimeoutIdRef.current = window.setTimeout(() => {
+          timingPersistTimeoutIdRef.current = null;
+          reject(new Error('TIMING_PERSIST_TIMEOUT'));
+        }, 30000); // Increased from 20s to 30s
+      });
+
+      let okTiming: boolean;
+      try {
+        okTiming = await Promise.race([timingPersistPromise, timeoutPromise]);
+        // Clear timeout on success
+        if (timingPersistTimeoutIdRef.current) {
+          clearTimeout(timingPersistTimeoutIdRef.current);
+          timingPersistTimeoutIdRef.current = null;
+        }
+      } catch (error) {
+        // Clear timeout on error
+        if (timingPersistTimeoutIdRef.current) {
+          clearTimeout(timingPersistTimeoutIdRef.current);
+          timingPersistTimeoutIdRef.current = null;
+        }
+
+        if (activeTaskIdRef.current !== taskId) return;
+        const isTimeout = error instanceof Error && error.message === 'TIMING_PERSIST_TIMEOUT';
+        toast.error(isTimeout ? t('videoEditor.toast.splitTimingTimeout') : t('videoEditor.toast.splitFailed'));
+        return;
+      }
       if (activeTaskIdRef.current !== taskId) return;
       if (!okTiming) return;
 
-      if (pausePlaybackBeforeSplit) pausePlaybackBeforeSplit();
+      // High Fix #6: Await pausePlaybackBeforeSplit
+      if (pausePlaybackBeforeSplit) await pausePlaybackBeforeSplit();
 
       const effectiveConvertText = typeof splitAvailability.clip.text === 'string' ? splitAvailability.clip.text : '';
-      const splitClipId = remapSubtitleIdAfterTimingSave(splitAvailability.clip.id, latestTimingPersistIdMapRef.current);
+      const splitClipId = timingSession.actions.remapSubtitleIdAfterTimingSave(splitAvailability.clip.id);
       const resp = await fetchWithTimeout('/api/video-task/split-subtitle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -521,7 +418,6 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
     isSplittingSubtitle,
     notifyStructuralEditBlocked,
     pausePlaybackBeforeSplit,
-    persistPendingTimingsIfNeeded,
     prepareForStructuralEdit,
     scrollToItem,
     setConvertObj,
@@ -529,6 +425,7 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
     splitAvailability,
     structuralEditBlockReason,
     t,
+    timingSession,
   ]);
 
   return {
@@ -540,7 +437,6 @@ export function useVideoEditorStructuralEdit(args: UseVideoEditorStructuralEditA
     splitAvailability,
     splitDisabled,
     undoDisabled,
-    persistPendingTimingsIfNeeded,
     handleUndoCancel,
     handleRollbackLatest,
     handleSubtitleSplit,

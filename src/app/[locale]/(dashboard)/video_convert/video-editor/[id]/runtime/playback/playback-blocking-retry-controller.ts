@@ -181,6 +181,7 @@ export function createPlaybackBlockingRetryController(args: CreatePlaybackBlocki
 
     if (!resolved && blockingState.kind !== 'network_failed') return;
 
+    // Medium Fix #7: Reload convertDetail before retry to get latest gate state
     if (resolved) {
       const gate = args.evaluatePlaybackGateForClipIndex(resolved.clipIndex);
       if (gate.kind === 'voice_unavailable') {

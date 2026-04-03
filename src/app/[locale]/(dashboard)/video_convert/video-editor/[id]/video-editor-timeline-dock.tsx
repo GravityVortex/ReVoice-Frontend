@@ -2,48 +2,13 @@
 
 import React from 'react';
 
-import type { SubtitleTrackItem } from '@/shared/components/video-editor/types';
 import { cn } from '@/shared/lib/utils';
 
-import type { EditorTransportSnapshot } from './editor-transport';
-import { TimelinePanel, type TimelineHandle } from './timeline-panel';
+import { TimelinePanel } from './timeline-panel';
+import type { VideoEditorTimelineSession } from './video-editor-timeline-session';
 
 type VideoEditorTimelineDockProps = {
-  locale: string;
-  timelineHeightPx: number;
-  resizeHandleLabel: string;
-  totalDuration: number;
-  transportSnapshot: EditorTransportSnapshot;
-  subtitleTrack: SubtitleTrackItem[];
-  subtitleTrackOriginal: SubtitleTrackItem[];
-  vocalWaveformUrl?: string;
-  bgmWaveformUrl?: string;
-  timelineRef: React.RefObject<TimelineHandle | null>;
-  zoom: number;
-  volume: number;
-  isBgmMuted: boolean;
-  isSubtitleMuted: boolean;
-  splitDisabled: boolean;
-  splitTooltipText: string | null;
-  splitLoading: boolean;
-  hasUndoableOps: boolean;
-  undoDisabled: boolean;
-  undoLoading: boolean;
-  undoCountdown: number;
-  undoTooltipText: string | null;
-  onResizePointerDown: React.PointerEventHandler<HTMLDivElement>;
-  onResizePointerMove: React.PointerEventHandler<HTMLDivElement>;
-  onResizePointerUp: React.PointerEventHandler<HTMLDivElement>;
-  onResizePointerCancel: React.PointerEventHandler<HTMLDivElement>;
-  onPlayPause: () => void;
-  onSeek: (time: number, isDragging?: boolean) => void;
-  onZoomChange: (zoom: number) => void;
-  onVolumeChange: (volume: number) => void;
-  onToggleBgmMute: () => void;
-  onToggleSubtitleMute: () => void;
-  onSplitAtCurrentTime: () => void;
-  onUndo: () => void;
-  onUndoCancel: () => void;
+  timelineSession: VideoEditorTimelineSession;
 };
 
 export function VideoEditorTimelineDock(props: VideoEditorTimelineDockProps) {
@@ -52,15 +17,15 @@ export function VideoEditorTimelineDock(props: VideoEditorTimelineDockProps) {
       <div
         role="separator"
         aria-orientation="horizontal"
-        aria-label={props.resizeHandleLabel}
+        aria-label={props.timelineSession.dock.resizeHandleLabel}
         className={cn(
           'group relative h-4 shrink-0 cursor-row-resize select-none',
           'rounded-md bg-white/[0.03] transition-colors hover:bg-white/5'
         )}
-        onPointerDown={props.onResizePointerDown}
-        onPointerMove={props.onResizePointerMove}
-        onPointerUp={props.onResizePointerUp}
-        onPointerCancel={props.onResizePointerCancel}
+        onPointerDown={props.timelineSession.dock.onResizePointerDown}
+        onPointerMove={props.timelineSession.dock.onResizePointerMove}
+        onPointerUp={props.timelineSession.dock.onResizePointerUp}
+        onPointerCancel={props.timelineSession.dock.onResizePointerCancel}
       >
         <div
           aria-hidden
@@ -77,36 +42,32 @@ export function VideoEditorTimelineDock(props: VideoEditorTimelineDockProps) {
 
       <div
         className="bg-background/25 min-h-[120px] overflow-auto rounded-xl border border-white/10 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
-        style={{ height: `${props.timelineHeightPx}px` }}
+        style={{ height: `${props.timelineSession.dock.heightPx}px` }}
       >
         <TimelinePanel
-          totalDuration={props.totalDuration}
-          transportSnapshot={props.transportSnapshot}
-          subtitleTrack={props.subtitleTrack}
-          subtitleTrackOriginal={props.subtitleTrackOriginal.length ? props.subtitleTrackOriginal : undefined}
-          vocalWaveformUrl={props.vocalWaveformUrl}
-          bgmWaveformUrl={props.bgmWaveformUrl}
-          timelineRef={props.timelineRef}
-          zoom={props.zoom}
-          volume={props.volume}
-          isBgmMuted={props.isBgmMuted}
-          isSubtitleMuted={props.isSubtitleMuted}
-          onPlayPause={props.onPlayPause}
-          onSeek={props.onSeek}
-          onZoomChange={props.onZoomChange}
-          onVolumeChange={props.onVolumeChange}
-          onToggleBgmMute={props.onToggleBgmMute}
-          onToggleSubtitleMute={props.onToggleSubtitleMute}
-          onSplitAtCurrentTime={props.onSplitAtCurrentTime}
-          splitDisabled={props.splitDisabled}
-          splitTooltipText={props.splitTooltipText}
-          splitLoading={props.splitLoading}
-          onUndo={props.hasUndoableOps ? props.onUndo : undefined}
-          undoDisabled={props.undoDisabled}
-          undoLoading={props.undoLoading}
-          undoCountdown={props.undoCountdown}
-          undoTooltipText={props.undoTooltipText}
-          onUndoCancel={props.onUndoCancel}
+          totalDuration={props.timelineSession.panel.totalDuration}
+          transportSnapshot={props.timelineSession.panel.transportSnapshot}
+          subtitleTrack={props.timelineSession.panel.subtitleTrack}
+          subtitleTrackOriginal={
+            props.timelineSession.panel.subtitleTrackOriginal.length ? props.timelineSession.panel.subtitleTrackOriginal : undefined
+          }
+          vocalWaveformUrl={props.timelineSession.panel.vocalWaveformUrl}
+          bgmWaveformUrl={props.timelineSession.panel.bgmWaveformUrl}
+          timelineRef={props.timelineSession.panel.timelineRef}
+          zoom={props.timelineSession.panel.zoom}
+          volume={props.timelineSession.panel.volume}
+          isBgmMuted={props.timelineSession.panel.isBgmMuted}
+          isSubtitleMuted={props.timelineSession.panel.isSubtitleMuted}
+          onPlayPause={props.timelineSession.panel.onPlayPause}
+          onSeek={props.timelineSession.panel.onSeek}
+          onZoomChange={props.timelineSession.panel.onZoomChange}
+          onVolumeChange={props.timelineSession.panel.onVolumeChange}
+          onToggleBgmMute={props.timelineSession.panel.onToggleBgmMute}
+          onToggleSubtitleMute={props.timelineSession.panel.onToggleSubtitleMute}
+          onSplitAtCurrentTime={props.timelineSession.panel.onSplitAtCurrentTime}
+          structuralCapabilities={props.timelineSession.panel.structuralCapabilities}
+          onUndo={props.timelineSession.panel.structuralCapabilities.undo.available ? props.timelineSession.panel.onUndo : undefined}
+          onUndoCancel={props.timelineSession.panel.onUndoCancel}
         />
       </div>
     </>

@@ -16,6 +16,7 @@ import { deriveSubtitleVoiceUiState, shouldBlockVoicePlayback, type SubtitleVoic
 import { cn } from '@/shared/lib/utils';
 
 import { resolveEditorPublicAudioUrl } from './audio-source-resolver';
+import { isPlayableEditorAudioUrl } from './audio-url-utils';
 import type { EditorTransportSnapshot } from './editor-transport';
 import { fetchWithTimeout, isAbortLikeError } from './runtime/network/fetch-with-timeout';
 import { pollSubtitleJob } from './subtitle-job-poll';
@@ -305,7 +306,7 @@ export const SubtitleWorkstation = memo(
             pathName,
             cacheBust,
           });
-          if (!resolvedUrl || !/^https?:\/\//i.test(resolvedUrl)) return '';
+          if (!isPlayableEditorAudioUrl(resolvedUrl)) return '';
           return resolvedUrl;
         },
         [convertObj]
@@ -453,6 +454,8 @@ export const SubtitleWorkstation = memo(
                   ? {
                       ...itm,
                       text_convert: resolvedData.text_translated,
+                      voiceStatus: 'missing',
+                      needsTts: true,
                     }
                   : itm
               )
@@ -468,6 +471,7 @@ export const SubtitleWorkstation = memo(
               next.add(job.subtitleId);
               return next;
             });
+            onSubtitleVoiceStatusChange?.(job.subtitleId, 'missing', true);
           }
 
           if (job.type === 'translate_srt') {
@@ -488,6 +492,8 @@ export const SubtitleWorkstation = memo(
                       ...itm,
                       draftAudioPath: resolvedData.path_name,
                       audioUrl_convert_custom: buildDraftPreviewUrl(resolvedData.path_name, newTime),
+                      voiceStatus: 'ready',
+                      needsTts: false,
                     }
                   : itm
               )
@@ -498,11 +504,27 @@ export const SubtitleWorkstation = memo(
               next.delete(job.subtitleId);
               return next;
             });
+            setSelectedId(job.subtitleId);
+            setBlockedPreviewHintId(null);
+            setFocusConvertedEditorId(null);
           }
 
           if (job.type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
             const resolvedPublicAudioUrl = buildPublicAudioUrl(resolvedData.path_name, newTime);
-            onUpdateSubtitleAudioUrl(job.subtitleId, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));
+            const playablePreviewAudioUrl = resolvedPublicAudioUrl || '';
+            onUpdateSubtitleAudioUrl(job.subtitleId, resolvedPublicAudioUrl, playablePreviewAudioUrl);
+          }
+          if (job.type === 'translate_srt') {
+            const currentItem = subtitleItemsRef.current.find((itm) => itm.id === job.subtitleId);
+            onSubtitleVoiceStatusChange?.(job.subtitleId, 'ready', false);
+            if (typeof window !== 'undefined' && currentItem) {
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                  if (activeTaskIdRef.current !== taskId) return;
+                  onRequestAuditionPlay?.(currentItem.order, 'convert');
+                });
+              });
+            }
           }
         } catch (e) {
           // Silent resume failure: the user will see "generate failed" only if they actively retry.
@@ -973,6 +995,8 @@ export const SubtitleWorkstation = memo(
                     ? {
                         ...itm,
                         text_convert: resolvedData.text_translated,
+                        voiceStatus: 'missing',
+                        needsTts: true,
                       }
                     : itm
                 )
@@ -988,6 +1012,7 @@ export const SubtitleWorkstation = memo(
                 next.add(item.id);
                 return next;
               });
+              onSubtitleVoiceStatusChange?.(item.id, 'missing', true);
             }
 
             if (type === 'translate_srt') {
@@ -999,6 +1024,8 @@ export const SubtitleWorkstation = memo(
                         ...itm,
                         draftAudioPath: resolvedData.path_name,
                         audioUrl_convert_custom: buildDraftPreviewUrl(resolvedData.path_name, newTime),
+                        voiceStatus: 'ready',
+                        needsTts: false,
                       }
                     : itm
                 )
@@ -1009,11 +1036,26 @@ export const SubtitleWorkstation = memo(
                 next.delete(item.id);
                 return next;
               });
+              setSelectedId(item.id);
+              setBlockedPreviewHintId(null);
+              setFocusConvertedEditorId(null);
             }
 
             if (type === 'translate_srt' && onUpdateSubtitleAudioUrl) {
               const resolvedPublicAudioUrl = buildPublicAudioUrl(resolvedData.path_name, newTime);
-              onUpdateSubtitleAudioUrl(item.id, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));
+              const playablePreviewAudioUrl = resolvedPublicAudioUrl || '';
+              onUpdateSubtitleAudioUrl(item.id, resolvedPublicAudioUrl, playablePreviewAudioUrl);
+            }
+            if (type === 'translate_srt') {
+              onSubtitleVoiceStatusChange?.(item.id, 'ready', false);
+              if (typeof window !== 'undefined') {
+                window.requestAnimationFrame(() => {
+                  window.requestAnimationFrame(() => {
+                    if (activeTaskIdRef.current !== taskId) return;
+                    onRequestAuditionPlay?.(item.order, 'convert');
+                  });
+                });
+              }
             }
           } else {
             toast.error(message || t('toast.generateFailed'));
@@ -1185,6 +1227,7 @@ export const SubtitleWorkstation = memo(
           return false;
         }
 
+        // High Fix #4: Persist pending source text saves before merge
         const pendingSourceEntries = getPendingSourceSaveEntries(subtitleItems, pendingSourceSaveMap);
         for (const entry of pendingSourceEntries) {
           const timer = autoSaveSourceTimersRef.current[entry.sourceId];

@@ -10,6 +10,12 @@ vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock('@/shared/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: Record<string, any>) => <div data-slot="tooltip">{children}</div>,
+  TooltipTrigger: ({ children }: Record<string, any>) => <div data-slot="tooltip-trigger">{children}</div>,
+  TooltipContent: ({ children }: Record<string, any>) => <div data-slot="tooltip-content">{children}</div>,
+}));
+
 describe('TimelinePanel', () => {
   it('does not keep the old edge-fade overlays in the timeline panel source', () => {
     const source = readFileSync(new URL('./timeline-panel.tsx', import.meta.url), 'utf8');
@@ -130,5 +136,125 @@ describe('TimelinePanel', () => {
     expect(html).toContain('playbackGate.badge.retrying');
     expect(html).toContain('data-blocked-item-id="clip-2"');
     expect(html).toContain('data-blocked-state="retrying"');
+  });
+
+  it('uses injected split/undo tooltip text and respects undoDisabled from the shell owner', () => {
+    const source = readFileSync(new URL('./timeline-panel.tsx', import.meta.url), 'utf8');
+    const html = renderToStaticMarkup(
+      <TimelinePanel
+        totalDuration={30}
+        transportSnapshot={{
+          currentTimeSec: 6,
+          playbackStatus: 'paused',
+          activeTimelineClipIndex: -1,
+          activeAuditionClipIndex: null,
+          auditionMode: null,
+          autoPlayNext: false,
+          blockingState: null,
+        }}
+        subtitleTrack={[
+          {
+            id: 'clip-1',
+            type: 'audio',
+            name: 'clip-1',
+            text: '第一条字幕',
+            startTime: 0,
+            duration: 8,
+          },
+        ]}
+        zoom={1}
+        volume={50}
+        isBgmMuted={false}
+        isSubtitleMuted={false}
+        onPlayPause={() => {}}
+        onSeek={() => {}}
+        onZoomChange={() => {}}
+        onVolumeChange={() => {}}
+        onToggleBgmMute={() => {}}
+        onToggleSubtitleMute={() => {}}
+        onSplitAtCurrentTime={() => {}}
+        structuralCapabilities={{
+          blockReason: 'video-updating',
+          split: {
+            disabled: true,
+            loading: false,
+            tooltipText: '结构编辑暂时不可用',
+          },
+          undo: {
+            available: true,
+            disabled: true,
+            loading: false,
+            countdown: 0,
+            tooltipText: '当前没有可撤销操作',
+          },
+        }}
+        onUndo={() => {}}
+      />
+    );
+
+    expect(source).toContain('structuralCapabilities?: VideoEditorStructuralCapabilities;');
+    expect(source).toContain('const splitDisabled = structuralCapabilities?.split.disabled ?? false;');
+    expect(source).toContain('const undoDisabled = structuralCapabilities?.undo.disabled ?? false;');
+    expect(source).toContain("splitTooltipText || (splitDisabled ? t('toast.splitNoClip') : t('tooltips.splitSubtitleWithUndo'))");
+    expect(source).toContain('undoTooltipText ||');
+    expect(source).toContain('disabled={undoLoading || (undoCountdown === 0 && undoDisabled)}');
+    expect(html.match(/disabled=""/g)).toHaveLength(2);
+  });
+
+  it('renders undo countdown as a cancel affordance while the rollback grace window is active', () => {
+    const html = renderToStaticMarkup(
+      <TimelinePanel
+        totalDuration={30}
+        transportSnapshot={{
+          currentTimeSec: 6,
+          playbackStatus: 'paused',
+          activeTimelineClipIndex: -1,
+          activeAuditionClipIndex: null,
+          auditionMode: null,
+          autoPlayNext: false,
+          blockingState: null,
+        }}
+        subtitleTrack={[
+          {
+            id: 'clip-1',
+            type: 'audio',
+            name: 'clip-1',
+            text: '第一条字幕',
+            startTime: 0,
+            duration: 8,
+          },
+        ]}
+        zoom={1}
+        volume={50}
+        isBgmMuted={false}
+        isSubtitleMuted={false}
+        structuralCapabilities={{
+          blockReason: null,
+          split: {
+            disabled: false,
+            loading: false,
+            tooltipText: null,
+          },
+          undo: {
+            available: true,
+            disabled: false,
+            loading: false,
+            countdown: 3,
+            tooltipText: null,
+          },
+        }}
+        onUndo={() => {}}
+        onUndoCancel={() => {}}
+        onPlayPause={() => {}}
+        onSeek={() => {}}
+        onZoomChange={() => {}}
+        onVolumeChange={() => {}}
+        onToggleBgmMute={() => {}}
+        onToggleSubtitleMute={() => {}}
+      />
+    );
+
+    expect(html).toContain('3s');
+    expect(html).toContain('取消');
   });
 });

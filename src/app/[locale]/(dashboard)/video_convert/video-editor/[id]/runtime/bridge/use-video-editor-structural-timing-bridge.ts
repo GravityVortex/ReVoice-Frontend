@@ -16,7 +16,13 @@ export function useVideoEditorStructuralTimingBridge() {
   }, []);
 
   const persistPendingTimingsForMerge = useCallback(async () => {
-    return (await persistPendingTimingsRef.current?.()) ?? true;
+    if (!persistPendingTimingsRef.current) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[StructuralTimingBridge] persistPendingTimingsForMerge called but no handler registered');
+      }
+      return false;
+    }
+    return await persistPendingTimingsRef.current();
   }, []);
 
   return {

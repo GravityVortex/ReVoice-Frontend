@@ -10,9 +10,11 @@ describe('use video editor structural timing bridge shell boundary', () => {
     expect(shellSource).toContain(
       "import { useVideoEditorStructuralTimingBridge } from './runtime/bridge/use-video-editor-structural-timing-bridge';"
     );
+    expect(shellSource).toContain("import { useVideoEditorTimingSession } from './runtime/timing/use-video-editor-timing-session';");
     expect(shellSource).toContain('useLayoutEffect(() => {');
     expect(shellSource).toContain('persistPendingTimingsIfNeeded: persistPendingTimingsForMerge,');
-    expect(shellSource).toContain('syncStructuralPersistPendingTimings(persistPendingTimingsIfNeeded);');
+    // P0 Fix #1: Shell now syncs flushPendingTimings instead of persistPendingTimingsIfNeeded
+    expect(shellSource).toContain('syncStructuralPersistPendingTimings(timingSession.actions.flushPendingTimings);');
     expect(shellSource).not.toContain(
       'const structuralEditActionBridgeRef = useRef<{ persistPendingTimingsIfNeeded: () => Promise<boolean> } | null>(null);'
     );

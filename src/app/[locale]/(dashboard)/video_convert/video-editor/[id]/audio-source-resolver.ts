@@ -1,5 +1,7 @@
 import { resolveSourcePlaybackMode } from '@/shared/lib/timeline/split';
 
+import { buildEditorStorageStreamUrl } from './audio-url-utils';
+
 const AUDIO_RESOLVER_LOG_PREFIX = '[AudioResolver]';
 
 type ConvertLike = {
@@ -95,14 +97,21 @@ export function resolveEditorPublicAudioUrl(args: ResolveEditorPublicAudioUrlArg
   const env = trimString(args.convertObj?.env);
 
   if (!publicBase || !env || !userId || !taskId) {
+    const streamUrl = buildEditorStorageStreamUrl({
+      userId,
+      taskId,
+      pathName: base + (query ? `?${query}` : ''),
+      cacheBust: args.cacheBust,
+    });
     logAudioResolver('public-url-fallback', {
       pathName: base,
       hasPublicBase: Boolean(publicBase),
       hasEnv: Boolean(env),
       hasUserId: Boolean(userId),
       hasTaskId: Boolean(taskId),
+      usesStreamFallback: Boolean(streamUrl),
     });
-    return appendCacheBust(base + (query ? `?${query}` : ''), args.cacheBust);
+    return streamUrl;
   }
 
   const joined = `${publicBase}/${env}/${userId}/${taskId}/${base}`;

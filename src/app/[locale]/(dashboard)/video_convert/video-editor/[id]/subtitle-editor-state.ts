@@ -1,5 +1,6 @@
 import type { SubtitleTrackItem } from '@/shared/components/video-editor/types';
 
+import { isPlayableEditorAudioUrl } from './audio-url-utils';
 import type { SubtitleRowData } from './subtitle-row-item';
 
 export type EditorSubtitleTrackItem = SubtitleTrackItem & {
@@ -47,6 +48,12 @@ function preferLocalString(localValue: string | undefined, loadedValue: string |
 
 function preferLocalBoolean(localValue: boolean | undefined, loadedValue: boolean | undefined) {
   return localValue ?? loadedValue;
+}
+
+function preferMergedPreviewAudioUrl(localValue: string | undefined, loadedValue: string | undefined) {
+  if (isPlayableEditorAudioUrl(localValue)) return localValue;
+  if (isPlayableEditorAudioUrl(loadedValue)) return loadedValue;
+  return typeof localValue === 'string' ? localValue : loadedValue;
 }
 
 export function mergeLoadedSubtitleItems(localItems: SubtitleRowData[], loadedItems: SubtitleRowData[]) {
@@ -104,7 +111,7 @@ export function mergeLoadedConvertedTrackItems(
       duration: nextDuration,
       text: preferLocalString(localItem.text, loadedItem.text) ?? '',
       audioUrl: preferLocalString(localItem.audioUrl, loadedItem.audioUrl),
-      previewAudioUrl: preferLocalString(localItem.previewAudioUrl, loadedItem.previewAudioUrl),
+      previewAudioUrl: preferMergedPreviewAudioUrl(localItem.previewAudioUrl, loadedItem.previewAudioUrl),
     };
   });
 }

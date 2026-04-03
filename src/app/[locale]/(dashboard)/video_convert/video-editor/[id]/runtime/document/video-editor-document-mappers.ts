@@ -59,12 +59,6 @@ function buildResolvedTrackLabels(args: {
   };
 }
 
-function buildDraftPreviewUrl(pathName: string, cacheBust?: string) {
-  const base = typeof pathName === 'string' ? pathName.split('?')[0].trim() : '';
-  if (!base) return '';
-  return cacheBust ? `${base}?t=${encodeURIComponent(cacheBust)}` : base;
-}
-
 function buildTranslatedAudioUrls(convertObj: (ConvertObj & { r2preUrl?: string; env?: string }), entry: any) {
   const draftPathRaw =
     typeof entry?.vap_draft_audio_path === 'string' ? String(entry?.vap_draft_audio_path || '').trim() : '';
@@ -82,8 +76,6 @@ function buildTranslatedAudioUrls(convertObj: (ConvertObj & { r2preUrl?: string;
     };
   }
 
-  const previewAudioUrl = buildDraftPreviewUrl(normalizedPath, cacheBuster);
-
   if (/^https?:\/\//i.test(normalizedPath)) {
     const resolvedUrl = resolveEditorPublicAudioUrl({
       convertObj,
@@ -96,18 +88,6 @@ function buildTranslatedAudioUrls(convertObj: (ConvertObj & { r2preUrl?: string;
     };
   }
 
-  const publicBase = typeof convertObj.r2preUrl === 'string' ? convertObj.r2preUrl.trim() : '';
-  const env = typeof convertObj.env === 'string' ? convertObj.env.trim() : '';
-  const userId = typeof convertObj.userId === 'string' ? convertObj.userId.trim() : '';
-  const taskId = typeof convertObj.id === 'string' ? convertObj.id.trim() : '';
-
-  if (!publicBase || !env || !userId || !taskId) {
-    return {
-      audioUrl: '',
-      previewAudioUrl,
-    };
-  }
-
   const resolvedUrl = resolveEditorPublicAudioUrl({
     convertObj,
     pathName: normalizedPath,
@@ -116,7 +96,7 @@ function buildTranslatedAudioUrls(convertObj: (ConvertObj & { r2preUrl?: string;
 
   return {
     audioUrl: resolvedUrl,
-    previewAudioUrl: resolvedUrl || previewAudioUrl,
+    previewAudioUrl: resolvedUrl || '',
   };
 }
 

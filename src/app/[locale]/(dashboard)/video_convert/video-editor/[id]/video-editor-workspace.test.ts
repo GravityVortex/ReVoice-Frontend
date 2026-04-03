@@ -9,17 +9,19 @@ describe('video editor workspace shell boundary', () => {
 
     expect(shellSource).toContain("import { VideoEditorWorkspace } from './video-editor-workspace';");
     expect(shellSource).toContain('<VideoEditorWorkspace');
+    expect(shellSource).toContain('workspaceCapabilities={workspaceCapabilities}');
     expect(shellSource).not.toContain('<ResizableSplitPanel');
     expect(shellSource).not.toContain('\n            <SubtitleWorkstation');
     expect(shellSource).not.toContain('<VideoPreviewPanel');
 
     expect(workspaceSource).toContain('export function VideoEditorWorkspace(');
+    expect(workspaceSource).toContain('workspaceCapabilities: VideoEditorWorkspaceCapabilities;');
     expect(workspaceSource).toContain('<ResizableSplitPanel');
     expect(workspaceSource).toContain('<SubtitleWorkstation');
     expect(workspaceSource).toContain('<VideoPreviewPanel');
-    expect(workspaceSource).toContain('onVideoMergeStarted={props.onVideoMergeStarted}');
-    expect(workspaceSource).toContain('onReloadFromServer={props.onReloadFromServer}');
-    expect(workspaceSource).toContain('onSubtitleUpdate={props.onPreviewSubtitleCommit}');
+    expect(workspaceSource).toContain('onVideoMergeStarted={props.workspaceCapabilities.workstation.onVideoMergeStarted}');
+    expect(workspaceSource).toContain('onReloadFromServer={props.workspaceCapabilities.workstation.onReloadFromServer}');
+    expect(workspaceSource).toContain('onSubtitleUpdate={props.workspaceCapabilities.preview.onSubtitleUpdate}');
     expect(workspaceSource).not.toContain('onSubtitleUpdate={props.onSubtitleTextChange}');
   });
 });

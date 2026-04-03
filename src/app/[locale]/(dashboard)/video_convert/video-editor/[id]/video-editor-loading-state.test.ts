@@ -13,6 +13,9 @@ describe('video editor loading state shell boundary', () => {
     expect(shellSource).not.toContain('<Skeleton className="h-14 w-full" />');
 
     expect(loadingSource).toContain('export function VideoEditorLoadingState()');
-    expect(loadingSource).toContain('<Skeleton className="h-14 w-full" />');
+    expect(loadingSource).toContain('Loading Studio...');
+    expect(loadingSource).toContain('RetroGrid');
+    expect(loadingSource).toContain('<Loader2 className="w-10 h-10 animate-spin text-primary/70" />');
+    expect(loadingSource).toContain('<Skeleton className="flex-1 h-14 rounded bg-white/[0.05]" />');
   });
 });

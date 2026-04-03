@@ -10,7 +10,7 @@ export type VideoMergeTaskState = {
   taskCurrentStep: string;
 };
 
-export const MERGE_STATUS_MAX_NETWORK_FAILURES = 3;
+export const MERGE_STATUS_MAX_NETWORK_FAILURES = 5; // Critical Fix #3: Increased from 3 to 5
 
 export type VideoMergePrimaryActionMode = 'generate-video' | 'retry-status';
 

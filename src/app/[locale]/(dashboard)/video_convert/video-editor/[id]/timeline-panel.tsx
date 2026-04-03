@@ -16,6 +16,7 @@ import { cn } from '@/shared/lib/utils';
 import { audioMetaLoadQueue } from '@/shared/lib/waveform/loader';
 
 import type { EditorTransportSnapshot } from './editor-transport';
+import type { VideoEditorStructuralCapabilities } from './video-editor-structural-capabilities';
 
 export type { TimelineHandle };
 
@@ -43,14 +44,8 @@ interface TimelinePanelProps {
   onToggleBgmMute: () => void;
   onToggleSubtitleMute: () => void;
   onSplitAtCurrentTime?: () => void;
-  splitDisabled?: boolean;
-  splitTooltipText?: string | null;
-  splitLoading?: boolean;
+  structuralCapabilities?: VideoEditorStructuralCapabilities;
   onUndo?: () => void;
-  undoDisabled?: boolean;
-  undoLoading?: boolean;
-  undoCountdown?: number;
-  undoTooltipText?: string | null;
   onUndoCancel?: () => void;
 }
 
@@ -123,11 +118,8 @@ export function TimelinePanel({
   onToggleBgmMute,
   onToggleSubtitleMute,
   onSplitAtCurrentTime,
-  splitDisabled = false,
-  splitLoading = false,
+  structuralCapabilities,
   onUndo,
-  undoLoading = false,
-  undoCountdown = 0,
   onUndoCancel,
 }: TimelinePanelProps) {
   const t = useTranslations('video_convert.videoEditor.videoEditor');
@@ -140,6 +132,13 @@ export function TimelinePanel({
   const bufferingLabel = locale === 'zh' ? '缓冲中' : 'Buffering';
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';
+  const splitDisabled = structuralCapabilities?.split.disabled ?? false;
+  const splitTooltipText = structuralCapabilities?.split.tooltipText ?? null;
+  const splitLoading = structuralCapabilities?.split.loading ?? false;
+  const undoDisabled = structuralCapabilities?.undo.disabled ?? false;
+  const undoLoading = structuralCapabilities?.undo.loading ?? false;
+  const undoCountdown = structuralCapabilities?.undo.countdown ?? 0;
+  const undoTooltipText = structuralCapabilities?.undo.tooltipText ?? null;
 
   // Waveform + metadata probing are CPU/network heavy and can cause audible stutter on playback,
   // especially on mobile. Keep them off unless explicitly needed.
@@ -586,7 +585,9 @@ export function TimelinePanel({
                 </span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">{splitDisabled ? t('toast.splitNoClip') : t('tooltips.splitSubtitleWithUndo')}</TooltipContent>
+            <TooltipContent side="top">
+              {splitTooltipText || (splitDisabled ? t('toast.splitNoClip') : t('tooltips.splitSubtitleWithUndo'))}
+            </TooltipContent>
           </Tooltip>
 
           {(onUndo || undoCountdown > 0) && (
@@ -595,7 +596,7 @@ export function TimelinePanel({
                 <Button
                   variant="ghost"
                   onClick={undoCountdown > 0 ? onUndoCancel : onUndo}
-                  disabled={undoLoading}
+                  disabled={undoLoading || (undoCountdown === 0 && undoDisabled)}
                   className={cn(
                     'h-7 rounded-md px-2 transition-all duration-200',
                     undoCountdown > 0
@@ -625,11 +626,12 @@ export function TimelinePanel({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                {undoCountdown > 0
-                  ? locale === 'zh'
-                    ? '点击取消撤销'
-                    : 'Click to cancel undo'
-                  : `${t('tooltips.undoSplit')} (${undoKey})`}
+                {undoTooltipText ||
+                  (undoCountdown > 0
+                    ? locale === 'zh'
+                      ? '点击取消撤销'
+                      : 'Click to cancel undo'
+                    : `${t('tooltips.undoSplit')} (${undoKey})`)}
               </TooltipContent>
             </Tooltip>
           )}

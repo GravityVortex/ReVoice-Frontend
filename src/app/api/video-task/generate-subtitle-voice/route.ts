@@ -174,8 +174,14 @@ export async function POST(request: NextRequest) {
         await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, {
           vap_draft_txt: translated,
           vap_draft_audio_path: null,
+          vap_draft_duration: null,
+          vap_voice_status: 'missing',
+          vap_needs_tts: true,
           vap_tr_job_id: null,
           vap_tr_request_key: null,
+          vap_tts_job_id: null,
+          vap_tts_request_key: null,
+          vap_tts_updated_at_ms: null,
           vap_tr_updated_at_ms: Date.now(),
         });
       } catch (e) {
@@ -346,6 +352,8 @@ export async function POST(request: NextRequest) {
           vap_draft_audio_path: back?.data?.path_name ?? null,
           vap_draft_duration: back?.data?.duration ?? null,
           vap_draft_txt: text,
+          vap_voice_status: 'ready',
+          vap_needs_tts: false,
           vap_tts_job_id: null,
           vap_tts_request_key: requestKey,
           vap_tts_updated_at_ms: nowMs,
@@ -414,14 +422,22 @@ export async function GET(request: NextRequest) {
           await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, {
             vap_draft_txt: back?.data?.text_translated ?? null,
             vap_draft_audio_path: null,
+            vap_draft_duration: null,
+            vap_voice_status: 'missing',
+            vap_needs_tts: true,
             vap_tr_job_id: null,
             vap_tr_request_key: null,
+            vap_tts_job_id: null,
+            vap_tts_request_key: null,
+            vap_tts_updated_at_ms: null,
             vap_tr_updated_at_ms: nowMs,
           });
         } else {
           await patchSubtitleItemById(taskId, 'translate_srt', subtitleName, {
             vap_draft_audio_path: back?.data?.path_name ?? null,
             vap_draft_duration: back?.data?.duration ?? null,
+            vap_voice_status: 'ready',
+            vap_needs_tts: false,
             vap_tts_job_id: null,
             vap_tts_request_key: null,
             vap_tts_updated_at_ms: nowMs,

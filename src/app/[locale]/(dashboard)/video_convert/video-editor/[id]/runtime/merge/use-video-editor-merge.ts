@@ -1,22 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, type Dispatch, type SetStateAction } from 'react';
 import { toast } from 'sonner';
 
 import { estimateTaskPercent } from '@/shared/lib/task-progress';
 import { getAudioR2PathName } from '@/shared/lib/utils';
 
 import { fetchWithTimeout } from '../network/fetch-with-timeout';
-import { getHeaderDownloadState } from '../../header-download-actions';
+import type { HeaderDownloadState } from '../../header-download-actions';
 import {
   getNextMergeStatusPollState,
-  getVideoMergePrimaryActionState,
   hydrateVideoMergeMetadataState,
-  reconcileMergeTerminalState,
   resolveVideoMergeStatusResponse,
   shouldPollActiveVideoMergeStatus,
-  type ActiveVideoMergeJob,
 } from '../../video-merge-state';
+import { buildVideoEditorMergeSession } from './video-editor-merge-session';
+import { createInitialMergeSessionState, mergeSessionReducer } from './merge-session-owner';
 
 const MERGE_STATUS_POLL_TIMEOUT_MS = 15_000;
 const TASK_PROGRESS_POLL_TIMEOUT_MS = 15_000;
@@ -34,7 +33,6 @@ type UseVideoEditorMergeArgs = {
   fallbackCurrentStep: unknown;
   userId: string;
   videoSourceFileName?: string | null;
-  hasUnsavedChanges: boolean;
   serverLastMergedAtMs: number;
   setServerLastMergedAtMs: Dispatch<SetStateAction<number>>;
   prepareForVideoMerge: () => Promise<boolean | undefined>;
@@ -66,7 +64,6 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
     fallbackCurrentStep,
     userId,
     videoSourceFileName,
-    hasUnsavedChanges,
     serverLastMergedAtMs,
     setServerLastMergedAtMs,
     prepareForVideoMerge,
@@ -74,62 +71,85 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
     requestVideoSave,
   } = args;
 
-  const [taskStatus, setTaskStatus] = useState<string>('pending');
-  const [taskErrorMessage, setTaskErrorMessage] = useState<string>('');
-  const [taskProgress, setTaskProgress] = useState<number | null>(null);
-  const [taskCurrentStep, setTaskCurrentStep] = useState<string>('');
-  const [serverActiveMergeJob, setServerActiveMergeJob] = useState<ActiveVideoMergeJob | null>(null);
-  const [mergeStatusRequiresManualRetry, setMergeStatusRequiresManualRetry] = useState(false);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [mergeState, dispatchMerge] = useReducer(mergeSessionReducer, undefined, createInitialMergeSessionState);
   const activeConvertIdRef = useRef(convertId);
+  const lastMergedAtMsRef = useRef(Math.max(0, serverLastMergedAtMs));
   const mergeStatusPollFailureCountRef = useRef(0);
   const mergeStatusPollInFlightRef = useRef(false);
   const taskProgressPollInFlightRef = useRef(false);
+  // Critical Fix #1: Track backoff timeouts to prevent leaks
+  const backoffTimeoutIdsRef = useRef<Set<number>>(new Set());
+  // P0 Fix #3: Use ref for cancelled flag to prevent race conditions
+  const mergeStatusPollCancelledRef = useRef(false);
+
+  const mergeSession = useMemo(
+    () =>
+      buildVideoEditorMergeSession({
+        state: mergeState,
+        view: {
+          isTaskRunning: mergeState.taskStatus === 'pending' || mergeState.taskStatus === 'processing',
+          isMergeJobActive: mergeState.activeJob !== null,
+          isGeneratingVideo: mergeState.phase === 'preparing' || mergeState.phase === 'requesting_merge',
+          mergeStatusRequiresManualRetry: mergeState.phase === 'manual_retry_required',
+        },
+      }),
+    [mergeState]
+  );
+
+  const taskStatus = mergeSession.state.taskStatus;
+  const taskErrorMessage = mergeSession.state.taskErrorMessage;
+  const taskProgress = mergeSession.state.taskProgress;
+  const taskCurrentStep = mergeSession.state.taskCurrentStep;
+  const serverActiveMergeJob = mergeSession.state.activeJob;
+  const isTaskRunning = mergeSession.view.isTaskRunning;
+  const isMergeJobActive = mergeSession.view.isMergeJobActive;
+  const isGeneratingVideo = mergeSession.view.isGeneratingVideo;
+  const mergeStatusRequiresManualRetry = mergeSession.view.mergeStatusRequiresManualRetry;
 
   const hydrateTaskStateFromDetail = useCallback((taskMainItem: TaskMainHydratePayload) => {
     const nextTaskStatus = typeof taskMainItem?.status === 'string' ? taskMainItem.status : 'pending';
-    setTaskStatus(nextTaskStatus);
-    setTaskErrorMessage(typeof taskMainItem?.errorMessage === 'string' ? taskMainItem.errorMessage : '');
     const nextProgress = Number(taskMainItem?.progress);
-    setTaskProgress(Number.isFinite(nextProgress) ? nextProgress : null);
-    setTaskCurrentStep(typeof taskMainItem?.currentStep === 'string' ? taskMainItem.currentStep : '');
-    const reconciled = reconcileMergeTerminalState({
+    dispatchMerge({
+      type: 'task_state_hydrated',
       taskStatus: nextTaskStatus,
-      activeJob: serverActiveMergeJob,
-      requiresManualRetry: mergeStatusRequiresManualRetry,
-      failureCount: mergeStatusPollFailureCountRef.current,
+      taskErrorMessage: typeof taskMainItem?.errorMessage === 'string' ? taskMainItem.errorMessage : '',
+      taskProgress: Number.isFinite(nextProgress) ? nextProgress : null,
+      taskCurrentStep: typeof taskMainItem?.currentStep === 'string' ? taskMainItem.currentStep : '',
     });
-    setServerActiveMergeJob(reconciled.activeJob);
-    setMergeStatusRequiresManualRetry(reconciled.requiresManualRetry);
-    mergeStatusPollFailureCountRef.current = reconciled.failureCount;
-  }, [mergeStatusRequiresManualRetry, serverActiveMergeJob]);
+    if (nextTaskStatus === 'completed' || nextTaskStatus === 'failed' || nextTaskStatus === 'cancelled') {
+      mergeStatusPollFailureCountRef.current = 0;
+    }
+  }, []);
 
   useEffect(() => {
     activeConvertIdRef.current = convertId;
   }, [convertId]);
 
   useEffect(() => {
-    setTaskStatus('pending');
-    setTaskErrorMessage('');
-    setTaskProgress(null);
-    setTaskCurrentStep('');
-    setServerActiveMergeJob(null);
-    setMergeStatusRequiresManualRetry(false);
+    lastMergedAtMsRef.current = Math.max(serverLastMergedAtMs, mergeSession.state.lastMergedAtMs);
+  }, [mergeSession.state.lastMergedAtMs, serverLastMergedAtMs]);
+
+  useEffect(() => {
+    dispatchMerge({ type: 'reset_for_convert' });
     mergeStatusPollFailureCountRef.current = 0;
-    setIsGeneratingVideo(false);
   }, [convertId]);
 
   useEffect(() => {
     const hydrated = hydrateVideoMergeMetadataState({
-      previousLastMergedAtMs: 0,
+      previousLastMergedAtMs: lastMergedAtMsRef.current,
       metadata: convertMetadata,
     });
 
     if (hydrated.lastMergedAtMs > 0) {
       setServerLastMergedAtMs((prev) => Math.max(prev, hydrated.lastMergedAtMs));
+      dispatchMerge({ type: 'last_merged_at_updated', lastMergedAtMs: hydrated.lastMergedAtMs });
     }
 
-    setServerActiveMergeJob(hydrated.activeJob);
+    dispatchMerge({
+      type: 'metadata_hydrated',
+      activeJob: hydrated.activeJob,
+      lastMergedAtMs: hydrated.lastMergedAtMs,
+    });
   }, [convertId, convertMetadata, setServerLastMergedAtMs]);
 
   useEffect(() => {
@@ -140,18 +160,13 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
     const startedAt = Date.now();
     const timeoutMs = 60 * 60 * 1000;
     const baselineMergedAtMs = serverActiveMergeJob?.createdAtMs || Date.now();
-    let cancelled = false;
+    // P0 Fix #3: Use ref instead of local variable to prevent race conditions
+    mergeStatusPollCancelledRef.current = false;
 
-    const applyTaskState = (nextTaskState: {
-      taskStatus: string;
-      taskErrorMessage: string;
-      taskProgress: number | null;
-      taskCurrentStep: string;
-    }) => {
-      setTaskStatus(nextTaskState.taskStatus);
-      setTaskErrorMessage(nextTaskState.taskErrorMessage);
-      setTaskProgress(nextTaskState.taskProgress);
-      setTaskCurrentStep(nextTaskState.taskCurrentStep);
+    // Critical Fix #3: Exponential backoff delays
+    const getBackoffDelayMs = (failureCount: number) => {
+      if (failureCount === 0) return 0;
+      return Math.min(32000, 4000 * Math.pow(2, failureCount - 1));
     };
 
     const tick = async () => {
@@ -165,28 +180,33 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
           }
         );
         const back = await resp.json().catch(() => null);
-        if (cancelled) return;
+        if (mergeStatusPollCancelledRef.current) return;
 
         const resolution = resolveVideoMergeStatusResponse({
           response: back,
           baselineMergedAtMs,
-          previousLastMergedAtMs: serverLastMergedAtMs,
+          previousLastMergedAtMs: lastMergedAtMsRef.current,
           fallbackFailureMessage: t('audioList.toast.videoSaveFailed'),
         });
 
         mergeStatusPollFailureCountRef.current = resolution.failureCount;
-        setMergeStatusRequiresManualRetry(resolution.mergeStatusRequiresManualRetry);
 
         if (resolution.taskState) {
-          applyTaskState(resolution.taskState);
+          dispatchMerge({
+            type: 'task_state_hydrated',
+            taskStatus: resolution.taskState.taskStatus,
+            taskErrorMessage: resolution.taskState.taskErrorMessage,
+            taskProgress: resolution.taskState.taskProgress,
+            taskCurrentStep: resolution.taskState.taskCurrentStep,
+          });
         }
 
         if (resolution.serverLastMergedAtMs > 0) {
           setServerLastMergedAtMs((prev) => Math.max(prev, resolution.serverLastMergedAtMs));
-        }
-
-        if (resolution.clearActiveJob) {
-          setServerActiveMergeJob(null);
+          dispatchMerge({
+            type: 'last_merged_at_updated',
+            lastMergedAtMs: resolution.serverLastMergedAtMs,
+          });
         }
 
         if (resolution.toastKind === 'success') {
@@ -198,12 +218,16 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
           toast.error(resolution.toastMessage);
         }
       } catch {
-        if (cancelled) return;
+        if (mergeStatusPollCancelledRef.current) return;
         const nextPollState = getNextMergeStatusPollState(mergeStatusPollFailureCountRef.current);
         mergeStatusPollFailureCountRef.current = nextPollState.failureCount;
+        dispatchMerge({
+          type: 'status_poll_network_failed',
+          failureCount: nextPollState.failureCount,
+          requiresManualRetry: nextPollState.requiresManualRetry,
+        });
         if (nextPollState.requiresManualRetry) {
           toast.error(t('header.mergeStatusRetryTooltip'));
-          setMergeStatusRequiresManualRetry(true);
         }
       } finally {
         mergeStatusPollInFlightRef.current = false;
@@ -214,34 +238,49 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
     const timer = setInterval(() => {
       if (Date.now() - startedAt > timeoutMs) {
         clearInterval(timer);
-        if (!cancelled) {
+        if (!mergeStatusPollCancelledRef.current) {
           const message = t('audioList.toast.videoSaveFailed');
           mergeStatusPollFailureCountRef.current = 0;
-          setMergeStatusRequiresManualRetry(false);
-          setTaskStatus('failed');
-          setTaskErrorMessage(message);
-          setTaskProgress(null);
-          setTaskCurrentStep('');
+          dispatchMerge({
+            type: 'task_state_hydrated',
+            taskStatus: 'failed',
+            taskErrorMessage: message,
+            taskProgress: null,
+            taskCurrentStep: '',
+          });
           toast.error(message);
-          setServerActiveMergeJob(null);
         }
         return;
       }
 
-      if (mergeStatusPollFailureCountRef.current >= 3) {
+      // Critical Fix #3: Check failure threshold (now 5 instead of 3)
+      if (mergeStatusPollFailureCountRef.current >= 5) {
         clearInterval(timer);
         return;
       }
 
-      void tick();
+      // Critical Fix #1: Apply exponential backoff delay with timeout tracking
+      const backoffDelay = getBackoffDelayMs(mergeStatusPollFailureCountRef.current);
+      if (backoffDelay > 0) {
+        const timeoutId = window.setTimeout(() => {
+          backoffTimeoutIdsRef.current.delete(timeoutId);
+          if (!mergeStatusPollCancelledRef.current) void tick();
+        }, backoffDelay);
+        backoffTimeoutIdsRef.current.add(timeoutId);
+      } else {
+        void tick();
+      }
     }, 4000);
 
     return () => {
-      cancelled = true;
+      mergeStatusPollCancelledRef.current = true;
       clearInterval(timer);
+      // Critical Fix #1: Clear all backoff timeouts
+      backoffTimeoutIdsRef.current.forEach((id) => clearTimeout(id));
+      backoffTimeoutIdsRef.current.clear();
       mergeStatusPollInFlightRef.current = false;
     };
-  }, [convertId, mergeStatusRequiresManualRetry, serverActiveMergeJob?.createdAtMs, serverActiveMergeJob?.jobId, serverLastMergedAtMs, setServerLastMergedAtMs, t]);
+  }, [convertId, mergeStatusRequiresManualRetry, serverActiveMergeJob?.createdAtMs, serverActiveMergeJob?.jobId, setServerLastMergedAtMs, t]);
 
   useEffect(() => {
     if (!convertId) return;
@@ -317,9 +356,6 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
     });
   }, [fallbackCurrentStep, fallbackProgress, taskCurrentStep, taskProgress, taskStatus]);
 
-  const isTaskRunning = taskStatus === 'pending' || taskStatus === 'processing';
-  const isMergeJobActive = serverActiveMergeJob !== null;
-
   const headerProgressFillCls = useMemo(() => {
     if (taskStatus === 'completed') return 'bg-emerald-500/70';
     if (taskStatus === 'failed' || taskStatus === 'cancelled') return 'bg-destructive/70';
@@ -329,36 +365,15 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
 
   const headerProgressVisual = isTaskRunning ? Math.max(3, progressPercent) : progressPercent;
 
-  const mergePrimaryAction = useMemo(
-    () =>
-      getVideoMergePrimaryActionState({
-        isGeneratingVideo,
-        isTaskRunning,
-        isMergeJobActive,
-        mergeStatusRequiresManualRetry,
-        hasUnsavedChanges,
-      }),
-    [hasUnsavedChanges, isGeneratingVideo, isMergeJobActive, isTaskRunning, mergeStatusRequiresManualRetry]
-  );
-
-  const showHeaderBusySpinner = isGeneratingVideo || isTaskRunning || (isMergeJobActive && mergePrimaryAction.mode !== 'retry-status');
-
   const downloadBaseName = useMemo(() => {
     const rawName = typeof videoSourceFileName === 'string' ? videoSourceFileName.trim() : '';
     if (!rawName) return convertId;
     return rawName.replace(/\.[^/.]+$/, '') || convertId;
   }, [convertId, videoSourceFileName]);
 
-  const headerDownloadState = useMemo(
-    () =>
-      getHeaderDownloadState({
-        taskStatus,
-        serverLastMergedAtMs,
-        isTaskRunning,
-        isMergeJobActive,
-      }),
-    [isMergeJobActive, isTaskRunning, serverLastMergedAtMs, taskStatus]
-  );
+  const effectiveLastMergedAtMs = Math.max(serverLastMergedAtMs, mergeSession.state.lastMergedAtMs);
+
+  const downloadGuardRef = useRef<HeaderDownloadState>({ isVisible: false, isDisabled: true, tooltipKey: null });
 
   const triggerLinkDownload = useCallback((url: string, filename: string) => {
     const link = document.createElement('a');
@@ -383,48 +398,64 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
 
   const handleVideoMergeStarted = useCallback((args: { jobId: string; createdAtMs: number }) => {
     mergeStatusPollFailureCountRef.current = 0;
-    setMergeStatusRequiresManualRetry(false);
-    setServerActiveMergeJob(args);
+    dispatchMerge({
+      type: 'merge_job_registered',
+      job: args,
+    });
   }, []);
 
   const handleRetryMergeStatus = useCallback(() => {
     mergeStatusPollFailureCountRef.current = 0;
-    setMergeStatusRequiresManualRetry(false);
+    dispatchMerge({ type: 'manual_retry_reset' });
   }, []);
 
   const handleGenerateVideo = useCallback(async () => {
     if (isGeneratingVideo) return;
 
     const taskId = convertId;
-    setIsGeneratingVideo(true);
+    dispatchMerge({ type: 'generate_started' });
     try {
       const readyForMerge = await prepareForVideoMerge();
-      if (activeConvertIdRef.current !== taskId || !readyForMerge) return;
+      if (activeConvertIdRef.current !== taskId) return;
+      if (!readyForMerge) {
+        dispatchMerge({ type: 'generate_cancelled' });
+        return;
+      }
 
+      // P0 Fix #1: Flush pending timings before merge (no lock needed)
       const timingReady = await persistPendingTimingsIfNeeded();
-      if (activeConvertIdRef.current !== taskId || !timingReady) return;
+      if (activeConvertIdRef.current !== taskId) return;
+      if (!timingReady) {
+        dispatchMerge({ type: 'generate_cancelled' });
+        return;
+      }
 
+      dispatchMerge({ type: 'merge_request_started' });
       const ok = await requestVideoSave();
       if (activeConvertIdRef.current !== taskId) return;
       if (ok) {
-        setTaskErrorMessage('');
-        setTaskStatus('pending');
-        setTaskProgress(0);
-        setTaskCurrentStep('');
+        dispatchMerge({
+          type: 'task_state_hydrated',
+          taskStatus: 'pending',
+          taskErrorMessage: '',
+          taskProgress: 0,
+          taskCurrentStep: '',
+        });
+        return;
       }
+
+      dispatchMerge({ type: 'generate_cancelled' });
     } catch (error) {
       if (activeConvertIdRef.current !== taskId) return;
+      dispatchMerge({ type: 'generate_cancelled' });
       console.error('handleGenerateVideo failed:', error);
       toast.error(locale === 'zh' ? '操作失败，请重试' : 'Request failed. Please try again.');
-    } finally {
-      if (activeConvertIdRef.current === taskId) {
-        setIsGeneratingVideo(false);
-      }
     }
   }, [convertId, isGeneratingVideo, locale, persistPendingTimingsIfNeeded, prepareForVideoMerge, requestVideoSave]);
 
   const handleDownloadVideo = useCallback(async () => {
-    if (!convertId || !headerDownloadState.isVisible || headerDownloadState.isDisabled) return;
+    const guard = downloadGuardRef.current;
+    if (!convertId || !guard.isVisible || guard.isDisabled) return;
 
     try {
       const response = await fetchWithTimeout(`/api/video-task/download-video?taskId=${convertId}&expiresIn=60`, {
@@ -441,11 +472,12 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
       console.error('[VideoEditorPage] Video download failed:', error);
       toast.error(tDetail('toast.downloadFailed'));
     }
-  }, [convertId, downloadBaseName, headerDownloadState.isDisabled, headerDownloadState.isVisible, tDetail, triggerLinkDownload]);
+  }, [convertId, downloadBaseName, tDetail, triggerLinkDownload]);
 
   const handleDownloadAudio = useCallback(
     async (type: 'subtitle' | 'background') => {
-      if (!convertId || !userId || !headerDownloadState.isVisible || headerDownloadState.isDisabled) return;
+      const guard = downloadGuardRef.current;
+      if (!convertId || !userId || !guard.isVisible || guard.isDisabled) return;
 
       const key =
         type === 'background'
@@ -471,12 +503,13 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
         toast.error(tDetail('toast.downloadFailed'));
       }
     },
-    [convertId, downloadBaseName, headerDownloadState.isDisabled, headerDownloadState.isVisible, tDetail, triggerLinkDownload, userId]
+    [convertId, downloadBaseName, tDetail, triggerLinkDownload, userId]
   );
 
   const handleDownloadSrt = useCallback(
     async (stepName: 'gen_srt' | 'translate_srt' | 'double_srt') => {
-      if (!convertId || !headerDownloadState.isVisible || headerDownloadState.isDisabled) return;
+      const guard = downloadGuardRef.current;
+      if (!convertId || !guard.isVisible || guard.isDisabled) return;
 
       try {
         const params = new URLSearchParams({
@@ -505,7 +538,7 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
         toast.error(tDetail('toast.subtitleDownloadFailed'));
       }
     },
-    [convertId, downloadBaseName, headerDownloadState.isDisabled, headerDownloadState.isVisible, tDetail, triggerBlobDownload]
+    [convertId, downloadBaseName, tDetail, triggerBlobDownload]
   );
 
   return {
@@ -519,11 +552,10 @@ export function useVideoEditorMerge(args: UseVideoEditorMergeArgs) {
     isMergeJobActive,
     isGeneratingVideo,
     mergeStatusRequiresManualRetry,
-    mergePrimaryAction,
+    effectiveLastMergedAtMs,
+    downloadGuardRef,
     headerProgressFillCls,
     headerProgressVisual,
-    showHeaderBusySpinner,
-    headerDownloadState,
     handleGenerateVideo,
     handleRetryMergeStatus,
     handleVideoMergeStarted,

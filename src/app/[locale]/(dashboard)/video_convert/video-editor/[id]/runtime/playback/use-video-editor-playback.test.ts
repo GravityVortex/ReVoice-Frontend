@@ -3,19 +3,24 @@ import { describe, expect, it } from 'vitest';
 
 describe('use video editor playback shell boundary', () => {
   const shellSource = readFileSync(new URL('../../video-editor-page-shell.tsx', import.meta.url), 'utf8');
+  const playbackSessionSource = readFileSync(new URL('../../video-editor-playback-session.ts', import.meta.url), 'utf8');
   const auditionFlowSource = readFileSync(new URL('./playback-audition-flow.ts', import.meta.url), 'utf8');
   const auditionRuntimeSource = readFileSync(new URL('./playback-audition-runtime.ts', import.meta.url), 'utf8');
+  const blockingOwnerSource = readFileSync(new URL('./playback-blocking-owner.ts', import.meta.url), 'utf8');
+  const blockingRetryControllerSource = readFileSync(new URL('./playback-blocking-retry-controller.ts', import.meta.url), 'utf8');
   const transportOwnerSource = readFileSync(new URL('./playback-transport-owner.ts', import.meta.url), 'utf8');
   const controlOwnerSource = readFileSync(new URL('./playback-control-owner.ts', import.meta.url), 'utf8');
   const sessionOwnerSource = readFileSync(new URL('./playback-session-owner.ts', import.meta.url), 'utf8');
   const videoSyncSource = readFileSync(new URL('./playback-video-sync.ts', import.meta.url), 'utf8');
   const subtitleAudioEngineSource = readFileSync(new URL('./subtitle-audio-engine.ts', import.meta.url), 'utf8');
+  const audioUrlUtilsSource = readFileSync(new URL('../../audio-url-utils.ts', import.meta.url), 'utf8');
 
   it('lets the page shell delegate playback owner state to useVideoEditorPlayback', () => {
     const hookSource = readFileSync(new URL('./use-video-editor-playback.ts', import.meta.url), 'utf8');
 
     expect(shellSource).toContain("import { useVideoEditorPlayback } from './runtime/playback/use-video-editor-playback';");
-    expect(shellSource).toContain('} = useVideoEditorPlayback({');
+    expect(shellSource).toContain('const playbackSession = useVideoEditorPlayback({');
+    expect(shellSource).not.toContain('const {\n    transportSnapshot,');
     expect(shellSource).not.toContain('const [isPlaying, setIsPlaying] = useState(false);');
     expect(shellSource).not.toContain('const [isSubtitleBuffering, setIsSubtitleBuffering] = useState(false);');
     expect(shellSource).not.toContain('const [isVideoBuffering, setIsVideoBuffering] = useState(false);');
@@ -47,12 +52,24 @@ describe('use video editor playback shell boundary', () => {
     expect(hookSource).toContain('const handleAuditionRequestPlay = useCallback(');
     expect(hookSource).toContain('const handleRetryBlockedPlayback = useCallback(() => {');
     expect(hookSource).toContain("import { usePlaybackSessionOwner } from './playback-session-owner';");
+    expect(hookSource).toContain("import { buildVideoEditorPlaybackSession, type VideoEditorPlaybackSession } from '../../video-editor-playback-session';");
     expect(hookSource).toContain('usePlaybackSessionOwner({');
+    expect(hookSource).toContain('const playbackSession = useMemo<VideoEditorPlaybackSession>(');
+    expect(hookSource).toContain('return playbackSession;');
   });
 
-  it('exposes the public playback api consumed by shell, preview, timeline, and workstation', () => {
+  it('exposes a grouped playback session contract consumed by shell, preview, timeline, and workstation', () => {
     const hookSource = readFileSync(new URL('./use-video-editor-playback.ts', import.meta.url), 'utf8');
 
+    expect(playbackSessionSource).toContain('export type VideoEditorPlaybackSession = {');
+    expect(playbackSessionSource).toContain('state: {');
+    expect(playbackSessionSource).toContain('refs: {');
+    expect(playbackSessionSource).toContain('actions: {');
+    expect(playbackSessionSource).toContain('maintenance: {');
+    expect(hookSource).toContain('state: {');
+    expect(hookSource).toContain('refs: {');
+    expect(hookSource).toContain('actions: {');
+    expect(hookSource).toContain('maintenance: {');
     expect(hookSource).toContain('transportSnapshot,');
     expect(hookSource).toContain('timelineHandleRef,');
     expect(hookSource).toContain('videoPreviewRef,');
@@ -91,6 +108,9 @@ describe('use video editor playback shell boundary', () => {
   });
 
   it('routes convert audition through a dedicated gate that still blocks pending or missing rows from auditioning stale audio', () => {
+    const hookSource = readFileSync(new URL('./use-video-editor-playback.ts', import.meta.url), 'utf8');
+
+    expect(audioUrlUtilsSource).toContain('export function resolvePlayableAuditionUrl');
     expect(auditionFlowSource).toContain("if (mode === 'convert') {");
     expect(auditionFlowSource).toContain('const gate = args.evaluateConvertAuditionGateForClipIndex(index);');
     expect(auditionFlowSource).toContain("if (gate.kind === 'voice_unavailable') {");
@@ -98,7 +118,8 @@ describe('use video editor playback shell boundary', () => {
     expect(auditionFlowSource).toContain(
       'await args.pausePlaybackForBlockingState(args.createVoiceUnavailableBlockingState(gate), item.startTime);'
     );
-    expect(auditionFlowSource).toContain("const voiceUrl = (seg?.previewAudioUrl || seg?.audioUrl || '').trim();");
+    expect(auditionFlowSource).toContain('const voiceUrl = resolvePlayableAuditionUrl({');
+    expect(hookSource).toContain('const previewAudioUrl = resolvePlayableAuditionUrl({');
   });
 
   it('releases convert audition ownership when the video clock is unavailable or fails to start', () => {
@@ -124,7 +145,7 @@ describe('use video editor playback shell boundary', () => {
   });
 
   it('shows retrying state during blocked retry and restores network_failed when the restart still cannot begin', () => {
-    expect(transportOwnerSource).toMatch(
+    expect(blockingRetryControllerSource).toMatch(
       /blockingState\.kind === 'network_failed'[\s\S]*?setPlaybackBlockingState\(\{[\s\S]*?kind: 'retrying'[\s\S]*?playReason: 'blocked-retry'[\s\S]*?if \(!syncStarted\) \{[\s\S]*?handlePlaybackStartFailure\(/
     );
   });
@@ -137,10 +158,10 @@ describe('use video editor playback shell boundary', () => {
   });
 
   it('keeps retry available when network_failed has no resolvable subtitle clip and falls back to current transport time', () => {
-    expect(transportOwnerSource).toContain('const retryContext = args.resolveRetryablePlaybackContext(');
-    expect(transportOwnerSource).toContain('resolved?.clipIndex ?? blockingState.clipIndex,');
-    expect(transportOwnerSource).toContain('resolved?.clip.id ?? blockingState.subtitleId');
-    expect(transportOwnerSource).toContain("if (args.refs.subtitleBackendRef.current === 'media' || !resolved) {");
+    expect(blockingRetryControllerSource).toContain('const retryContext = resolveRetryablePlaybackContext(');
+    expect(blockingRetryControllerSource).toContain('resolved?.clipIndex ?? blockingState.clipIndex,');
+    expect(blockingRetryControllerSource).toContain('resolved?.clip.id ?? blockingState.subtitleId');
+    expect(blockingRetryControllerSource).toContain("if (args.getSubtitleBackend() === 'media' || !resolved) {");
   });
 
   it('delegates control fanout and queued audition runtime effects to focused modules', () => {
@@ -148,5 +169,22 @@ describe('use video editor playback shell boundary', () => {
     expect(controlOwnerSource).toContain('args.dispatchTransport(setTransportAutoPlayNext(value));');
     expect(auditionRuntimeSource).toContain("args.logEditorTransport('debug', 'queue-next-audition', {");
     expect(auditionRuntimeSource).toContain('args.handleAuditionStopRef.current = args.handleAuditionStop;');
+  });
+
+  it('extracts blocked playback actions into a dedicated blocking owner instead of keeping them in transport owner', () => {
+    const hookSource = readFileSync(new URL('./use-video-editor-playback.ts', import.meta.url), 'utf8');
+
+    expect(hookSource).toContain("import { createPlaybackBlockingOwner } from './playback-blocking-owner';");
+    expect(hookSource).toContain('const playbackBlockingOwner = useMemo(');
+    expect(blockingOwnerSource).toContain('const handleCancelBlockedPlayback = () => {');
+    expect(blockingOwnerSource).toContain('const handleLocateBlockedClip = () => {');
+    expect(blockingOwnerSource).toContain('const handleRetryBlockedPlayback = () => {');
+    expect(blockingOwnerSource).toContain('args.locateBlockedClip();');
+    expect(blockingOwnerSource).toContain('void args.retryBlockedPlayback();');
+    expect(transportOwnerSource).not.toContain('const handleCancelBlockedPlayback = () => {');
+    expect(transportOwnerSource).not.toContain('const handleLocateBlockedClip = () => {');
+    expect(transportOwnerSource).not.toContain('const handleRetryBlockedPlayback = () => {');
+    expect(transportOwnerSource).toContain('args.handleRetryBlockedPlayback();');
+    expect(transportOwnerSource).toContain('args.handleLocateBlockedClip();');
   });
 });

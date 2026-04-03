@@ -58,4 +58,17 @@ describe('resolveEditorPublicAudioUrl', () => {
 
     expect(result).toBe('https://pub.example.com/dev/owner-1/task-1/adj_audio_time/clip-1.wav?t=123');
   });
+
+  it('falls back to a same-origin storage stream url when public bucket metadata is unavailable', () => {
+    const result = resolveEditorPublicAudioUrl({
+      convertObj: {
+        userId: 'owner-1',
+        id: 'task-1',
+      } as any,
+      pathName: 'adj_audio_time_temp/clip-1.wav',
+      cacheBust: '123',
+    });
+
+    expect(result).toBe('/api/storage/stream?key=owner-1%2Ftask-1%2Fadj_audio_time_temp%2Fclip-1.wav&t=123');
+  });
 });

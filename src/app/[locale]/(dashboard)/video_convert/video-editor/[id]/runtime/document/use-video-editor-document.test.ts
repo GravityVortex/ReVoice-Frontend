@@ -9,6 +9,7 @@ import { deriveDocumentPendingState, getActiveVideoEditorDocumentState } from '.
 describe('use video editor document helpers', () => {
   const shellSource = readFileSync(new URL('../../video-editor-page-shell.tsx', import.meta.url), 'utf8');
   const hookSource = readFileSync(new URL('./use-video-editor-document.ts', import.meta.url), 'utf8');
+  const reducerSource = readFileSync(new URL('./video-editor-document-reducer.ts', import.meta.url), 'utf8');
 
   it('lets the page shell delegate document owner state to useVideoEditorDocument', () => {
     expect(shellSource).toContain("import { useVideoEditorDocument } from './runtime/document/use-video-editor-document';");
@@ -17,12 +18,22 @@ describe('use video editor document helpers', () => {
     expect(shellSource).not.toContain('const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);');
     expect(shellSource).not.toContain('const [subtitleTrack, setSubtitleTrack] = useState<SubtitleTrackItem[]>([]);');
 
-    expect(hookSource).toContain('const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);');
-    expect(hookSource).toContain('const [subtitleTrack, setSubtitleTrack] = useState<SubtitleTrackItem[]>([]);');
+    expect(hookSource).toContain(
+      "import {\n  createInitialVideoEditorDocumentState,\n  videoEditorDocumentReducer,\n} from './video-editor-document-reducer';"
+    );
+    expect(hookSource).toContain(
+      'const [state, dispatch] = useReducer(videoEditorDocumentReducer, undefined, createInitialVideoEditorDocumentState);'
+    );
     expect(hookSource).toContain('const documentPendingState = useMemo(');
-    expect(hookSource).toContain('const mappedDocument = mapConvertObjToEditorDocument({');
+    expect(hookSource).not.toContain('const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);');
+    expect(hookSource).not.toContain('const [subtitleTrack, setSubtitleTrack] = useState<SubtitleTrackItem[]>([]);');
+    expect(hookSource).not.toContain('const [playbackBlockedVoiceIds, setPlaybackBlockedVoiceIds] = useState<string[]>([]);');
     expect(hookSource).not.toContain('const handleSubtitleTrackChange = useCallback(');
     expect(hookSource).toContain('const handleResetTiming = useCallback(');
+    expect(reducerSource).toContain('function remapDocumentState(args: {');
+    expect(reducerSource).toContain("case 'set_convert_obj':");
+    expect(reducerSource).toContain("case 'set_pending_timing_map':");
+    expect(reducerSource).toContain("case 'update_subtitle_audio':");
   });
 
   it('derives pending merge sets from server revisions, local voice/timing edits, playback blocks, and missing voice rows', () => {
@@ -154,7 +165,7 @@ describe('use video editor document helpers', () => {
     expect(result.totalDuration).toBe(12);
   });
 
-  it('does not synthesize fake translated audio urls when public audio metadata is incomplete', () => {
+  it('falls back to a same-origin translated preview stream when public audio metadata is incomplete', () => {
     const result = mapConvertObjToEditorDocument({
       convertObj: {
         id: 'task-1',
@@ -198,8 +209,8 @@ describe('use video editor document helpers', () => {
       },
     });
 
-    expect(result.subtitleTrack[0]?.audioUrl).toBe('');
-    expect(result.subtitleTrack[0]?.previewAudioUrl).toBe('adj_audio_time_temp/clip-1.wav?t=456');
+    expect(result.subtitleTrack[0]?.audioUrl).toBe('/api/storage/stream?key=user-1%2Ftask-1%2Fadj_audio_time_temp%2Fclip-1.wav&t=456');
+    expect(result.subtitleTrack[0]?.previewAudioUrl).toBe('/api/storage/stream?key=user-1%2Ftask-1%2Fadj_audio_time_temp%2Fclip-1.wav&t=456');
   });
 
   it('does not reuse previous local tracks when a different convert task is loaded', () => {

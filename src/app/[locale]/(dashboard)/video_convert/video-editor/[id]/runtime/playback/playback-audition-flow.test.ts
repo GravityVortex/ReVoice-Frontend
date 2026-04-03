@@ -114,4 +114,90 @@ describe('playback audition flow', () => {
     );
     expect(toastError).toHaveBeenCalled();
   });
+
+  it('uses the playable absolute audio url when convert previewAudioUrl is still a local draft path', async () => {
+    let auditionController: AbortController | null = null;
+    let auditionToken = 0;
+    const ensureVoiceBuffer = vi.fn(async () => ({}));
+    const applyVideoTransportSnapshot = vi.fn(async () => false);
+    const handleAuditionStopFallback = vi.fn();
+
+    const flow = createPlaybackAuditionFlow({
+      locale: 'zh',
+      t: (key) => key,
+      convertObj: {
+        srt_source_arr: [],
+      },
+      getSubtitleTrack: () => [
+        {
+          id: 'clip-1',
+          startTime: 1,
+          duration: 2,
+          audioUrl: 'https://cdn.example.com/prod/user-1/task-1/adj_audio_time_temp/clip-1.wav?t=10',
+          previewAudioUrl: 'adj_audio_time_temp/clip-1.wav?t=11',
+        },
+      ],
+      getTransportState: () => ({
+        mode: 'timeline',
+        status: 'paused',
+        transportTimeSec: 0,
+        activeClipIndex: null,
+        auditionStopAtSec: null,
+        autoPlayNext: false,
+        pendingNextClipIndex: null,
+        pendingNextMode: null,
+        blockingState: null,
+      }),
+      getVideoElement: () => ({ currentSrc: 'https://cdn.example.com/video.mp4', src: 'https://cdn.example.com/video.mp4', muted: false }) as HTMLVideoElement,
+      getSourceAuditionAudio: () => null,
+      setSourceAuditionAudio: vi.fn(),
+      getAuditionRestoreState: () => null,
+      setAuditionRestoreState: vi.fn(),
+      getSubtitleMuted: () => false,
+      setSubtitleMuted: vi.fn(),
+      getBgmMuted: () => false,
+      setBgmMuted: vi.fn(),
+      getVolume: () => 100,
+      getActiveAuditionType: () => null,
+      setActiveAuditionType: vi.fn(),
+      getAuditionStopAtMs: () => null,
+      setAuditionStopAtMs: vi.fn(),
+      getPlayingSubtitleIndex: () => -1,
+      setPlayingSubtitleIndex: vi.fn(),
+      nextAuditionToken: () => ++auditionToken,
+      getAuditionToken: () => auditionToken,
+      getAuditionAbortController: () => auditionController,
+      setAuditionAbortController: (controller) => {
+        auditionController = controller;
+      },
+      getAbortReason: () => new Error('aborted'),
+      abortActiveAuditionPreparation: vi.fn(),
+      clearAuditionNaturalStopTimer: vi.fn(),
+      setTransportStalled: vi.fn(),
+      nextVideoStartGateToken: vi.fn(() => 1),
+      nextVideoPlayToken: vi.fn(() => 1),
+      setIsVideoBuffering: vi.fn(),
+      setIsPlaying: vi.fn(),
+      dispatchTransport: vi.fn(),
+      logEditorTransport: vi.fn(),
+      getVideoSyncMode: (fallback = 'timeline') => fallback,
+      getVideoTransportTimeSec: () => 0,
+      applyVideoTransportSnapshot,
+      evaluateConvertAuditionGateForClipIndex: vi.fn(() => ({ kind: 'ready' as const })),
+      createVoiceUnavailableBlockingState: vi.fn(),
+      pausePlaybackForBlockingState: vi.fn(),
+      handleSeek: vi.fn(),
+      ensureVoiceBuffer,
+      cacheGetVoice: vi.fn(() => null),
+      handleAuditionStopFallback,
+    });
+
+    await flow.handleAuditionRequestPlay(0, 'convert');
+
+    expect(ensureVoiceBuffer).toHaveBeenCalledWith(
+      'https://cdn.example.com/prod/user-1/task-1/adj_audio_time_temp/clip-1.wav?t=10',
+      expect.any(AbortSignal)
+    );
+    expect(handleAuditionStopFallback).toHaveBeenCalledWith(false);
+  });
 });

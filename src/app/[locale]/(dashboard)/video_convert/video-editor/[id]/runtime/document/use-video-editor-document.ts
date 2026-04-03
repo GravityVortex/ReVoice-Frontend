@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, type Dispatch, type SetStateAction } from 'react';
 
 import type { ConvertObj, SubtitleTrackItem, TrackItem } from '@/shared/components/video-editor/types';
 
-import type { EditorSubtitleTrackItem } from '../../subtitle-editor-state';
+import type { VideoEditorDocumentTrackLabels } from './video-editor-document-mappers';
 import {
-  mapConvertObjToEditorDocument,
-  type VideoEditorDocumentTrackLabels,
-} from './video-editor-document-mappers';
+  createInitialVideoEditorDocumentState,
+  videoEditorDocumentReducer,
+} from './video-editor-document-reducer';
 import { deriveDocumentPendingState } from './video-editor-document-selectors';
 
 type UseVideoEditorDocumentArgs = {
@@ -48,68 +48,101 @@ type UseVideoEditorDocumentResult = {
 
 export function useVideoEditorDocument(args: UseVideoEditorDocumentArgs): UseVideoEditorDocumentResult {
   const { convertId, trackLabels } = args;
-  const [convertObj, setConvertObj] = useState<ConvertObj | null>(null);
-  const [videoTrack, setVideoTrack] = useState<TrackItem[]>([]);
-  const [bgmTrack, setBgmTrack] = useState<TrackItem[]>([]);
-  const [subtitleTrack, setSubtitleTrack] = useState<SubtitleTrackItem[]>([]);
-  const [subtitleTrackOriginal, setSubtitleTrackOriginal] = useState<SubtitleTrackItem[]>([]);
-  const [pendingVoiceEntries, setPendingVoiceEntries] = useState<Array<{ id: string; updatedAtMs: number }>>([]);
-  const [playbackBlockedVoiceIds, setPlaybackBlockedVoiceIds] = useState<string[]>([]);
-  const [pendingTimingMap, setPendingTimingMap] = useState<Record<string, { startMs: number; endMs: number }>>({});
-  const [serverLastMergedAtMs, setServerLastMergedAtMs] = useState(0);
-  const [workstationDirty, setWorkstationDirty] = useState(false);
+  const [state, dispatch] = useReducer(videoEditorDocumentReducer, undefined, createInitialVideoEditorDocumentState);
+  const videoTrackName = trackLabels.videoTrackName;
+  const bgmTrackName = trackLabels.bgmTrackName;
+  const resolvedTrackLabels = useMemo(
+    () => ({
+      videoTrackName,
+      bgmTrackName,
+    }),
+    [bgmTrackName, videoTrackName]
+  );
 
-  const subtitleTrackRef = useRef<SubtitleTrackItem[]>([]);
-  const subtitleTrackOriginalRef = useRef<SubtitleTrackItem[]>([]);
-  const mappedDocumentIdRef = useRef<string | null>(null);
+  const setConvertObj = useCallback<Dispatch<SetStateAction<ConvertObj | null>>>(
+    (update) => {
+      dispatch({
+        type: 'set_convert_obj',
+        update,
+        trackLabels: resolvedTrackLabels,
+      });
+    },
+    [resolvedTrackLabels]
+  );
 
-  useEffect(() => {
-    subtitleTrackRef.current = subtitleTrack;
-  }, [subtitleTrack]);
+  const setPendingVoiceEntries = useCallback<Dispatch<SetStateAction<Array<{ id: string; updatedAtMs: number }>>>>((update) => {
+    dispatch({
+      type: 'set_pending_voice_entries',
+      update,
+    });
+  }, []);
 
-  useEffect(() => {
-    subtitleTrackOriginalRef.current = subtitleTrackOriginal;
-  }, [subtitleTrackOriginal]);
+  const setPlaybackBlockedVoiceIds = useCallback<Dispatch<SetStateAction<string[]>>>((update) => {
+    dispatch({
+      type: 'set_playback_blocked_voice_ids',
+      update,
+    });
+  }, []);
 
-  const pendingTimingCount = useMemo(() => Object.keys(pendingTimingMap).length, [pendingTimingMap]);
+  const setPendingTimingMap = useCallback<Dispatch<SetStateAction<Record<string, { startMs: number; endMs: number }>>>>(
+    (update) => {
+      dispatch({
+        type: 'set_pending_timing_map',
+        update,
+        trackLabels: resolvedTrackLabels,
+      });
+    },
+    [resolvedTrackLabels]
+  );
+
+  const setServerLastMergedAtMs = useCallback<Dispatch<SetStateAction<number>>>((update) => {
+    dispatch({
+      type: 'set_server_last_merged_at_ms',
+      update,
+    });
+  }, []);
+
+  const setWorkstationDirty = useCallback<Dispatch<SetStateAction<boolean>>>((update) => {
+    dispatch({
+      type: 'set_workstation_dirty',
+      update,
+    });
+  }, []);
+
+  const pendingTimingCount = useMemo(() => Object.keys(state.pendingTimingMap).length, [state.pendingTimingMap]);
 
   const documentPendingState = useMemo(
     () =>
       deriveDocumentPendingState({
-        pendingVoiceEntries,
-        pendingTimingMap,
-        playbackBlockedVoiceIds,
-        convertRows: Array.isArray(convertObj?.srt_convert_arr) ? (convertObj?.srt_convert_arr as any[]) : [],
-        workstationDirty,
-        serverLastMergedAtMs,
+        pendingVoiceEntries: state.pendingVoiceEntries,
+        pendingTimingMap: state.pendingTimingMap,
+        playbackBlockedVoiceIds: state.playbackBlockedVoiceIds,
+        convertRows: Array.isArray(state.convertObj?.srt_convert_arr) ? (state.convertObj?.srt_convert_arr as any[]) : [],
+        workstationDirty: state.workstationDirty,
+        serverLastMergedAtMs: state.serverLastMergedAtMs,
       }),
-    [convertObj?.srt_convert_arr, pendingTimingMap, pendingVoiceEntries, playbackBlockedVoiceIds, workstationDirty, serverLastMergedAtMs]
+    [
+      state.convertObj?.srt_convert_arr,
+      state.pendingTimingMap,
+      state.pendingVoiceEntries,
+      state.playbackBlockedVoiceIds,
+      state.workstationDirty,
+      state.serverLastMergedAtMs,
+    ]
   );
 
-  const documentDuration = convertObj?.processDurationSeconds ?? 0;
+  const documentDuration = state.convertObj?.processDurationSeconds ?? 0;
 
   useEffect(() => {
-    mappedDocumentIdRef.current = null;
-    setWorkstationDirty(false);
+    dispatch({ type: 'reset_for_convert_id' });
   }, [convertId]);
 
   useEffect(() => {
-    const currentDocumentId = typeof convertObj?.id === 'string' ? convertObj.id : null;
-    const mappedDocument = mapConvertObjToEditorDocument({
-      convertObj,
-      previousDocumentId: mappedDocumentIdRef.current,
-      trackLabels,
-      pendingTimingMap,
-      previousSubtitleTrack: subtitleTrackRef.current as EditorSubtitleTrackItem[],
-      previousSubtitleTrackOriginal: subtitleTrackOriginalRef.current as EditorSubtitleTrackItem[],
+    dispatch({
+      type: 'remap_document',
+      trackLabels: resolvedTrackLabels,
     });
-
-    setVideoTrack(mappedDocument.videoTrack);
-    setBgmTrack(mappedDocument.bgmTrack);
-    setSubtitleTrack(mappedDocument.subtitleTrack);
-    setSubtitleTrackOriginal(mappedDocument.subtitleTrackOriginal);
-    mappedDocumentIdRef.current = currentDocumentId;
-  }, [convertObj, pendingTimingMap, trackLabels.bgmTrackName, trackLabels.videoTrackName]);
+  }, [resolvedTrackLabels]);
 
   const handlePendingVoiceIdsChange = useCallback((entries: Array<{ id: string; updatedAtMs: number }>) => {
     setPendingVoiceEntries(entries);
@@ -120,94 +153,70 @@ export function useVideoEditorDocument(args: UseVideoEditorDocumentArgs): UseVid
   }, []);
 
   const handleUpdateSubtitleAudio = useCallback((id: string, url: string, previewAudioUrl?: string) => {
-    setSubtitleTrack((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              audioUrl: url,
-              previewAudioUrl: previewAudioUrl ?? url,
-            }
-          : item
-      )
-    );
+    dispatch({
+      type: 'update_subtitle_audio',
+      id,
+      url,
+      previewAudioUrl,
+    });
   }, []);
 
   const handleSubtitleTextChange = useCallback((id: string, text: string) => {
-    setSubtitleTrack((prev) => prev.map((item) => (item.id === id ? { ...item, text } : item)));
+    dispatch({
+      type: 'update_subtitle_text',
+      id,
+      text,
+    });
   }, []);
 
   const handleSourceSubtitleTextChange = useCallback((sourceId: string, text: string) => {
-    setSubtitleTrackOriginal((prev) => prev.map((item) => (item.id === sourceId ? { ...item, text } : item)));
-
-    setConvertObj((prevObj) => {
-      if (!prevObj) return prevObj;
-      const rows = (prevObj.srt_source_arr || []) as any[];
-      const nextRows = rows.map((row) => (row?.id === sourceId ? { ...row, txt: text } : row));
-      return { ...prevObj, srt_source_arr: nextRows };
+    dispatch({
+      type: 'update_source_subtitle_text',
+      sourceId,
+      text,
     });
   }, []);
 
   const handleSubtitleVoiceStatusChange = useCallback((id: string, voiceStatus: string, needsTts: boolean) => {
-    setConvertObj((prevObj) => {
-      if (!prevObj) return prevObj;
-      const rows = (prevObj.srt_convert_arr || []) as any[];
-      const nextRows = rows.map((row) => (row?.id === id ? { ...row, vap_voice_status: voiceStatus, vap_needs_tts: needsTts } : row));
-      return { ...prevObj, srt_convert_arr: nextRows };
+    dispatch({
+      type: 'update_subtitle_voice_status',
+      id,
+      voiceStatus,
+      needsTts,
     });
   }, []);
 
   const handleResetTiming = useCallback((id: string, sourceId: string, startMs: number, endMs: number) => {
-    setPendingTimingMap((prev) => ({ ...prev, [id]: { startMs, endMs } }));
-
-    setConvertObj((prevObj) => {
-      if (!prevObj) return prevObj;
-      const convertRows = (prevObj.srt_convert_arr || []) as any[];
-      const sourceRows = (prevObj.srt_source_arr || []) as any[];
-      const sourceRow = sourceRows.find((row) => row?.id === sourceId);
-      if (!sourceRow) return prevObj;
-      const nextRows = convertRows.map((row) => (row?.id === id ? { ...row, start: sourceRow.start, end: sourceRow.end } : row));
-      return { ...prevObj, srt_convert_arr: nextRows };
+    dispatch({
+      type: 'reset_timing',
+      id,
+      sourceId,
+      startMs,
+      endMs,
     });
-
-    setSubtitleTrack((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              startTime: startMs / 1000,
-              duration: Math.max(0, (endMs - startMs) / 1000),
-            }
-          : item
-      )
-    );
   }, []);
 
   const resetDocumentSessionState = useCallback(() => {
-    setPendingVoiceEntries([]);
-    setPlaybackBlockedVoiceIds([]);
-    setPendingTimingMap({});
-    setServerLastMergedAtMs(0);
-    setWorkstationDirty(false);
+    dispatch({ type: 'reset_document_session_state' });
   }, []);
 
   return {
-    convertObj,
+    convertObj: state.convertObj,
     setConvertObj,
-    videoTrack,
-    bgmTrack,
-    subtitleTrack,
-    subtitleTrackOriginal,
-    pendingVoiceEntries,
+    videoTrack: state.videoTrack,
+    bgmTrack: state.bgmTrack,
+    subtitleTrack: state.subtitleTrack,
+    subtitleTrackOriginal: state.subtitleTrackOriginal,
+    pendingVoiceEntries: state.pendingVoiceEntries,
     setPendingVoiceEntries,
-    playbackBlockedVoiceIds,
+    playbackBlockedVoiceIds: state.playbackBlockedVoiceIds,
     setPlaybackBlockedVoiceIds,
-    pendingTimingMap,
+    pendingTimingMap: state.pendingTimingMap,
     setPendingTimingMap,
     pendingTimingCount,
-    serverLastMergedAtMs,
+    serverLastMergedAtMs: state.serverLastMergedAtMs,
     setServerLastMergedAtMs,
-    workstationDirty,
+    workstationDirty: state.workstationDirty,
     setWorkstationDirty,
     documentPendingState,
     documentDuration,

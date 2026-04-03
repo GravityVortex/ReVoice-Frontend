@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import { primeAuditionAudio, settleAuditionPreparation, waitForAuditionReady } from '../../audio-audition-engine';
+import { resolvePlayableAuditionUrl } from '../../audio-url-utils';
 import { resolveSourceAuditionAudio } from '../../audio-source-resolver';
 import {
   auditionEndedNaturally,
@@ -385,7 +386,10 @@ export function createPlaybackAuditionFlow(args: CreatePlaybackAuditionFlowArgs)
       );
     } else if (mode === 'convert') {
       const seg = args.getSubtitleTrack()[index];
-      const voiceUrl = (seg?.previewAudioUrl || seg?.audioUrl || '').trim();
+      const voiceUrl = resolvePlayableAuditionUrl({
+        previewAudioUrl: seg?.previewAudioUrl,
+        audioUrl: seg?.audioUrl,
+      });
 
       if (voiceUrl && !args.cacheGetVoice(voiceUrl)) {
         try {

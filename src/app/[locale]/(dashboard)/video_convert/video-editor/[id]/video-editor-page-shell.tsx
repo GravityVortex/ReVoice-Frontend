@@ -9,9 +9,13 @@ import { RetroGrid } from '@/shared/components/magicui/retro-grid';
 import { Button } from '@/shared/components/ui/button';
 
 import { VideoEditorHeader } from './video-editor-header';
+import { getHeaderDownloadState } from './header-download-actions';
+import { buildVideoEditorHeaderSession } from './video-editor-header-session';
 import { VideoEditorLoadingState } from './video-editor-loading-state';
 import { VideoEditorTimelineDock } from './video-editor-timeline-dock';
+import { buildVideoEditorTimelineSession } from './video-editor-timeline-session';
 import { VideoEditorUnsavedDialog } from './video-editor-unsaved-dialog';
+import { buildVideoEditorWorkspaceCapabilities } from './video-editor-workspace-capabilities';
 import { VideoEditorWorkspace } from './video-editor-workspace';
 import { useVideoEditorBootstrap } from './runtime/bootstrap/use-video-editor-bootstrap';
 import { useVideoEditorStructuralTimingBridge } from './runtime/bridge/use-video-editor-structural-timing-bridge';
@@ -21,9 +25,11 @@ import { getActiveVideoEditorDocumentState } from './runtime/document/video-edit
 import { useVideoEditorKeybindings } from './runtime/keybindings/use-video-editor-keybindings';
 import { useVideoEditorLayout } from './runtime/layout/use-video-editor-layout';
 import { useVideoEditorMerge } from './runtime/merge/use-video-editor-merge';
+import { buildVideoEditorPageGateState, buildVideoEditorPageGates } from './runtime/orchestration/video-editor-page-gates';
 import { useVideoEditorPageOrchestration } from './runtime/orchestration/use-video-editor-page-orchestration';
 import { useVideoEditorPlayback } from './runtime/playback/use-video-editor-playback';
 import { useVideoEditorStructuralEdit } from './runtime/structural/use-video-editor-structural-edit';
+import { useVideoEditorTimingSession } from './runtime/timing/use-video-editor-timing-session';
 
 export function VideoEditorPageShell() {
   const params = useParams();
@@ -143,33 +149,7 @@ export function VideoEditorPageShell() {
     hasUnsavedChanges,
   } = activeDocumentPendingState;
 
-  const {
-    transportSnapshot,
-    timelineHandleRef,
-    videoPreviewRef,
-    currentTime,
-    totalDuration,
-    volume,
-    isBgmMuted,
-    isSubtitleMuted,
-    isPlaying,
-    handlePreviewPlayStateChange,
-    handlePlayPause,
-    handleSeek,
-    handleSeekToSubtitle,
-    handleGlobalVolume,
-    handleToggleBgmMute,
-    handleToggleSubtitleMute,
-    handleAutoPlayNextChange,
-    handleAuditionRequestPlay,
-    handleAuditionToggle,
-    handleAuditionStop,
-    handleRetryBlockedPlayback,
-    handleCancelBlockedPlayback,
-    handleLocateBlockedClip,
-    clearVoiceCache,
-    clearActiveTimelineClip,
-  } = useVideoEditorPlayback({
+  const playbackSession = useVideoEditorPlayback({
     convertId,
     convertObj: activeConvertObj,
     locale,
@@ -192,6 +172,16 @@ export function VideoEditorPageShell() {
     setConvertObj,
   });
 
+  const timingSession = useVideoEditorTimingSession({
+    convertId,
+    locale,
+    convertObj: activeConvertObj,
+    pendingTimingMap: activePendingTimingMap,
+    pendingTimingCount: activePendingTimingCount,
+    setPendingTimingMap,
+    setConvertObj,
+  });
+
   const { syncStructuralPersistPendingTimings, persistPendingTimingsForMerge } = useVideoEditorStructuralTimingBridge();
 
   const {
@@ -204,11 +194,10 @@ export function VideoEditorPageShell() {
     isMergeJobActive,
     isGeneratingVideo,
     mergeStatusRequiresManualRetry,
-    mergePrimaryAction,
+    effectiveLastMergedAtMs,
+    downloadGuardRef,
     headerProgressFillCls,
     headerProgressVisual,
-    showHeaderBusySpinner,
-    headerDownloadState,
     handleGenerateVideo,
     handleRetryMergeStatus,
     handleVideoMergeStarted,
@@ -226,7 +215,6 @@ export function VideoEditorPageShell() {
     fallbackCurrentStep: activeConvertObj?.currentStep,
     userId: activeConvertObj?.userId || '',
     videoSourceFileName: videoSource?.fileName,
-    hasUnsavedChanges,
     serverLastMergedAtMs: activeServerLastMergedAtMs,
     setServerLastMergedAtMs,
     prepareForVideoMerge,
@@ -242,7 +230,6 @@ export function VideoEditorPageShell() {
     structuralEditBlockReason,
     splitDisabled,
     undoDisabled,
-    persistPendingTimingsIfNeeded,
     handleUndoCancel,
     handleRollbackLatest,
     handleSubtitleSplit,
@@ -252,30 +239,84 @@ export function VideoEditorPageShell() {
     t,
     convertObj: activeConvertObj,
     subtitleTrack: activeSubtitleTrack,
-    currentTimeSec: currentTime,
-    isPlaying,
+    currentTimeSec: playbackSession.state.currentTime,
+    isPlaying: playbackSession.state.isPlaying,
     isGeneratingVideo,
     isTaskRunning,
     isMergeJobActive,
-    pendingTimingMap: activePendingTimingMap,
-    setPendingTimingMap,
-    pendingTimingCount: activePendingTimingCount,
+    timingSession,
     setConvertObj,
-    clearActiveTimelineClip,
+    clearActiveTimelineClip: playbackSession.maintenance.clearActiveTimelineClip,
     prepareForStructuralEdit,
     scrollToItem: scrollToWorkstationItem,
-    pausePlaybackBeforeSplit: () => {
-      if (isPlaying) handlePlayPause();
+    pausePlaybackBeforeSplit: async () => {
+      // High Fix #6: Make pausePlaybackBeforeSplit async and wait for playback to stop
+      if (playbackSession.state.isPlaying) {
+        playbackSession.actions.handlePlayPause();
+        // Wait for playback state to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     },
-    clearVoiceCache,
+    clearVoiceCache: playbackSession.maintenance.clearVoiceCache,
   });
 
   useLayoutEffect(() => {
-    syncStructuralPersistPendingTimings(persistPendingTimingsIfNeeded);
+    // P0 Fix #1: Sync flushPendingTimings for merge (not persistPendingTimingsIfNeeded)
+    syncStructuralPersistPendingTimings(timingSession.actions.flushPendingTimings);
     return () => {
       syncStructuralPersistPendingTimings(undefined);
     };
-  }, [persistPendingTimingsIfNeeded, syncStructuralPersistPendingTimings]);
+  }, [syncStructuralPersistPendingTimings, timingSession.actions.flushPendingTimings]);
+
+  const downloadGuardState = useMemo(
+    () =>
+      getHeaderDownloadState({
+        taskStatus,
+        serverLastMergedAtMs: effectiveLastMergedAtMs,
+        isTaskRunning,
+        isMergeJobActive,
+      }),
+    [effectiveLastMergedAtMs, isMergeJobActive, isTaskRunning, taskStatus]
+  );
+  downloadGuardRef.current = downloadGuardState;
+
+  const pageGateState = useMemo(
+    () =>
+      buildVideoEditorPageGateState({
+        header: {
+          isGeneratingVideo,
+          isTaskRunning,
+          isMergeJobActive,
+          mergeStatusRequiresManualRetry,
+          hasUnsavedChanges,
+          downloadState: downloadGuardState,
+        },
+        structural: {
+          blockReason: structuralEditBlockReason,
+          splitDisabled,
+          splitLoading: isSplittingSubtitle,
+          hasUndoableOps,
+          undoDisabled,
+          undoLoading: isRollingBack,
+          undoCountdown,
+        },
+      }),
+    [
+      downloadGuardState,
+      hasUndoableOps,
+      hasUnsavedChanges,
+      isGeneratingVideo,
+      isMergeJobActive,
+      isRollingBack,
+      isSplittingSubtitle,
+      isTaskRunning,
+      mergeStatusRequiresManualRetry,
+      splitDisabled,
+      structuralEditBlockReason,
+      undoCountdown,
+      undoDisabled,
+    ]
+  );
 
   const {
     showLeaveDialog,
@@ -292,15 +333,207 @@ export function VideoEditorPageShell() {
     hasUnsavedChanges,
     t,
     tDetail,
-    headerDownloadTooltipKey: headerDownloadState.tooltipKey,
+    headerDownloadTooltipKey: pageGateState.header.downloadState.tooltipKey,
     resetDocumentSessionState,
     loadedTaskMainItem,
     hydrateTaskStateFromDetail,
   });
 
+  const pageGates = useMemo(
+    () =>
+      buildVideoEditorPageGates({
+        state: pageGateState,
+        headerDownloadTooltipText,
+        structuralBlockedTooltipText: structuralEditBlockedMessage,
+      }),
+    [
+      headerDownloadTooltipText,
+      pageGateState,
+      structuralEditBlockedMessage,
+    ]
+  );
+
+  const headerSession = useMemo(
+    () =>
+      buildVideoEditorHeaderSession({
+        locale,
+        t,
+        view: {
+          convertObj: activeConvertObj,
+          videoSourceFileName: videoSource?.fileName,
+          statusMeta,
+          progressPercent,
+          totalDuration: playbackSession.state.totalDuration,
+          pendingMergeCount,
+          pendingMergeVoiceCount,
+          pendingMergeTimingCount,
+          taskStatus,
+          taskErrorMessage,
+          isTaskRunning,
+          isMergeJobActive,
+          taskProgress,
+          mergeStatusRequiresManualRetry,
+          headerCapabilities: pageGates.headerCapabilities,
+          headerDownloadLabels,
+          headerProgressVisual,
+          headerProgressFillCls,
+          hasUnsavedChanges,
+        },
+        actions: {
+          onBackClick: handleBackClick,
+          onRetryMergeStatus: handleRetryMergeStatus,
+          onGenerateVideo: handleGenerateVideo,
+          onDownloadVideo: () => void handleDownloadVideo(),
+          onDownloadAudio: (kind) => void handleDownloadAudio(kind),
+          onDownloadSrt: (kind) => void handleDownloadSrt(kind),
+        },
+      }),
+    [
+      activeConvertObj,
+      handleBackClick,
+      handleDownloadAudio,
+      handleDownloadSrt,
+      handleDownloadVideo,
+      handleGenerateVideo,
+      handleRetryMergeStatus,
+      hasUnsavedChanges,
+      headerDownloadLabels,
+      headerProgressFillCls,
+      headerProgressVisual,
+      isMergeJobActive,
+      isTaskRunning,
+      locale,
+      mergeStatusRequiresManualRetry,
+      pageGates.headerCapabilities,
+      pendingMergeCount,
+      pendingMergeTimingCount,
+      pendingMergeVoiceCount,
+      progressPercent,
+      statusMeta,
+      t,
+      taskErrorMessage,
+      taskProgress,
+      taskStatus,
+      playbackSession.state.totalDuration,
+      videoSource?.fileName,
+    ]
+  );
+
+  const workspaceCapabilities = useMemo(
+    () =>
+      buildVideoEditorWorkspaceCapabilities({
+        workstation: {
+          ref: workstationRef,
+          convertObj: activeConvertObj,
+          lastMergedAtMs: activeServerLastMergedAtMs,
+          transportSnapshot: playbackSession.state.transportSnapshot,
+          onSeekToSubtitle: playbackSession.actions.handleSeekToSubtitle,
+          onUpdateSubtitleAudioUrl: handleUpdateSubtitleAudio,
+          onSubtitleTextChange: handleSubtitleTextChange,
+          onSourceSubtitleTextChange: handleSourceSubtitleTextChange,
+          onSubtitleVoiceStatusChange: handleSubtitleVoiceStatusChange,
+          onPendingVoiceIdsChange: handlePendingVoiceIdsChange,
+          onPlaybackBlockedVoiceIdsChange: handlePlaybackBlockedVoiceIdsChange,
+          onVideoMergeStarted: handleVideoMergeStarted,
+          onRequestAuditionPlay: playbackSession.actions.handleAuditionRequestPlay,
+          onRequestAuditionToggle: playbackSession.actions.handleAuditionToggle,
+          onRequestAuditionStop: () => playbackSession.actions.handleAuditionStop(false),
+          onToggleAutoPlayNext: playbackSession.actions.handleAutoPlayNextChange,
+          onDirtyStateChange: setWorkstationDirty,
+          onResetTiming: handleResetTiming,
+          onReloadFromServer: () => reloadConvertDetail({ silent: true }),
+        },
+        preview: {
+          ref: playbackSession.refs.videoPreviewRef,
+          transportSnapshot: playbackSession.state.transportSnapshot,
+          subtitleTrack: activeSubtitleTrack,
+          videoUrl: activeVideoTrack[0]?.url,
+          onPlayStateChange: playbackSession.actions.handlePreviewPlayStateChange,
+          onRetryBlockedPlayback: playbackSession.actions.handleRetryBlockedPlayback,
+          onCancelBlockedPlayback: playbackSession.actions.handleCancelBlockedPlayback,
+          onLocateBlockedClip: playbackSession.actions.handleLocateBlockedClip,
+          onSubtitleUpdate: commitPreviewSubtitleText,
+        },
+      }),
+    [
+      activeConvertObj,
+      activeServerLastMergedAtMs,
+      activeSubtitleTrack,
+      activeVideoTrack,
+      commitPreviewSubtitleText,
+      handlePendingVoiceIdsChange,
+      handlePlaybackBlockedVoiceIdsChange,
+      handleResetTiming,
+      handleSourceSubtitleTextChange,
+      handleSubtitleTextChange,
+      handleSubtitleVoiceStatusChange,
+      handleUpdateSubtitleAudio,
+      handleVideoMergeStarted,
+      playbackSession,
+      reloadConvertDetail,
+      setWorkstationDirty,
+      workstationRef,
+    ]
+  );
+
+  const timelineSession = useMemo(
+    () =>
+      buildVideoEditorTimelineSession({
+        dock: {
+          heightPx: timelineHeightPx,
+          resizeHandleLabel: timelineResizeHandleLabel,
+          onResizePointerDown: handleTimelineResizePointerDown,
+          onResizePointerMove: handleTimelineResizePointerMove,
+          onResizePointerUp: handleTimelineResizePointerUp,
+          onResizePointerCancel: handleTimelineResizePointerCancel,
+        },
+        panel: {
+          totalDuration: playbackSession.state.totalDuration,
+          transportSnapshot: playbackSession.state.transportSnapshot,
+          subtitleTrack: activeSubtitleTrack,
+          subtitleTrackOriginal: activeSubtitleTrackOriginal,
+          vocalWaveformUrl: activeConvertObj?.vocalAudioUrl,
+          bgmWaveformUrl: activeConvertObj?.backgroundAudioUrl,
+          timelineRef: playbackSession.refs.timelineHandleRef,
+          zoom,
+          volume: playbackSession.state.volume,
+          isBgmMuted: playbackSession.state.isBgmMuted,
+          isSubtitleMuted: playbackSession.state.isSubtitleMuted,
+          structuralCapabilities: pageGates.structuralCapabilities,
+          onPlayPause: playbackSession.actions.handlePlayPause,
+          onSeek: playbackSession.actions.handleSeek,
+          onZoomChange: setZoom,
+          onVolumeChange: playbackSession.actions.handleGlobalVolume,
+          onToggleBgmMute: playbackSession.actions.handleToggleBgmMute,
+          onToggleSubtitleMute: playbackSession.actions.handleToggleSubtitleMute,
+          onSplitAtCurrentTime: handleSubtitleSplit,
+          onUndo: handleRollbackLatest,
+          onUndoCancel: handleUndoCancel,
+        },
+      }),
+    [
+      activeConvertObj,
+      activeSubtitleTrack,
+      activeSubtitleTrackOriginal,
+      handleRollbackLatest,
+      handleSubtitleSplit,
+      handleTimelineResizePointerCancel,
+      handleTimelineResizePointerDown,
+      handleTimelineResizePointerMove,
+      handleTimelineResizePointerUp,
+      handleUndoCancel,
+      playbackSession,
+      setZoom,
+      pageGates.structuralCapabilities,
+      timelineHeightPx,
+      timelineResizeHandleLabel,
+      zoom,
+    ]
+  );
+
   useVideoEditorKeybindings({
     onUndo: handleRollbackLatest,
-    onPlayPause: handlePlayPause,
+    onPlayPause: playbackSession.actions.handlePlayPause,
   });
 
   // --- RENDER ---
@@ -335,107 +568,14 @@ export function VideoEditorPageShell() {
       </div>
 
       <VideoEditorHeader
-        locale={locale}
-        t={t}
-        convertObj={activeConvertObj}
-        videoSourceFileName={videoSource?.fileName}
-        statusMeta={statusMeta}
-        progressPercent={progressPercent}
-        totalDuration={totalDuration}
-        pendingMergeCount={pendingMergeCount}
-        pendingMergeVoiceCount={pendingMergeVoiceCount}
-        pendingMergeTimingCount={pendingMergeTimingCount}
-        taskStatus={taskStatus}
-        taskErrorMessage={taskErrorMessage}
-        isTaskRunning={isTaskRunning}
-        isMergeJobActive={isMergeJobActive}
-        taskProgress={taskProgress}
-        mergeStatusRequiresManualRetry={mergeStatusRequiresManualRetry}
-        mergePrimaryAction={mergePrimaryAction}
-        showHeaderBusySpinner={showHeaderBusySpinner}
-        headerDownloadLabels={headerDownloadLabels}
-        headerDownloadState={headerDownloadState}
-        headerDownloadTooltipText={headerDownloadTooltipText}
-        headerProgressVisual={headerProgressVisual}
-        headerProgressFillCls={headerProgressFillCls}
-        hasUnsavedChanges={hasUnsavedChanges}
-        onBackClick={handleBackClick}
-        onRetryMergeStatus={handleRetryMergeStatus}
-        onGenerateVideo={handleGenerateVideo}
-        onDownloadVideo={() => void handleDownloadVideo()}
-        onDownloadAudio={(kind) => void handleDownloadAudio(kind)}
-        onDownloadSrt={(kind) => void handleDownloadSrt(kind)}
+        headerSession={headerSession}
       />
 
       {/* Body (user-tunable dock layout: resizable columns + resizable timeline height). */}
       <div ref={bodyRef} className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-        <VideoEditorWorkspace
-          convertObj={activeConvertObj}
-          serverLastMergedAtMs={activeServerLastMergedAtMs}
-          transportSnapshot={transportSnapshot}
-          subtitleTrack={activeSubtitleTrack}
-          videoUrl={activeVideoTrack[0]?.url}
-          workstationRef={workstationRef}
-          videoPreviewRef={videoPreviewRef}
-          onSeekToSubtitle={handleSeekToSubtitle}
-          onUpdateSubtitleAudioUrl={handleUpdateSubtitleAudio}
-          onSubtitleTextChange={handleSubtitleTextChange}
-          onPreviewSubtitleCommit={commitPreviewSubtitleText}
-          onSourceSubtitleTextChange={handleSourceSubtitleTextChange}
-          onSubtitleVoiceStatusChange={handleSubtitleVoiceStatusChange}
-          onPendingVoiceIdsChange={handlePendingVoiceIdsChange}
-          onPlaybackBlockedVoiceIdsChange={handlePlaybackBlockedVoiceIdsChange}
-          onVideoMergeStarted={handleVideoMergeStarted}
-          onRequestAuditionPlay={handleAuditionRequestPlay}
-          onRequestAuditionToggle={handleAuditionToggle}
-          onRequestAuditionStop={() => handleAuditionStop(false)}
-          onToggleAutoPlayNext={handleAutoPlayNextChange}
-          onDirtyStateChange={setWorkstationDirty}
-          onResetTiming={handleResetTiming}
-          onPreviewPlayStateChange={handlePreviewPlayStateChange}
-          onRetryBlockedPlayback={handleRetryBlockedPlayback}
-          onCancelBlockedPlayback={handleCancelBlockedPlayback}
-          onLocateBlockedClip={handleLocateBlockedClip}
-          onReloadFromServer={() => reloadConvertDetail({ silent: true })}
-        />
+        <VideoEditorWorkspace workspaceCapabilities={workspaceCapabilities} />
 
-        <VideoEditorTimelineDock
-          locale={locale}
-          timelineHeightPx={timelineHeightPx}
-          resizeHandleLabel={timelineResizeHandleLabel}
-          totalDuration={totalDuration}
-          transportSnapshot={transportSnapshot}
-          subtitleTrack={activeSubtitleTrack}
-          subtitleTrackOriginal={activeSubtitleTrackOriginal}
-          vocalWaveformUrl={activeConvertObj?.vocalAudioUrl}
-          bgmWaveformUrl={activeConvertObj?.backgroundAudioUrl}
-          timelineRef={timelineHandleRef}
-          zoom={zoom}
-          volume={volume}
-          isBgmMuted={isBgmMuted}
-          isSubtitleMuted={isSubtitleMuted}
-          splitDisabled={splitDisabled}
-          splitTooltipText={structuralEditBlockReason ? structuralEditBlockedMessage : null}
-          splitLoading={isSplittingSubtitle}
-          hasUndoableOps={hasUndoableOps}
-          undoDisabled={undoDisabled}
-          undoLoading={isRollingBack}
-          undoCountdown={undoCountdown}
-          undoTooltipText={structuralEditBlockReason ? structuralEditBlockedMessage : null}
-          onResizePointerDown={handleTimelineResizePointerDown}
-          onResizePointerMove={handleTimelineResizePointerMove}
-          onResizePointerUp={handleTimelineResizePointerUp}
-          onResizePointerCancel={handleTimelineResizePointerCancel}
-          onPlayPause={handlePlayPause}
-          onSeek={handleSeek}
-          onZoomChange={setZoom}
-          onVolumeChange={handleGlobalVolume}
-          onToggleBgmMute={handleToggleBgmMute}
-          onToggleSubtitleMute={handleToggleSubtitleMute}
-          onSplitAtCurrentTime={handleSubtitleSplit}
-          onUndo={handleRollbackLatest}
-          onUndoCancel={handleUndoCancel}
-        />
+        <VideoEditorTimelineDock timelineSession={timelineSession} />
       </div>
 
       <VideoEditorUnsavedDialog

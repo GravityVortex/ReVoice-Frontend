@@ -15,6 +15,18 @@ describe('evaluateSubtitlePlaybackGate', () => {
     ).toEqual({ kind: 'ready' });
   });
 
+  it('treats same-origin storage stream urls as playable audio on the main playback chain', () => {
+    expect(
+      evaluateSubtitlePlaybackGate({
+        clipIndex: 1,
+        subtitleId: 'clip-stream-1',
+        audioUrl: '/api/storage/stream?key=user-1%2Ftask-1%2Fadj_audio_time_temp%2Fclip-1.wav&t=123',
+        voiceStatus: 'ready',
+        needsTts: false,
+      })
+    ).toEqual({ kind: 'ready' });
+  });
+
   it('treats needsTts segments as voice_unavailable with needs_regen reason', () => {
     expect(
       evaluateSubtitlePlaybackGate({
@@ -178,6 +190,22 @@ describe('evaluateClipConvertAuditionAvailability', () => {
     ).toEqual({ kind: 'ready' });
   });
 
+  it('allows convert audition for same-origin preview stream urls while the persisted row is still marked missing', () => {
+    expect(
+      evaluateClipConvertAuditionAvailability({
+        clipId: 'clip-9b',
+        row: {
+          vap_voice_status: 'missing',
+          vap_needs_tts: true,
+          audio_url: '',
+        },
+        audioUrl: '/api/storage/stream?key=user-1%2Ftask-1%2Fadj_audio_time_temp%2Fclip-9b.wav&t=123',
+        pendingVoiceIdSet: new Set(),
+        explicitMissingVoiceIdSet: new Set(['clip-9b']),
+      })
+    ).toEqual({ kind: 'ready' });
+  });
+
   it('still blocks convert audition when the row is locally blocked by stale text or processing state', () => {
     expect(
       evaluateClipConvertAuditionAvailability({
@@ -196,6 +224,27 @@ describe('evaluateClipConvertAuditionAvailability', () => {
       kind: 'voice_unavailable',
       clipIndex: -1,
       subtitleId: 'clip-10',
+      reason: 'needs_regen',
+    });
+  });
+
+  it('does not treat relative draft preview paths as ready for convert audition', () => {
+    expect(
+      evaluateClipConvertAuditionAvailability({
+        clipId: 'clip-11a',
+        row: {
+          vap_voice_status: 'missing',
+          vap_needs_tts: true,
+          audio_url: '',
+        },
+        audioUrl: 'adj_audio_time_temp/clip-11a.wav?t=123',
+        pendingVoiceIdSet: new Set(),
+        explicitMissingVoiceIdSet: new Set(['clip-11a']),
+      })
+    ).toEqual({
+      kind: 'voice_unavailable',
+      clipIndex: -1,
+      subtitleId: 'clip-11a',
       reason: 'needs_regen',
     });
   });

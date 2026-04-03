@@ -2,42 +2,14 @@
 
 import React from 'react';
 
-import type { ConvertObj, SubtitleTrackItem } from '@/shared/components/video-editor/types';
 import { ResizableSplitPanel } from '@/shared/components/resizable-split-panel';
 
-import type { EditorTransportSnapshot } from './editor-transport';
-import { SubtitleWorkstation, type SubtitleWorkstationHandle } from './subtitle-workstation';
-import type { VideoEditorBoundDetailReloadAction } from './video-editor-reload-contract';
-import { VideoPreviewPanel, type VideoPreviewRef } from './video-preview-panel';
+import { SubtitleWorkstation } from './subtitle-workstation';
+import { VideoPreviewPanel } from './video-preview-panel';
+import type { VideoEditorWorkspaceCapabilities } from './video-editor-workspace-capabilities';
 
 type VideoEditorWorkspaceProps = {
-  convertObj: ConvertObj | null;
-  serverLastMergedAtMs: number;
-  transportSnapshot: EditorTransportSnapshot;
-  subtitleTrack: SubtitleTrackItem[];
-  videoUrl?: string;
-  workstationRef: React.RefObject<SubtitleWorkstationHandle | null>;
-  videoPreviewRef: React.RefObject<VideoPreviewRef | null>;
-  onSeekToSubtitle: (time: number) => void;
-  onUpdateSubtitleAudioUrl: (id: string, audioUrl: string, previewAudioUrl?: string) => void;
-  onSubtitleTextChange: (id: string, text: string) => void;
-  onPreviewSubtitleCommit: (id: string, text: string) => boolean;
-  onSourceSubtitleTextChange: (sourceId: string, text: string) => void;
-  onSubtitleVoiceStatusChange: (id: string, voiceStatus: string, needsTts: boolean) => void;
-  onPendingVoiceIdsChange: (ids: Array<{ id: string; updatedAtMs: number }>) => void;
-  onPlaybackBlockedVoiceIdsChange: (ids: string[]) => void;
-  onVideoMergeStarted: (args: { jobId: string; createdAtMs: number }) => void;
-  onRequestAuditionPlay: (index: number, mode: 'source' | 'convert') => void;
-  onRequestAuditionToggle: () => void;
-  onRequestAuditionStop: () => void;
-  onToggleAutoPlayNext: (val: boolean) => void;
-  onDirtyStateChange: (isDirty: boolean) => void;
-  onResetTiming: (id: string, sourceId: string, startMs: number, endMs: number) => void;
-  onPreviewPlayStateChange: (isPlaying: boolean) => void;
-  onRetryBlockedPlayback: () => void;
-  onCancelBlockedPlayback: () => void;
-  onLocateBlockedClip: () => void;
-  onReloadFromServer: VideoEditorBoundDetailReloadAction;
+  workspaceCapabilities: VideoEditorWorkspaceCapabilities;
 };
 
 export function VideoEditorWorkspace(props: VideoEditorWorkspaceProps) {
@@ -52,40 +24,40 @@ export function VideoEditorWorkspace(props: VideoEditorWorkspaceProps) {
         leftPanel={
           <div className="bg-background/20 h-full">
             <SubtitleWorkstation
-              ref={props.workstationRef}
-              convertObj={props.convertObj}
-              lastMergedAtMs={props.serverLastMergedAtMs}
-              transportSnapshot={props.transportSnapshot}
-              onSeekToSubtitle={props.onSeekToSubtitle}
-              onUpdateSubtitleAudioUrl={props.onUpdateSubtitleAudioUrl}
-              onSubtitleTextChange={props.onSubtitleTextChange}
-              onSourceSubtitleTextChange={props.onSourceSubtitleTextChange}
-              onSubtitleVoiceStatusChange={props.onSubtitleVoiceStatusChange}
-              onPendingVoiceIdsChange={props.onPendingVoiceIdsChange}
-              onPlaybackBlockedVoiceIdsChange={props.onPlaybackBlockedVoiceIdsChange}
-              onVideoMergeStarted={props.onVideoMergeStarted}
-              onRequestAuditionPlay={props.onRequestAuditionPlay}
-              onRequestAuditionToggle={props.onRequestAuditionToggle}
-              onRequestAuditionStop={props.onRequestAuditionStop}
-              onToggleAutoPlayNext={props.onToggleAutoPlayNext}
-              onDirtyStateChange={props.onDirtyStateChange}
-              onResetTiming={props.onResetTiming}
-              onReloadFromServer={props.onReloadFromServer}
+              ref={props.workspaceCapabilities.workstation.ref}
+              convertObj={props.workspaceCapabilities.workstation.convertObj}
+              lastMergedAtMs={props.workspaceCapabilities.workstation.lastMergedAtMs}
+              transportSnapshot={props.workspaceCapabilities.workstation.transportSnapshot}
+              onSeekToSubtitle={props.workspaceCapabilities.workstation.onSeekToSubtitle}
+              onUpdateSubtitleAudioUrl={props.workspaceCapabilities.workstation.onUpdateSubtitleAudioUrl}
+              onSubtitleTextChange={props.workspaceCapabilities.workstation.onSubtitleTextChange}
+              onSourceSubtitleTextChange={props.workspaceCapabilities.workstation.onSourceSubtitleTextChange}
+              onSubtitleVoiceStatusChange={props.workspaceCapabilities.workstation.onSubtitleVoiceStatusChange}
+              onPendingVoiceIdsChange={props.workspaceCapabilities.workstation.onPendingVoiceIdsChange}
+              onPlaybackBlockedVoiceIdsChange={props.workspaceCapabilities.workstation.onPlaybackBlockedVoiceIdsChange}
+              onVideoMergeStarted={props.workspaceCapabilities.workstation.onVideoMergeStarted}
+              onRequestAuditionPlay={props.workspaceCapabilities.workstation.onRequestAuditionPlay}
+              onRequestAuditionToggle={props.workspaceCapabilities.workstation.onRequestAuditionToggle}
+              onRequestAuditionStop={props.workspaceCapabilities.workstation.onRequestAuditionStop}
+              onToggleAutoPlayNext={props.workspaceCapabilities.workstation.onToggleAutoPlayNext}
+              onDirtyStateChange={props.workspaceCapabilities.workstation.onDirtyStateChange}
+              onResetTiming={props.workspaceCapabilities.workstation.onResetTiming}
+              onReloadFromServer={props.workspaceCapabilities.workstation.onReloadFromServer}
             />
           </div>
         }
         rightPanel={
           <div className="h-full bg-black/95">
             <VideoPreviewPanel
-              ref={props.videoPreviewRef}
-              transportSnapshot={props.transportSnapshot}
-              subtitleTrack={props.subtitleTrack}
-              videoUrl={props.videoUrl}
-              onPlayStateChange={props.onPreviewPlayStateChange}
-              onRetryBlockedPlayback={props.onRetryBlockedPlayback}
-              onCancelBlockedPlayback={props.onCancelBlockedPlayback}
-              onLocateBlockedClip={props.onLocateBlockedClip}
-              onSubtitleUpdate={props.onPreviewSubtitleCommit}
+              ref={props.workspaceCapabilities.preview.ref}
+              transportSnapshot={props.workspaceCapabilities.preview.transportSnapshot}
+              subtitleTrack={props.workspaceCapabilities.preview.subtitleTrack}
+              videoUrl={props.workspaceCapabilities.preview.videoUrl}
+              onPlayStateChange={props.workspaceCapabilities.preview.onPlayStateChange}
+              onRetryBlockedPlayback={props.workspaceCapabilities.preview.onRetryBlockedPlayback}
+              onCancelBlockedPlayback={props.workspaceCapabilities.preview.onCancelBlockedPlayback}
+              onLocateBlockedClip={props.workspaceCapabilities.preview.onLocateBlockedClip}
+              onSubtitleUpdate={props.workspaceCapabilities.preview.onSubtitleUpdate}
               className="rounded-none"
             />
           </div>

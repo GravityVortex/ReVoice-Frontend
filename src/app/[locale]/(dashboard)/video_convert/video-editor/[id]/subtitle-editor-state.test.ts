@@ -111,6 +111,22 @@ describe('subtitle editor state merge', () => {
     expect(merged.audioUrl).toBe('adj_audio_time/clip-1.wav?t=9');
   });
 
+  it('does not let a local relative preview url override the latest playable preview url from the server', () => {
+    const local = makeTrack({
+      text: 'local convert',
+      audioUrl: 'https://cdn.example.com/prod/user-1/task-1/adj_audio_time_temp/clip-1.wav?t=9',
+      previewAudioUrl: 'adj_audio_time_temp/clip-1.wav?t=3',
+    });
+    const loaded = makeTrack({
+      previewAudioUrl: 'https://cdn.example.com/prod/user-1/task-1/adj_audio_time_temp/clip-1.wav?t=10',
+    });
+
+    const [merged] = mergeLoadedConvertedTrackItems([local], [loaded]);
+
+    expect(merged.audioUrl).toBe('https://cdn.example.com/prod/user-1/task-1/adj_audio_time_temp/clip-1.wav?t=9');
+    expect(merged.previewAudioUrl).toBe('https://cdn.example.com/prod/user-1/task-1/adj_audio_time_temp/clip-1.wav?t=10');
+  });
+
   it('carries unified converted timeline state across timing-driven id renames by sourceId', () => {
     const local = makeTrack({
       id: 'clip-old',

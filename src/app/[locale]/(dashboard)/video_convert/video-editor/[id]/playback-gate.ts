@@ -1,3 +1,5 @@
+import { isPlayableEditorAudioUrl } from './audio-url-utils';
+
 export type PlaybackGateUnavailableReason = 'missing' | 'needs_regen' | 'server_failed';
 
 export type SubtitlePlaybackGateState =
@@ -22,11 +24,11 @@ function readTrimmedString(value: unknown) {
 }
 
 function hasPlayableAudioPath(audioUrl: string) {
-  return /^https?:\/\//i.test(readTrimmedString(audioUrl));
+  return isPlayableEditorAudioUrl(readTrimmedString(audioUrl));
 }
 
 function hasAuditionPreviewAudioPath(audioUrl: string) {
-  return readTrimmedString(audioUrl).length > 0;
+  return hasPlayableAudioPath(audioUrl);
 }
 
 export function evaluateSubtitlePlaybackGate(
@@ -76,9 +78,16 @@ export function evaluateSubtitlePlaybackGate(
   };
 }
 
+export type PlaybackGateSubtitleRow = {
+  vap_draft_audio_path?: string | null;
+  audio_url?: string | null;
+  vap_voice_status?: string | null;
+  vap_needs_tts?: boolean | string | number | null;
+};
+
 type EvaluateClipVoiceAvailabilityArgs = {
   clipId: string;
-  row: any;
+  row: PlaybackGateSubtitleRow | null;
   pendingVoiceIdSet: Set<string>;
   blockingVoiceIdSet?: Set<string>;
   explicitMissingVoiceIdSet: Set<string>;
@@ -109,7 +118,7 @@ export function evaluateClipVoiceAvailability(
     voiceStatus:
       isExplicitMissing || isPendingVoice || isLocallyBlocked
         ? readTrimmedString(row?.vap_voice_status) || 'missing'
-        : row?.vap_voice_status,
+        : row?.vap_voice_status ?? undefined,
     needsTts: isPendingVoice || isLocallyBlocked || readBooleanFlag(row?.vap_needs_tts),
   });
 }

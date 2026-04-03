@@ -75,6 +75,17 @@ async function call(body: any) {
   return { res, json };
 }
 
+async function callGet(search: Record<string, string>) {
+  const { GET } = await import('@/app/api/video-task/generate-subtitle-voice/route');
+  const params = new URLSearchParams(search);
+  const req = new Request(`http://localhost/api/video-task/generate-subtitle-voice?${params.toString()}`, {
+    method: 'GET',
+  });
+  const res = await GET(req as any);
+  const json = await res.json();
+  return { res, json };
+}
+
 function expectProbeFetchCalledWith(url: string) {
   expect(fetch).toHaveBeenCalledWith(
     url,
@@ -203,6 +214,67 @@ describe('/api/video-task/generate-subtitle-voice', () => {
       expect.objectContaining({
         vap_draft_audio_path: 'adj_audio_time_temp/00030001_00-00-10-074_00-00-14-475.wav',
         vap_draft_txt: '新的子字幕译文',
+      })
+    );
+  });
+
+  it('persists gen_srt success as voice-regeneration-required state and clears stale tts markers', async () => {
+    mockJavaSubtitleSingleTranslate.mockResolvedValueOnce({ textTranslated: '新的译文结果' });
+
+    const { json } = await call({
+      type: 'gen_srt',
+      text: 'updated source text',
+      preText: '',
+      subtitleName: '00030001_00-00-10-074_00-00-14-475',
+      taskId: 'task_1',
+      languageTarget: 'zh',
+    });
+
+    expect(json.code).toBe(0);
+    expect(mockPatchSubtitleItemById).toHaveBeenCalledWith(
+      'task_1',
+      'translate_srt',
+      '00030001_00-00-10-074_00-00-14-475',
+      expect.objectContaining({
+        vap_draft_txt: '新的译文结果',
+        vap_draft_audio_path: null,
+        vap_voice_status: 'missing',
+        vap_needs_tts: true,
+        vap_tts_job_id: null,
+        vap_tts_request_key: null,
+      })
+    );
+  });
+
+  it('persists resumed gen_srt job success as voice-regeneration-required state after refresh recovery', async () => {
+    mockPyOriginalTxtTranslateJobStatus.mockResolvedValueOnce({
+      code: 200,
+      modal_status: 'SUCCESS',
+      data: {
+        text_translated: '恢复后的译文',
+      },
+    });
+
+    const { json } = await callGet({
+      taskId: 'task_1',
+      subtitleName: '00030001_00-00-10-074_00-00-14-475',
+      type: 'gen_srt',
+      jobId: 'job-gen-1',
+      requestKey: 'req-gen-1',
+    });
+
+    expect(json.code).toBe(0);
+    expect(mockPatchSubtitleItemById).toHaveBeenCalledWith(
+      'task_1',
+      'translate_srt',
+      '00030001_00-00-10-074_00-00-14-475',
+      expect.objectContaining({
+        vap_draft_txt: '恢复后的译文',
+        vap_draft_audio_path: null,
+        vap_voice_status: 'missing',
+        vap_needs_tts: true,
+        vap_tts_job_id: null,
+        vap_tts_request_key: null,
       })
     );
   });

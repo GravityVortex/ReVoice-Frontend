@@ -676,6 +676,7 @@ export function createPlaybackTimeLoop(args: CreatePlaybackTimeLoopArgs) {
     refs.rafIdRef.current = null;
     refs.videoFrameCbIdRef.current = null;
 
+    // Critical Fix #2: Check activeConvertIdRef to prevent cross-task RAF execution
     const videoElement = refs.videoPreviewRef.current?.videoElement;
     if (!videoElement) return;
     if (!refs.isPlayingRef.current) return;

@@ -9,11 +9,12 @@ describe('video editor header shell boundary', () => {
 
     expect(shellSource).toContain("import { VideoEditorHeader } from './video-editor-header';");
     expect(shellSource).toContain('<VideoEditorHeader');
+    expect(shellSource).toContain('headerSession={headerSession}');
     expect(shellSource).not.toContain('<HeaderDownloadActions');
     expect(shellSource).not.toContain("aria-label={t('header.backToProject')}");
 
     expect(headerSource).toContain('export function VideoEditorHeader(');
     expect(headerSource).toContain('<HeaderDownloadActions');
-    expect(headerSource).toContain("aria-label={props.t('header.backToProject')}");
+    expect(headerSource).toContain("aria-label={props.headerSession.t('header.backToProject')}");
   });
 });

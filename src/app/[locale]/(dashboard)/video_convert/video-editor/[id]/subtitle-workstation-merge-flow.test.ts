@@ -101,10 +101,31 @@ describe('SubtitleWorkstation merge finalization flow', () => {
   it('only pushes publicly playable audio into the unified timeline while preserving row-level draft preview urls', () => {
     expect(source).toContain('const buildPublicAudioUrl = useCallback(');
     expect(source).toContain('const resolvedUrl = resolveEditorPublicAudioUrl({');
-    expect(source).toContain("if (!resolvedUrl || !/^https?:\\/\\//i.test(resolvedUrl)) return '';");
-    expect(source).toContain('onUpdateSubtitleAudioUrl(job.subtitleId, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));');
-    expect(source).toContain('onUpdateSubtitleAudioUrl(item.id, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));');
+    expect(source).toContain("if (!isPlayableEditorAudioUrl(resolvedUrl)) return '';");
+    expect(source).toContain('const playablePreviewAudioUrl = resolvedPublicAudioUrl || \'\';');
+    expect(source).toContain("audioUrl_convert_custom: buildDraftPreviewUrl(resolvedData.path_name, newTime),");
+    expect(source).toContain("voiceStatus: 'ready',");
+    expect(source).toContain('needsTts: false,');
+    expect(source).toContain('setSelectedId(job.subtitleId);');
+    expect(source).toContain('setBlockedPreviewHintId(null);');
+    expect(source).toContain('setFocusConvertedEditorId(null);');
+    expect(source).toContain("onSubtitleVoiceStatusChange?.(job.subtitleId, 'ready', false);");
+    expect(source).toContain('setSelectedId(item.id);');
+    expect(source).toContain('setBlockedPreviewHintId(null);');
+    expect(source).toContain('setFocusConvertedEditorId(null);');
+    expect(source).toContain("if (type === 'translate_srt') {");
+    expect(source).toContain("onSubtitleVoiceStatusChange?.(item.id, 'ready', false);");
+    expect(source).toContain("onRequestAuditionPlay?.(item.order, 'convert');");
+    expect(source).toContain('onUpdateSubtitleAudioUrl(job.subtitleId, resolvedPublicAudioUrl, playablePreviewAudioUrl);');
+    expect(source).toContain('onUpdateSubtitleAudioUrl(item.id, resolvedPublicAudioUrl, playablePreviewAudioUrl);');
     expect(source).toContain('onUpdateSubtitleAudioUrl(item.id, buildPublicAudioUrl(savedAudioPath, savedAt));');
+    expect(source).not.toContain('onUpdateSubtitleAudioUrl(job.subtitleId, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));');
+    expect(source).not.toContain('onUpdateSubtitleAudioUrl(item.id, resolvedPublicAudioUrl, buildDraftPreviewUrl(resolvedData.path_name, newTime));');
+  });
+
+  it('marks regenerated translation text as needing a fresh voice across both workstation and page owners', () => {
+    expect(source).toContain("onSubtitleVoiceStatusChange?.(job.subtitleId, 'missing', true);");
+    expect(source).toContain("onSubtitleVoiceStatusChange?.(item.id, 'missing', true);");
   });
 
   it('exposes a dedicated structural-edit preparation hook that flushes pending source saves by sourceId', () => {

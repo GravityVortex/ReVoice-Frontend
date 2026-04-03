@@ -23,12 +23,15 @@ import {
   type EditorTransportSnapshot,
   type TransportBlockingState,
 } from '../../editor-transport';
-import { evaluateClipConvertAuditionAvailability, evaluateClipVoiceAvailability, evaluateSubtitlePlaybackGate } from '../../playback-gate';
+import { evaluateClipConvertAuditionAvailability, evaluateClipVoiceAvailability, evaluateSubtitlePlaybackGate, type PlaybackGateSubtitleRow } from '../../playback-gate';
+import { resolvePlayableAuditionUrl } from '../../audio-url-utils';
 import type { TimelineHandle } from '../../timeline-panel';
+import { buildVideoEditorPlaybackSession, type VideoEditorPlaybackSession } from '../../video-editor-playback-session';
 import type { VideoPreviewRef } from '../../video-preview-panel';
 import type { VideoSyncSnapshot } from '../../video-sync-controller';
 import { createPlaybackAuditionFlow } from './playback-audition-flow';
 import { usePlaybackAuditionRuntime } from './playback-audition-runtime';
+import { createPlaybackBlockingOwner } from './playback-blocking-owner';
 import { createPlaybackBlockingRetryController } from './playback-blocking-retry-controller';
 import { createPlaybackControlOwner } from './playback-control-owner';
 import { createPlaybackSeekOwner } from './playback-seek-owner';
@@ -59,34 +62,6 @@ type UseVideoEditorPlaybackArgs = {
   scrollToItem: (id: string) => void;
 };
 
-type UseVideoEditorPlaybackResult = {
-  transportSnapshot: EditorTransportSnapshot;
-  timelineHandleRef: React.RefObject<TimelineHandle | null>;
-  videoPreviewRef: React.RefObject<VideoPreviewRef | null>;
-  currentTime: number;
-  totalDuration: number;
-  volume: number;
-  isBgmMuted: boolean;
-  isSubtitleMuted: boolean;
-  isPlaying: boolean;
-  handlePreviewPlayStateChange: (isPlaying: boolean) => void;
-  handlePlayPause: () => void;
-  handleSeek: (time: number, isDragging?: boolean, isAuditionSeek?: boolean) => void;
-  handleSeekToSubtitle: (time: number) => void;
-  handleGlobalVolume: (vol: number) => void;
-  handleToggleBgmMute: () => void;
-  handleToggleSubtitleMute: () => void;
-  handleAutoPlayNextChange: (value: boolean) => void;
-  handleAuditionRequestPlay: (index: number, mode: 'source' | 'convert') => Promise<void>;
-  handleAuditionToggle: () => void;
-  handleAuditionStop: (naturalEnd?: boolean) => void;
-  handleRetryBlockedPlayback: () => void;
-  handleCancelBlockedPlayback: () => void;
-  handleLocateBlockedClip: () => void;
-  clearVoiceCache: () => void;
-  clearActiveTimelineClip: () => void;
-};
-
 function isAbortError(err: unknown) {
   if (typeof err !== 'object' || err === null) return false;
   const e = err as { name?: unknown; code?: unknown; message?: unknown };
@@ -106,7 +81,7 @@ function isRecoverableVoiceLoadError(error: unknown) {
   return code === 'VOICE_FETCH_TIMEOUT' || code === 'VOICE_FETCH_FAILED';
 }
 
-export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVideoEditorPlaybackResult {
+export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): VideoEditorPlaybackSession {
   const {
     convertId,
     convertObj,
@@ -258,7 +233,7 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
   }, []);
 
   const getConvertSubtitleRow = useCallback(
-    (subtitleId: string) => {
+    (subtitleId: string): PlaybackGateSubtitleRow | null => {
       const rows = (convertObj?.srt_convert_arr || []) as any[];
       return rows.find((row) => row?.id === subtitleId) ?? null;
     },
@@ -293,7 +268,10 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
       const clip = subtitleTrackRef.current[clipIndex];
       if (!clip) return { kind: 'ready' } as const;
       const row = getConvertSubtitleRow(clip.id);
-      const previewAudioUrl = String(clip.previewAudioUrl || clip.audioUrl || '');
+      const previewAudioUrl = resolvePlayableAuditionUrl({
+        previewAudioUrl: clip.previewAudioUrl,
+        audioUrl: clip.audioUrl,
+      });
       const gate = evaluateClipConvertAuditionAvailability({
         clipId: clip.id,
         row,
@@ -348,8 +326,10 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
     auditionAbortRef.current = null;
     try {
       controller.abort(ABORT_REASON);
-    } catch {
-      // ignore
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[Playback]', e);
+      }
     }
   }, []);
 
@@ -376,8 +356,10 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
     if (videoEl && vfcId != null && typeof videoEl.cancelVideoFrameCallback === 'function') {
       try {
         videoEl.cancelVideoFrameCallback(vfcId);
-      } catch {
-        // ignore
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Playback]', e);
+        }
       }
     }
     videoFrameCbIdRef.current = null;
@@ -422,6 +404,11 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
   const abortAllVoiceInflight = useCallback(() => playbackVoiceCache.abortAllVoiceInflight(), [playbackVoiceCache]);
 
   const clearVoiceCache = useCallback(() => playbackVoiceCache.clearVoiceCache(), [playbackVoiceCache]);
+
+  // Medium Fix #9: Clear voice cache when convertId changes
+  useEffect(() => {
+    clearVoiceCache();
+  }, [clearVoiceCache, convertId]);
 
   const clearActiveTimelineClip = useCallback(() => {
     playingSubtitleIndexRef.current = -1;
@@ -468,13 +455,17 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
       if (!audio) return;
       try {
         audio.pause();
-      } catch {
-        // ignore
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Playback]', e);
+        }
       }
       try {
         if (audio.readyState >= 1) audio.currentTime = 0;
-      } catch {
-        // ignore
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Playback]', e);
+        }
       }
     });
   }, [audioRefArr]);
@@ -650,8 +641,10 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
         pauseBgm: () => {
           try {
             bgmAudioRef.current?.pause();
-          } catch {
-            // ignore
+          } catch (e) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[Playback]', e);
+            }
           }
         },
         scrollToItem,
@@ -678,17 +671,6 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
     [playbackBlockingRetryController]
   );
 
-  const resolveBlockingClipContext = useCallback(
-    (blockingState?: TransportBlockingState | null) => playbackBlockingRetryController.resolveBlockingClipContext(blockingState),
-    [playbackBlockingRetryController]
-  );
-
-  const resolveRetryablePlaybackContext = useCallback(
-    (timeSec: number, preferredClipIndex?: number | null, subtitleId?: string) =>
-      playbackBlockingRetryController.resolveRetryablePlaybackContext(timeSec, preferredClipIndex, subtitleId),
-    [playbackBlockingRetryController]
-  );
-
   const handlePlaybackStartFailure = useCallback(
     (args: {
       mode: VideoSyncSnapshot['mode'];
@@ -710,6 +692,51 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
     (clipIndex: number, clip?: { id?: string; startTime?: number } | null) =>
       playbackBlockingRetryController.pausePlaybackForMediaFailure(clipIndex, clip),
     [playbackBlockingRetryController]
+  );
+
+  const playbackBlockingOwner = useMemo(
+    () =>
+      createPlaybackBlockingOwner({
+        refs: {
+          transportStateRef,
+          auditionActiveTypeRef,
+          sourceAuditionAudioRef,
+          auditionStopAtMsRef,
+          auditionRestoreRef,
+          videoPreviewRef,
+          isSubtitleMutedRef,
+          isBgmMutedRef,
+          videoStartGateTokenRef,
+          videoPlayTokenRef,
+          transportIsStalledRef,
+        },
+        applyVideoTransportSnapshot,
+        getVideoSyncMode,
+        getVideoTransportTimeSec,
+        setPlaybackBlockingState,
+        stopWebAudioVoice,
+        stopAllSubtitleAudio,
+        setIsVideoBuffering,
+        setIsSubtitleBuffering,
+        setIsPlaying,
+        setIsSubtitleMuted,
+        setIsBgmMuted,
+        dispatchTransport,
+        abortAllVoiceInflight,
+        locateBlockedClip: playbackBlockingRetryController.handleLocateBlockedClip,
+        retryBlockedPlayback: playbackBlockingRetryController.handleRetryBlockedPlayback,
+      }),
+    [
+      abortAllVoiceInflight,
+      applyVideoTransportSnapshot,
+      dispatchTransport,
+      getVideoSyncMode,
+      getVideoTransportTimeSec,
+      playbackBlockingRetryController,
+      setPlaybackBlockingState,
+      stopAllSubtitleAudio,
+      stopWebAudioVoice,
+    ]
   );
 
   const subtitleAudioEngine = useMemo(
@@ -740,8 +767,10 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
         pauseBgm: () => {
           try {
             bgmAudioRef.current?.pause();
-          } catch {
-            // ignore
+          } catch (e) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[Playback]', e);
+            }
           }
         },
         getVoiceAudioContext: () => voiceAudioCtxRef.current,
@@ -932,12 +961,7 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
           subtitleBackendRef,
           auditionTokenRef,
           auditionActiveTypeRef,
-          sourceAuditionAudioRef,
-          auditionStopAtMsRef,
-          auditionRestoreRef,
           videoPreviewRef,
-          isSubtitleMutedRef,
-          isBgmMutedRef,
           handleAuditionStopRef,
           lastPlayedSubtitleIndexRef,
           lastVoiceSubtitleIndexRef,
@@ -955,7 +979,6 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
         isSubtitleBuffering,
         isVideoBuffering,
         t,
-        scrollToItem,
         handleSeek: (time, isDragging, isAuditionSeek) => handleSeekRef.current(time, isDragging, isAuditionSeek),
         abortActiveAuditionPreparation,
         abortAllVoiceInflight,
@@ -972,8 +995,6 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
         setIsBgmMuted,
         setPlayingSubtitleIndex,
         dispatchTransport,
-        resolveBlockingClipContext,
-        resolveRetryablePlaybackContext,
         evaluatePlaybackGateForClipIndex,
         createVoiceUnavailableBlockingState,
         pausePlaybackForBlockingState,
@@ -984,6 +1005,8 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
         prefetchVoiceAroundTime,
         getAdaptivePrefetchCount,
         findSubtitleIndexAtTime,
+        handleLocateBlockedClip: playbackBlockingOwner.handleLocateBlockedClip,
+        handleRetryBlockedPlayback: playbackBlockingOwner.handleRetryBlockedPlayback,
       }),
     [
       abortActiveAuditionPreparation,
@@ -999,14 +1022,12 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
       getVideoSyncMode,
       getVideoTransportTimeSec,
       handlePlaybackStartFailure,
+      playbackBlockingOwner,
       isPlaying,
       isSubtitleBuffering,
       isVideoBuffering,
       pausePlaybackForBlockingState,
       prefetchVoiceAroundTime,
-      resolveBlockingClipContext,
-      resolveRetryablePlaybackContext,
-      scrollToItem,
       setPlaybackBlockingState,
       stopAllSubtitleAudio,
       stopWebAudioVoice,
@@ -1016,16 +1037,16 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
   );
 
   const handleCancelBlockedPlayback = useCallback(() => {
-    playbackTransportOwner.handleCancelBlockedPlayback();
-  }, [playbackTransportOwner]);
+    playbackBlockingOwner.handleCancelBlockedPlayback();
+  }, [playbackBlockingOwner]);
 
   const handleLocateBlockedClip = useCallback(() => {
-    playbackTransportOwner.handleLocateBlockedClip();
-  }, [playbackTransportOwner]);
+    playbackBlockingOwner.handleLocateBlockedClip();
+  }, [playbackBlockingOwner]);
 
   const handleRetryBlockedPlayback = useCallback(() => {
-    playbackTransportOwner.handleRetryBlockedPlayback();
-  }, [playbackTransportOwner]);
+    playbackBlockingOwner.handleRetryBlockedPlayback();
+  }, [playbackBlockingOwner]);
 
   const handlePlayPause = useCallback(() => {
     playbackTransportOwner.handlePlayPause();
@@ -1279,31 +1300,81 @@ export function useVideoEditorPlayback(args: UseVideoEditorPlaybackArgs): UseVid
     playbackControlOwner.handlePreviewPlayStateChange(nextIsPlaying);
   }, [playbackControlOwner]);
 
-  return {
-    transportSnapshot,
-    timelineHandleRef,
-    videoPreviewRef,
-    currentTime,
-    totalDuration,
-    volume,
-    isBgmMuted,
-    isSubtitleMuted,
-    isPlaying,
-    handlePreviewPlayStateChange,
-    handlePlayPause,
-    handleSeek,
-    handleSeekToSubtitle,
-    handleGlobalVolume,
-    handleToggleBgmMute,
-    handleToggleSubtitleMute,
-    handleAutoPlayNextChange,
-    handleAuditionRequestPlay,
-    handleAuditionToggle,
-    handleAuditionStop,
-    handleRetryBlockedPlayback,
-    handleCancelBlockedPlayback,
-    handleLocateBlockedClip,
-    clearVoiceCache,
-    clearActiveTimelineClip,
-  };
+  const playbackSession = useMemo<VideoEditorPlaybackSession>(
+    () =>
+      buildVideoEditorPlaybackSession({
+        state: {
+          transportSnapshot,
+          currentTime,
+          totalDuration,
+          volume,
+          isBgmMuted,
+          isSubtitleMuted,
+          isPlaying,
+        },
+        refs: {
+          timelineHandleRef,
+          videoPreviewRef,
+        },
+        actions: {
+          handlePreviewPlayStateChange,
+          handlePlayPause,
+          handleSeek,
+          handleSeekToSubtitle,
+          handleGlobalVolume,
+          handleToggleBgmMute,
+          handleToggleSubtitleMute,
+          handleAutoPlayNextChange,
+          handleAuditionRequestPlay,
+          handleAuditionToggle,
+          handleAuditionStop,
+          handleRetryBlockedPlayback,
+          handleCancelBlockedPlayback,
+          handleLocateBlockedClip,
+        },
+        maintenance: {
+          clearVoiceCache,
+          clearActiveTimelineClip,
+        },
+      }),
+    [
+      clearActiveTimelineClip,
+      clearVoiceCache,
+      currentTime,
+      handleAuditionRequestPlay,
+      handleAuditionStop,
+      handleAuditionToggle,
+      handleAutoPlayNextChange,
+      handleCancelBlockedPlayback,
+      handleGlobalVolume,
+      handleLocateBlockedClip,
+      handlePlayPause,
+      handlePreviewPlayStateChange,
+      handleRetryBlockedPlayback,
+      handleSeek,
+      handleSeekToSubtitle,
+      handleToggleBgmMute,
+      handleToggleSubtitleMute,
+      isBgmMuted,
+      isPlaying,
+      isSubtitleMuted,
+      timelineHandleRef,
+      totalDuration,
+      transportSnapshot,
+      videoPreviewRef,
+      volume,
+    ]
+  );
+
+  // High Fix #8: Cleanup RAF and audio on component unmount
+  useEffect(() => {
+    return () => {
+      cancelUpdateLoop();
+      stopAllSubtitleAudio();
+      stopWebAudioVoice();
+      abortAllVoiceInflight();
+    };
+  }, [cancelUpdateLoop, stopAllSubtitleAudio, stopWebAudioVoice, abortAllVoiceInflight]);
+
+  return playbackSession;
 }

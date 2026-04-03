@@ -9,8 +9,12 @@ type StructuralSubtitleClip = {
   name?: string;
 };
 
-export function getStructuralEditBlockReason(args: { isTaskRunning: boolean; isMergeJobActive: boolean }): StructuralEditBlockReason | null {
-  if (args.isTaskRunning || args.isMergeJobActive) return 'video-updating';
+export function getStructuralEditBlockReason(args: {
+  isGeneratingVideo?: boolean;
+  isTaskRunning: boolean;
+  isMergeJobActive: boolean;
+}): StructuralEditBlockReason | null {
+  if (args.isGeneratingVideo || args.isTaskRunning || args.isMergeJobActive) return 'video-updating';
   return null;
 }
 
